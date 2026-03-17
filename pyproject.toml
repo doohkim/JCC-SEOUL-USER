@@ -1,0 +1,17 @@
+[project]
+name = "jcc-seoul-user"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "김샬롬",email = "johnkdo2020@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "django (>=6.0.3,<7.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
