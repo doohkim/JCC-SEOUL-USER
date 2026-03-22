@@ -1,0 +1,35 @@
+/*
+ * Admin 필드셋: 필수 vs 선택 시각 구분
+ * 다크 테마에서 전역 color(흰색)가 상속되면 밝은 배경 위에서 글자가 안 보이므로
+ * 제목(h2)에 어두운 글자색을 명시합니다.
+ */
+.module.jcc-required > h2,
+.inline-group.jcc-required > h2 {
+    background: #fff3e0;
+    border-left: 4px solid #e65100;
+    padding: 8px 10px;
+    margin: 0 0 0.5em;
+    color: #4e342e;
+}
+
+.module.jcc-optional > h2,
+.inline-group.jcc-optional > h2 {
+    background: #e3f2fd;
+    border-left: 4px solid #1565c0;
+    padding: 8px 10px;
+    margin: 0 0 0.5em;
+    color: #0d47a1;
+}
+
+/* 필드셋 바로 아래 설명(비워도 됩니다 등) — 밝은 띠 아래에 있을 때 대비 */
+.module.jcc-required > .description,
+.module.jcc-optional > .description,
+.inline-group.jcc-required > .description,
+.inline-group.jcc-optional > .description {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.module.jcc-required > .description a,
+.module.jcc-optional > .description a {
+    color: #90caf9;
+}

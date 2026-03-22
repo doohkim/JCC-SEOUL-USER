@@ -1,0 +1,11 @@
+{% extends "admin/base_site.html" %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  &rsaquo; 사용자 — 부서·팀 이동
+</div>
+{% endblock %}
+{% block content %}
+<h1>사용자 — 부서·팀 이동</h1>
+<p><a href="{% url 'admin:users_user_changelist' %}">사용자 목록</a>에서 해당 계정의 「부서·팀 이동」을 누르세요.</p>
+{% endblock %}

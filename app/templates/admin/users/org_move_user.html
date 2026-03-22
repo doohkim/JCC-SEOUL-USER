@@ -1,0 +1,49 @@
+{% extends "admin/base_site.html" %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url 'admin:users_member_changelist' %}">멤버</a>
+  &rsaquo; {{ member_obj.name }} — 부서·팀 이동
+</div>
+{% endblock %}
+{% block content %}
+<h1>부서·팀 이동 — {{ member_obj.name }}</h1>
+<p><a href="{{ member_change_url }}">← 멤버 정보로 돌아가기</a></p>
+
+<h2>현재 소속 (부서·팀)</h2>
+<table class="adminlist">
+  <thead><tr><th>부서</th><th>팀</th><th>주 소속</th><th>ID</th></tr></thead>
+  <tbody>
+  {% for m in memberships %}
+    <tr>
+      <td>{{ m.division.name }}</td>
+      <td>{% if m.team %}{{ m.team.name }}{% else %}(미지정){% endif %}</td>
+      <td>{% if m.is_primary %}예{% else %}—{% endif %}</td>
+      <td>{{ m.pk }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="4">등록된 부서·팀 소속이 없습니다.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>1) 같은 부서에서 팀만 변경</h2>
+<form method="post" class="org-move-form">
+  {% csrf_token %}
+  <input type="hidden" name="form" value="change_team" />
+  <table>{{ change_form.as_table }}</table>
+  <button type="submit" class="default">팀 변경 적용</button>
+</form>
+
+<h2>2) 다른 부서로 이동</h2>
+<p class="help">예: 중고등부 → 대학부 → 청년부(주영팀). 이전 부서의 <strong>모든</strong> 소속 행을 지울지 선택할 수 있습니다.</p>
+<form method="post" class="org-move-form">
+  {% csrf_token %}
+  <input type="hidden" name="form" value="transfer" />
+  <table>{{ transfer_form.as_table }}</table>
+  <button type="submit" class="default">부서 이동 적용</button>
+</form>
+
+<p class="help"><strong>일하는 부서·직책</strong>(찬양단, 팀장 등)은 멤버 화면의 「일하는 부서 직책」인라인에서 수정하세요.</p>
+{% endblock %}

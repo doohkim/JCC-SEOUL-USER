@@ -1,0 +1,57 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url 'admin:users_namedattendancesession_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+<p>
+  <a href="{% url 'admin:users_namedattendancesession_change' session.pk %}">{% trans "← 회차 상세(Admin)" %}</a>
+</p>
+<p class="help">
+  {% trans "각 교시마다 복수 선택 가능합니다. 아무 것도 체크하지 않으면 해당 교시는 미입력으로 저장됩니다." %}
+</p>
+<form method="post">
+  {% csrf_token %}
+  <div style="overflow-x:auto;">
+  <table class="adminlist">
+    <thead>
+      <tr>
+        <th>{% trans "멤버" %}</th>
+        {% for label in labels %}
+        <th>{{ label }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in member_rows %}
+      <tr>
+        <th scope="row">{{ row.member.name }}</th>
+        {% for cell in row.cells %}
+        <td style="vertical-align:top; min-width:12rem;">
+          {% for val, lbl in chips %}
+          <label style="display:block; white-space:nowrap;">
+            <input type="checkbox" name="pick_{{ row.member.pk }}_{{ cell.slot }}" value="{{ val }}"
+              {% if val in cell.picked %}checked{% endif %}>
+            {{ lbl }}
+          </label>
+          {% endfor %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% empty %}
+      <tr><td colspan="{{ labels|length|add:1 }}">{% trans "이 부서에 소속된 멤버가 없습니다. 먼저 멤버·부서 소속을 등록하세요." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p>
+    <button type="submit" class="default">{% trans "저장" %}</button>
+  </p>
+</form>
+{% endblock %}

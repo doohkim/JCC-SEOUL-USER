@@ -1,0 +1,40 @@
+{% extends "admin/base_site.html" %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  &rsaquo; <a href="{% url 'admin:users_member_changelist' %}">교적(멤버)</a>
+  &rsaquo; {{ member_obj.name }} — 부서·팀 이동
+</div>
+{% endblock %}
+{% block content %}
+<h1>교적 부서·팀 이동 — {{ member_obj.name }}</h1>
+<p><a href="{{ back_url }}">← 멤버로 돌아가기</a></p>
+<h2>현재 소속</h2>
+<table class="adminlist">
+  <thead><tr><th>부서</th><th>팀</th><th>주 소속</th><th>ID</th></tr></thead>
+  <tbody>
+  {% for m in memberships %}
+    <tr>
+      <td>{{ m.division.name }}</td>
+      <td>{% if m.team %}{{ m.team.name }}{% else %}(미지정){% endif %}</td>
+      <td>{% if m.is_primary %}예{% else %}—{% endif %}</td>
+      <td>{{ m.pk }}</td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="4">소속 없음</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<h2>1) 같은 부서에서 팀만 변경</h2>
+<form method="post">{% csrf_token %}
+  <input type="hidden" name="form" value="change_team" />
+  <table>{{ change_form.as_table }}</table>
+  <button type="submit" class="default">적용</button>
+</form>
+<h2>2) 다른 부서로 이동</h2>
+<form method="post">{% csrf_token %}
+  <input type="hidden" name="form" value="transfer" />
+  <table>{{ transfer_form.as_table }}</table>
+  <button type="submit" class="default">적용</button>
+</form>
+{% endblock %}

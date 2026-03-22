@@ -1,0 +1,16 @@
+{% extends "admin/base_site.html" %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; 부서·팀 이동
+</div>
+{% endblock %}
+{% block content %}
+<h1>부서·팀 이동</h1>
+<p>멤버의 소속을 바꾸려면 <strong>멤버 변경</strong> 화면에서 상단의 「부서·팀 이동」을 누르거나, 아래에서 멤버를 연 뒤 이동 URL로 들어가세요.</p>
+<ul>
+  <li><a href="{% url 'admin:users_member_changelist' %}">멤버 목록</a></li>
+</ul>
+<p class="help">API: <code>POST /api/v1/org/change-team/</code>, <code>POST /api/v1/org/transfer-division/</code> — 본문에 <code>member_id</code> 사용 (스태프 권한·로그인 필요)</p>
+{% endblock %}
