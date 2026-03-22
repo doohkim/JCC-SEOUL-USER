@@ -1,0 +1,68 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- 가상환경 ---
+.venv/
+venv/
+ENV/
+env/
+
+# --- Django / 로컬 DB·비밀 ---
+*.sqlite3
+*.sqlite3-journal
+.env
+.env.*
+!.env.example
+local_settings.py
+secrets.json
+
+# --- 정적 수집·업로드(로컬) ---
+app/staticfiles/
+app/media/
+
+# --- 테스트·커버리지 ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# --- Poetry ---
+poetry.lock.bak
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# --- 기타 ---
+*.log
+.mypy_cache/
+.ruff_cache/
+
+# 주의: **migrations/*.py 는 커밋합니다.** (DB 스키마 공유용)
+# migrations/ 전체를 무시하지 마세요.
