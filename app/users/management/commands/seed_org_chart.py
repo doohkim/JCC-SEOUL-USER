@@ -27,20 +27,26 @@ class Command(BaseCommand):
         for name_ko, code, level in levels:
             RoleLevel.objects.get_or_create(
                 code=code,
-                defaults={"name_ko": name_ko, "level": level, "sort_order": 100 - level},
+                defaults={"name": name_ko, "level": level, "sort_order": 100 - level},
             )
         self.stdout.write(f"  RoleLevel {len(levels)}개 생성/유지")
 
     def _seed_divisions(self):
         divisions = [
-            ("청년부", "youth"),
-            ("대학부", "university"),
-            ("중고등부", "middle_high"),
-            ("철산 교구", "cheolsan"),
-            ("동작 교구", "dongjak"),
+            ("청년부", "youth", 10),
+            ("대학부", "university", 20),
+            ("중고등부", "middle_high", 30),
+            ("철산 교구", "cheolsan", 40),
+            ("동작 교구", "dongjak", 50),
         ]
-        for name_ko, code in divisions:
-            Division.objects.get_or_create(code=code, defaults={"name_ko": name_ko})
+        for name_ko, code, sort_order in divisions:
+            obj, created = Division.objects.get_or_create(
+                code=code,
+                defaults={"name": name_ko, "sort_order": sort_order},
+            )
+            if not created and obj.sort_order != sort_order:
+                obj.sort_order = sort_order
+                obj.save(update_fields=["sort_order"])
         self.stdout.write(f"  Division {len(divisions)}개 생성/유지")
 
     def _seed_roles(self):
@@ -65,7 +71,9 @@ class Command(BaseCommand):
             ("셀장", "cell_leader", 42),
         ]
         for name_ko, code, order in roles:
-            Role.objects.get_or_create(code=code, defaults={"name_ko": name_ko, "sort_order": order})
+            Role.objects.get_or_create(
+                code=code, defaults={"name": name_ko, "sort_order": order}
+            )
         self.stdout.write(f"  Role {len(roles)}개 생성/유지")
 
     def _seed_functional_departments(self):
@@ -80,6 +88,6 @@ class Command(BaseCommand):
         for name_ko, code, division in depts:
             FunctionalDepartment.objects.get_or_create(
                 code=code,
-                defaults={"name_ko": name_ko, "division_id": division},
+                defaults={"name": name_ko, "division": division, "sort_order": 0},
             )
         self.stdout.write(f"  FunctionalDepartment {len(depts)}개 생성/유지")

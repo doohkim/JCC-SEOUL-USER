@@ -8,9 +8,9 @@
 {% endblock %}
 {% block content %}
 <h1>부서·팀 이동</h1>
-<p>멤버의 소속을 바꾸려면 <strong>멤버 변경</strong> 화면에서 상단의 「부서·팀 이동」을 누르거나, 아래에서 멤버를 연 뒤 이동 URL로 들어가세요.</p>
+<p><strong>앱 사용자(User)</strong>의 부서·팀을 바꿀 때는 사용자 변경 화면 상단 「부서·팀 이동」을 사용하세요. <strong>교적(Member)</strong>은 교적부 앱에서 별도 이동 화면을 사용합니다.</p>
 <ul>
-  <li><a href="{% url 'admin:users_member_changelist' %}">멤버 목록</a></li>
+  <li><a href="{% url 'admin:registry_member_changelist' %}">교적(멤버) 목록</a></li>
 </ul>
 <p class="help">API: <code>POST /api/v1/org/change-team/</code>, <code>POST /api/v1/org/transfer-division/</code> — 본문에 <code>member_id</code> 사용 (스태프 권한·로그인 필요)</p>
 {% endblock %}

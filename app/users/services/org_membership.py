@@ -1,6 +1,6 @@
 """하위 호환 re-export. 새 코드는 ``user_org`` / ``member_org`` 사용 권장."""
 
-from users.services.member_org import (
+from registry.services.member_org import (
     change_team_within_division as change_member_team_within_division,
     transfer_to_division as transfer_member_to_division,
 )

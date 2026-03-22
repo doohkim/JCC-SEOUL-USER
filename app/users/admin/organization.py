@@ -1,4 +1,4 @@
-"""조직(부서·팀·동아리·일하는 부서·직책)."""
+"""조직(부서·팀·동아리·일하는 부서·직책) — 앱 사용자 소속."""
 
 from django.contrib import admin
 
@@ -6,9 +6,6 @@ from ..models import (
     Club,
     Division,
     FunctionalDepartment,
-    MemberClub,
-    MemberDivisionTeam,
-    MemberFunctionalDeptRole,
     Role,
     Team,
     UserClub,
@@ -91,25 +88,6 @@ class UserFunctionalDeptRoleAdmin(JccModelAdmin):
     autocomplete_fields = ["user", "functional_department", "role"]
 
 
-@admin.register(MemberDivisionTeam)
-class MemberDivisionTeamAdmin(JccModelAdmin):
-    list_display = ["member", "division", "team", "is_primary", "sort_order"]
-    list_filter = ["division", "is_primary"]
-    search_fields = ["member__name", "member__import_key"]
-    autocomplete_fields = ["member", "division", "team"]
-    fieldsets = (
-        ("필수", {"classes": ("jcc-required",), "fields": ("member", "division")}),
-        (
-            "선택",
-            {
-                "classes": ("jcc-optional",),
-                "fields": ("team", "is_primary", "sort_order"),
-                "description": "팀 미지정 가능.",
-            },
-        ),
-    )
-
-
 @admin.register(Club)
 class ClubAdmin(JccModelAdmin):
     list_display = ["name", "code", "division", "sort_order"]
@@ -121,14 +99,6 @@ class ClubAdmin(JccModelAdmin):
         ("필수", {"classes": ("jcc-required",), "fields": ("name", "code")}),
         ("선택", {"classes": ("jcc-optional",), "fields": ("division", "sort_order")}),
     )
-
-
-@admin.register(MemberClub)
-class MemberClubAdmin(admin.ModelAdmin):
-    list_display = ["member", "club", "sort_order"]
-    list_filter = ["club"]
-    search_fields = ["member__name"]
-    autocomplete_fields = ["member", "club"]
 
 
 @admin.register(FunctionalDepartment)
@@ -149,11 +119,3 @@ class RoleAdmin(admin.ModelAdmin):
     list_display = ["name", "code", "sort_order"]
     list_editable = ["sort_order"]
     search_fields = ["name", "code"]
-
-
-@admin.register(MemberFunctionalDeptRole)
-class MemberFunctionalDeptRoleAdmin(admin.ModelAdmin):
-    list_display = ["member", "functional_department", "role", "sort_order"]
-    list_filter = ["functional_department", "role"]
-    search_fields = ["member__name"]
-    autocomplete_fields = ["member", "functional_department", "role"]

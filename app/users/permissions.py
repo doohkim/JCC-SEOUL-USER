@@ -4,7 +4,9 @@
 교적(Member) 목록은 같은 부서 범위로 필터 (목회 데이터).
 """
 
-from .models import Division, Member, RoleLevel, User
+from registry.models import Member
+
+from .models import Division, RoleLevel, User
 
 
 def visible_divisions_for(user: User):

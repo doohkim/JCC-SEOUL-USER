@@ -18,11 +18,19 @@ Including another URLconf
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
+
+from config.admin_legacy_redirect import (
+    LEGACY_USERS_ADMIN_PATTERN,
+    redirect_legacy_users_admin,
+)
 
 urlpatterns = [
+    # 구 Admin 경로(users 앱에 있던 교적·출석 모델) → attendance / registry
+    re_path(LEGACY_USERS_ADMIN_PATTERN, redirect_legacy_users_admin),
     path("admin/", admin.site.urls),
-    path("api/v1/", include("users.api.urls")),
+    path("attendance/", include("attendance.urls")),
+    path("api/v1/", include("users.urls")),
 ]
 
 if settings.DEBUG:
