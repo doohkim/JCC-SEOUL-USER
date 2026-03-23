@@ -1,0 +1,20 @@
+---
+description: JCC Seoul User — Django 프로젝트 루트 컨텍스트 (앱 구조, 실행 경로)
+alwaysApply: true
+---
+
+# JCC Seoul User (Django)
+
+- **스택**: Python 3.13+, Django 6, djangorestframework, Poetry (`pyproject.toml`). 엑셀은 `openpyxl`.
+- **Django 프로젝트 루트**: `app/` (설정 모듈은 `config`). 관리 명령은 **`app/manage.py`** 기준으로 실행한다.
+
+```bash
+cd app && poetry run python manage.py <command>
+```
+
+- **앱**: `users` (커스텀 사용자 `AUTH_USER_MODEL = "users.User"`), `registry` (교적·구성원), `attendance` (출석).
+- **URL**: `config/urls.py`는 앱별 **`attendance/urls.py`**, **`registry/urls.py`**, **`users/urls.py`** 만 `include` 한다 (앱당 `urls.py` 하나). 출석 DRF는 `attendance/urls.py`, 조직 API는 `registry/urls.py` 에 절대 경로(`api/v1/...`)로 선언한다.
+- **DRF**: `REST_FRAMEWORK` 기본 권한 `IsAuthenticated`, 세션/베이직 인증. API 변경 시 권한·시리얼라이저·모델 제약을 함께 점검한다.
+- **보안(필수)**: 출석 등 운영 데이터는 `users.permissions.visible_divisions_for` — **소속 상위 부서(`UserDivisionTeam`)만**. 타 부서 `division_code`·week id로 조회 불가. **교적(registry)** Admin·조직 API는 `can_access_member_registry` / `IsPastoralRegistryStaff` — **목사·전도사**(`RoleLevel` 코드 `pastor`·`evangelist` 또는 level ≥ 80)만. 새 엔드포인트는 이 원칙을 깨지 않는다.
+- **Admin**: `users`에 있던 레거시 admin 경로는 `config.admin_legacy_redirect`로 `registry`/`attendance`로 넘긴다. 새 모델 admin은 해당 도메인 앱에 둔다.
+- **코드 스타일**: 앱 패키지 구조 `models/`, **`views/`**(Django 템플릿·일반 뷰), **`apis/`**(DRF), `admin/`, `choices/`, `services/`, `forms/` 를 따른다. 요청 범위 밖 리팩터는 하지 않는다.

@@ -1,0 +1,19 @@
+---
+description: DRF API 뷰·시리얼라이저·URL 규칙 (registry, attendance)
+globs: app/**/apis/**/*.py,app/**/serializers/**/*.py,app/**/services/**/*.py,app/**/admin/**/*.py
+alwaysApply: false
+---
+
+# DRF (이 프로젝트)
+
+- **폴더 구조 (앱별)**  
+  - **`apis/`**: DRF 뷰만 (`APIView` 등). 모듈 분리 시 `apis/common.py`, `apis/weeks.py` 처럼 나누고 `apis/__init__.py`에서 re-export 가능.  
+  - **`serializers/`**: 모든 `Serializer` / `ModelSerializer`. `from myapp.serializers import …`  
+  - **`services/`**: 비즈니스 로직·집계·쿼리 헬퍼 (뷰는 얇게 유지).  
+  - **`admin/`**: `ModelAdmin` 등 관리자 등록 코드.  
+  - **`apis/` 안에 `serializers/` 서브폴더를 두지 않는다.** 예전 `api/` 중복도 사용하지 않는다.  
+- **URL**: 앱 루트 **`urls.py` 한 파일**에만 등록한다. 템플릿 뷰는 **`views.py`** (앱 루트, 예: `attendance/views.py`).
+- **라우팅**: `api/v1/org/…`, `api/v1/attendance/…` 는 각각 **`registry/urls.py`**, **`attendance/urls.py`** 에 직접 `path(...)` 로 등록한다 (`config/urls.py` 는 앱 `urls.py` 만 include).
+- **뷰**: `APIView` + 명시적 `permission_classes`. **registry** 조직·멤버십 API는 `users.permissions.IsPastoralRegistryStaff` (목사·전도사). **attendance** API는 로그인 + 요청 부서가 `visible_divisions_for(request.user)` 안에 있어야 함 (`_require_division_access` 패턴). 출석은 **부서+예배일**로 저장되며, 주차는 `attendance/services/week_rollup.py` 로만 집계; 상세 URL은 ``weeks/<YYYY-MM-DD>/…`` (기준 일요일, 그 주의 임의 날짜도 내부에서 맞춤).
+- **시리얼라이저**: `registry.serializers`, `attendance.serializers` 처럼 **`앱.serializers`** 에 둔다. 새 엔드포인트는 기존 시리얼라이저 재사용 가능 여부를 먼저 본다.
+- **응답**: `Response(..., status=status.HTTP_*)` 일관 사용. 클라이언트 계약(필드명) 바꿀 때는 깨지는 호출부가 없는지 확인한다.
