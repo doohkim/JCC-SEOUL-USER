@@ -3,6 +3,15 @@
 
 열 구조(행마다 동일):
   팀당 3열 — 이름 | 현장(부·온·지) | 인천 표시(V/v 등)
+
+현장 열 값:
+  - ``1``~``4`` : 해당 부. **인천 열에 체크(V/v/✓ 등)** 이면 인천 해당 부, 체크 없으면 서울 해당 부.
+  - ``5`` : **3부·4부 연속 참석 표시**.
+    - UI에서는 연참을 없애고,
+    - 임포트 시에는 같은 출석행을 **3부(session_part=3)** 와 **4부(session_part=4)** 두 행으로 저장합니다.
+  - ``온``/``지`` : 온라인·지교회
+
+이름만 있고 현장·온·지가 비어 있으면 **행을 만들지 않음** (= 그날 주일 출석 데이터상 불참).
 """
 
 from __future__ import annotations
@@ -79,26 +88,27 @@ def _team_starts_from_header_row(row: tuple) -> list[tuple[int, str]]:
     """
     팀 헤더 행에서 각 팀 블록 시작 열 인덱스(0-based).
 
-    패턴: (팀명, None, None) 또는 팀명이 3열 간격으로 배치.
+    셀에 **「팀」** 또는 **「회장단」** 이 들어가면 팀 블록 시작으로 본다.
     """
     out: list[tuple[int, str]] = []
     if not row:
         return out
-    j = 0
-    while j < len(row):
-        cell = row[j]
+    for j, cell in enumerate(row):
         if isinstance(cell, str):
-            t = cell.replace(" ", "").strip()
-            if t and ("팀" in t or "회장단" in t):
-                out.append((j, t))
-                j += 3
-                continue
-        j += 1
+            raw_header = cell.strip()
+            compact = raw_header.replace(" ", "")
+            if raw_header and ("팀" in raw_header or "회장단" in raw_header):
+                # 스냅샷: 부서 회장단은 공백을 제거한 형태로 표준화
+                if compact == "부서회장단":
+                    out.append((j, "부서회장단"))
+                else:
+                    # 기타 팀명은 엑셀 원문 그대로(공백 포함) 저장
+                    out.append((j, raw_header))
     return out
 
 
 def _parse_hyun_field(raw: Any) -> str | int | None:
-    """현장 셀 → 부 번호, online, branch, None."""
+    """현장 셀 → 부 번호(1~6), online, branch, None."""
     if raw is None or raw == "":
         return None
     if isinstance(raw, bool):
@@ -127,7 +137,8 @@ def _incheon_marked(raw: Any) -> bool:
     if raw is None or raw == "":
         return False
     if isinstance(raw, str):
-        return raw.strip().lower() in ("v", "✓", "√")
+        s = raw.strip().lower()
+        return s in ("v", "✓", "√", "✔", "o", "○")
     if isinstance(raw, bool):
         return raw
     return False
@@ -208,6 +219,28 @@ def parse_sunday_attendance_sheet(
             if hyun is None:
                 continue
             venue, part, branch = _to_venue_part_branch(hyun, incheon_cell)
+            if part == 5 and venue in (WorshipVenue.SEOUL, WorshipVenue.INCHEON):
+                # legacy: 3·4부 연참(숫자 5)을 연참 없이 3부+4부로 분해
+                out.append(
+                    ParsedSundayAttendanceRow(
+                        display_name=raw_name,
+                        team_header=team_header,
+                        venue=venue,
+                        session_part=3,
+                        branch_label=branch,
+                    )
+                )
+                out.append(
+                    ParsedSundayAttendanceRow(
+                        display_name=raw_name,
+                        team_header=team_header,
+                        venue=venue,
+                        session_part=4,
+                        branch_label=branch,
+                    )
+                )
+                continue
+
             out.append(
                 ParsedSundayAttendanceRow(
                     display_name=raw_name,

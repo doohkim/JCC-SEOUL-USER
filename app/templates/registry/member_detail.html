@@ -1,0 +1,227 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>교적부 상세</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+  </head>
+  <body>
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <button
+            type="button"
+            class="jcc-back-link"
+            aria-label="뒤로가기"
+            onclick="history.back()"
+          >
+            ←
+          </button>
+          <div class="jcc-detail-titleWrap">
+            <h1>교적부 · 상세</h1>
+            <p class="subtitle">가족/심방 기록 포함</p>
+          </div>
+        </header>
+
+        <div class="toolbar jcc-detail-actions">
+          <a class="jcc-action-link" href="{% url 'registry_member_list' %}">목록</a>
+          <a class="jcc-action-link secondary" id="linkEdit" href="#">수정</a>
+        </div>
+
+        <main>
+          <div id="statusLine" class="msg"></div>
+          <div class="card">
+        <h2 style="margin-bottom: 0.5rem">기본 정보</h2>
+        <div style="display:flex; gap:1.5rem; flex-wrap:wrap; align-items:flex-start">
+          <div class="jcc-detail-photoWrap">
+            <img
+              id="memberPhotoPreview"
+              class="jcc-detail-photoPreview"
+              alt="본인 사진"
+              src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMTgwIDE4MCI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMTYiIGZpbGw9IiMwZjE3MjIiLz4KPGNpcmNsZSBjeD0iOTAiIGN5PSI3MiIgcj0iMjgiIGZpbGw9IiMxYjI0MzAiIHN0cm9rZT0iIzJhMzU0OCIvPgo8cGF0aCBkPSJNMzAgMTYwYzgtMzYgMzQtNTYgNjAtNTZzNTIgMjAgNjAgNTYiIGZpbGw9IiMxYjI0MzAiIHN0cm9rZT0iIzJhMzU0OCIvPgo8L3N2Zz4="
+            />
+          </div>
+          <div style="min-width: 260px">
+            <div class="jcc-detail-kv" style="margin-bottom:0.75rem">
+              <span class="jcc-detail-kvLabel">이름 :</span>
+              <span id="memberName" class="jcc-detail-kvValue"></span>
+            </div>
+            <div class="jcc-detail-kv" style="margin-bottom:0.75rem">
+              <span class="jcc-detail-kvLabel">핸드폰번호 :</span>
+              <span id="memberPhone" class="jcc-detail-kvValue"></span>
+            </div>
+            <div class="jcc-detail-kv" style="margin-bottom:0.75rem">
+              <span class="jcc-detail-kvLabel">별칭 :</span>
+              <span id="memberAlias" class="jcc-detail-kvValue"></span>
+            </div>
+            <div class="jcc-detail-kv" style="margin-bottom:0.75rem">
+              <span class="jcc-detail-kvLabel">부서 :</span>
+              <span id="memberDivision" class="jcc-detail-kvValue"></span>
+            </div>
+            <div class="jcc-detail-kv" style="margin-bottom:0.75rem">
+              <span class="jcc-detail-kvLabel">팀 :</span>
+              <span id="memberTeam" class="jcc-detail-kvValue"></span>
+            </div>
+          </div>
+          <div style="flex:1; min-width: 280px">
+            <div class="jcc-detail-kv" style="margin-bottom:0.75rem">
+              <span class="jcc-detail-kvLabel">주소 :</span>
+              <span id="memberAddress" class="jcc-detail-kvValue"></span>
+            </div>
+            <div class="jcc-detail-kv" style="margin-bottom:0.75rem">
+              <span class="jcc-detail-kvLabel">직책/업무 :</span>
+              <span id="memberPosition" class="jcc-detail-kvValue"></span>
+            </div>
+            <div class="jcc-detail-kv" style="margin-bottom:0.75rem">
+              <span class="jcc-detail-kvLabel">교적상태 :</span>
+              <span id="memberActive" class="jcc-detail-kvValue"></span>
+            </div>
+            <div class="jcc-detail-kv" style="margin-bottom:0.75rem">
+              <span class="jcc-detail-kvLabel">최근 출석 날짜 :</span>
+              <span id="memberRecentAttendance" class="jcc-detail-kvValue" style="font-weight:700"></span>
+            </div>
+            <div class="jcc-detail-kv" style="margin-bottom:0.75rem; align-items:flex-start">
+              <span class="jcc-detail-kvLabel">목회 메모 :</span>
+              <span
+                id="memberStaffNotes"
+                class="jcc-detail-kvValue"
+                style="white-space:pre-wrap; line-height:1.35"
+              ></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:1.25rem">
+        <h2 style="margin-bottom:0.75rem">가족(행)</h2>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>관계</th>
+                <th>소속</th>
+                <th>직분</th>
+                <th>비고</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyFamily"></tbody>
+          </table>
+        </div>
+
+        <h3 style="margin-top:1rem; margin-bottom:0.5rem; color: var(--muted); font-size:0.95rem;">
+          가족 추가
+        </h3>
+        <div class="toolbar jcc-detail-addToolbar" style="padding:0; border:none; background:transparent;">
+          <div class="field"><label>이름 *</label><input type="text" id="f_name" class="jcc-reg-control"/></div>
+          <div class="field"><label>관계 *</label><select id="f_rel" class="jcc-reg-control"></select></div>
+          <div class="field"><label>소속</label><input type="text" id="f_aff" class="jcc-reg-control"/></div>
+          <div class="field"><label>직책</label><select id="f_pos" class="jcc-reg-control"></select></div>
+          <div class="field"><label>비고</label><input type="text" id="f_note" class="jcc-reg-control"/></div>
+          <button type="button" id="btnFamilyAdd">추가</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:1.25rem">
+        <h2 style="margin-bottom:0.75rem">심방/통화 기록</h2>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th>방식</th>
+                <th>내용</th>
+                <th>작업</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyVisits"></tbody>
+          </table>
+        </div>
+
+        <h3 style="margin-top:1rem; margin-bottom:0.5rem; color: var(--muted); font-size:0.95rem;">
+          기록 추가
+        </h3>
+        <div class="toolbar jcc-detail-addToolbar" style="padding:0; border:none; background:transparent;">
+          <div class="field"><label>날짜</label><input type="date" id="v_date" class="jcc-reg-control"/></div>
+          <div class="field"><label>방식</label><select id="v_method" class="jcc-reg-control"></select></div>
+          <div class="field jcc-visit-contentField">
+            <label>내용</label>
+            <input type="text" id="v_content" class="jcc-reg-control"/>
+          </div>
+          <button type="button" id="btnVisitAdd">추가</button>
+        </div>
+      </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="jcc-modal-overlay" id="familyEditOverlay" aria-hidden="true">
+      <div class="jcc-modal">
+        <div class="card">
+          <h2 style="margin: 0 0 0.75rem 0;">가족 수정</h2>
+          <div id="familyEditStatus" class="msg" style="padding:0 0 0.75rem 0;"></div>
+
+          <div class="toolbar jcc-detail-addToolbar" style="padding:0; border:none; background:transparent;">
+            <div class="field"><label>이름 *</label><input type="text" id="e_name" class="jcc-reg-control"/></div>
+            <div class="field"><label>관계 *</label><select id="e_rel" class="jcc-reg-control"></select></div>
+            <div class="field"><label>소속</label><input type="text" id="e_aff" class="jcc-reg-control"/></div>
+            <div class="field"><label>직책</label><select id="e_pos" class="jcc-reg-control"></select></div>
+            <div class="field"><label>비고</label><input type="text" id="e_note" class="jcc-reg-control"/></div>
+          </div>
+
+          <div class="toolbar" style="padding:0; border:none; background:transparent; margin-top:1rem;">
+            <button type="button" class="secondary" id="btnFamilyEditCancel">취소</button>
+            <button type="button" id="btnFamilyEditSave">수정</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="jcc-modal-overlay" id="visitEditOverlay" aria-hidden="true">
+      <div class="jcc-modal">
+        <div class="card">
+          <h2 style="margin: 0 0 0.75rem 0;">심방/통화 기록 수정</h2>
+          <div id="visitEditStatus" class="msg" style="padding:0 0 0.75rem 0;"></div>
+
+          <div class="toolbar jcc-detail-addToolbar" style="padding:0; border:none; background:transparent;">
+            <div class="field">
+              <label>날짜</label>
+              <input type="date" id="e_v_date" class="jcc-reg-control"/>
+            </div>
+            <div class="field">
+              <label>방식</label>
+              <select id="e_v_method" class="jcc-reg-control"></select>
+            </div>
+            <div class="field" style="flex: 2;">
+              <label>내용</label>
+              <input type="text" id="e_v_content" class="jcc-reg-control"/>
+            </div>
+          </div>
+
+          <div class="toolbar" style="padding:0; border:none; background:transparent; margin-top:1rem;">
+            <button type="button" class="secondary" id="btnVisitEditCancel">취소</button>
+            <button type="button" id="btnVisitEditSave">수정</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__MEMBER_ID__ = "{{ member_id|default:'null' }}";
+    </script>
+    <script src="{% static 'registry/js/member_detail.js' %}"></script>
+    </div>
+  </div>
+  </body>
+</html>
+

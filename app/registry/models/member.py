@@ -35,7 +35,10 @@ class Member(AdminAuditFields):
         blank=True,
         related_name="linked_member_record",
         verbose_name="연결된 앱 계정",
-        help_text="회원가입 후 교적과 연결할 때만 사용",
+        help_text=(
+            "회원가입 계정과 연결 시 사용. 연결되어 있으면 교적의 부서·팀(MemberDivisionTeam) "
+            "변경 시 같은 부서 범위에서 UserDivisionTeam 이 자동으로 맞춰집니다."
+        ),
     )
     is_active = models.BooleanField("활성", default=True)
     created_at = models.DateTimeField(auto_now_add=True)

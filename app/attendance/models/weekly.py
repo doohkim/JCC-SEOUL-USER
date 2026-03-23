@@ -1,4 +1,4 @@
-"""주간 출석부: 주차 · 수토 · 주일."""
+"""예배별 출석: 수요·토요·주일 행은 ``division`` + ``service_date`` 로 식별. 주차는 집계 시에만 계산."""
 
 from __future__ import annotations
 
@@ -35,48 +35,16 @@ def _opposing_city(venue: str) -> str | None:
     return None
 
 
-class AttendanceWeek(AdminAuditFields):
+class MidweekAttendanceRecord(AdminAuditFields):
     division = models.ForeignKey(
         Division,
         on_delete=models.CASCADE,
-        related_name="attendance_weeks",
+        related_name="midweek_attendance_records",
         verbose_name="부서",
     )
-    week_sunday = models.DateField(
-        "기준 주일",
-        help_text="이 출석 주차를 식별하는 주일 날짜(해당 주의 주일).",
-    )
-    note = models.CharField("비고", max_length=200, blank=True, default="")
-    auto_created = models.BooleanField(
-        "자동 생성됨",
-        default=False,
-        help_text="ensure_weekly_attendance_weeks 등으로 생성된 경우 True",
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = "users_attendanceweek"
-        verbose_name = "주간 출석(주차)"
-        verbose_name_plural = "주간 출석(주차)"
-        ordering = ["-week_sunday", "division"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["division", "week_sunday"],
-                name="uniq_attendance_week_division_sunday",
-            ),
-        ]
-
-    def __str__(self):
-        return f"{self.division.name} · {self.week_sunday} 주간"
-
-
-class MidweekAttendanceRecord(AdminAuditFields):
-    week = models.ForeignKey(
-        AttendanceWeek,
-        on_delete=models.CASCADE,
-        related_name="midweek_records",
-        verbose_name="주차",
+    service_date = models.DateField(
+        "예배일",
+        help_text="실제 수요·토요 예배가 열린 날짜.",
     )
     member = models.ForeignKey(
         Member,
@@ -88,6 +56,21 @@ class MidweekAttendanceRecord(AdminAuditFields):
         "예배",
         max_length=20,
         choices=MidweekServiceType.choices,
+    )
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="midweek_attendance_records",
+        verbose_name="팀",
+    )
+    team_name_snapshot = models.CharField(
+        "팀명 스냅샷",
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="출석 등록 당시의 팀명. 이후 소속 변경과 무관하게 유지.",
     )
     status = models.CharField(
         "출석",
@@ -102,27 +85,53 @@ class MidweekAttendanceRecord(AdminAuditFields):
 
     class Meta:
         db_table = "users_midweekattendancerecord"
-        verbose_name = "수·토 출석"
-        verbose_name_plural = "수·토 출석"
-        ordering = ["week", "service_type", "member__name"]
+        verbose_name = "수요·토요 출석"
+        verbose_name_plural = "수요·토요 출석"
+        ordering = ["-service_date", "service_type", "member__name"]
+        indexes = [
+            models.Index(fields=["division", "service_date"]),
+        ]
         constraints = [
             models.UniqueConstraint(
-                fields=["week", "member", "service_type"],
-                name="uniq_midweek_week_member_service",
+                fields=["division", "member", "service_type", "service_date"],
+                name="uniq_midweek_div_member_service_date",
             ),
         ]
 
     def __str__(self):
         st = self.get_status_display() if self.status else "(미입력)"
-        return f"{self.member.name} · {self.get_service_type_display()} · {st}"
+        return (
+            f"{self.member.name} · {self.service_date} "
+            f"{self.get_service_type_display()} · {st}"
+        )
+
+    def clean(self):
+        super().clean()
+        if self.team_id and self.team.division_id != self.division_id:
+            raise ValidationError({"team": "팀이 이 출석의 부서와 맞지 않습니다."})
+        if self.service_date:
+            if self.service_type == MidweekServiceType.WEDNESDAY:
+                if self.service_date.weekday() != 2:
+                    raise ValidationError(
+                        {"service_date": "수요 예배일은 수요일이어야 합니다."}
+                    )
+            elif self.service_type == MidweekServiceType.SATURDAY:
+                if self.service_date.weekday() != 5:
+                    raise ValidationError(
+                        {"service_date": "토요 예배일은 토요일이어야 합니다."}
+                    )
 
 
 class SundayAttendanceLine(AdminAuditFields):
-    week = models.ForeignKey(
-        AttendanceWeek,
+    division = models.ForeignKey(
+        Division,
         on_delete=models.CASCADE,
-        related_name="sunday_lines",
-        verbose_name="주차",
+        related_name="sunday_attendance_lines_division",
+        verbose_name="부서",
+    )
+    service_date = models.DateField(
+        "주일 예배일",
+        help_text="해당 주일 예배가 열린 날짜(시트 상 날짜).",
     )
     member = models.ForeignKey(
         Member,
@@ -154,6 +163,13 @@ class SundayAttendanceLine(AdminAuditFields):
         related_name="sunday_attendance_lines",
         verbose_name="팀",
     )
+    team_name_snapshot = models.CharField(
+        "팀명 스냅샷",
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="출석 등록 당시의 팀명. 이후 소속 변경과 무관하게 유지.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -161,33 +177,50 @@ class SundayAttendanceLine(AdminAuditFields):
         db_table = "users_sundayattendanceline"
         verbose_name = "주일 출석(행)"
         verbose_name_plural = "주일 출석(행)"
-        ordering = ["week", "member__name", "venue", "session_part"]
+        ordering = ["-service_date", "member__name", "venue", "session_part"]
+        indexes = [
+            models.Index(fields=["division", "service_date"]),
+        ]
         constraints = [
             models.UniqueConstraint(
-                fields=["week", "member", "venue", "session_part", "branch_label"],
-                name="uniq_sunday_line_week_member_venue_part_branch",
+                fields=[
+                    "division",
+                    "member",
+                    "venue",
+                    "session_part",
+                    "branch_label",
+                    "service_date",
+                ],
+                name="uniq_sunday_div_member_venue_part_branch_date",
             ),
         ]
 
     def __str__(self):
         part = f"{self.session_part}부" if self.session_part else ""
         br = f" · {self.branch_label}" if self.branch_label else ""
-        return f"{self.member.name} · {self.week.week_sunday} · {self.get_venue_display()} {part}{br}"
+        return (
+            f"{self.member.name} · {self.service_date} · "
+            f"{self.get_venue_display()} {part}{br}"
+        )
 
     def clean(self):
         super().clean()
-        if self.member_id is None or self.week_id is None:
+        if self.service_date and self.service_date.weekday() != 6:
+            raise ValidationError(
+                {"service_date": "주일 예배일은 일요일이어야 합니다."}
+            )
+        if self.member_id is None or self.division_id is None:
             return
         if self.team_id:
-            div_id = self.week.division_id
-            if self.team.division_id != div_id:
+            if self.team.division_id != self.division_id:
                 raise ValidationError(
-                    {"team": "팀이 이 출석 주차의 부서와 맞지 않습니다."}
+                    {"team": "팀이 이 출석의 부서와 맞지 않습니다."}
                 )
 
         others = SundayAttendanceLine.objects.filter(
-            week_id=self.week_id,
+            division_id=self.division_id,
             member_id=self.member_id,
+            service_date=self.service_date,
         )
         if self.pk:
             others = others.exclude(pk=self.pk)
@@ -200,7 +233,7 @@ class SundayAttendanceLine(AdminAuditFields):
                 raise ValidationError(
                     {
                         "__all__": [
-                            "같은 주·같은 부(시각)에 인천과 서울 주일 출석을 동시에 둘 수 없습니다."
+                            "같은 주일·같은 부(시각)에 인천과 서울 주일 출석을 동시에 둘 수 없습니다."
                         ]
                     }
                 )
@@ -208,7 +241,7 @@ class SundayAttendanceLine(AdminAuditFields):
                 raise ValidationError(
                     {
                         "__all__": [
-                            "같은 주에 주일 현장(인천/서울 1~4부)과 온라인·지교회 출석 줄을 동시에 둘 수 없습니다."
+                            "같은 주일에 주일 현장(인천/서울 1~4부)과 온라인·지교회 출석 줄을 동시에 둘 수 없습니다."
                         ]
                     }
                 )
@@ -220,7 +253,7 @@ class SundayAttendanceLine(AdminAuditFields):
                 raise ValidationError(
                     {
                         "__all__": [
-                            "같은 주에 주일 온라인·지교회와 현장(인천/서울 1~4부) 출석 줄을 동시에 둘 수 없습니다."
+                            "같은 주일에 주일 온라인·지교회와 현장(인천/서울 1~4부) 출석 줄을 동시에 둘 수 없습니다."
                         ]
                     }
                 )

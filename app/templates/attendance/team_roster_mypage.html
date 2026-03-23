@@ -1,0 +1,55 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>출석부 내 소속</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+  </head>
+  <body>
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>내 소속(팀장 출석부)</h1>
+            <p class="subtitle">내 계정의 팀장(관리) 범위 확인</p>
+          </div>
+        </header>
+
+        <main>
+          <div class="card">
+            <h2 style="margin: 0 0 0.8rem 0;">팀 목록</h2>
+            {% if memberships %}
+              <table>
+                <thead>
+                  <tr>
+                    <th>부서</th>
+                    <th>팀</th>
+                    <th>주 소속</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for m in memberships %}
+                    <tr>
+                      <td>{{ m.division_name }}</td>
+                      <td>{{ m.team_name }}</td>
+                      <td>{{ m.is_primary|yesno:"예,아니오" }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            {% else %}
+              <div class="msg">등록된 팀 소속이 없습니다.</div>
+            {% endif %}
+          </div>
+
+          <div style="height:0.75rem;"></div>
+          <a class="btn-link" href="{% url 'attendance_team_roster_check' %}">탭 출석부로 돌아가기</a>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
+

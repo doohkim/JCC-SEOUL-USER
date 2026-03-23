@@ -1,0 +1,147 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>팀장 출석 체크</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+  </head>
+  <body>
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>팀장 출석 체크</h1>
+            <p class="subtitle">예배일 출석부 · 전체/미입력 필터</p>
+          </div>
+        </header>
+
+        <div class="toolbar">
+          <div class="field">
+            <label>부서(읽기전용)</label>
+            <select id="divisionCode" disabled></select>
+          </div>
+          <div class="field">
+            <label>예배일</label>
+            <select id="weekId"></select>
+          </div>
+          <div style="display:flex; gap:0.6rem; margin-left:auto;">
+            <button type="button" class="secondary" id="filterAll">전체</button>
+            <button type="button" id="filterUnset">미입력</button>
+          </div>
+        </div>
+
+        <main>
+          <div id="statusLine" class="msg"></div>
+          <div id="noAccessWrap" class="card" style="display:none;">
+            <h2 style="margin: 0 0 0.8rem 0;">권한이 없습니다.</h2>
+            <p class="subtitle" style="margin:0 0 1rem 0;">
+              출석부는 팀장(관리) 범위 내 팀 인원만 수정할 수 있습니다.
+            </p>
+            <a class="btn-link" href="{{ attendance_team_roster_mypage_url }}">내 소속 보기</a>
+          </div>
+          <div id="boardWrap"></div>
+        </main>
+      </div>
+    </div>
+
+    <!-- Sunday modal -->
+    <div class="jcc-modal-overlay" id="sundayEditOverlay" aria-hidden="true">
+      <div class="jcc-modal">
+        <div class="card" style="display: flex; flex-direction: column;">
+          <h2 style="margin: 0 0 0.75rem 0;">
+            주일예배 참석 선택
+            <span
+              id="sundayEditServiceDate"
+              style="color: var(--accent); font-size: 0.95rem; font-weight: 800; margin-left: 0.5rem; display: inline-block;"
+            ></span>
+          </h2>
+          <div id="sundayEditMemberName" style="color: var(--muted); font-weight: 700; margin-bottom: 0.75rem;"></div>
+          <div id="sundayEditStatus" class="msg" style="padding:0 0 0.75rem 0;"></div>
+
+          <div style="display:flex; flex-direction:column; gap:0.75rem;">
+            <div class="toolbar" style="padding:0; border:none; background:transparent;">
+              <div class="field" style="min-width: 260px;">
+                <label>불참</label>
+                <div style="display:flex; align-items:center; gap:0.5rem; padding-top:0.25rem;">
+                  <input type="checkbox" id="sundayAbsentChk" />
+                  <span style="color: var(--muted); font-size: 0.9rem;">불참 선택</span>
+                </div>
+                <div style="color: var(--muted); font-size: 0.82rem; margin-top:0.4rem;">
+                  선택하지 않고 저장하면 미입력으로 처리됩니다.
+                </div>
+              </div>
+            </div>
+
+            <div class="toolbar" style="padding:0; border:none; background:transparent;">
+              <div class="field" style="flex:1;">
+                <label>서울</label>
+                <div id="sundaySeoulOptions" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top: 0.25rem;"></div>
+              </div>
+              <div class="field" style="flex:1;">
+                <label>인천</label>
+                <div id="sundayIncheonOptions" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top: 0.25rem;"></div>
+              </div>
+            </div>
+
+            <div class="toolbar" style="padding:0; border:none; background:transparent;">
+              <div class="field" style="flex:1;">
+                <label>온라인/지교회</label>
+                <div id="sundayRemoteOptions" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top: 0.25rem;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="jcc-modal-actions">
+            <button type="button" class="secondary" id="btnSundayEditCancel">취소</button>
+            <button type="button" id="btnSundayEditSave">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Midweek modal -->
+    <div class="jcc-modal-overlay" id="midweekEditOverlay" aria-hidden="true">
+      <div class="jcc-modal">
+        <div class="card" style="display: flex; flex-direction: column;">
+          <h2 style="margin: 0 0 0.75rem 0;">
+            수·토 예배 참석 여부
+            <span
+              id="midweekEditServiceDate"
+              style="color: var(--accent); font-size: 0.95rem; font-weight: 800; margin-left: 0.5rem; display: inline-block;"
+            ></span>
+          </h2>
+          <div id="midweekEditMemberName" style="color: var(--muted); font-weight: 700; margin-bottom: 0.75rem;"></div>
+          <div id="midweekEditStatus" class="msg" style="padding:0 0 0.75rem 0;"></div>
+
+          <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+            <button type="button" id="btnMidweekPresent" class="secondary">참석</button>
+            <button type="button" id="btnMidweekAbsent">불참</button>
+          </div>
+
+          <div class="jcc-modal-actions">
+            <button type="button" class="secondary" id="btnMidweekEditCancel">취소</button>
+            <button type="button" id="btnMidweekEditSave">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="application/json" id="teamRosterAccessData">
+      {
+        "allowed_division_codes": {{ team_leader_allowed_division_codes_json|safe }},
+        "is_superuser": {{ team_leader_is_superuser_json|safe }}
+      }
+    </script>
+    <script src="{% static 'attendance/team_roster_check.js' %}"></script>
+  </body>
+</html>
+

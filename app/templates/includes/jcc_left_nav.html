@@ -1,0 +1,62 @@
+{% load static %}
+<aside class="jcc-leftNav" id="jcc-leftNav">
+  <div class="jcc-leftNav-tabs">
+    <a class="jcc-leftNav-item" href="{% url 'attendance_dashboard' %}">대시보드</a>
+    <a class="jcc-leftNav-item" href="{% url 'attendance_team_roster_check' %}">출석부</a>
+    <a class="jcc-leftNav-item" href="{% url 'registry_member_list' %}">교적부</a>
+  </div>
+
+  <div class="jcc-leftNav-bottom">
+    <div class="jcc-leftNav-user">{% if user.is_authenticated %}{{ user.username }}{% endif %}</div>
+    <a class="jcc-leftNav-logout" href="{% url 'admin:logout' %}">로그아웃</a>
+  </div>
+</aside>
+
+<button type="button" class="jcc-leftNavExpandBtn is-hidden" id="jcc-leftNavExpandBtn" aria-label="좌측 탭 펼치기">
+  ◀
+</button>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const nav = document.getElementById("jcc-leftNav");
+    const btn = document.getElementById("jcc-leftNavExpandBtn");
+    if (!nav || !btn) return;
+
+    // 기본: 탭은 접힘. 마우스는 왼쪽 근처일 때만 펼치기.
+    nav.classList.add("collapsed");
+    const isCoarsePointer =
+      window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+
+    // 마우스 환경(데스크탑): 버튼은 숨김, hover로만 열기
+    if (!isCoarsePointer) {
+      btn.classList.add("is-hidden");
+      const LEFT_EDGE_PX = 28;
+      window.addEventListener("mousemove", (e) => {
+        const rect = nav.getBoundingClientRect();
+        const inside =
+          e.clientX >= rect.left &&
+          e.clientX <= rect.right &&
+          e.clientY >= rect.top &&
+          e.clientY <= rect.bottom;
+
+        // nav가 접혀있으면 "왼쪽 근처"에서만 펼치고,
+        // nav가 열려있으면 "탭 영역(nav 영역) 밖"으로 나가면 다시 접습니다.
+        if (nav.classList.contains("collapsed")) {
+          if (e.clientX <= LEFT_EDGE_PX) nav.classList.remove("collapsed");
+        } else {
+          if (!inside) nav.classList.add("collapsed");
+        }
+      });
+      return;
+    }
+
+    // 모바일(터치): 버튼으로 수동 토글
+    btn.classList.remove("is-hidden");
+    btn.addEventListener("click", () => {
+      const isCollapsed = nav.classList.contains("collapsed");
+      if (isCollapsed) nav.classList.remove("collapsed");
+      else nav.classList.add("collapsed");
+    });
+  });
+</script>
+

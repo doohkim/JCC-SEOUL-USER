@@ -1,8 +1,3 @@
-"""API v1 라우팅 (users 앱에서 include)."""
+"""users 앱 URL (계정·인증 전용 라우트는 추후 여기에 추가)."""
 
-from django.urls import include, path
-
-urlpatterns = [
-    path("org/", include("registry.api.urls")),
-    path("attendance/", include("attendance.api.urls")),
-]
+urlpatterns = []

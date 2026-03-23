@@ -1,0 +1,53 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>교적부 입력 · 출석 명단</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}">
+</head>
+<body>
+  <div class="jcc-layout">
+    {% include 'includes/jcc_left_nav.html' %}
+    <div class="jcc-layout-content">
+      <header class="app-header">
+        <div class="jcc-detail-titleWrap">
+          <h1>교적부 입력</h1>
+          <p class="subtitle">주차 · 예배 구분 선택 후 출석(명단) 입력</p>
+        </div>
+      </header>
+
+      <div class="toolbar">
+        <div class="field">
+          <label>부서</label>
+          <select id="divisionCode"></select>
+        </div>
+        <div class="field">
+          <label>주차</label>
+          <select id="weekId"></select>
+        </div>
+        <div class="field">
+          <label>수요/토요</label>
+          <select id="svcType">
+            <option value="wednesday">수요일</option>
+            <option value="saturday">토요일</option>
+          </select>
+        </div>
+        <button type="button" class="secondary" id="btnSunday">주일예배 입력</button>
+        <button type="button" id="btnMidweek">수요/토요 입력</button>
+      </div>
+
+      <main>
+        <div id="statusLine" class="msg"></div>
+      </main>
+
+      <script src="{% static 'attendance/roster_list.js' %}"></script>
+    </div>
+  </div>
+</body>
+</html>
+

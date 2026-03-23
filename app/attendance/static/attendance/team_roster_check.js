@@ -1,0 +1,736 @@
+/**
+ * 팀장 전용 탭 출석부 프론트:
+ * - 팀원 리스트(팀별 아코디언 느낌의 카드) 표시
+ * - 팀원 클릭 → 팝업(주일: 다중선택 / 수·토: 참석/불참)
+ * - 저장 후 리스트 갱신
+ */
+
+const API = "/api/v1";
+
+const TEAM_ROSTER_ACCESS = (() => {
+  const el = document.getElementById("teamRosterAccessData");
+  if (!el) return { allowed_division_codes: [], is_superuser: false };
+  try {
+    return JSON.parse(el.textContent || "{}");
+  } catch (e) {
+    return { allowed_division_codes: [], is_superuser: false };
+  }
+})();
+
+const SUNDAY_OPTIONS = [
+  { key: "seoul_1", label: "서울 1부" },
+  { key: "seoul_2", label: "서울 2부" },
+  { key: "seoul_3", label: "서울 3부" },
+  { key: "seoul_4", label: "서울 4부" },
+  { key: "incheon_1", label: "인천 1부" },
+  { key: "incheon_2", label: "인천 2부" },
+  { key: "incheon_3", label: "인천 3부" },
+  { key: "incheon_4", label: "인천 4부" },
+  { key: "online", label: "온라인" },
+  { key: "branch", label: "지교회" },
+];
+
+function setStatus(msg, isErr) {
+  const el = document.getElementById("statusLine");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.className = "msg" + (isErr ? " err" : "");
+}
+
+function isDivisionAllowed(code) {
+  if (TEAM_ROSTER_ACCESS.is_superuser) return true;
+  const allowed = TEAM_ROSTER_ACCESS.allowed_division_codes;
+  if (!Array.isArray(allowed)) return false;
+  return allowed.includes(code);
+}
+
+function renderNoAccess() {
+  const noAccessWrap = document.getElementById("noAccessWrap");
+  if (noAccessWrap) noAccessWrap.style.display = "block";
+  const boardWrap = document.getElementById("boardWrap");
+  if (boardWrap) boardWrap.innerHTML = "";
+  setStatus("");
+}
+
+function renderAccessEmpty() {
+  const noAccessWrap = document.getElementById("noAccessWrap");
+  if (noAccessWrap) noAccessWrap.style.display = "none";
+}
+
+function getCookie(name) {
+  const v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+  return v ? decodeURIComponent(v[2]) : "";
+}
+
+async function apiGet(path) {
+  const r = await fetch(API + path, { credentials: "same-origin" });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || r.statusText);
+  }
+  return r.json();
+}
+
+async function apiPost(path, payload) {
+  const csrftoken = getCookie("csrftoken");
+  const r = await fetch(API + path, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "content-type": "application/json",
+      "X-CSRFToken": csrftoken,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    throw new Error(t || r.statusText);
+  }
+  return r.json();
+}
+
+function addDaysToIsoDate(iso, n) {
+  const [y, mo, d] = iso.split("-").map(Number);
+  const dt = new Date(y, mo - 1, d);
+  dt.setDate(dt.getDate() + n);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+function isoDateTodayLocal() {
+  const u = new Date();
+  const yy = u.getFullYear();
+  const mm = String(u.getMonth() + 1).padStart(2, "0");
+  const dd = String(u.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+function weekSundayOnOrAfterTodayLocal() {
+  const todayIso = isoDateTodayLocal();
+  const u = new Date();
+  const jsDay = u.getDay(); // 0=Sun..6=Sat
+  const pyWeekday = (jsDay + 6) % 7; // 0=Mon..6=Sun
+  const offset = (6 - pyWeekday) % 7;
+  return addDaysToIsoDate(todayIso, offset);
+}
+
+function parseQuery() {
+  const u = new URL(window.location.href);
+  const division_code = u.searchParams.get("division_code") || "youth";
+  const week_sunday = u.searchParams.get("week_sunday") || null;
+  const service_type = u.searchParams.get("service_type") || "sunday";
+  return { division_code, week_sunday, service_type };
+}
+
+function fillButtonSelected(btn, on) {
+  if (!btn) return;
+  btn.classList.toggle("secondary", !!on);
+}
+
+function renderTeamsSunday(teams) {
+  const wrap = document.getElementById("boardWrap");
+  wrap.innerHTML = "";
+
+  if (!Array.isArray(teams) || !teams.length) {
+    wrap.innerHTML = `<div class="msg">표시할 팀원이 없습니다.</div>`;
+    return;
+  }
+
+  teams.forEach((t) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.marginBottom = "1.25rem";
+    card.innerHTML = `
+      <h2 style="margin-bottom:0.6rem;">${t.team_name || "팀"}</h2>
+      <div class="team-roster-members" role="list"></div>
+    `;
+
+    const membersWrap = card.querySelector(".team-roster-members");
+    (t.members || []).forEach((m) => {
+      const selections = Array.isArray(m.selections) ? m.selections : [];
+      const labels = selections
+        .map((k) => SUNDAY_OPTIONS.find((o) => o.key === k)?.label)
+        .filter(Boolean);
+
+      const entryState = m.entry_state || (labels.length ? "present" : "unset");
+      let disp = "";
+      let isMuted = true;
+      if (entryState === "unset") {
+        disp = "미입력";
+      } else if (entryState === "absent") {
+        disp = "불참";
+      } else {
+        disp = labels.length ? labels.join(", ") : "미입력";
+        isMuted = false;
+      }
+
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "team-roster-memberRow";
+      if (isMuted) row.classList.add("is-muted");
+      row.innerHTML = `
+        <span class="team-roster-memberName">${m.member_name}</span>
+        <span class="team-roster-memberValue">${disp}</span>
+      `;
+      row.addEventListener("click", () => openSundayModal(m, t));
+      membersWrap.appendChild(row);
+    });
+
+    wrap.appendChild(card);
+  });
+}
+
+function renderTeamsMidweek(teams) {
+  const wrap = document.getElementById("boardWrap");
+  wrap.innerHTML = "";
+
+  if (!Array.isArray(teams) || !teams.length) {
+    wrap.innerHTML = `<div class="msg">표시할 팀원이 없습니다.</div>`;
+    return;
+  }
+
+  teams.forEach((t) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.marginBottom = "1.25rem";
+    card.innerHTML = `
+      <h2 style="margin-bottom:0.6rem;">${t.team_name || "팀"}</h2>
+      <div class="team-roster-members" role="list"></div>
+    `;
+
+    const membersWrap = card.querySelector(".team-roster-members");
+    (t.members || []).forEach((m) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "team-roster-memberRow";
+
+      if (m.entry_state === "unset") row.classList.add("is-muted");
+
+      let st = "불참";
+      if (m.entry_state === "unset") st = "미입력";
+      else if (m.status === "present") st = "참석";
+
+      row.innerHTML = `
+        <span class="team-roster-memberName">${m.member_name}</span>
+        <span class="team-roster-memberValue">${st}</span>
+      `;
+      row.addEventListener("click", () => openMidweekModal(m, t));
+      membersWrap.appendChild(row);
+    });
+
+    wrap.appendChild(card);
+  });
+}
+
+let state = {
+  division_code: "youth",
+  week_sunday: null,
+  service_type: "sunday", // sunday | wednesday | saturday
+  filter_mode: "all", // all | unset
+  sundayMember: null,
+  sundayTeam: null,
+  midweekMember: null,
+  midweekTeam: null,
+};
+
+function showOverlay(id) {
+  const ov = document.getElementById(id);
+  if (!ov) return;
+  ov.classList.add("show");
+  ov.setAttribute("aria-hidden", "false");
+}
+
+function hideOverlay(id) {
+  const ov = document.getElementById(id);
+  if (!ov) return;
+  ov.classList.remove("show");
+  ov.setAttribute("aria-hidden", "true");
+}
+
+function buildSundayOptionUI() {
+  const seoul = document.getElementById("sundaySeoulOptions");
+  const incheon = document.getElementById("sundayIncheonOptions");
+  const remote = document.getElementById("sundayRemoteOptions");
+  if (!seoul || !incheon || !remote) return;
+
+  const seoulKeys = new Set(["seoul_1", "seoul_2", "seoul_3", "seoul_4"]);
+  const incheonKeys = new Set(["incheon_1", "incheon_2", "incheon_3", "incheon_4"]);
+
+  seoul.innerHTML = "";
+  incheon.innerHTML = "";
+  remote.innerHTML = "";
+
+  SUNDAY_OPTIONS.forEach((opt) => {
+    const container =
+      seoulKeys.has(opt.key) ? seoul : incheonKeys.has(opt.key) ? incheon : remote;
+    const id = "sundayOpt_" + opt.key;
+    const chk = document.createElement("div");
+    chk.innerHTML = `
+      <label for="${id}" class="sunday-slotChip" style="gap:0.4rem;">
+        <input type="checkbox" id="${id}" value="${opt.key}" />
+        <span class="sunday-slotChipLabel">${opt.label}</span>
+      </label>
+    `;
+    container.appendChild(chk);
+  });
+}
+
+function getSundaySelectedKeys() {
+  const absentChk = document.getElementById("sundayAbsentChk");
+  const keys = [];
+  if (absentChk && absentChk.checked) return keys;
+  const checked = document.querySelectorAll("#sundayEditOverlay input[type='checkbox']:checked");
+  checked.forEach((el) => {
+    if (el && el.value) keys.push(el.value);
+  });
+  // absent 체크박스는 value가 없으니 제외됨.
+  return keys;
+}
+
+function setSundayAbsentState(isAbsent) {
+  const absentChk = document.getElementById("sundayAbsentChk");
+  if (!absentChk) return;
+  absentChk.checked = isAbsent;
+
+  // 불참이면 다른 참석 선택(서울/인천/온라인)을 모두 해제하고 못 누르게
+  const all = document.querySelectorAll(
+    "#sundayEditOverlay input[type='checkbox'][value]"
+  );
+  all.forEach((el) => {
+    if (isAbsent) el.checked = false;
+    el.disabled = isAbsent;
+  });
+}
+
+function openSundayModal(member, team) {
+  state.sundayMember = member;
+  state.sundayTeam = team;
+  const weekSel = document.getElementById("weekId");
+  const ws = (state.week_sunday || (weekSel ? weekSel.value : null) || "") + "";
+  const nameEl = document.getElementById("sundayEditMemberName");
+  if (nameEl) nameEl.textContent = member.member_name;
+
+  const dateEl = document.getElementById("sundayEditServiceDate");
+  if (dateEl) {
+    dateEl.textContent = ws ? `${ws} · 주일예배` : "";
+  }
+
+  buildSundayOptionUI();
+
+  const entryState = member.entry_state || "unset";
+  const current = Array.isArray(member.selections) ? member.selections : [];
+  const isAbsent = entryState === "absent";
+  setSundayAbsentState(isAbsent);
+
+  if (entryState === "present") {
+    current.forEach((key) => {
+      const chk = document.getElementById("sundayOpt_" + key);
+      if (chk) chk.checked = true;
+    });
+  }
+
+  const st = document.getElementById("sundayEditStatus");
+  if (st) {
+    st.textContent = isAbsent
+      ? "불참을 선택했습니다. 다른 참석 선택은 해제됩니다."
+      : "";
+  }
+
+  showOverlay("sundayEditOverlay");
+}
+
+function openMidweekModal(member, team) {
+  state.midweekMember = member;
+  state.midweekTeam = team;
+  const weekSel = document.getElementById("weekId");
+  const ws = (state.week_sunday || (weekSel ? weekSel.value : null) || "") + "";
+
+  const nameEl = document.getElementById("midweekEditMemberName");
+  if (nameEl) nameEl.textContent = member.member_name;
+
+  const dateEl = document.getElementById("midweekEditServiceDate");
+  if (dateEl) {
+    const svc =
+      state.service_type === "wednesday"
+        ? addDaysToIsoDate(ws, -4)
+        : addDaysToIsoDate(ws, -1);
+    const label = state.service_type === "wednesday" ? "수요예배" : "토요예배";
+    dateEl.textContent = svc ? `${svc} · ${label}` : "";
+  }
+
+  const st = document.getElementById("midweekEditStatus");
+  if (st) st.textContent = "";
+
+  const presentBtn = document.getElementById("btnMidweekPresent");
+  const absentBtn = document.getElementById("btnMidweekAbsent");
+  const isPresent = member.status === "present";
+  if (presentBtn && absentBtn) {
+    if (member.entry_state === "unset") {
+      presentBtn.classList.remove("secondary");
+      absentBtn.classList.remove("secondary");
+    } else {
+      presentBtn.classList.toggle("secondary", isPresent);
+      absentBtn.classList.toggle("secondary", !isPresent);
+    }
+  }
+
+  showOverlay("midweekEditOverlay");
+}
+
+function getMidweekSelection() {
+  const presentBtn = document.getElementById("btnMidweekPresent");
+  const absentBtn = document.getElementById("btnMidweekAbsent");
+  const isPresent = presentBtn && presentBtn.classList.contains("secondary");
+  const isAbsent = absentBtn && absentBtn.classList.contains("secondary");
+  if (isPresent) return "present";
+  if (isAbsent) return "absent";
+  return "unset";
+}
+
+async function saveSundayModal() {
+  if (!state.sundayMember) return;
+  const absentChk = document.getElementById("sundayAbsentChk");
+  const isAbsent = absentChk && absentChk.checked;
+  // 불참이면 서버에 참석 선택값을 절대 보내지 않도록 강제
+  const keys = isAbsent ? [] : getSundaySelectedKeys();
+  const member_id = Number(state.sundayMember.member_id);
+
+  const entry_state = isAbsent ? "absent" : keys.length ? "present" : "unset";
+
+  const statusEl = document.getElementById("sundayEditStatus");
+  if (statusEl) statusEl.textContent = "저장 중…";
+
+  const payload = {
+    updates: [
+      {
+        member_id,
+        entry_state,
+        selections: keys,
+      },
+    ],
+  };
+
+  await apiPost(
+    `/attendance/team/weeks/${encodeURIComponent(state.week_sunday)}/roster/sunday/?division_code=${encodeURIComponent(
+      state.division_code
+    )}`,
+    payload
+  );
+
+  hideOverlay("sundayEditOverlay");
+  await loadBoard();
+}
+
+async function saveMidweekModal() {
+  if (!state.midweekMember) return;
+  const member_id = Number(state.midweekMember.member_id);
+  const statusKey = getMidweekSelection(); // present|absent|unset
+
+  const statusEl = document.getElementById("midweekEditStatus");
+  if (statusEl) statusEl.textContent = "저장 중…";
+
+  const payload = {
+    updates: [
+      {
+        member_id,
+        status: statusKey,
+      },
+    ],
+  };
+
+  await apiPost(
+    `/attendance/team/weeks/${encodeURIComponent(state.week_sunday)}/roster/midweek/?division_code=${encodeURIComponent(
+      state.division_code
+    )}&service_type=${encodeURIComponent(state.service_type)}`,
+    payload
+  );
+
+  hideOverlay("midweekEditOverlay");
+  await loadBoard();
+}
+
+async function loadDivisions() {
+  const raw = await apiGet("/attendance/divisions/");
+  const list = Array.isArray(raw) ? raw : [];
+  const sel = document.getElementById("divisionCode");
+  sel.innerHTML = "";
+  list.forEach((d) => {
+    const opt = document.createElement("option");
+    opt.value = d.code;
+    opt.textContent = d.name;
+    if (!isDivisionAllowed(d.code)) opt.disabled = true;
+    sel.appendChild(opt);
+  });
+
+  const curAllowed =
+    state.division_code &&
+    [...sel.options].some((o) => o.value === state.division_code && !o.disabled);
+  if (curAllowed) {
+    sel.value = state.division_code;
+    return;
+  }
+
+  const firstAllowed = [...sel.options].find((o) => !o.disabled);
+  sel.value = firstAllowed ? firstAllowed.value : "";
+
+  // 읽기전용이므로 사용자 변경 이벤트 제거
+  sel.disabled = true;
+}
+
+async function loadWeeks() {
+  const sel = document.getElementById("weekId");
+  sel.innerHTML = "";
+  const division_code = document.getElementById("divisionCode").value;
+  const listRaw = await apiGet(
+    `/attendance/weeks/?division_code=${encodeURIComponent(division_code)}&limit=104`
+  );
+  const list = Array.isArray(listRaw) ? listRaw : [];
+
+  // value: "<service_type>|<week_sunday>"
+  const options = [];
+  list.forEach((w) => {
+    const ws = w.week_sunday;
+    options.push({
+      value: `sunday|${ws}`,
+      label: `${ws} · 주일예배`,
+      service_date: ws,
+    });
+    options.push({
+      value: `wednesday|${ws}`,
+      label: `${addDaysToIsoDate(ws, -4)} · 수요예배`,
+      service_date: addDaysToIsoDate(ws, -4),
+    });
+    options.push({
+      value: `saturday|${ws}`,
+      label: `${addDaysToIsoDate(ws, -1)} · 토요예배`,
+      service_date: addDaysToIsoDate(ws, -1),
+    });
+  });
+
+  options.sort((a, b) => (a.service_date < b.service_date ? 1 : -1));
+
+  options.forEach((o) => {
+    const opt = document.createElement("option");
+    opt.value = o.value;
+    opt.textContent = o.label;
+    sel.appendChild(opt);
+  });
+
+  const pickValue = () => {
+    if (state.week_sunday && state.service_type) {
+      const candidate = `${state.service_type}|${state.week_sunday}`;
+      if ([...sel.options].some((opt) => opt.value === candidate)) return candidate;
+    }
+    return sel.options.length ? sel.options[0].value : "";
+  };
+
+  const chosen = pickValue();
+  sel.value = chosen;
+  if (chosen) {
+    const [st, ws] = chosen.split("|");
+    state.service_type = st;
+    state.week_sunday = ws;
+  } else {
+    state.week_sunday = null;
+  }
+}
+
+function bindUi() {
+  document.getElementById("divisionCode").addEventListener("change", async () => {
+    state.division_code = document.getElementById("divisionCode").value;
+    state.week_sunday = null;
+    await loadWeeks();
+    if (!state.division_code || !isDivisionAllowed(state.division_code)) {
+      renderNoAccess();
+      return;
+    }
+    renderAccessEmpty();
+    await loadBoard();
+  });
+
+  document.getElementById("weekId").addEventListener("change", async () => {
+    const v = document.getElementById("weekId").value || "";
+    const [st, ws] = v.split("|");
+    if (st) state.service_type = st;
+    state.week_sunday = ws || null;
+    if (!state.division_code || !isDivisionAllowed(state.division_code)) {
+      renderNoAccess();
+      return;
+    }
+    renderAccessEmpty();
+    await loadBoard();
+  });
+
+  const btnAll = document.getElementById("filterAll");
+  const btnUnset = document.getElementById("filterUnset");
+  if (btnAll && btnUnset) {
+    btnAll.addEventListener("click", async () => {
+      state.filter_mode = "all";
+      btnAll.classList.remove("secondary");
+      btnUnset.classList.add("secondary");
+      await loadBoard();
+    });
+    btnUnset.addEventListener("click", async () => {
+      state.filter_mode = "unset";
+      btnUnset.classList.remove("secondary");
+      btnAll.classList.add("secondary");
+      await loadBoard();
+    });
+  }
+
+  // Sunday modal events
+  const absentChk = document.getElementById("sundayAbsentChk");
+  if (absentChk) {
+    absentChk.addEventListener("change", () => {
+      const st = document.getElementById("sundayEditStatus");
+      const isAbsent = absentChk.checked;
+
+      if (isAbsent) {
+        // 이미 선택된 참석칩이 있는지 체크 후 메시지 노출
+        const anySelected = Array.from(
+          document.querySelectorAll(
+            "#sundayEditOverlay input[type='checkbox'][value]"
+          )
+        ).some((el) => el.checked);
+
+        if (st) {
+          st.textContent = anySelected
+            ? "불참을 선택하면 다른 참석 선택이 모두 해제됩니다."
+            : "불참을 선택했습니다.";
+        }
+      } else {
+        if (st) st.textContent = "";
+      }
+
+      setSundayAbsentState(isAbsent);
+    });
+  }
+
+  const btnSundayCancel = document.getElementById("btnSundayEditCancel");
+  if (btnSundayCancel) btnSundayCancel.addEventListener("click", () => hideOverlay("sundayEditOverlay"));
+  const btnSundaySave = document.getElementById("btnSundayEditSave");
+  if (btnSundaySave)
+    btnSundaySave.addEventListener("click", async () => {
+      try {
+        await saveSundayModal();
+      } catch (e) {
+        console.error(e);
+        const st = document.getElementById("sundayEditStatus");
+        if (st) st.textContent = "저장 실패: " + e.message;
+      }
+    });
+
+  // Midweek modal events
+  const presentBtn = document.getElementById("btnMidweekPresent");
+  const absentBtn = document.getElementById("btnMidweekAbsent");
+  if (presentBtn && absentBtn) {
+    presentBtn.addEventListener("click", () => {
+      presentBtn.classList.add("secondary");
+      absentBtn.classList.remove("secondary");
+    });
+    absentBtn.addEventListener("click", () => {
+      absentBtn.classList.add("secondary");
+      presentBtn.classList.remove("secondary");
+    });
+  }
+  const btnMwCancel = document.getElementById("btnMidweekEditCancel");
+  if (btnMwCancel) btnMwCancel.addEventListener("click", () => hideOverlay("midweekEditOverlay"));
+  const btnMwSave = document.getElementById("btnMidweekEditSave");
+  if (btnMwSave)
+    btnMwSave.addEventListener("click", async () => {
+      try {
+        await saveMidweekModal();
+      } catch (e) {
+        console.error(e);
+        const st = document.getElementById("midweekEditStatus");
+        if (st) st.textContent = "저장 실패: " + e.message;
+      }
+    });
+}
+
+async function loadBoard() {
+  if (!state.week_sunday) throw new Error("week_sunday missing");
+  const division_code = document.getElementById("divisionCode").value || state.division_code;
+  state.division_code = division_code;
+
+  if (!division_code || !isDivisionAllowed(division_code)) {
+    renderNoAccess();
+    return;
+  }
+
+  setStatus("불러오는 중…");
+  renderAccessEmpty();
+
+  if (state.service_type === "sunday") {
+    const data = await apiGet(
+      `/attendance/team/weeks/${encodeURIComponent(state.week_sunday)}/roster/sunday/?division_code=${encodeURIComponent(
+        division_code
+      )}`
+    );
+    const teams = data.teams || [];
+    if (state.filter_mode === "unset") {
+      teams.forEach((t) => {
+        t.members = (t.members || []).filter((m) => m.entry_state === "unset");
+      });
+    }
+    renderTeamsSunday(teams);
+    setStatus("");
+    return;
+  }
+
+  const data = await apiGet(
+    `/attendance/team/weeks/${encodeURIComponent(state.week_sunday)}/roster/midweek/?division_code=${encodeURIComponent(
+      division_code
+    )}&service_type=${encodeURIComponent(state.service_type)}`
+  );
+  const teams = data.teams || [];
+  if (state.filter_mode === "unset") {
+    teams.forEach((t) => {
+      t.members = (t.members || []).filter((m) => m.entry_state === "unset");
+    });
+  }
+  renderTeamsMidweek(teams);
+  setStatus("");
+}
+
+async function init() {
+  const q = parseQuery();
+  state.division_code = q.division_code;
+  state.week_sunday = q.week_sunday;
+  state.service_type = q.service_type || "sunday";
+  state.filter_mode = "all";
+
+  bindUi();
+  try {
+    setStatus("");
+    await loadDivisions();
+    const curDivision =
+      document.getElementById("divisionCode").value || state.division_code;
+    if (!curDivision || !isDivisionAllowed(curDivision)) {
+      renderNoAccess();
+      return;
+    }
+
+    await loadWeeks();
+
+    // filter 버튼 기본 스타일
+    const btnAll = document.getElementById("filterAll");
+    const btnUnset = document.getElementById("filterUnset");
+    if (btnAll && btnUnset) {
+      // 기본: 전체(all) = 파란색(secondary 제거)
+      btnAll.classList.remove("secondary");
+      btnUnset.classList.add("secondary");
+    }
+
+    await loadBoard();
+  } catch (e) {
+    console.error(e);
+    setStatus("초기화 실패: " + e.message, true);
+  }
+}
+
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+else init();
+

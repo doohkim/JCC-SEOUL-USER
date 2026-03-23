@@ -1,13 +1,14 @@
 """
-주일예배 참석자 명단 시트 → ``AttendanceWeek`` + ``SundayAttendanceLine`` 저장.
+주일예배 참석자 명단 시트 → ``SundayAttendanceLine`` 저장 (부서 + 주일 예배일).
 
 시트 예: ``26.03.22 주일예배`` — 상단 ``YYYY.MM.DD 주일예배 참석자 명단`` 에서 날짜 추출,
 ``부서 회장단`` / 팀 헤더 + (이름|현장|인천) 3열 블록 파싱.
 
 현장:
-  - 숫자 1~6 → 부. 인천 열에 V/v/✓ 이면 인천, 아니면 서울.
-  - ``온`` → 온라인
-  - ``지`` → 지교회
+  - 숫자 1~4 → 해당 부. **인천 열에 체크**되면 인천 해당 부, 체크 없으면 서울 해당 부.
+ - 숫자 **5** → **3부·4부 연참** 표시(임포트 시 3부/4부 출석행으로 분해, ``session_part=3``, ``session_part=4``).
+  - ``온`` → 온라인, ``지`` → 지교회
+  - 이름만 있고 현장이 비어 있으면 **DB에 행을 만들지 않음**(불참으로 간주).
 
 사용::
 
@@ -17,8 +18,6 @@
 
 from __future__ import annotations
 
-import re
-from datetime import date
 from pathlib import Path
 
 from django.core.exceptions import ValidationError
@@ -26,64 +25,40 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from attendance.choices import WorshipVenue
+from attendance.importers.member_resolve import (
+    allocate_import_key,
+    find_member,
+    member_name_key,
+    resolve_team,
+)
 from attendance.importers.sunday_attendance_xlsx import (
     ParsedSundayAttendanceRow,
     parse_sunday_attendance_sheet,
 )
-from attendance.models import AttendanceWeek, SundayAttendanceLine
-from registry.importers.youth_roster_xlsx import ascii_username_base, TEAM_SLUG, load_workbook_rows
-from registry.models import Member, MemberDivisionTeam
-from users.models import Division, Team
-
-
-def _week_sunday_on_or_before(d: date) -> date:
-    from datetime import timedelta
-
-    delta = (d.weekday() + 1) % 7
-    return d - timedelta(days=delta)
-
-
-def _member_name_key(name: str) -> str:
-    s = re.sub(r"\s*(팀장|셀장|부장|회장)\s*$", "", (name or "").strip())
-    return re.sub(r"\s+", "", s)
-
-
-def _find_member(display_name: str, team: Team | None) -> Member | None:
-    key = _member_name_key(display_name)
-    if not key or len(key) < 2:
-        return None
-    qs = Member.objects.filter(is_active=True)
-    if team is not None:
-        in_team = qs.filter(
-            division_teams__team_id=team.id,
-            division_teams__division_id=team.division_id,
-        ).distinct()
-        for m in in_team:
-            if _member_name_key(m.name) == key:
-                return m
-            if m.name_alias and _member_name_key(m.name_alias) == key:
-                return m
-    for m in qs:
-        if _member_name_key(m.name) == key:
-            return m
-        if m.name_alias and _member_name_key(m.name_alias) == key:
-            return m
-    return None
+from attendance.models import SundayAttendanceLine
+from registry.importers.youth_roster_xlsx import load_workbook_rows
+from registry.models import Member
+from users.models import Division
 
 
 def _dedupe_same_member_rows(
     parsed: list[ParsedSundayAttendanceRow],
 ) -> tuple[list[ParsedSundayAttendanceRow], int]:
     """
-    엑셀에 동일 인물이 팀별로 중복 기재된 경우(예: 서울 3부 + 온라인).
+    동일 인물 이름이 여러 번 나온 경우만 정리한다.
 
-    한 주에 한 줄만 남기고, **서울/인천 현장(부 번호)** 을 온라인·지교회보다 우선.
+    - 완전 동일한 (venue, 부, 지교 라벨) 중복 행은 하나만 남긴다.
+ - **서로 다른 부** 는 모두 유지한다.
+    - 현장(1~4부) 줄이 있는데 같은 이름에 온라인·지교 줄도 있으면 현장만 남긴다.
     """
     from collections import defaultdict
 
+    def _sig(r: ParsedSundayAttendanceRow) -> tuple:
+        return (r.venue, r.session_part, r.branch_label or "")
+
     groups: dict[str, list[ParsedSundayAttendanceRow]] = defaultdict(list)
     for r in parsed:
-        groups[_member_name_key(r.display_name)].append(r)
+        groups[member_name_key(r.display_name)].append(r)
 
     out: list[ParsedSundayAttendanceRow] = []
     dropped = 0
@@ -91,40 +66,34 @@ def _dedupe_same_member_rows(
         if len(rows) == 1:
             out.append(rows[0])
             continue
+
+        seen: set[tuple] = set()
+        uniq: list[ParsedSundayAttendanceRow] = []
+        for r in rows:
+            s = _sig(r)
+            if s in seen:
+                dropped += 1
+                continue
+            seen.add(s)
+            uniq.append(r)
+
         physical = [
             r
-            for r in rows
+            for r in uniq
             if r.venue in (WorshipVenue.SEOUL, WorshipVenue.INCHEON)
             and r.session_part > 0
         ]
-        if physical:
-            out.append(physical[0])
-            dropped += len(rows) - 1
+        remote = [
+            r
+            for r in uniq
+            if r.venue in (WorshipVenue.ONLINE, WorshipVenue.BRANCH)
+        ]
+        if physical and remote:
+            out.extend(physical)
+            dropped += len(remote)
             continue
-        out.append(rows[0])
-        dropped += len(rows) - 1
+        out.extend(uniq)
     return out, dropped
-
-
-def _allocate_import_key(display_name: str, used_ik: set[str]) -> str:
-    base = (ascii_username_base(display_name) or "member")[:50]
-    ik = base
-    n = 1
-    while ik in used_ik:
-        ik = f"{base}_{n}"[:64]
-        n += 1
-    used_ik.add(ik)
-    return ik
-
-
-def _resolve_team(team_header: str, division: Division) -> Team | None:
-    t = team_header.replace(" ", "").strip()
-    if "회장단" in t and "팀" not in t:
-        return None
-    slug = TEAM_SLUG.get(t)
-    if not slug:
-        return None
-    return Team.objects.filter(division=division, code=slug).first()
 
 
 class Command(BaseCommand):
@@ -181,7 +150,7 @@ class Command(BaseCommand):
         if deduped:
             self.stdout.write(
                 self.style.WARNING(
-                    f"동일 인물 중복 행 {deduped}건 제거(현장 부 우선, 나머지 무시)"
+                    f"동일 인물 중복 행 {deduped}건 제거(동일 부·구분만 병합)"
                 )
             )
 
@@ -193,16 +162,8 @@ class Command(BaseCommand):
             )
             raise CommandError("날짜(YYYY.MM.DD)가 필요합니다.")
 
-        week_sunday = _week_sunday_on_or_before(title_date)
-        if week_sunday != title_date:
-            self.stdout.write(
-                self.style.WARNING(
-                    f"기준 주일을 {title_date} → {week_sunday} 로 맞춤 (주차 키)"
-                )
-            )
-
         self.stdout.write(
-            f"서비스일(시트): {title_date} · 기준 주일: {week_sunday} · 행 수: {len(parsed)}"
+            f"주일 예배일(시트): {title_date} · 행 수: {len(parsed)}"
         )
 
         if dry:
@@ -221,11 +182,6 @@ class Command(BaseCommand):
                 code=division_code,
                 defaults={"name": "청년부", "sort_order": 10},
             )
-            week, _ = AttendanceWeek.objects.get_or_create(
-                division=div,
-                week_sunday=week_sunday,
-                defaults={"note": "", "auto_created": False},
-            )
 
             created = updated = 0
             skipped_no_member = 0
@@ -236,12 +192,12 @@ class Command(BaseCommand):
             )
 
             for row in parsed:
-                team = _resolve_team(row.team_header, div)
-                member = _find_member(row.display_name, team)
+                team = resolve_team(row.team_header, div)
+                member = find_member(row.display_name, team)
                 if member is None:
-                    member = _find_member(row.display_name, None)
+                    member = find_member(row.display_name, None)
                 if member is None and create_missing:
-                    ik = _allocate_import_key(row.display_name, used_ik)
+                    ik = allocate_import_key(row.display_name, used_ik)
                     member = Member.objects.create(
                         name=(row.display_name or "")[:50],
                         import_key=ik,
@@ -252,13 +208,6 @@ class Command(BaseCommand):
                             f"교적 자동 생성: {row.display_name!r} (import_key={ik})"
                         )
                     )
-                    if team is not None:
-                        MemberDivisionTeam.objects.get_or_create(
-                            member=member,
-                            division=div,
-                            team=team,
-                            defaults={"is_primary": True, "sort_order": 0},
-                        )
                 if member is None:
                     skipped_no_member += 1
                     self.stdout.write(
@@ -271,23 +220,28 @@ class Command(BaseCommand):
                 try:
                     try:
                         obj = SundayAttendanceLine.objects.get(
-                            week=week,
+                            division=div,
                             member=member,
                             venue=row.venue,
                             session_part=row.session_part,
                             branch_label=row.branch_label or "",
+                            service_date=title_date,
                         )
                         was_created = False
                     except SundayAttendanceLine.DoesNotExist:
                         obj = SundayAttendanceLine(
-                            week=week,
+                            division=div,
                             member=member,
                             venue=row.venue,
                             session_part=row.session_part,
                             branch_label=row.branch_label or "",
+                            service_date=title_date,
                         )
                         was_created = True
+                    obj.service_date = title_date
                     obj.team = team
+                    # 엑셀 팀 헤더를 그대로 스냅샷으로 저장한다.
+                    obj.team_name_snapshot = (row.team_header or "").strip()[:100]
                     obj.full_clean()
                     obj.save()
                 except ValidationError as e:

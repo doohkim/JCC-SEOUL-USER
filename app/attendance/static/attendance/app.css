@@ -1,0 +1,1140 @@
+:root {
+  --bg: #0c0f14;
+  --card: #151b24;
+  --text: #e8edf4;
+  --muted: #8b9cb3;
+  --accent: #4a9eff;
+  --accent-dim: #2d6bb3;
+  --border: #2a3548;
+  --ok: #34c759;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+header.app-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  background: linear-gradient(180deg, #121820 0%, var(--bg) 100%);
+}
+
+header.app-header h1 {
+  font-size: 1.35rem;
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+header.app-header .subtitle {
+  color: var(--muted);
+  font-size: 0.85rem;
+  width: 100%;
+  margin-top: -0.25rem;
+}
+
+header.app-header .user {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-left: auto;
+}
+
+header.app-header a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* fixed right-side cluster (keeps login/logout on the top-right line) */
+.jcc-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.jcc-header-right .user {
+  margin-left: 0;
+}
+
+header.app-header a:hover {
+  text-decoration: underline;
+}
+
+/* left navigation (common tabs) */
+.jcc-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.jcc-leftNav {
+  width: 235px;
+  padding: 1.2rem 0.9rem;
+  border-right: 1px solid var(--border);
+  background: rgba(12, 15, 20, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  transition: width 0.28s ease, padding 0.28s ease, opacity 0.22s ease;
+}
+
+.jcc-leftNav-toggle {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #121820;
+  color: var(--accent);
+  border-radius: 12px;
+  padding: 0.55rem 0.75rem;
+  font-weight: 900;
+  cursor: pointer;
+  width: 100%;
+}
+
+.jcc-leftNav.collapsed {
+  width: 0;
+  padding: 1.2rem 0;
+  border-right: none;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.jcc-leftNavExpandBtn {
+  position: fixed;
+  left: 10px;
+  top: 95px;
+  z-index: 1300;
+  appearance: none;
+  border: 1px solid rgba(74, 158, 255, 0.35);
+  background: #121820;
+  color: var(--accent);
+  border-radius: 12px;
+  padding: 0.55rem 0.7rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+}
+
+.jcc-leftNavExpandBtn.is-hidden {
+  display: none;
+}
+
+.jcc-leftNav-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.jcc-leftNav-item {
+  display: block;
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  font-weight: 900;
+  color: var(--text);
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.jcc-leftNav-item:hover {
+  border-color: rgba(74, 158, 255, 0.35);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.jcc-leftNav-bottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.jcc-leftNav-user {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0 0.3rem;
+}
+
+.jcc-leftNav-logout {
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  background: #293443;
+  color: var(--accent);
+  font-weight: 900;
+  text-decoration: none;
+  text-align: center;
+  border: 1px solid rgba(74, 158, 255, 0.15);
+}
+
+.jcc-layout-content {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .jcc-layout {
+    flex-direction: column;
+  }
+
+  .jcc-leftNav {
+    width: 100%;
+    height: auto;
+    position: relative;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 0.75rem;
+    padding: 0.9rem 0.9rem;
+  }
+
+  .jcc-leftNavExpandBtn {
+    top: 85px;
+    left: 8px;
+  }
+
+  .jcc-leftNav-tabs {
+    flex-direction: row;
+    gap: 0.55rem;
+  }
+
+  .jcc-leftNav-item {
+    padding: 0.55rem 0.8rem;
+    font-size: 0.95rem;
+  }
+
+  .jcc-leftNav-bottom {
+    margin-top: 0;
+    flex: 1;
+    align-items: flex-end;
+  }
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: flex-end;
+  padding: 1rem 1.5rem;
+  background: #121820;
+  border-bottom: 1px solid var(--border);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.field label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+select,
+input[type="search"],
+input[type="text"],
+input[type="date"],
+textarea {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  min-width: 10rem;
+}
+
+input[type="file"] {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  min-width: 10rem;
+  padding: 0.35rem 0.5rem;
+}
+
+button,
+.btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button:hover {
+  background: var(--accent-dim);
+}
+
+button.secondary {
+  background: #3a4556;
+}
+
+a.btn-link,
+.btn-link {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.55rem 0.9rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+a.btn-link:hover,
+.btn-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+main {
+  padding: 1.25rem 1.5rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.grid-charts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.grid-charts .card {
+  flex: 1 1 520px;
+  max-width: 720px;
+}
+
+@media (max-width: 900px) {
+  .grid-charts .card {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* team roster check (attendance/team/roster/) */
+.team-roster-members {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.team-roster-memberRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.team-roster-memberRow:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.team-roster-memberName {
+  font-weight: 900;
+  font-size: 1rem;
+}
+
+.team-roster-memberValue {
+  font-weight: 900;
+  color: var(--ok);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.team-roster-memberRow.is-muted .team-roster-memberValue {
+  color: var(--muted);
+}
+
+.team-roster-tabs button {
+  min-width: 6.6rem;
+}
+
+/* sunday modal chips */
+.sunday-slotChip {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s ease, border-color 0.12s ease,
+    transform 0.06s ease;
+}
+
+.sunday-slotChip input[type="checkbox"] {
+  display: none;
+}
+
+.sunday-slotChipLabel {
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.sunday-slotChip input[type="checkbox"]:checked + .sunday-slotChipLabel {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid rgba(74, 158, 255, 0.55);
+  box-shadow: 0 10px 26px rgba(74, 158, 255, 0.24);
+}
+
+@media (max-width: 600px) {
+  .team-roster-memberRow {
+    padding: 0.85rem 0.75rem;
+    border-radius: 12px;
+  }
+
+  .team-roster-memberName {
+    font-size: 0.98rem;
+  }
+
+  .team-roster-memberValue {
+    font-size: 0.95rem;
+  }
+
+  .team-roster-tabs {
+    width: 100%;
+    justify-content: stretch;
+    margin-left: 0 !important;
+  }
+
+  .team-roster-tabs button {
+    flex: 1;
+    min-width: 0;
+    padding: 0.55rem 0.4rem;
+  }
+}
+
+.chart-wrap {
+  position: relative;
+  height: 280px;
+}
+
+.chart-wrap.tall {
+  height: 320px;
+}
+
+.tables {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+@media (min-width: 1100px) {
+  .tables {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+th,
+td {
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.pager {
+  margin-top: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pager button {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.msg {
+  color: var(--muted);
+  padding: 0.5rem 0 1rem;
+}
+
+.err {
+  color: #f87171;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  background: #2d3a4f;
+}
+
+/* registry (교적부) pages - slightly more polished layout */
+.jcc-reg-toolbar {
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+}
+
+.jcc-reg-toolbar {
+  align-items: flex-end;
+  flex-wrap: nowrap;
+}
+
+.jcc-reg-listTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.jcc-reg-listTop .msg {
+  padding: 0;
+  margin: 0;
+  line-height: 1.2;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.jcc-reg-listTop button.secondary {
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  font-weight: 800;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+}
+
+/* desktop filter toolbar button sizing (match "조회" look) */
+.jcc-reg-toolbar button.secondary {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  align-self: flex-end;
+}
+
+.jcc-reg-control {
+  min-width: 0 !important;
+  width: 100%;
+}
+
+.jcc-reg-table thead th {
+  background: rgba(12, 15, 20, 0.95);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.jcc-reg-table th {
+  border-bottom: 1px solid var(--border);
+}
+
+.jcc-reg-table tbody tr td:first-child a {
+  font-weight: 600;
+}
+
+.jcc-reg-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.jcc-reg-form-grid .field {
+  margin: 0;
+}
+
+/* registry member form - photo + nicer file picker */
+.jcc-member-photo-header {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.jcc-member-form-actions {
+  justify-content: space-between;
+}
+
+.jcc-photo-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 260px;
+}
+
+.jcc-photo-preview {
+  width: 180px;
+  height: 180px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #0f1722;
+  border: 1px solid var(--border);
+}
+
+.jcc-family-photo-small {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 220px;
+}
+
+.jcc-photo-preview-wrap-family {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 220px;
+  align-items: center;
+}
+
+.jcc-photo-preview-small {
+  width: 120px;
+  height: 120px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: #0f1722;
+  border: 1px solid var(--border);
+}
+
+.jcc-photo-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.jcc-photo-title {
+  font-weight: 700;
+}
+
+.jcc-file-name {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.jcc-photo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  position: relative;
+}
+
+.jcc-file-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.jcc-file-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.9rem;
+  background: #1b2430;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform 0.06s ease, background 0.15s ease;
+}
+
+.jcc-file-button.secondary {
+  background: #293443;
+}
+
+.jcc-file-button:hover {
+  background: #223041;
+}
+
+.jcc-file-button:active {
+  transform: translateY(1px);
+}
+
+/* registry member detail - header + photo */
+.jcc-back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 10px;
+  background: #121a25;
+  border: 1px solid var(--border);
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.jcc-back-link:hover {
+  background: #172132;
+}
+
+.jcc-detail-titleWrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.jcc-detail-actions {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  justify-content: flex-start;
+}
+
+.jcc-action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 1rem;
+  background: #1b2430;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.jcc-action-link.secondary {
+  background: #293443;
+}
+
+/* member list toolbar: make "신규" link match "조회" button sizing */
+.jcc-reg-toolbar .jcc-action-link.secondary {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.jcc-detail-photoWrap {
+  min-width: 230px;
+}
+
+.jcc-detail-photoPreview {
+  width: 220px;
+  height: 220px;
+  border-radius: 16px;
+  object-fit: cover;
+  background: #0f1722;
+  border: 1px solid var(--border);
+}
+
+/* visit content input responsive */
+.jcc-visit-contentField {
+  min-width: 320px;
+}
+
+.jcc-visit-contentField input {
+  min-width: 0 !important;
+  width: 100%;
+}
+
+/* registry member detail - key/value rows */
+.jcc-detail-kv {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+  padding: 0.25rem 0;
+}
+
+.jcc-detail-kvLabel {
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 0.98rem;
+  letter-spacing: 0.01em;
+  min-width: 8.8rem;
+}
+
+.jcc-detail-kvValue {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.jcc-detail-kvValue:empty::before {
+  content: "-";
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* subtle rhythm line between rows (keeps it polished without being heavy) */
+.jcc-detail-kv + .jcc-detail-kv {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* registry member detail - family/visit add forms */
+.jcc-detail-addToolbar {
+  align-items: flex-end;
+}
+
+.jcc-detail-addToolbar .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.jcc-detail-addToolbar select,
+.jcc-detail-addToolbar input[type="text"],
+.jcc-detail-addToolbar input[type="date"] {
+  width: 100%;
+  min-width: 0 !important;
+}
+
+.jcc-detail-addToolbar button {
+  white-space: nowrap;
+  flex: 0 0 auto;
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+/* registry member detail - table action buttons (수정/삭제) size polish */
+#tbodyFamily button.secondary,
+#tbodyVisits button.secondary {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 6px;
+}
+
+@media (max-width: 600px) {
+  .jcc-detail-kvLabel {
+    min-width: 6.8rem;
+    font-size: 0.93rem;
+  }
+  .jcc-detail-kvValue {
+    font-size: 1rem;
+  }
+}
+
+/* move modal (members list) */
+.jcc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 1rem;
+  pointer-events: none; /* hidden state must not block clicks */
+}
+
+.jcc-modal-overlay.show {
+  display: flex;
+  pointer-events: auto;
+}
+
+.jcc-modal {
+  width: 100%;
+  max-width: 720px;
+}
+
+.jcc-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+
+.jcc-modal-actions button {
+  padding: 0.6rem 1.15rem;
+  border-radius: 12px;
+  font-weight: 900;
+  min-width: 5.8rem;
+}
+
+.jcc-modal .card {
+  margin: 0;
+}
+
+/* responsive tweaks */
+@media (max-width: 600px) {
+  .jcc-reg-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jcc-reg-toolbar .jcc-reg-control,
+  .jcc-reg-toolbar select,
+  .jcc-reg-toolbar input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .jcc-reg-toolbar button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .jcc-reg-listTop {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jcc-reg-listTop button.secondary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .jcc-visit-contentField {
+    min-width: 0 !important;
+  }
+
+  /* mobile: stack family/visit add inputs cleanly */
+  .jcc-detail-addToolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .jcc-detail-addToolbar .field {
+    width: 100%;
+  }
+
+  .jcc-detail-addToolbar select,
+  .jcc-detail-addToolbar input[type="text"],
+  .jcc-detail-addToolbar input[type="date"] {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  .jcc-detail-addToolbar button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .jcc-detail-photoPreview {
+    width: 120px;
+    height: 120px;
+  }
+
+  header.app-header h1 {
+    font-size: 1.2rem;
+  }
+
+  .jcc-member-form-actions {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jcc-member-form-actions button {
+    width: 100%;
+    justify-content: center;
+    font-size: 1rem;
+  }
+
+  /* back button stays as a compact square icon */
+  .jcc-member-form-actions .jcc-back-link {
+    width: 2.2rem !important;
+    height: 2.2rem;
+    font-size: 1rem;
+  }
+
+  .jcc-member-photo-header {
+    justify-content: center;
+  }
+
+  .jcc-photo-preview {
+    width: 140px;
+    height: 140px;
+  }
+
+  .jcc-photo-preview-small {
+    width: 100px;
+    height: 100px;
+  }
+
+  /* team accordion responsive */
+  .jcc-team-member {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .jcc-team-member-main {
+    width: 100%;
+  }
+
+  .jcc-team-moveBtn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* members list - team accordion */
+.jcc-team-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.jcc-team-group {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(21, 27, 36, 0.6);
+}
+
+.jcc-team-group-toggle {
+  width: 100%;
+  display: grid;
+  /* count(자리수) 가변으로 인해 title까지 흔들리는 현상 방지 */
+  grid-template-columns: 1fr 5rem 1.2rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  background: #121820;
+  color: var(--text);
+  border: none;
+}
+
+.jcc-team-group-toggle:hover {
+  background: #141e2a;
+}
+
+.jcc-team-group-title {
+  font-weight: 900;
+  font-size: 1rem;
+  justify-self: center;
+  text-align: center;
+}
+
+.jcc-team-group-count {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.9rem;
+  justify-self: end;
+  text-align: right;
+  width: 5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.jcc-team-group-chevron {
+  color: var(--accent);
+  font-weight: 900;
+  justify-self: end;
+  transition: transform 0.15s ease;
+}
+
+.jcc-team-group-body {
+  padding: 0.75rem 1rem 1rem 1rem;
+}
+
+.jcc-team-memberList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.jcc-team-member {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid rgba(42, 53, 72, 0.8);
+  background: rgba(12, 15, 20, 0.35);
+}
+
+.jcc-team-member-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.jcc-team-member-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.jcc-team-member-link:hover {
+  text-decoration: underline;
+}
+
+.jcc-team-member-sub {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.jcc-team-moveBtn {
+  white-space: nowrap;
+}

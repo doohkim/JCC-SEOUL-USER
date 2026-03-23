@@ -2,7 +2,9 @@
 조직: 부서(Division), 팀(Team), 동아리, 일하는 부서, 직책.
 
 - **앱 사용자** 소속: ``UserDivisionTeam``, ``UserClub``, ``UserFunctionalDeptRole``
-- 교적(Member) 소속은 ``registry`` 앱.
+- 교적(Member) 소속은 ``registry`` 앱의 ``MemberDivisionTeam``.
+- ``Member.linked_user`` 가 있으면 교적 부서·팀 변경 시 ``registry.services.linked_user_org_sync``
+  가 동일 부서 내 ``UserDivisionTeam`` 을 맞춘다(계정 없는 교인은 Member 만 갱신).
 """
 
 from django.conf import settings

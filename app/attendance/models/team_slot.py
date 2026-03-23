@@ -12,13 +12,6 @@ from registry.models import Member
 from users.models.audit import AdminAuditFields
 from users.models.organization import Team
 
-from .weekly import AttendanceWeek
-
-
-def _week_sunday_on_or_before(d: dt.date) -> dt.date:
-    delta = (d.weekday() + 1) % 7
-    return d - dt.timedelta(days=delta)
-
 
 class TeamAttendanceSession(AdminAuditFields):
     team = models.ForeignKey(
@@ -45,14 +38,6 @@ class TeamAttendanceSession(AdminAuditFields):
         default=list,
         blank=True,
         help_text='비우면 ["1교시","2교시",…]',
-    )
-    attendance_week = models.ForeignKey(
-        AttendanceWeek,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="team_sessions",
-        verbose_name="연결 주차(선택)",
     )
     notes = models.TextField("메모", blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -95,17 +80,6 @@ class TeamAttendanceSession(AdminAuditFields):
 
     def clean(self):
         super().clean()
-        if self.attendance_week_id and self.session_date and self.team_id:
-            w = self.attendance_week
-            if w.division_id != self.team.division_id:
-                raise ValidationError(
-                    {"attendance_week": "연결 주차의 부서가 팀 소속 부서와 같아야 합니다."}
-                )
-            sun = _week_sunday_on_or_before(self.session_date)
-            if w.week_sunday != sun:
-                raise ValidationError(
-                    {"attendance_week": "연결 주차의 기준 주일이 날짜가 속한 주와 일치해야 합니다."}
-                )
         if self.period_count is not None and (self.period_count < 1 or self.period_count > 20):
             raise ValidationError({"period_count": "1~20 사이여야 합니다."})
 

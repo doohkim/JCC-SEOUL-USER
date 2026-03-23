@@ -10,6 +10,7 @@ class RegistryConfig(AppConfig):
     def ready(self):
         from django.db.models.signals import post_save
 
+        from registry import signals  # noqa: F401 — 교적→User 조직 동기화 등록
         from registry.models import Member, MemberProfile
 
         def ensure_member_profile(sender, instance: Member, created, **kwargs):

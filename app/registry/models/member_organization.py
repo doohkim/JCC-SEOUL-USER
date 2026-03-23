@@ -23,7 +23,8 @@ class MemberDivisionTeam(models.Model):
     )
     team = models.ForeignKey(
         Team,
-        on_delete=models.CASCADE,
+        # 팀(Team) 삭제 시에는 소속 행은 유지하고 팀만 "팀 미정"으로 둔다.
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="member_division_teams",

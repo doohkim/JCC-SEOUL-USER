@@ -2,10 +2,11 @@
 
 from django.contrib import admin
 
+from registry.admin.pastoral_mixin import PastoralRegistryModelAdminMixin
 from registry.models import MemberClub, MemberDivisionTeam, MemberFunctionalDeptRole
 
 
-class JccModelAdmin(admin.ModelAdmin):
+class JccModelAdmin(PastoralRegistryModelAdminMixin, admin.ModelAdmin):
     class Media:
         css = {"all": ("admin/css/jcc_fieldsets.css",)}
 
@@ -30,7 +31,7 @@ class MemberDivisionTeamAdmin(JccModelAdmin):
 
 
 @admin.register(MemberClub)
-class MemberClubAdmin(admin.ModelAdmin):
+class MemberClubAdmin(PastoralRegistryModelAdminMixin, admin.ModelAdmin):
     list_display = ["member", "club", "sort_order"]
     list_filter = ["club"]
     search_fields = ["member__name"]
@@ -38,7 +39,7 @@ class MemberClubAdmin(admin.ModelAdmin):
 
 
 @admin.register(MemberFunctionalDeptRole)
-class MemberFunctionalDeptRoleAdmin(admin.ModelAdmin):
+class MemberFunctionalDeptRoleAdmin(PastoralRegistryModelAdminMixin, admin.ModelAdmin):
     list_display = ["member", "functional_department", "role", "sort_order"]
     list_filter = ["functional_department", "role"]
     search_fields = ["member__name"]

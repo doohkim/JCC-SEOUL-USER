@@ -2,10 +2,12 @@
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
+
+from users.permissions import can_access_member_registry
 
 from registry.forms.member_org_move import (
     MemberOrgDivisionTransferForm,
@@ -16,6 +18,11 @@ from registry.services.member_org import (
     change_team_within_division as change_member_team,
     transfer_to_division as transfer_member_division,
 )
+
+
+def _require_pastoral_registry(request) -> None:
+    if not can_access_member_registry(request.user):
+        raise PermissionDenied("교적 부서·팀 이동은 목사·전도사만 사용할 수 있습니다.")
 
 
 def _flash_validation(request, e: ValidationError) -> None:
@@ -30,6 +37,7 @@ def _flash_validation(request, e: ValidationError) -> None:
 
 @staff_member_required
 def member_org_move_dashboard(request):
+    _require_pastoral_registry(request)
     return render(
         request,
         "admin/registry/member_org_move_dashboard.html",
@@ -42,6 +50,7 @@ def member_org_move_dashboard(request):
 
 @staff_member_required
 def member_org_move_detail(request, object_id):
+    _require_pastoral_registry(request)
     try:
         pk = int(object_id)
     except (TypeError, ValueError) as e:

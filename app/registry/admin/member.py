@@ -3,6 +3,7 @@
 from django.contrib import admin
 from django.urls import path
 
+from registry.admin.pastoral_mixin import PastoralRegistryModelAdminMixin
 from registry.admin.org_move import member_org_move_dashboard, member_org_move_detail
 from registry.models import (
     Member,
@@ -80,7 +81,7 @@ class MemberVisitLogInline(admin.TabularInline):
 
 
 @admin.register(MemberFamilyMember)
-class MemberFamilyMemberAdmin(admin.ModelAdmin):
+class MemberFamilyMemberAdmin(PastoralRegistryModelAdminMixin, admin.ModelAdmin):
     class Media:
         css = {"all": ("admin/css/jcc_fieldsets.css",)}
 
@@ -98,7 +99,7 @@ class MemberFamilyMemberAdmin(admin.ModelAdmin):
 
 
 @admin.register(MemberVisitLog)
-class MemberVisitLogAdmin(admin.ModelAdmin):
+class MemberVisitLogAdmin(PastoralRegistryModelAdminMixin, admin.ModelAdmin):
     class Media:
         css = {"all": ("admin/css/jcc_fieldsets.css",)}
 
@@ -133,7 +134,11 @@ class MemberVisitLogAdmin(admin.ModelAdmin):
 
 
 @admin.register(Member)
-class MemberAdmin(AuditLoggingModelAdminMixin, admin.ModelAdmin):
+class MemberAdmin(
+    PastoralRegistryModelAdminMixin,
+    AuditLoggingModelAdminMixin,
+    admin.ModelAdmin,
+):
     change_form_template = "admin/registry/member/change_form.html"
 
     class Media:

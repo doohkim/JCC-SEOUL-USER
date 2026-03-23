@@ -5,9 +5,8 @@ from __future__ import annotations
 ATTENDANCE_MODEL_GROUPS: dict[str, tuple[int, str, str]] = {
     "WorshipRosterScope": (10, "예배 명단 · 엑셀/스냅샷", "명단"),
     "WorshipRosterEntry": (10, "예배 명단 · 엑셀/스냅샷", "명단"),
-    "AttendanceWeek": (20, "주간 출석부 · 주차·수토·주일", "주간출석"),
-    "MidweekAttendanceRecord": (20, "주간 출석부 · 주차·수토·주일", "주간출석"),
-    "SundayAttendanceLine": (20, "주간 출석부 · 주차·수토·주일", "주간출석"),
+    "MidweekAttendanceRecord": (11, "예배 출석 · 수요·토요 (예배일·멤버)", "수토출석"),
+    "SundayAttendanceLine": (12, "예배 출석 · 주일 (팀·부·멤버)", "주일출석"),
     "TeamAttendanceSession": (30, "팀 출석부 · 교시 칩", "팀출석"),
     "TeamMemberSlotAttendance": (30, "팀 출석부 · 교시 칩", "팀출석"),
 }

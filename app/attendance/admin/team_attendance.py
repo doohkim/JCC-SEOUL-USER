@@ -33,13 +33,12 @@ class TeamAttendanceSessionAdmin(AuditLoggingModelAdminMixin, JccModelAdmin):
         "session_date",
         "title",
         "period_count",
-        "attendance_week",
         "slot_row_count",
         "updated_at",
     ]
     list_filter = ["team__division", "session_date"]
     search_fields = ["title", "notes", "team__name", "team__code"]
-    autocomplete_fields = ["team", "attendance_week"]
+    autocomplete_fields = ["team"]
     date_hierarchy = "session_date"
     inlines = [TeamMemberSlotAttendanceInline]
     fieldsets = (
@@ -59,8 +58,7 @@ class TeamAttendanceSessionAdmin(AuditLoggingModelAdminMixin, JccModelAdmin):
             "선택",
             {
                 "classes": ("jcc-optional",),
-                "fields": ("attendance_week", "notes", "created_by", "updated_by"),
-                "description": "주간 출석(주차)와 묶으려면 연결 주차를 지정하세요.",
+                "fields": ("notes", "created_by", "updated_by"),
             },
         ),
     )

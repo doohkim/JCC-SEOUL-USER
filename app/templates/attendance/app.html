@@ -1,0 +1,170 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>출석 · 프론트</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}">
+</head>
+<body>
+  <div class="jcc-layout">
+    {% include 'includes/jcc_left_nav.html' %}
+    <div class="jcc-layout-content">
+      <header class="app-header">
+        <div class="jcc-detail-titleWrap">
+          <h1>출석</h1>
+          <p class="subtitle">부서 · 주차(월 N주차) · 주일 / 수요 / 토요 예배별 조회</p>
+        </div>
+      </header>
+
+      <div class="toolbar">
+        <div class="field">
+          <label>부서</label>
+          <select id="divisionCode"></select>
+        </div>
+        <div class="field">
+          <label>주차</label>
+          <select id="weekId"></select>
+        </div>
+        <div class="field">
+          <label>예배 구분</label>
+          <select id="worshipType"></select>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem; margin-left:auto;">
+          <button
+            type="button"
+            class="secondary"
+            data-href="{% url 'registry_member_list' %}"
+            onclick="window.location.href=this.dataset.href"
+          >
+            교적부
+          </button>
+        </div>
+        <button type="button" id="btnRefresh">새로고침</button>
+      </div>
+
+      <main>
+        <div id="statusLine" class="msg"></div>
+
+        <div class="grid-charts" id="chartArea">
+          <div class="card" id="cardSunVenue" style="display:none;">
+            <h2>주일 · 장소별</h2>
+            <div class="chart-wrap"><canvas id="chartSunVenue"></canvas></div>
+          </div>
+          <div class="card" id="cardSunPart" style="display:none;">
+            <h2>주일 · 서울/인천 부별</h2>
+            <div class="chart-wrap tall"><canvas id="chartSunPart"></canvas></div>
+          </div>
+          <div class="card" id="cardSunTeam" style="display:none;">
+            <h2>주일 · 팀별</h2>
+            <div class="chart-wrap tall"><canvas id="chartSunTeam"></canvas></div>
+          </div>
+          <div class="card" id="cardMw" style="display:none;">
+            <h2>수·토 · 예배별 상태</h2>
+            <div class="chart-wrap tall"><canvas id="chartMidweek"></canvas></div>
+          </div>
+        </div>
+
+        <div class="tables">
+          <div class="card" id="panelSunday">
+            <h2>주일 출석 행</h2>
+            <div class="toolbar" style="padding:0 0 1rem; border:none; background:transparent;">
+              <div class="field">
+                <label>장소</label>
+                <select id="fltVenue"><option value="">전체</option></select>
+              </div>
+              <div class="field">
+                <label>부</label>
+                <select id="fltPart">
+                  <option value="">전체</option>
+                  <option value="0">0 (온라인·지교)</option>
+                  <option value="1">1부</option>
+                  <option value="2">2부</option>
+                  <option value="3">3부</option>
+                  <option value="4">4부</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>팀</label>
+                <select id="fltTeam"><option value="">전체</option></select>
+              </div>
+              <div class="field">
+                <label>이름 검색</label>
+                <input type="search" id="fltSearchSun" placeholder="멤버 이름">
+              </div>
+              <button type="button" class="secondary" id="btnApplySun">적용</button>
+            </div>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>예배일</th>
+                    <th>이름</th>
+                    <th>장소</th>
+                    <th>부</th>
+                    <th>팀</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodySun"></tbody>
+              </table>
+            </div>
+            <div class="pager" id="pagerSun"></div>
+          </div>
+
+          <div class="card" id="panelMidweek">
+            <h2>수·토 출석 행</h2>
+            <div class="toolbar" style="padding:0 0 1rem; border:none; background:transparent;">
+              <div class="field">
+                <label>예배</label>
+                <select id="fltSvc">
+                  <option value="">전체</option>
+                  <option value="wednesday">수요일</option>
+                  <option value="saturday">토요일</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>상태</label>
+                <select id="fltMwStatus">
+                  <option value="">전체</option>
+                  <option value="empty">미입력</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>팀</label>
+                <select id="fltTeamMw"><option value="">전체</option></select>
+              </div>
+              <div class="field">
+                <label>이름 검색</label>
+                <input type="search" id="fltSearchMw" placeholder="멤버 이름">
+              </div>
+              <button type="button" class="secondary" id="btnApplyMw">적용</button>
+            </div>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>예배일</th>
+                    <th>이름</th>
+                    <th>팀</th>
+                    <th>예배</th>
+                    <th>상태</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyMw"></tbody>
+              </table>
+            </div>
+            <div class="pager" id="pagerMw"></div>
+          </div>
+        </div>
+      </main>
+
+      <script src="{% static 'attendance/app.js' %}"></script>
+    </div>
+  </div>
+</body>
+</html>

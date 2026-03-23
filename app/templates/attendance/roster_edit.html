@@ -1,0 +1,39 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>교적부 입력 · 출석 명단</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}">
+</head>
+<body>
+  <div class="jcc-layout">
+    {% include 'includes/jcc_left_nav.html' %}
+    <div class="jcc-layout-content">
+      <header class="app-header">
+        <div class="jcc-detail-titleWrap">
+          <h1>교적부 입력</h1>
+          <p class="subtitle">출석(명단) 저장</p>
+        </div>
+      </header>
+
+      <div class="toolbar">
+        <button type="button" class="secondary" id="btnBack">← 뒤로</button>
+        <button type="button" id="btnSave">저장</button>
+      </div>
+
+      <main>
+        <div id="statusLine" class="msg"></div>
+        <div id="boardWrap"></div>
+      </main>
+
+      <script src="{% static 'attendance/roster_edit.js' %}"></script>
+    </div>
+  </div>
+</body>
+</html>
+

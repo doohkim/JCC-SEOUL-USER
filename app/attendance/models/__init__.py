@@ -6,10 +6,9 @@ from .team_slot import (
     member_entry_status,
     session_roster_stats,
 )
-from .weekly import AttendanceWeek, MidweekAttendanceRecord, SundayAttendanceLine
+from .weekly import MidweekAttendanceRecord, SundayAttendanceLine
 
 __all__ = [
-    "AttendanceWeek",
     "MidweekAttendanceRecord",
     "SundayAttendanceLine",
     "WorshipRosterScope",

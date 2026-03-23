@@ -4,9 +4,8 @@
 1. 슈퍼유저 ``admin`` / ``1234`` (bootstrap_admin)
 2. 조직도 (seed_org_chart)
 3. 엑셀 → 청년부 팀·교적 Member·소속 (seed_youth_roster, 시트 기본 ``주일 88``)
-4. 주간 출석 주차 껍데기 (ensure_weekly_attendance_weeks)
-5. 같은 엑셀에서 주일 예배 출석 시트 자동 탐지 후 ``SundayAttendanceLine`` 저장
-   (``--sunday-sheet`` 로 수동 지정 가능)
+4. 같은 엑셀에서 주일 예배 출석 시트 자동 탐지 후 ``SundayAttendanceLine`` 저장
+   (``--sunday-sheet`` 로 수동 지정 가능; 출석은 부서+예배일 단위, 주차 테이블 없음)
 
 엑셀 기본 경로: ``~/Downloads/2026 예배 출석 명단.xlsx`` (다르면 ``--xlsx``)
 
@@ -15,7 +14,7 @@
     python manage.py bootstrap_dev
     python manage.py bootstrap_dev --xlsx /path/to/명단.xlsx
     python manage.py bootstrap_dev --xlsx ~/Downloads/book.xlsx --sunday-sheet "26.03.22 주일예배"
-    python manage.py bootstrap_dev --skip-excel   # 엑셀 없이 admin+조직+주차만
+    python manage.py bootstrap_dev --skip-excel   # 엑셀 없이 admin+조직만
 """
 
 from __future__ import annotations
@@ -111,7 +110,7 @@ def _pick_sunday_attendance_sheet(path: Path) -> str | None:
 
 
 class Command(BaseCommand):
-    help = "admin/1234 + 조직도 + (엑셀) 교적·주차·주일 출석까지 초기화"
+    help = "admin/1234 + 조직도 + (엑셀) 교적·주일 출석까지 초기화"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -138,20 +137,14 @@ class Command(BaseCommand):
         parser.add_argument(
             "--skip-sunday",
             action="store_true",
-            help="주일 출석 라인 임포트만 건너뜀 (로스터·주차는 유지)",
-        )
-        parser.add_argument(
-            "--weeks",
-            type=int,
-            default=12,
-            help="미리 만들 주간 출석 주차 수 (기본 12)",
+            help="주일 출석 라인 임포트만 건너뜀 (로스터는 유지)",
         )
 
     def handle(self, *args, **options):
-        self.stdout.write("=== 1/5 bootstrap_admin (admin / 1234) ===")
+        self.stdout.write("=== 1/4 bootstrap_admin (admin / 1234) ===")
         call_command("bootstrap_admin", stdout=self.stdout, stderr=self.stderr)
 
-        self.stdout.write(self.style.SUCCESS("=== 2/5 seed_org_chart ==="))
+        self.stdout.write(self.style.SUCCESS("=== 2/4 seed_org_chart ==="))
         call_command("seed_org_chart", stdout=self.stdout, stderr=self.stderr)
 
         admin = get_user_model().objects.filter(username="admin").first()
@@ -167,7 +160,7 @@ class Command(BaseCommand):
 
         if skip_excel:
             self.stdout.write(
-                self.style.WARNING("=== 3/5 엑셀 스킵 (--skip-excel) ===")
+                self.style.WARNING("=== 3/4 엑셀 스킵 (--skip-excel) ===")
             )
         elif path is None:
             fix = _app_dir() / "fixtures"
@@ -184,7 +177,7 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.NOTICE(f"엑셀 사용: {path}"),
                 )
-            self.stdout.write(self.style.SUCCESS(f"=== 3/5 seed_youth_roster ({path.name}) ==="))
+            self.stdout.write(self.style.SUCCESS(f"=== 3/4 seed_youth_roster ({path.name}) ==="))
             call_command(
                 "seed_youth_roster",
                 str(path),
@@ -193,26 +186,13 @@ class Command(BaseCommand):
                 stderr=self.stderr,
             )
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"=== 4/5 ensure_weekly_attendance_weeks ({options['weeks']}주) ==="
-            )
-        )
-        call_command(
-            "ensure_weekly_attendance_weeks",
-            weeks=options["weeks"],
-            division_code=["youth"],
-            stdout=self.stdout,
-            stderr=self.stderr,
-        )
-
         if skip_excel or path is None:
             self.stdout.write(
-                self.style.WARNING("=== 5/5 주일 출석 임포트 스킵 (엑셀 없음) ===")
+                self.style.WARNING("=== 4/4 주일 출석 임포트 스킵 (엑셀 없음) ===")
             )
         elif options["skip_sunday"]:
             self.stdout.write(
-                self.style.WARNING("=== 5/5 주일 출석 임포트 스킵 (--skip-sunday) ===")
+                self.style.WARNING("=== 4/4 주일 출석 임포트 스킵 (--skip-sunday) ===")
             )
         else:
             sheet = (options["sunday_sheet"] or "").strip()
@@ -226,7 +206,7 @@ class Command(BaseCommand):
                     f"파일: {path}"
                 )
             self.stdout.write(
-                self.style.SUCCESS(f"=== 5/5 import_sunday_attendance_xlsx (시트: {sheet!r}) ===")
+                self.style.SUCCESS(f"=== 4/4 import_sunday_attendance_xlsx (시트: {sheet!r}) ===")
             )
             call_command(
                 "import_sunday_attendance_xlsx",
