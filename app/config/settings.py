@@ -96,7 +96,18 @@ INSTALLED_APPS = [
     "users.apps.UsersConfig",
     "registry.apps.RegistryConfig",
     "attendance.apps.AttendanceConfig",
+    "counseling.apps.CounselingConfig",
 ]
+
+# 상담 예약 롤링 창: 오늘(Asia/Seoul) ~ 오늘+N일까지 슬롯 생성
+COUNSELING_HORIZON_DAY_OFFSET = int(os.environ.get("COUNSELING_HORIZON_DAY_OFFSET", "7"))
+COUNSELING_TIMEZONE = os.environ.get("COUNSELING_TIMEZONE", "Asia/Seoul")
+COUNSELING_KAKAO_ALIMTALK_ENABLED = os.environ.get("COUNSELING_KAKAO_ALIMTALK_ENABLED", "").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [

@@ -12,6 +12,9 @@
       <a class="jcc-leftNav-item" href="{% url 'registry_member_list' %}">교적부</a>
       <a class="jcc-leftNav-item" href="{% url 'user_division_account_roles' %}">계정관리</a>
     {% endif %}
+    {% if user|can_access_counseling_tab %}
+      <a class="jcc-leftNav-item" href="{% url 'counseling_home' %}">상담</a>
+    {% endif %}
   </div>
 
   <div class="jcc-leftNav-bottom">

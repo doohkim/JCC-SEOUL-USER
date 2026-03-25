@@ -26,6 +26,7 @@ urlpatterns = [
     path("", include("attendance.urls")),
     path("", include("registry.urls")),
     path("", include("users.urls")),
+    path("", include("counseling.urls")),
 ]
 
 if settings.DEBUG:

@@ -1,0 +1,303 @@
+{% load static permission_tags %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>상담</title>
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}">
+  <link rel="stylesheet" href="{% static 'counseling/counseling.css' %}">
+</head>
+<body>
+  <div class="jcc-layout">
+    {% include 'includes/jcc_left_nav.html' %}
+    <div class="jcc-layout-content">
+      <header class="app-header">
+        <div class="jcc-detail-titleWrap">
+          <h1>상담</h1>
+          <p class="subtitle">부서 소속 목사·전도사에게 상담을 신청하거나, 예약 시간을 관리합니다.</p>
+        </div>
+      </header>
+      <main>
+        <div class="card" style="margin-bottom: 1rem;">
+          <div class="jcc-page-tabs">
+            <a href="{% url 'counseling_home' %}?tab=apply" class="jcc-page-tab{% if counseling_tab == 'apply' %} is-active{% endif %}">상담 신청</a>
+            {% if can_manage_counseling %}
+              <a href="{% url 'counseling_home' %}?tab=manage" class="jcc-page-tab{% if counseling_tab == 'manage' %} is-active{% endif %}">예약 관리</a>
+            {% endif %}
+          </div>
+        </div>
+
+        <div id="counselingMsg" class="card" style="margin-bottom:1rem; display:none;"></div>
+
+        {% if counseling_tab == 'apply' %}
+          <div class="card" style="margin-bottom:1rem;">
+            <h2>상담 신청</h2>
+            <div class="toolbar" style="padding:0; border:none; background:transparent; flex-wrap:wrap;">
+              <div class="field">
+                <label>상담사</label>
+                <select id="counselorSelect"></select>
+              </div>
+              <div class="field" style="min-width:12rem;">
+                <label>가능 시간</label>
+                <select id="slotSelect" disabled></select>
+              </div>
+            </div>
+            <div class="field" style="margin-top:0.75rem;">
+              <label>요청 내용</label>
+              <textarea id="applyMessage" rows="4" style="width:100%; max-width:32rem;" placeholder="상담하고 싶은 내용을 적어 주세요."></textarea>
+            </div>
+            <button type="button" id="btnApplySubmit">신청</button>
+          </div>
+          <div class="card">
+            <h2>내 신청 내역</h2>
+            <div id="outgoingList" class="msg">불러오는 중…</div>
+          </div>
+        {% else %}
+          <div class="card" style="margin-bottom:1rem;">
+            <h2>기본 예약 템플릿</h2>
+            <div class="toolbar" style="padding:0; border:none; background:transparent; flex-wrap:wrap;">
+              <div class="field">
+                <label>시작 시</label>
+                <input type="number" id="setStart" min="0" max="23" style="width:5rem;">
+              </div>
+              <div class="field">
+                <label>종료 시(마지막 슬롯이 끝나는 시각)</label>
+                <input type="number" id="setEnd" min="1" max="24" style="width:5rem;">
+              </div>
+              <div class="field">
+                <label>슬롯(분)</label>
+                <input type="number" id="setDur" min="15" max="180" step="15" style="width:5rem;">
+              </div>
+            </div>
+            <button type="button" id="btnSaveSettings">템플릿 저장</button>
+          </div>
+          <div class="card" style="margin-bottom:1rem;">
+            <h2>특정 일 오버라이드</h2>
+            <p class="subtitle">롤링 창 안의 날짜만 지정할 수 있습니다.</p>
+            <div class="toolbar" style="padding:0; border:none; background:transparent; flex-wrap:wrap;">
+              <div class="field">
+                <label>날짜</label>
+                <input type="date" id="ovDate">
+              </div>
+              <div class="field">
+                <label>휴무</label>
+                <input type="checkbox" id="ovClosed">
+              </div>
+            </div>
+            <div class="field">
+              <label>커스텀 시작 시(정수 리스트 JSON, 예: [10,11,12]) — 휴무가 아닐 때</label>
+              <input type="text" id="ovCustom" placeholder='[10,11,12]' style="width:100%; max-width:24rem;">
+            </div>
+            <button type="button" id="btnSaveOverride">오버라이드 저장</button>
+          </div>
+          <div class="card" style="margin-bottom:1rem;">
+            <h2>내 슬롯(관리)</h2>
+            <div id="manageSlots" class="msg">불러오는 중…</div>
+          </div>
+          <div class="card">
+            <h2>받은 신청</h2>
+            <div id="incomingList" class="msg">불러오는 중…</div>
+          </div>
+        {% endif %}
+      </main>
+    </div>
+  </div>
+  <script>
+    const CSRF = "{{ csrf_token }}";
+    const TAB = "{{ counseling_tab|escapejs }}";
+    const CAN_MANAGE = {{ can_manage_counseling|yesno:"true,false" }};
+
+    function showMsg(text, isErr) {
+      const el = document.getElementById("counselingMsg");
+      el.style.display = "block";
+      el.className = "card " + (isErr ? "msg err" : "msg");
+      el.textContent = text;
+    }
+
+    async function api(path, opts) {
+      const headers = Object.assign({ "X-CSRFToken": CSRF }, opts && opts.headers || {});
+      if (opts && opts.body && typeof opts.body === "object" && !(opts.body instanceof FormData)) {
+        headers["Content-Type"] = "application/json";
+        opts.body = JSON.stringify(opts.body);
+      }
+      const r = await fetch(path, Object.assign({ credentials: "same-origin" }, opts, { headers }));
+      const ct = r.headers.get("content-type") || "";
+      const data = ct.includes("application/json") ? await r.json().catch(() => ({})) : {};
+      if (!r.ok) throw new Error(data.detail || r.statusText || "요청 실패");
+      return data;
+    }
+
+    async function loadCounselors() {
+      const list = await api("/api/v1/counseling/counselors/");
+      const sel = document.getElementById("counselorSelect");
+      sel.innerHTML = "";
+      list.forEach((c) => {
+        const o = document.createElement("option");
+        o.value = c.id;
+        o.textContent = c.label;
+        sel.appendChild(o);
+      });
+      sel.onchange = loadSlots;
+      if (list.length) await loadSlots();
+    }
+
+    async function loadSlots() {
+      const sel = document.getElementById("counselorSelect");
+      const slotSel = document.getElementById("slotSelect");
+      const id = sel.value;
+      if (!id) return;
+      slotSel.disabled = true;
+      slotSel.innerHTML = "";
+      const slots = await api("/api/v1/counseling/counselors/" + id + "/slots/");
+      slots.forEach((s) => {
+        const o = document.createElement("option");
+        o.value = s.id;
+        o.textContent = s.date + " " + s.start_time + "–" + s.end_time;
+        slotSel.appendChild(o);
+      });
+      slotSel.disabled = slots.length === 0;
+    }
+
+    async function loadOutgoing() {
+      const el = document.getElementById("outgoingList");
+      try {
+        const rows = await api("/api/v1/counseling/requests/?box=outgoing");
+        if (!rows.length) {
+          el.textContent = "신청 내역이 없습니다.";
+          return;
+        }
+        el.innerHTML = "<table><thead><tr><th>일시</th><th>상담사</th><th>상태</th><th></th></tr></thead><tbody></tbody></table>";
+        const tb = el.querySelector("tbody");
+        rows.forEach((r) => {
+          const tr = document.createElement("tr");
+          const when = r.slot ? (r.slot.date + " " + r.slot.start_time) : "";
+          tr.innerHTML = "<td>" + when + "</td><td>" + (r.counselor_label || "") + "</td><td>" + r.status + '</td><td><a href="/counseling/requests/' + r.public_id + '/">상세</a></td>';
+          tb.appendChild(tr);
+        });
+      } catch (e) {
+        el.textContent = e.message || String(e);
+      }
+    }
+
+    async function loadManage() {
+      try {
+        const st = await api("/api/v1/counseling/counselor/settings/");
+        document.getElementById("setStart").value = st.default_start_hour;
+        document.getElementById("setEnd").value = st.default_end_hour;
+        document.getElementById("setDur").value = st.slot_duration_minutes;
+      } catch (e) {
+        showMsg(e.message || String(e), true);
+      }
+      try {
+        const slots = await api("/api/v1/counseling/counselor/slots/");
+        const el = document.getElementById("manageSlots");
+        if (!slots.length) {
+          el.textContent = "슬롯이 없습니다.";
+        } else {
+          el.innerHTML = "<table><thead><tr><th>날짜</th><th>시간</th><th>상태</th></tr></thead><tbody></tbody></table>";
+          const tb = el.querySelector("tbody");
+          slots.forEach((s) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = "<td>" + s.date + "</td><td>" + s.start_time + "–" + s.end_time + "</td><td>" + s.state + "</td>";
+            tb.appendChild(tr);
+          });
+        }
+      } catch (e) {
+        document.getElementById("manageSlots").textContent = e.message || String(e);
+      }
+      try {
+        const rows = await api("/api/v1/counseling/requests/?box=incoming");
+        const el = document.getElementById("incomingList");
+        if (!rows.length) {
+          el.textContent = "받은 신청이 없습니다.";
+          return;
+        }
+        el.innerHTML = "<table><thead><tr><th>일시</th><th>신청자</th><th>상태</th><th></th></tr></thead><tbody></tbody></table>";
+        const tb = el.querySelector("tbody");
+        rows.forEach((r) => {
+          const tr = document.createElement("tr");
+          const when = r.slot ? (r.slot.date + " " + r.slot.start_time) : "";
+          tr.innerHTML = "<td>" + when + "</td><td>" + (r.applicant_label || "") + "</td><td>" + r.status + '</td><td><a href="/counseling/requests/' + r.public_id + '/">상세</a></td>';
+          tb.appendChild(tr);
+        });
+      } catch (e) {
+        document.getElementById("incomingList").textContent = e.message || String(e);
+      }
+    }
+
+    document.getElementById("btnApplySubmit")?.addEventListener("click", async () => {
+      const slotId = document.getElementById("slotSelect").value;
+      const msg = document.getElementById("applyMessage").value || "";
+      if (!slotId) {
+        showMsg("예약 시간을 선택하세요.", true);
+        return;
+      }
+      try {
+        await api("/api/v1/counseling/requests/", {
+          method: "POST",
+          body: { slot_id: parseInt(slotId, 10), applicant_message: msg },
+        });
+        showMsg("신청되었습니다.", false);
+        await loadSlots();
+        await loadOutgoing();
+      } catch (e) {
+        showMsg(e.message || String(e), true);
+      }
+    });
+
+    document.getElementById("btnSaveSettings")?.addEventListener("click", async () => {
+      try {
+        await api("/api/v1/counseling/counselor/settings/", {
+          method: "PATCH",
+          body: {
+            default_start_hour: parseInt(document.getElementById("setStart").value, 10),
+            default_end_hour: parseInt(document.getElementById("setEnd").value, 10),
+            slot_duration_minutes: parseInt(document.getElementById("setDur").value, 10),
+          },
+        });
+        showMsg("저장했습니다.", false);
+        await loadManage();
+      } catch (e) {
+        showMsg(e.message || String(e), true);
+      }
+    });
+
+    document.getElementById("btnSaveOverride")?.addEventListener("click", async () => {
+      const d = document.getElementById("ovDate").value;
+      if (!d) {
+        showMsg("날짜를 선택하세요.", true);
+        return;
+      }
+      const closed = document.getElementById("ovClosed").checked;
+      let custom = null;
+      const raw = document.getElementById("ovCustom").value.trim();
+      if (raw && !closed) {
+        try {
+          custom = JSON.parse(raw);
+        } catch (e) {
+          showMsg("커스텀 JSON 형식이 올바르지 않습니다.", true);
+          return;
+        }
+      }
+      try {
+        await api("/api/v1/counseling/counselor/day-overrides/", {
+          method: "POST",
+          body: { date: d, is_closed: closed, custom_slots_json: custom },
+        });
+        showMsg("저장했습니다.", false);
+        await loadManage();
+      } catch (e) {
+        showMsg(e.message || String(e), true);
+      }
+    });
+
+    if (TAB === "apply") {
+      loadCounselors().catch((e) => showMsg(e.message || String(e), true));
+      loadOutgoing().catch((e) => showMsg(e.message || String(e), true));
+    } else if (TAB === "manage" && CAN_MANAGE) {
+      loadManage().catch((e) => showMsg(e.message || String(e), true));
+    }
+  </script>
+</body>
+</html>

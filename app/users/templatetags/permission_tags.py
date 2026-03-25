@@ -4,6 +4,8 @@ from django import template
 
 from users.permissions import (
     can_access_attendance_roster,
+    can_access_counseling_manage_tab,
+    can_access_counseling_tab,
     can_access_member_registry,
     can_access_parking_tab,
     is_parking_manager,
@@ -36,6 +38,16 @@ def can_access_parking_admin_tab(user):
 @register.filter(name="user_display_name")
 def user_display_name(user):
     return resolve_user_display_name(user)
+
+
+@register.filter(name="can_access_counseling_tab")
+def can_access_counseling_tab_filter(user):
+    return can_access_counseling_tab(user)
+
+
+@register.filter(name="can_access_counseling_manage_tab")
+def can_access_counseling_manage_tab_filter(user):
+    return can_access_counseling_manage_tab(user)
 
 
 @register.filter(name="lookup_user_label")

@@ -248,3 +248,68 @@ class IsPastoralRegistryStaff(BasePermission):
     def has_permission(self, request, view):
         u = request.user
         return bool(u and u.is_authenticated and can_access_member_registry(u))
+
+
+def can_access_counseling_tab(user: User) -> bool:
+    """상담 메뉴·페이지 접근(로그인 사용자)."""
+    if not user.is_authenticated or not user.is_active:
+        return False
+    return True
+
+
+def can_access_counseling_manage_tab(user: User) -> bool:
+    """상담 예약 관리(목사·전도사) 탭."""
+    if not can_access_counseling_tab(user):
+        return False
+    if is_platform_admin(user):
+        return True
+    return _is_pastoral(user)
+
+
+def counselors_queryset_for_applicant(actor: User):
+    """
+    상담 신청 시 선택 가능한 목사·전도사.
+    - 운영자: 전체 목사·전도사
+    - 그 외: 신청자 ``visible_divisions_for`` 와 부서가 겹치는 목사·전도사만
+    """
+    if not actor.is_authenticated:
+        return User.objects.none()
+    if is_platform_admin(actor):
+        return User.objects.filter(
+            role_level__code__in=_REGISTRY_ROLE_CODES,
+            is_active=True,
+        ).distinct()
+    divisions = visible_divisions_for(actor)
+    if not divisions.exists():
+        return User.objects.none()
+    return User.objects.filter(
+        role_level__code__in=_REGISTRY_ROLE_CODES,
+        division_teams__division__in=divisions,
+        is_active=True,
+    ).distinct()
+
+
+def can_access_counseling_request_object(user: User, counseling_request) -> bool:
+    """상담 신청 건: 신청자·상담사만 (관리자도 타인 건 API 조회 불가)."""
+    if not user.is_authenticated:
+        return False
+    return user.pk == counseling_request.applicant_id or user.pk == counseling_request.counselor_id
+
+
+class IsCounselingParticipant(BasePermission):
+    """DRF: 상담 신청 객체의 신청자 또는 상담사."""
+
+    message = "이 상담 신청을 볼 권한이 없습니다."
+
+    def has_object_permission(self, request, view, obj):
+        return can_access_counseling_request_object(request.user, obj)
+
+
+class IsCounselingCounselor(BasePermission):
+    """DRF: 해당 상담 신청의 상담사 본인."""
+
+    message = "상담사만 수행할 수 있습니다."
+
+    def has_object_permission(self, request, view, obj):
+        u = request.user
+        return bool(u and u.is_authenticated and u.pk == obj.counselor_id)

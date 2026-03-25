@@ -3,3 +3,5 @@ django>=6.0.3,<7
 djangorestframework>=3.15,<4
 openpyxl>=3.1,<4
 pillow>=11,<12
+social-auth-app-django>=5.7,<6
+python-dotenv>=1.2.2,<2

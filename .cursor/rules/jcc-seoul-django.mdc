@@ -18,3 +18,4 @@ cd app && poetry run python manage.py <command>
 - **보안(필수)**: 출석 등 운영 데이터는 `users.permissions.visible_divisions_for` — **소속 상위 부서(`UserDivisionTeam`)만**. 타 부서 `division_code`·week id로 조회 불가. **교적(registry)** Admin·조직 API는 `can_access_member_registry` / `IsPastoralRegistryStaff` — **목사·전도사**(`RoleLevel` 코드 `pastor`·`evangelist` 또는 level ≥ 80)만. 새 엔드포인트는 이 원칙을 깨지 않는다.
 - **Admin**: `users`에 있던 레거시 admin 경로는 `config.admin_legacy_redirect`로 `registry`/`attendance`로 넘긴다. 새 모델 admin은 해당 도메인 앱에 둔다.
 - **코드 스타일**: 앱 패키지 구조 `models/`, **`views/`**(Django 템플릿·일반 뷰), **`apis/`**(DRF), `admin/`, `choices/`, `services/`, `forms/` 를 따른다. 요청 범위 밖 리팩터는 하지 않는다.
+- **에이전트 할 일**: TodoWrite 등으로 할 일 목록을 만들거나 갱신할 때 **항목 내용(`content`)은 한글**로 적는다 (상태값 `pending`/`in_progress`/`completed` 등 도구 필드명은 그대로).
