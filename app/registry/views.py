@@ -2,14 +2,16 @@ from __future__ import annotations
 
 from django.core.exceptions import PermissionDenied
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.urls import reverse_lazy
 from django.views.generic import TemplateView
 
+from users.mixins import OnboardingRequiredMixin
 from users.permissions import can_access_member_registry
 
 
-class RegistryMemberListPageView(LoginRequiredMixin, TemplateView):
+class RegistryMemberListPageView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
     template_name = "registry/member_list.html"
-    login_url = "/admin/login/"
+    login_url = reverse_lazy("user_login")
 
     def dispatch(self, request, *args, **kwargs):
         if not can_access_member_registry(request.user):
@@ -17,9 +19,9 @@ class RegistryMemberListPageView(LoginRequiredMixin, TemplateView):
         return super().dispatch(request, *args, **kwargs)
 
 
-class RegistryMemberDetailPageView(LoginRequiredMixin, TemplateView):
+class RegistryMemberDetailPageView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
     template_name = "registry/member_detail.html"
-    login_url = "/admin/login/"
+    login_url = reverse_lazy("user_login")
 
     def dispatch(self, request, *args, **kwargs):
         if not can_access_member_registry(request.user):
@@ -32,9 +34,9 @@ class RegistryMemberDetailPageView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
-class RegistryMemberCreatePageView(LoginRequiredMixin, TemplateView):
+class RegistryMemberCreatePageView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
     template_name = "registry/member_form.html"
-    login_url = "/admin/login/"
+    login_url = reverse_lazy("user_login")
 
     def dispatch(self, request, *args, **kwargs):
         if not can_access_member_registry(request.user):
@@ -48,9 +50,9 @@ class RegistryMemberCreatePageView(LoginRequiredMixin, TemplateView):
         return ctx
 
 
-class RegistryMemberEditPageView(LoginRequiredMixin, TemplateView):
+class RegistryMemberEditPageView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
     template_name = "registry/member_form.html"
-    login_url = "/admin/login/"
+    login_url = reverse_lazy("user_login")
 
     def dispatch(self, request, *args, **kwargs):
         if not can_access_member_registry(request.user):

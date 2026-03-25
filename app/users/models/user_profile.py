@@ -7,12 +7,19 @@
 from __future__ import annotations
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
+from .organization import Division, Team
 from ..validators import validate_korea_mobile_phone
 
 
 class UserProfile(models.Model):
+    class OnboardingStatus(models.TextChoices):
+        PENDING = "pending", "승인 대기"
+        APPROVED = "approved", "승인 완료"
+        REJECTED = "rejected", "반려"
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -51,6 +58,29 @@ class UserProfile(models.Model):
         blank=True,
     )
     bio = models.TextField("소개", blank=True, default="")
+    onboarding_status = models.CharField(
+        "온보딩 상태",
+        max_length=20,
+        choices=OnboardingStatus.choices,
+        default=OnboardingStatus.PENDING,
+    )
+    requested_division = models.ForeignKey(
+        Division,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_user_profiles",
+        verbose_name="신청 부서",
+    )
+    requested_team = models.ForeignKey(
+        Team,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_user_profiles",
+        verbose_name="신청 팀",
+    )
+    onboarding_note = models.TextField("온보딩 메모", blank=True, default="")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -59,3 +89,12 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"Profile · {self.user.username}"
+
+    def clean(self):
+        super().clean()
+        if (
+            self.requested_team_id
+            and self.requested_division_id
+            and self.requested_team.division_id != self.requested_division_id
+        ):
+            raise ValidationError({"requested_team": "신청 팀은 신청 부서에 속해야 합니다."})

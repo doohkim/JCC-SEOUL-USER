@@ -55,8 +55,12 @@ class LinkedUserOrgSyncTests(TestCase):
             ).exists()
         )
 
-    def test_mdt_delete_one_team_removes_only_that_user_row(self):
-        ma = MemberDivisionTeam.objects.create(
+    def test_mdt_delete_removes_udt_for_that_division_other_division_unchanged(self):
+        div_elem = Division.objects.create(name="유년부", code="elem", sort_order=2)
+        team_elem = Team.objects.create(
+            division=div_elem, name="E팀", code="e", sort_order=1
+        )
+        MemberDivisionTeam.objects.create(
             member=self.member,
             division=self.div_youth,
             team=self.team_a,
@@ -65,19 +69,21 @@ class LinkedUserOrgSyncTests(TestCase):
         )
         MemberDivisionTeam.objects.create(
             member=self.member,
-            division=self.div_youth,
-            team=self.team_b,
+            division=div_elem,
+            team=team_elem,
             is_primary=False,
             sort_order=1,
         )
-        ma.delete()
+        MemberDivisionTeam.objects.filter(
+            member=self.member, division=self.div_youth
+        ).delete()
         self.assertFalse(
             UserDivisionTeam.objects.filter(
-                user=self.user, division=self.div_youth, team=self.team_a
+                user=self.user, division=self.div_youth
             ).exists()
         )
         self.assertTrue(
             UserDivisionTeam.objects.filter(
-                user=self.user, division=self.div_youth, team=self.team_b
+                user=self.user, division=div_elem, team=team_elem
             ).exists()
         )

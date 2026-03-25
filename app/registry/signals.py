@@ -22,7 +22,9 @@ def member_division_team_saved(sender, instance: MemberDivisionTeam, **kwargs):
 def member_division_team_deleted(sender, instance: MemberDivisionTeam, **kwargs):
     member = Member.objects.filter(pk=instance.member_id).first()
     if member is not None:
-        sync_user_division_teams_from_member(member)
+        sync_user_division_teams_from_member(
+            member, dropped_division_id=instance.division_id
+        )
 
 
 @receiver(post_delete, sender=Team)

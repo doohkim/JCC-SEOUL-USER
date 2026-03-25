@@ -146,8 +146,8 @@ class Command(BaseCommand):
                     mdt, created = MemberDivisionTeam.objects.get_or_create(
                         member=member,
                         division=div,
-                        team=team,
                         defaults={
+                            "team": team,
                             "is_primary": not member.division_teams.filter(
                                 division=div, is_primary=True
                             ).exists(),
@@ -157,6 +157,9 @@ class Command(BaseCommand):
                     if created:
                         links += 1
                     else:
+                        if mdt.team_id != team.id:
+                            mdt.team = team
+                            mdt.save(update_fields=["team"])
                         if not member.division_teams.filter(
                             division=div, is_primary=True
                         ).exists():

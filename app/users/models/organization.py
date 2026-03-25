@@ -8,6 +8,7 @@
 """
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -102,8 +103,8 @@ class UserDivisionTeam(models.Model):
         ordering = ["user", "-is_primary", "division", "sort_order"]
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "division", "team"],
-                name="unique_user_division_team",
+                fields=["user", "division"],
+                name="unique_users_user_division",
             )
         ]
 
@@ -111,10 +112,61 @@ class UserDivisionTeam(models.Model):
         tl = self.team.name if self.team_id else "(팀 미지정)"
         return f"{self.user.username} @ {self.division.name} · {tl}"
 
+    def clean(self):
+        super().clean()
+        if self.user_id and self.division_id:
+            qs = UserDivisionTeam.objects.filter(
+                user_id=self.user_id,
+                division_id=self.division_id,
+            )
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError(
+                    {
+                        "division": "같은 부서에 서로 다른 팀 행을 둘 수 없습니다. "
+                        "한 부서당 한 팀(또는 팀 미지정)만 지정하세요."
+                    }
+                )
+
     def save(self, *args, **kwargs):
         if self.team_id and self.team.division_id != self.division_id:
             raise ValueError("team must belong to the same division")
         super().save(*args, **kwargs)
+
+
+class PastoralDivisionAssignment(models.Model):
+    """목사/전도사 담당 부서 매핑(다중 담당 허용)."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="pastoral_divisions",
+        verbose_name="사용자",
+    )
+    division = models.ForeignKey(
+        Division,
+        on_delete=models.CASCADE,
+        related_name="pastoral_assignees",
+        verbose_name="담당 부서",
+    )
+    is_primary = models.BooleanField("주 담당", default=False)
+    sort_order = models.PositiveSmallIntegerField("정렬 순서", default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "목회 담당 부서"
+        verbose_name_plural = "목회 담당 부서"
+        ordering = ["user", "-is_primary", "sort_order", "division__sort_order", "division__name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "division"],
+                name="unique_pastoral_user_division",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} · {self.division.name}"
 
 
 class Club(models.Model):

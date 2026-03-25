@@ -7,6 +7,7 @@ from .team_slot import (
     session_roster_stats,
 )
 from .weekly import MidweekAttendanceRecord, SundayAttendanceLine
+from .parking import ParkingPermitApplication
 
 __all__ = [
     "MidweekAttendanceRecord",
@@ -18,4 +19,5 @@ __all__ = [
     "TeamAttendanceEntryStatus",
     "member_entry_status",
     "session_roster_stats",
+    "ParkingPermitApplication",
 ]

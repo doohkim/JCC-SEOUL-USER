@@ -1,0 +1,173 @@
+{% load static permission_tags %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>주차권 신청</title>
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}">
+</head>
+<body>
+  <div class="jcc-layout">
+    {% include 'includes/jcc_left_nav.html' %}
+    <div class="jcc-layout-content">
+      <header class="app-header">
+        <div class="jcc-detail-titleWrap">
+          <h1>주차권 신청</h1>
+          <p class="subtitle">차량번호를 등록하고 신청 내역을 수정/삭제할 수 있습니다.</p>
+        </div>
+      </header>
+      <main>
+        <div class="card" style="margin-bottom: 1rem;">
+          <div class="jcc-page-tabs">
+            <a href="{% url 'parking_permit_apply' %}?tab=apply" class="jcc-page-tab{% if parking_tab == 'apply' %} is-active{% endif %}">내 신청</a>
+            {% if is_parking_manager %}
+              <a href="{% url 'parking_permit_apply' %}?tab=manage" class="jcc-page-tab{% if parking_tab == 'manage' %} is-active{% endif %}">관리 목록</a>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if messages %}
+          <div class="card" style="margin-bottom: 1rem;">
+            {% for message in messages %}
+              <div class="msg{% if message.tags == 'error' %} err{% endif %}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if parking_tab == "apply" %}
+          <div class="card" style="margin-bottom: 1rem;">
+            <h2>신청 정보</h2>
+            <div class="msg">소속: {{ my_division_name }} / {{ my_team_name }}</div>
+            <form method="post" style="margin-top: 0.75rem; display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
+              {% csrf_token %}
+              <div class="field">
+                <label for="{{ form.vehicle_number.id_for_label }}">차량번호</label>
+                {{ form.vehicle_number }}
+              </div>
+              <button type="submit">신청</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h2>내 신청 내역</h2>
+            {% if applications %}
+              <div style="overflow-x:auto;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>차량번호</th>
+                      <th>소속</th>
+                      <th>상태</th>
+                      <th>신청일</th>
+                      <th>처리</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for a in applications %}
+                      <tr>
+                        <td>{{ a.vehicle_number }}</td>
+                        <td>{{ a.division.name|default:"-" }} / {{ a.team.name|default:"-" }}</td>
+                        <td>{{ a.get_status_display }}</td>
+                        <td>{{ a.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                          <form method="post" style="display:inline-flex; gap:0.5rem; align-items:center;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="edit">
+                            <input type="hidden" name="application_id" value="{{ a.id }}">
+                            <input type="text" name="vehicle_number" value="{{ a.vehicle_number }}" style="max-width:140px;">
+                            <button type="submit">수정</button>
+                          </form>
+                          <form method="post" style="display:inline-block; margin-left:0.5rem;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="application_id" value="{{ a.id }}">
+                            <button type="submit" class="secondary">삭제</button>
+                          </form>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="msg">신청 내역이 없습니다.</div>
+            {% endif %}
+          </div>
+        {% else %}
+          <div class="card" style="margin-bottom:1rem;">
+            <h2>필터</h2>
+            <form method="get" class="toolbar" style="padding:0; border:none; background:transparent;">
+              <input type="hidden" name="tab" value="manage">
+              <div class="field">
+                <label>부서</label>
+                <select name="division_code">
+                  <option value="">전체</option>
+                  {% for d in division_options %}
+                    <option value="{{ d.code }}" {% if division_code == d.code %}selected{% endif %}>{{ d.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label>팀</label>
+                <select name="team_id">
+                  <option value="">전체</option>
+                  {% for t in team_options %}
+                    <option value="{{ t.id }}" {% if team_id == t.id|stringformat:'s' %}selected{% endif %}>{{ t.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label>검색</label>
+                <input type="search" name="q" value="{{ q }}" placeholder="차량번호/표시명/로그인 ID">
+              </div>
+              <div class="field">
+                <label>시작일</label>
+                <input type="date" name="date_from" value="{{ date_from }}">
+              </div>
+              <div class="field">
+                <label>종료일</label>
+                <input type="date" name="date_to" value="{{ date_to }}">
+              </div>
+              <button type="submit">조회</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h2>신청 목록</h2>
+            <div class="msg">총 {{ manager_applications|length }}건</div>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>신청일</th>
+                    <th>표시명</th>
+                    <th>차량번호</th>
+                    <th>부서</th>
+                    <th>팀</th>
+                    <th>상태</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for a in manager_applications %}
+                    <tr>
+                      <td>{{ a.created_at|date:"Y-m-d H:i" }}</td>
+                      <td>{{ parking_user_label_map|lookup_user_label:a.user_id }}</td>
+                      <td>{{ a.vehicle_number }}</td>
+                      <td>{{ a.division.name|default:"-" }}</td>
+                      <td>{{ a.team.name|default:"-" }}</td>
+                      <td>{{ a.get_status_display }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="6">조회 결과가 없습니다.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        {% endif %}
+      </main>
+    </div>
+  </div>
+</body>
+</html>

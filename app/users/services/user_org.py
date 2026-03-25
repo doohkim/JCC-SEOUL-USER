@@ -50,7 +50,7 @@ def change_team_within_division(
             )
         udt = membership
     else:
-        udt = qs.filter(is_primary=True).first() or qs.order_by("sort_order", "id").first()
+        udt = qs.first()
         if udt is None:
             return UserDivisionTeam.objects.create(
                 user=user,
@@ -59,19 +59,6 @@ def change_team_within_division(
                 is_primary=True,
                 sort_order=0,
             )
-
-    dup = (
-        UserDivisionTeam.objects.filter(
-            user=user,
-            division=division,
-            team=new_team,
-        )
-        .exclude(pk=udt.pk)
-        .first()
-    )
-    if dup is not None:
-        udt.delete()
-        udt = dup
 
     udt.team = new_team
     if make_primary:
@@ -101,15 +88,23 @@ def transfer_to_division(
     udt, created = UserDivisionTeam.objects.get_or_create(
         user=user,
         division=to_division,
-        team=team,
         defaults={
+            "team": team,
             "is_primary": make_primary,
             "sort_order": 0,
         },
     )
-    if not created and make_primary:
-        udt.is_primary = True
-        udt.save(update_fields=["is_primary"])
+    if not created:
+        update_fields = []
+        tid = team.id if team else None
+        if udt.team_id != tid:
+            udt.team = team
+            update_fields.append("team")
+        if make_primary and not udt.is_primary:
+            udt.is_primary = True
+            update_fields.append("is_primary")
+        if update_fields:
+            udt.save(update_fields=update_fields)
     if make_primary:
         _set_single_primary_in_division(user, to_division, udt)
     return udt

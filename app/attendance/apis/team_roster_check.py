@@ -30,6 +30,11 @@ from attendance.choices import MidweekAttendanceStatus, MidweekServiceType, Wors
 from attendance.models import MidweekAttendanceRecord, SundayAttendanceLine
 from registry.models import MemberDivisionTeam
 from users.models import Team
+from users.permissions import (
+    can_access_attendance_roster,
+    is_attendance_manager,
+    is_platform_admin,
+)
 
 
 @dataclass(frozen=True)
@@ -47,19 +52,26 @@ def _get_team_ids_for_division(request, division) -> list[int]:
     - superuser: 해당 division 내 모든 팀 허용
     - 일반 사용자: division_teams 중 `team!=NULL`
       - `is_primary=True`가 있으면 그 팀만
-      - 없으면 해당 division 내 팀 전체로 fallback
+      - 없으면 정렬 우선순위 상 첫 팀 1개만 사용
     """
 
-    if request.user.is_superuser:
+    if is_platform_admin(request.user):
         return list(Team.objects.filter(division=division).values_list("id", flat=True))
+    if is_attendance_manager(request.user):
+        return list(Team.objects.filter(division=division).values_list("id", flat=True))
+    if not can_access_attendance_roster(request.user):
+        raise PermissionDenied("출석부 페이지 권한이 없습니다.")
 
-    qs = request.user.division_teams.filter(division=division, team__isnull=False)
-    team_ids = list(qs.filter(is_primary=True).values_list("team_id", flat=True).distinct())
-    if not team_ids:
-        team_ids = list(qs.values_list("team_id", flat=True).distinct())
-    if not team_ids:
+    qs = request.user.division_teams.filter(division=division, team__isnull=False).order_by(
+        "-is_primary",
+        "sort_order",
+        "team_id",
+        "id",
+    )
+    first = qs.first()
+    if not first or not first.team_id:
         raise PermissionDenied("팀장(관리) 권한이 없습니다.")
-    return team_ids
+    return [int(first.team_id)]
 
 
 def _build_member_board(*, division, allowed_team_ids: list[int]) -> list[MemberBoardRow]:

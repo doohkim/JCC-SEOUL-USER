@@ -209,7 +209,7 @@ class Command(BaseCommand):
                     by_name[key] = m
 
             created_members = 0
-            udt_created = 0
+            mdt_created = 0
             scope_created = 0
             entry_created = 0
             entry_updated = 0
@@ -274,25 +274,28 @@ class Command(BaseCommand):
                                 by_name[key] = member
                                 created_members += 1
 
-                            udt, ucreated = MemberDivisionTeam.objects.get_or_create(
+                            mdt, mcreated = MemberDivisionTeam.objects.get_or_create(
                                 member=member,
                                 division=div,
-                                team=team,
                                 defaults={
+                                    "team": team,
                                     "is_primary": not member.division_teams.filter(
                                         division=div, is_primary=True
                                     ).exists(),
                                     "sort_order": 0,
                                 },
                             )
-                            if ucreated:
-                                udt_created += 1
+                            if mcreated:
+                                mdt_created += 1
                             else:
+                                if mdt.team_id != team.id:
+                                    mdt.team = team
+                                    mdt.save(update_fields=["team"])
                                 if not member.division_teams.filter(
                                     division=div, is_primary=True
                                 ).exists():
-                                    udt.is_primary = True
-                                    udt.save(update_fields=["is_primary"])
+                                    mdt.is_primary = True
+                                    mdt.save(update_fields=["is_primary"])
 
                             try:
                                 entry = WorshipRosterEntry.objects.get(
@@ -349,7 +352,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"완료: 스킵 {skipped}, 구분 신규 {scope_created}, "
-                f"Member 신규 {created_members}, 소속 신규 {udt_created}, "
+                f"Member 신규 {created_members}, 소속 신규 {mdt_created}, "
                 f"명단행 신규 {entry_created}, 명단행 갱신 {entry_updated}, "
                 f"명단 검증 스킵 {entry_skipped_conflict}"
             )

@@ -6,6 +6,7 @@ from ..models import (
     Club,
     Division,
     FunctionalDepartment,
+    PastoralDivisionAssignment,
     Role,
     Team,
     UserClub,
@@ -70,6 +71,14 @@ class UserDivisionTeamAdmin(JccModelAdmin):
             },
         ),
     )
+
+
+@admin.register(PastoralDivisionAssignment)
+class PastoralDivisionAssignmentAdmin(JccModelAdmin):
+    list_display = ["user", "division", "is_primary", "sort_order", "created_at"]
+    list_filter = ["division", "is_primary"]
+    search_fields = ["user__username", "user__email", "division__name", "division__code"]
+    autocomplete_fields = ["user", "division"]
 
 
 @admin.register(UserClub)

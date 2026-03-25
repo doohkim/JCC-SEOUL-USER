@@ -1,0 +1,284 @@
+{% load static permission_tags %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>가입 승인</title>
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}">
+</head>
+<body>
+  <div class="jcc-layout">
+    {% include 'includes/jcc_left_nav.html' %}
+    <div class="jcc-layout-content">
+      <header class="app-header">
+        <div class="jcc-detail-titleWrap">
+          <h1>가입 승인 관리</h1>
+          <p class="subtitle">신청 부서가 본인 담당 부서인 건만 표시됩니다. 처리일시 기준으로 기간을 좁힐 수 있습니다.</p>
+        </div>
+      </header>
+
+      <main>
+        {% include 'users/_account_manage_tabs.html' %}
+
+        <div class="card" style="margin-bottom: 1rem;">
+          <h2>조회 조건</h2>
+          <form method="get" class="toolbar" style="padding:0; border:none; background:transparent; flex-wrap:wrap;">
+            {% if can_choose_onboarding_division %}
+              <div class="field">
+                <label>부서</label>
+                <select name="division_code" onchange="this.form.submit()">
+                  {% for d in allowed_divisions %}
+                    <option value="{{ d.code }}" {% if active_division and d.id == active_division.id %}selected{% endif %}>{{ d.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            {% endif %}
+            <div class="field">
+              <label>시작일</label>
+              <input type="date" name="date_from" value="{{ date_from }}">
+            </div>
+            <div class="field">
+              <label>종료일</label>
+              <input type="date" name="date_to" value="{{ date_to }}">
+            </div>
+            <button type="submit">조회</button>
+          </form>
+          {% if active_division %}
+            <div class="msg" style="margin-top:0.75rem;">조회 부서: <strong>{{ active_division.name }}</strong> · 승인 대기는 항상 전체 표시 · 최근 승인/반려는 처리 갱신일시 기준(기본 최근 90일)</div>
+          {% endif %}
+        </div>
+
+        {% if messages %}
+          <div class="card" style="margin-bottom: 1rem;">
+            {% for message in messages %}
+              <div class="msg{% if message.tags == 'error' %} err{% endif %}" style="margin-bottom: 0.5rem;">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="card" style="margin-bottom: 1rem;">
+          <h2>승인 대기</h2>
+          {% if pending_profiles %}
+            <div style="overflow-x:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>사용자</th>
+                    <th>신청 부서</th>
+                    <th>신청 팀</th>
+                    <th>상태</th>
+                    <th>메모</th>
+                    <th style="width:5rem;">저장</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for p in pending_profiles %}
+                    <tr>
+                      <td>{{ user_label_map|lookup_user_label:p.user_id }}</td>
+                      <td>
+                        <select name="requested_division_id" form="save-{{ p.id }}" class="pending-division" data-team-select-id="team-{{ p.id }}">
+                          <option value="">부서 선택</option>
+                          {% for d in division_choices %}
+                            <option value="{{ d.id }}" {% if p.requested_division_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                      <td>
+                        <select id="team-{{ p.id }}" name="requested_team_id" form="save-{{ p.id }}" class="pending-team" data-selected="{{ p.requested_team_id|default:'' }}"></select>
+                      </td>
+                      <td>
+                        <select name="onboarding_status" form="save-{{ p.id }}" class="onboarding-status-select" aria-label="상태" style="min-width:9rem;">
+                          {% for code, label in onboarding_status_choices %}
+                            <option value="{{ code }}" {% if p.onboarding_status == code %}selected{% endif %}>{{ label }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                      <td>
+                        <input type="text" name="note" form="save-{{ p.id }}" class="onboarding-note-input" value="{{ p.onboarding_note|default:'' }}" style="width:100%; min-width:10rem; max-width:22rem; box-sizing:border-box;">
+                      </td>
+                      <td style="vertical-align:middle;">
+                        <form id="save-{{ p.id }}" method="post" style="display:inline-flex;">
+                          {% csrf_token %}
+                          <input type="hidden" name="profile_id" value="{{ p.id }}">
+                          <input type="hidden" name="action" value="save">
+                          <input type="hidden" name="date_from" value="{{ date_from }}">
+                          <input type="hidden" name="date_to" value="{{ date_to }}">
+                          {% if active_division %}<input type="hidden" name="division_code" value="{{ active_division.code }}">{% endif %}
+                          <button type="submit">저장</button>
+                        </form>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="msg">승인 대기 사용자가 없습니다.</div>
+          {% endif %}
+        </div>
+
+        <div class="card" style="margin-bottom: 1rem;">
+          <h2>최근 승인</h2>
+          {% if approved_profiles %}
+            <div style="overflow-x:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>사용자</th>
+                    <th>부서</th>
+                    <th>팀</th>
+                    <th>상태</th>
+                    <th>메모</th>
+                    <th style="width:5rem;">저장</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for p in approved_profiles %}
+                    <tr>
+                      <td>{{ user_label_map|lookup_user_label:p.user_id }}</td>
+                      <td>
+                        <select name="requested_division_id" form="approved-save-{{ p.id }}" class="pending-division" data-team-select-id="approved-team-{{ p.id }}">
+                          <option value="">부서 선택</option>
+                          {% for d in division_choices %}
+                            <option value="{{ d.id }}" {% if p.requested_division_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                      <td>
+                        <select id="approved-team-{{ p.id }}" name="requested_team_id" form="approved-save-{{ p.id }}" class="pending-team" data-selected="{{ p.requested_team_id|default:'' }}"></select>
+                      </td>
+                      <td>
+                        <select name="onboarding_status" form="approved-save-{{ p.id }}" class="onboarding-status-select" aria-label="상태" style="min-width:9rem;">
+                          {% for code, label in onboarding_status_choices %}
+                            <option value="{{ code }}" {% if p.onboarding_status == code %}selected{% endif %}>{{ label }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                      <td>
+                        <input type="text" name="note" form="approved-save-{{ p.id }}" class="onboarding-note-input" value="{{ p.onboarding_note|default:'' }}" style="width:100%; min-width:10rem; max-width:22rem; box-sizing:border-box;">
+                      </td>
+                      <td style="vertical-align:middle;">
+                        <form id="approved-save-{{ p.id }}" method="post" style="display:inline-flex;">
+                          {% csrf_token %}
+                          <input type="hidden" name="profile_id" value="{{ p.id }}">
+                          <input type="hidden" name="action" value="save">
+                          <input type="hidden" name="date_from" value="{{ date_from }}">
+                          <input type="hidden" name="date_to" value="{{ date_to }}">
+                          {% if active_division %}<input type="hidden" name="division_code" value="{{ active_division.code }}">{% endif %}
+                          <button type="submit">저장</button>
+                        </form>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="msg">최근 승인 내역이 없습니다.</div>
+          {% endif %}
+        </div>
+
+        <div class="card">
+          <h2>최근 반려</h2>
+          {% if rejected_profiles %}
+            <div style="overflow-x:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>사용자</th>
+                    <th>부서</th>
+                    <th>팀</th>
+                    <th>상태</th>
+                    <th>메모</th>
+                    <th style="width:5rem;">저장</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for p in rejected_profiles %}
+                    <tr>
+                      <td>{{ user_label_map|lookup_user_label:p.user_id }}</td>
+                      <td>
+                        <select name="requested_division_id" form="rejected-save-{{ p.id }}" class="pending-division" data-team-select-id="rejected-team-{{ p.id }}">
+                          <option value="">부서 선택</option>
+                          {% for d in division_choices %}
+                            <option value="{{ d.id }}" {% if p.requested_division_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                      <td>
+                        <select id="rejected-team-{{ p.id }}" name="requested_team_id" form="rejected-save-{{ p.id }}" class="pending-team" data-selected="{{ p.requested_team_id|default:'' }}"></select>
+                      </td>
+                      <td>
+                        <select name="onboarding_status" form="rejected-save-{{ p.id }}" class="onboarding-status-select" aria-label="상태" style="min-width:9rem;">
+                          {% for code, label in onboarding_status_choices %}
+                            <option value="{{ code }}" {% if p.onboarding_status == code %}selected{% endif %}>{{ label }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                      <td>
+                        <input type="text" name="note" form="rejected-save-{{ p.id }}" class="onboarding-note-input" value="{{ p.onboarding_note|default:'' }}" style="width:100%; min-width:10rem; max-width:22rem; box-sizing:border-box;">
+                      </td>
+                      <td style="vertical-align:middle;">
+                        <form id="rejected-save-{{ p.id }}" method="post" style="display:inline-flex;">
+                          {% csrf_token %}
+                          <input type="hidden" name="profile_id" value="{{ p.id }}">
+                          <input type="hidden" name="action" value="save">
+                          <input type="hidden" name="date_from" value="{{ date_from }}">
+                          <input type="hidden" name="date_to" value="{{ date_to }}">
+                          {% if active_division %}<input type="hidden" name="division_code" value="{{ active_division.code }}">{% endif %}
+                          <button type="submit">저장</button>
+                        </form>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="msg">최근 반려 내역이 없습니다.</div>
+          {% endif %}
+        </div>
+      </main>
+    </div>
+  </div>
+  <script>
+    const teamsMap = {{ teams_map_json|safe }};
+    function fillTeamSelect(select, divisionId, selectedId) {
+      const list = teamsMap[String(divisionId)] || [];
+      select.innerHTML = '<option value="">팀 선택(선택)</option>' + list.map((t) =>
+        `<option value="${t.id}" ${String(selectedId) === String(t.id) ? "selected" : ""}>${t.name}</option>`
+      ).join("");
+    }
+    document.querySelectorAll(".pending-division").forEach((divisionSelect) => {
+      const teamSelect = document.getElementById(divisionSelect.dataset.teamSelectId);
+      if (!teamSelect) return;
+      fillTeamSelect(teamSelect, divisionSelect.value, teamSelect.dataset.selected || "");
+      divisionSelect.addEventListener("change", () => {
+        fillTeamSelect(teamSelect, divisionSelect.value, "");
+      });
+    });
+
+    function syncOnboardingNoteHints(row) {
+      if (!row) return;
+      const status = row.querySelector(".onboarding-status-select");
+      const note = row.querySelector(".onboarding-note-input");
+      if (!status || !note) return;
+      const isRejected = status.value === "rejected";
+      note.placeholder = isRejected
+        ? "반려 안내·사유(저장 시 반영)"
+        : "승인·대기 유지 시 비워도 됩니다";
+      note.title = isRejected
+        ? "반려로 저장할 때 신청자에게 보이는 안내 문구입니다."
+        : "반려로 바꿀 때만 입력하면 됩니다.";
+    }
+    document.querySelectorAll(".onboarding-status-select").forEach((sel) => {
+      const row = sel.closest("tr");
+      syncOnboardingNoteHints(row);
+      sel.addEventListener("change", () => syncOnboardingNoteHints(row));
+    });
+  </script>
+</body>
+</html>

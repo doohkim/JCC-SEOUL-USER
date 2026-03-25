@@ -69,6 +69,8 @@ class Command(BaseCommand):
             ("지역장", "region_leader", 40),
             ("팀장", "team_leader", 41),
             ("셀장", "cell_leader", 42),
+            ("출석부 관리자", "attendance_admin", 43),
+            ("주차장 관리자", "parking_admin", 44),
         ]
         for name_ko, code, order in roles:
             Role.objects.get_or_create(

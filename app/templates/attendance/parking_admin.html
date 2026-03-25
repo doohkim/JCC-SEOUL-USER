@@ -1,0 +1,100 @@
+{% load static permission_tags %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>주차권 관리</title>
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}">
+</head>
+<body>
+  <div class="jcc-layout">
+    {% include 'includes/jcc_left_nav.html' %}
+    <div class="jcc-layout-content">
+      <header class="app-header">
+        <div class="jcc-detail-titleWrap">
+          <h1>주차권 관리</h1>
+          <p class="subtitle">부서/팀/검색/날짜로 신청 내역을 조회합니다.</p>
+        </div>
+      </header>
+      <main>
+        <div class="card" style="margin-bottom:1rem;">
+          <h2>필터</h2>
+          <form method="get" class="toolbar" style="padding:0; border:none; background:transparent;">
+            <div class="field">
+              <label>부서</label>
+              <select name="division_code">
+                <option value="">전체</option>
+                {% for d in division_options %}
+                  <option value="{{ d.division__code }}" {% if division_code == d.division__code %}selected{% endif %}>
+                    {{ d.division__name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label>팀</label>
+              <select name="team_id">
+                <option value="">전체</option>
+                {% for t in team_options %}
+                  <option value="{{ t.team__id }}" {% if team_id == t.team__id|stringformat:'s' %}selected{% endif %}>
+                    {{ t.team__name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label>검색</label>
+              <input type="search" name="q" value="{{ q }}" placeholder="차량번호/표시명/로그인 ID">
+            </div>
+            <div class="field">
+              <label>시작일</label>
+              <input type="date" name="date_from" value="{{ date_from }}">
+            </div>
+            <div class="field">
+              <label>종료일</label>
+              <input type="date" name="date_to" value="{{ date_to }}">
+            </div>
+            <button type="submit">조회</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>신청 목록</h2>
+          <div class="msg">총 {{ applications|length }}건</div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>신청일</th>
+                  <th>표시명</th>
+                  <th>차량번호</th>
+                  <th>부서</th>
+                  <th>팀</th>
+                  <th>상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for a in applications %}
+                  <tr>
+                    <td>{{ a.created_at|date:"Y-m-d H:i" }}</td>
+                    <td>{{ a.user|user_display_name }}</td>
+                    <td>{{ a.vehicle_number }}</td>
+                    <td>{{ a.division.name|default:"-" }}</td>
+                    <td>{{ a.team.name|default:"-" }}</td>
+                    <td>{{ a.get_status_display }}</td>
+                  </tr>
+                {% empty %}
+                  <tr>
+                    <td colspan="6">조회 결과가 없습니다.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>

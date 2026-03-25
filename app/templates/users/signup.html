@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>로그인</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0f14;
+      --card: #151b24;
+      --text: #e8edf4;
+      --muted: #8b9cb3;
+      --accent: #4a9eff;
+      --accent-dim: #2d6bb3;
+      --border: #2a3548;
+      --err: #fda4af;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "IBM Plex Sans", system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(rgba(8, 12, 18, 0.66), rgba(8, 12, 18, 0.82)),
+        url("https://images.unsplash.com/photo-1520637836862-4d197d17c50a?auto=format&fit=crop&w=1800&q=80")
+          center/cover no-repeat,
+        var(--bg);
+    }
+    .wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 24px 20px 34px;
+    }
+    .card {
+      width: 100%;
+      max-width: 680px;
+      background: rgba(20, 27, 36, 0.93);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.28);
+      padding: 24px;
+      backdrop-filter: blur(2px);
+    }
+    .header {
+      margin-bottom: 14px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .desc {
+      margin: 0.45rem 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    .non-field-errors {
+      margin-bottom: 12px;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid #7f1d1d;
+      background: rgba(127, 29, 29, 0.2);
+      color: #fecaca;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+    .actions {
+      margin-top: 24px;
+      display: grid;
+      gap: 10px;
+    }
+    .kakao-btn {
+      width: 100%;
+      border: none;
+      border-radius: 8px;
+      background: #fee500;
+      color: #111;
+      padding: 0.66rem 0.95rem;
+      font-size: 0.94rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease;
+    }
+    .kakao-btn:hover {
+      background: #f9dc00;
+    }
+    .link {
+      text-align: center;
+      font-size: 0.86rem;
+      color: var(--muted);
+    }
+    .link a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .link a:hover {
+      text-decoration: underline;
+    }
+    @media (max-width: 900px) {
+      .wrap {
+        padding-bottom: 24px;
+      }
+      .card {
+        max-width: 560px;
+        padding: 20px;
+      }
+      h1 {
+        font-size: 1.3rem;
+      }
+    }
+    @media (max-width: 640px) {
+      .wrap {
+        align-items: flex-end;
+        padding: 0 12px 14px;
+      }
+      .card {
+        border-radius: 16px;
+        max-width: none;
+        min-height: auto;
+        padding: 18px 14px 16px;
+      }
+      .kakao-btn {
+        padding: 0.9rem 1rem;
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="header">
+        <h1>카카오 로그인</h1>
+        <p class="desc">회원가입과 로그인은 카카오 계정으로만 가능합니다.</p>
+      </div>
+      {% if login_error_message %}
+        <div class="non-field-errors">{{ login_error_message }}</div>
+      {% endif %}
+      <div class="actions">
+        <a class="kakao-btn" href="{{ kakao_begin_url }}">카카오로 시작하기</a>
+        <div class="link">
+          처음 로그인하면 자동으로 계정이 생성됩니다.
+        </div>
+      </div>
+      <div class="link" style="margin-top: 8px;">
+        운영 문의는 담당자에게 요청해 주세요.
+      </div>
+    </div>
+  </div>
+</body>
+</html>

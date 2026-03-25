@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>소속 신청</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0c0f14; --card:#151b24; --text:#e8edf4; --muted:#8b9cb3; --border:#2a3548; --ok:#34c759; --warn:#f59e0b; --err:#fda4af; --accent:#4a9eff; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family:"IBM Plex Sans",system-ui,-apple-system,sans-serif; color:var(--text); background:var(--bg); }
+    .wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:16px; }
+    .card { width:100%; max-width:720px; border:1px solid var(--border); border-radius:12px; background:var(--card); padding:20px; }
+    h1 { margin:0; font-size:1.4rem; }
+    .desc { margin:.4rem 0 1rem; color:var(--muted); }
+    .status { border:1px solid var(--border); border-radius:10px; padding:.75rem .9rem; margin-bottom:1rem; }
+    .status.pending { border-color:rgba(245,158,11,.45); }
+    .status.approved { border-color:rgba(52,199,89,.45); }
+    .status.rejected { border-color:rgba(253,164,175,.45); }
+    .field { margin-bottom:.85rem; }
+    label { display:block; margin-bottom:.3rem; color:var(--muted); font-size:.85rem; }
+    select { width:100%; background:#101722; border:1px solid var(--border); border-radius:8px; color:var(--text); padding:.6rem .7rem; }
+    .actions { margin-top:1rem; display:flex; gap:.6rem; }
+    button { border:none; border-radius:8px; background:var(--accent); color:#fff; padding:.6rem 1rem; font-weight:600; cursor:pointer; }
+    .msg { margin-top:.5rem; color:var(--muted); }
+    .readonly-box { border:1px solid var(--border); border-radius:8px; background:#101722; padding:.6rem .7rem; color:var(--text); }
+    ul.errorlist { margin:0 0 .5rem 1rem; color:var(--err); }
+    @media (max-width:640px) { .card { padding:16px; } .actions { flex-direction:column; } button { width:100%; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>소속 신청</h1>
+      <p class="desc">처음 로그인한 계정은 소속 승인 후 출석/교적 화면을 사용할 수 있습니다.</p>
+
+      <div class="status {{ onboarding_status }}">
+        {% if onboarding_status == "pending" %}
+          <strong style="color:var(--warn);">승인 대기</strong>
+          <div class="msg">소속 신청이 접수되었습니다. 관리자 승인 완료 전까지는 재신청할 수 없습니다.</div>
+          {% if requested_division_name %}
+            <div class="msg">신청 부서: {{ requested_division_name }}</div>
+          {% endif %}
+          {% if requested_team_name %}
+            <div class="msg">신청 팀: {{ requested_team_name }}</div>
+          {% endif %}
+        {% elif onboarding_status == "rejected" %}
+          <strong style="color:var(--err);">반려됨</strong>
+          <div class="msg">요청이 반려되었습니다. 내용을 수정해 다시 신청해 주세요.</div>
+          {% if onboarding_note %}<div class="msg">사유: {{ onboarding_note }}</div>{% endif %}
+        {% else %}
+          <strong style="color:var(--ok);">확인 중</strong>
+          <div class="msg">희망 소속을 제출해 주세요.</div>
+        {% endif %}
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        {% if messages %}
+          {% for message in messages %}
+            <div class="msg">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+        {% if is_pending_locked %}
+          <div class="field">
+            <label>신청 부서</label>
+            <div class="readonly-box">{{ requested_division_name|default:"-" }}</div>
+          </div>
+          <div class="field">
+            <label>신청 팀</label>
+            <div class="readonly-box">{{ requested_team_name|default:"미선택" }}</div>
+          </div>
+        {% else %}
+          <div class="field">
+            <label for="{{ form.requested_division.id_for_label }}">희망 부서</label>
+            {{ form.requested_division }}
+            {{ form.requested_division.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ form.requested_team.id_for_label }}">희망 팀 (선택)</label>
+            {{ form.requested_team }}
+            {{ form.requested_team.errors }}
+          </div>
+        {% endif %}
+        <div class="actions">
+          {% if is_pending_locked %}
+            <button type="button" disabled>승인 대기중</button>
+          {% else %}
+            <button type="submit">소속 신청 제출</button>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+  <script>
+    (function() {
+      const division = document.getElementById("id_requested_division");
+      const team = document.getElementById("id_requested_team");
+      const teamsMap = {{ teams_map_json|safe }};
+      const isLocked = {{ is_pending_locked|yesno:"true,false" }};
+      if (!division || !team) return;
+      if (isLocked) return;
+      const selectedTeam = team.value;
+
+      function renderTeams() {
+        const divisionId = division.value;
+        const rows = teamsMap[String(divisionId)] || [];
+        team.innerHTML = "";
+        const empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = "팀을 선택해 주세요 (선택)";
+        team.appendChild(empty);
+        rows.forEach((row) => {
+          const opt = document.createElement("option");
+          opt.value = String(row.id);
+          opt.textContent = row.name;
+          team.appendChild(opt);
+        });
+        if (rows.some((r) => String(r.id) === selectedTeam)) {
+          team.value = selectedTeam;
+        }
+      }
+
+      division.addEventListener("change", renderTeams);
+      renderTeams();
+    })();
+  </script>
+</body>
+</html>

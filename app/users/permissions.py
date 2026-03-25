@@ -15,9 +15,10 @@ from registry.models import Member
 
 from .models import Division, RoleLevel, User
 
-# 시드(seed_org_chart) 기준: 전도사=80, 목사=100, 부장=60 (교적 제외)
-_REGISTRY_MIN_LEVEL = 80
 _REGISTRY_ROLE_CODES = frozenset({"pastor", "evangelist"})
+_ATTENDANCE_LEADER_ROLE_CODES = frozenset({"team_leader", "cell_leader"})
+_ATTENDANCE_MANAGER_ROLE_CODES = frozenset({"attendance_admin"})
+_PARKING_MANAGER_ROLE_CODES = frozenset({"parking_admin"})
 
 
 def can_access_member_registry(user: User) -> bool:
@@ -26,12 +27,82 @@ def can_access_member_registry(user: User) -> bool:
         return False
     if user.is_superuser:
         return True
+    if user.is_staff:
+        return True
     rl = getattr(user, "role_level", None)
     if rl is None:
         return False
-    if getattr(rl, "code", None) in _REGISTRY_ROLE_CODES:
+    return getattr(rl, "code", None) in _REGISTRY_ROLE_CODES
+
+
+def _functional_role_codes_for(user: User) -> set[str]:
+    if not user.is_authenticated:
+        return set()
+    return set(user.functional_dept_roles.values_list("role__code", flat=True))
+
+
+def is_platform_admin(user: User) -> bool:
+    """전체 관리자(Django admin) 여부."""
+    if not user.is_authenticated or not user.is_active:
+        return False
+    return bool(user.is_superuser or user.is_staff)
+
+
+def _is_pastoral(user: User) -> bool:
+    if not user.is_authenticated or not user.role_level_id:
+        return False
+    return getattr(user.role_level, "code", None) in _REGISTRY_ROLE_CODES
+
+
+def _primary_user_division_ids(user: User) -> list[int]:
+    primary = (
+        user.division_teams.order_by("-is_primary", "sort_order", "division__sort_order", "id")
+        .values_list("division_id", flat=True)
+        .first()
+    )
+    if primary:
+        return [int(primary)]
+    first = user.division_teams.values_list("division_id", flat=True).first()
+    return [int(first)] if first else []
+
+
+def dashboard_divisions_for(user: User):
+    """출석 대시보드에서 선택 가능한 부서 범위."""
+    if not user.is_authenticated:
+        return Division.objects.none()
+    if is_platform_admin(user) or is_attendance_manager(user):
+        return Division.objects.all()
+
+    if _is_pastoral(user):
+        pastoral_ids = list(
+            user.pastoral_divisions.values_list("division_id", flat=True).distinct()
+        )
+        if pastoral_ids:
+            return Division.objects.filter(pk__in=pastoral_ids)
+
+    # 일반/팀장/셀장: 주 소속 1개만.
+    primary_ids = _primary_user_division_ids(user)
+    if primary_ids:
+        return Division.objects.filter(pk__in=primary_ids)
+    return Division.objects.none()
+
+
+def is_attendance_manager(user: User) -> bool:
+    """출석부 관리자(전체 인원 조회 허용) 여부."""
+    if not user.is_authenticated or not user.is_active:
+        return False
+    role_codes = _functional_role_codes_for(user)
+    return bool(role_codes & _ATTENDANCE_MANAGER_ROLE_CODES)
+
+
+def can_access_attendance_roster(user: User) -> bool:
+    """출석부(팀장 화면) 접근 허용 여부."""
+    if not user.is_authenticated or not user.is_active:
+        return False
+    if is_platform_admin(user) or is_attendance_manager(user):
         return True
-    return (rl.level or 0) >= _REGISTRY_MIN_LEVEL
+    role_codes = _functional_role_codes_for(user)
+    return bool(role_codes & _ATTENDANCE_LEADER_ROLE_CODES)
 
 
 def visible_divisions_for(user: User):
@@ -41,17 +112,24 @@ def visible_divisions_for(user: User):
     """
     if not user.is_authenticated:
         return Division.objects.none()
-    if user.is_superuser:
-        return Division.objects.all()
-    division_ids = user.division_teams.values_list("division_id", flat=True).distinct()
-    return Division.objects.filter(pk__in=division_ids)
+    return dashboard_divisions_for(user)
+
+
+def can_change_dashboard_division(user: User) -> bool:
+    if not user.is_authenticated:
+        return False
+    if is_platform_admin(user) or is_attendance_manager(user):
+        return True
+    if _is_pastoral(user):
+        return dashboard_divisions_for(user).count() > 1
+    return False
 
 
 def registry_divisions_for(user: User):
     """교적 Member 가 필터링되는 상위 부서 범위."""
     if not user.is_authenticated:
         return Division.objects.none()
-    if user.is_superuser or can_access_member_registry(user):
+    if is_platform_admin(user) or can_access_member_registry(user):
         return Division.objects.all()
     return Division.objects.none()
 
@@ -69,9 +147,55 @@ def can_see_division_for_registry(user: User, division: Division) -> bool:
     """교적 맥락에서 해당 부서 회원을 다룰 수 있는지."""
     if not user.is_authenticated:
         return False
-    if user.is_superuser:
+    if is_platform_admin(user):
         return True
     return registry_divisions_for(user).filter(pk=division.pk).exists()
+
+
+def pastoral_divisions_for(user: User):
+    """목사/전도사/관리자용 계정 관리 페이지의 부서 범위."""
+    if not user.is_authenticated:
+        return Division.objects.none()
+    if is_platform_admin(user):
+        return Division.objects.all()
+
+    role_code = getattr(getattr(user, "role_level", None), "code", None)
+    if role_code == "pastor":
+        pastoral_ids = list(
+            user.pastoral_divisions.values_list("division_id", flat=True).distinct()
+        )
+        if pastoral_ids:
+            return Division.objects.filter(pk__in=pastoral_ids)
+        division_ids = user.division_teams.values_list("division_id", flat=True).distinct()
+        return Division.objects.filter(pk__in=division_ids)
+
+    if role_code == "evangelist":
+        primary_ids = _primary_user_division_ids(user)
+        if primary_ids:
+            return Division.objects.filter(pk__in=primary_ids)
+        division_ids = user.division_teams.values_list("division_id", flat=True).distinct()[:1]
+        return Division.objects.filter(pk__in=division_ids)
+
+    return Division.objects.none()
+
+
+def can_manage_division_accounts(user: User) -> bool:
+    return pastoral_divisions_for(user).exists()
+
+
+def can_access_parking_tab(user: User) -> bool:
+    if not user.is_authenticated or not user.is_active:
+        return False
+    return True
+
+
+def is_parking_manager(user: User) -> bool:
+    if not user.is_authenticated or not user.is_active:
+        return False
+    if is_platform_admin(user):
+        return True
+    role_codes = _functional_role_codes_for(user)
+    return bool(role_codes & _PARKING_MANAGER_ROLE_CODES)
 
 
 def members_visible_to(actor: User, division: Division | None = None):

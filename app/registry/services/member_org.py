@@ -52,7 +52,7 @@ def change_team_within_division(
             )
         mdt = membership
     else:
-        mdt = qs.filter(is_primary=True).first() or qs.order_by("sort_order", "id").first()
+        mdt = qs.first()
         if mdt is None:
             mdt = MemberDivisionTeam.objects.create(
                 member=member,
@@ -62,19 +62,6 @@ def change_team_within_division(
                 sort_order=0,
             )
             return mdt
-
-    dup = (
-        MemberDivisionTeam.objects.filter(
-            member=member,
-            division=division,
-            team=new_team,
-        )
-        .exclude(pk=mdt.pk)
-        .first()
-    )
-    if dup is not None:
-        mdt.delete()
-        mdt = dup
 
     mdt.team = new_team
     if make_primary:
@@ -104,15 +91,23 @@ def transfer_to_division(
     mdt, created = MemberDivisionTeam.objects.get_or_create(
         member=member,
         division=to_division,
-        team=team,
         defaults={
+            "team": team,
             "is_primary": make_primary,
             "sort_order": 0,
         },
     )
-    if not created and make_primary:
-        mdt.is_primary = True
-        mdt.save(update_fields=["is_primary"])
+    if not created:
+        update_fields = []
+        tid = team.id if team else None
+        if mdt.team_id != tid:
+            mdt.team = team
+            update_fields.append("team")
+        if make_primary and not mdt.is_primary:
+            mdt.is_primary = True
+            update_fields.append("is_primary")
+        if update_fields:
+            mdt.save(update_fields=update_fields)
     if make_primary:
         _set_single_primary_in_division(member, to_division, mdt)
     return mdt

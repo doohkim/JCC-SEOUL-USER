@@ -1,14 +1,26 @@
-{% load static %}
+{% load static permission_tags %}
 <aside class="jcc-leftNav" id="jcc-leftNav">
   <div class="jcc-leftNav-tabs">
     <a class="jcc-leftNav-item" href="{% url 'attendance_dashboard' %}">대시보드</a>
-    <a class="jcc-leftNav-item" href="{% url 'attendance_team_roster_check' %}">출석부</a>
-    <a class="jcc-leftNav-item" href="{% url 'registry_member_list' %}">교적부</a>
+    {% if user|can_access_attendance_tab %}
+      <a class="jcc-leftNav-item" href="{% url 'attendance_team_roster_check' %}">출석부</a>
+    {% endif %}
+    {% if user|can_access_parking_tab %}
+      <a class="jcc-leftNav-item" href="{% url 'parking_permit_apply' %}">주차권</a>
+    {% endif %}
+    {% if user|can_access_registry_tab %}
+      <a class="jcc-leftNav-item" href="{% url 'registry_member_list' %}">교적부</a>
+      <a class="jcc-leftNav-item" href="{% url 'user_division_account_roles' %}">계정관리</a>
+    {% endif %}
   </div>
 
   <div class="jcc-leftNav-bottom">
-    <div class="jcc-leftNav-user">{% if user.is_authenticated %}{{ user.username }}{% endif %}</div>
-    <a class="jcc-leftNav-logout" href="{% url 'admin:logout' %}">로그아웃</a>
+    <div class="jcc-leftNav-user">
+      {% if user.is_authenticated %}
+        {{ user|user_display_name }}
+      {% endif %}
+    </div>
+    <a class="jcc-leftNav-logout" href="{% url 'user_logout' %}">로그아웃</a>
   </div>
 </aside>
 

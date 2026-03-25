@@ -1,4 +1,4 @@
-{% load static %}
+{% load static permission_tags %}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -35,20 +35,33 @@
           <label>예배 구분</label>
           <select id="worshipType"></select>
         </div>
-        <div style="display:flex; align-items:center; gap:0.75rem; margin-left:auto;">
-          <button
-            type="button"
-            class="secondary"
-            data-href="{% url 'registry_member_list' %}"
-            onclick="window.location.href=this.dataset.href"
-          >
-            교적부
-          </button>
-        </div>
+        {% if user|can_access_registry_tab %}
+          <div style="display:flex; align-items:center; gap:0.75rem; margin-left:auto;">
+            <button
+              type="button"
+              class="secondary"
+              data-href="{% url 'registry_member_list' %}"
+              onclick="window.location.href=this.dataset.href"
+            >
+              교적부
+            </button>
+          </div>
+        {% endif %}
         <button type="button" id="btnRefresh">새로고침</button>
       </div>
 
       <main>
+        <script>
+          window.ATTENDANCE_DASHBOARD_ACCESS = {
+            canChangeDivision: {{ can_change_division_json|default:"false" }}
+          };
+        </script>
+        {% if show_welcome %}
+        <div class="card" style="margin-bottom: 1rem;">
+          <h2 style="margin-bottom: 0.25rem;">환영합니다</h2>
+          <div class="msg" style="padding: 0;">{{ welcome_name }}님, 카카오 로그인으로 정상 접속되었습니다.</div>
+        </div>
+        {% endif %}
         <div id="statusLine" class="msg"></div>
 
         <div class="grid-charts" id="chartArea">

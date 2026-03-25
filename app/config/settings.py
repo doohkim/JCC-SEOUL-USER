@@ -10,10 +10,17 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent
+
+# Load env vars from workspace/app if present.
+load_dotenv(PROJECT_ROOT / ".env", override=False)
+load_dotenv(BASE_DIR / ".env", override=False)
 
 
 # Quick-start development settings - unsuitable for production
@@ -25,7 +32,54 @@ SECRET_KEY = "django-insecure-$6gta((^uu4h+#9*^&buib(uwgsjxyepvve3o^sp7vlf8jav#x
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
+APP_HOST = os.environ.get("APP_HOST", "shalom.jcc-seoul.com")
+ADMIN_HOST = os.environ.get("ADMIN_HOST", "shalom.admin.jcc-seoul.com")
+API_HOST = os.environ.get("API_HOST", "shalom.api.jcc-seoul.com")
+DOCS_HOST = os.environ.get("DOCS_HOST", "shalom.docs.jcc-seoul.com")
+
+SUBDOMAIN_ROUTING_ENABLED = os.environ.get("SUBDOMAIN_ROUTING_ENABLED", "").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+CSRF_COOKIE_SECURE = os.environ.get("CSRF_COOKIE_SECURE", "").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "testserver",
+    APP_HOST,
+    ADMIN_HOST,
+    API_HOST,
+    DOCS_HOST,
+]
+CSRF_TRUSTED_ORIGINS = [
+    f"https://{APP_HOST}",
+    f"https://{ADMIN_HOST}",
+    f"https://{API_HOST}",
+    f"https://{DOCS_HOST}",
+]
 
 
 # Application definition
@@ -37,6 +91,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "social_django",
     "rest_framework",
     "users.apps.UsersConfig",
     "registry.apps.RegistryConfig",
@@ -56,10 +111,20 @@ REST_FRAMEWORK = {
 # 청년부 구성원 커스텀 User 모델
 AUTH_USER_MODEL = "users.User"
 
+AUTHENTICATION_BACKENDS = (
+    "social_core.backends.kakao.KakaoOAuth2",
+    "django.contrib.auth.backends.ModelBackend",
+)
+
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/attendance/?welcome=1"
+LOGOUT_REDIRECT_URL = "/login/"
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "config.middleware.SubdomainRoutingMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -78,10 +143,37 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "social_django.context_processors.backends",
+                "social_django.context_processors.login_redirect",
             ],
+            "libraries": {
+                "permission_tags": "users.templatetags.permission_tags",
+            },
         },
     },
 ]
+
+SOCIAL_AUTH_KAKAO_KEY = os.environ.get("KAKAO_REST_API_KEY", "")
+SOCIAL_AUTH_KAKAO_SECRET = os.environ.get("KAKAO_CLIENT_SECRET", "")
+SOCIAL_AUTH_KAKAO_REDIRECT_URI = os.environ.get("KAKAO_REDIRECT_URI", "")
+SOCIAL_AUTH_KAKAO_SCOPE = ["profile_nickname"]
+
+SOCIAL_AUTH_PIPELINE = (
+    "social_core.pipeline.social_auth.social_details",
+    "social_core.pipeline.social_auth.social_uid",
+    "social_core.pipeline.social_auth.auth_allowed",
+    "social_core.pipeline.social_auth.social_user",
+    "users.services.kakao_auth.create_or_update_kakao_user",
+    "social_core.pipeline.user.get_username",
+    "social_core.pipeline.social_auth.associate_by_email",
+    "social_core.pipeline.user.create_user",
+    "social_core.pipeline.social_auth.associate_user",
+    "social_core.pipeline.social_auth.load_extra_data",
+    "social_core.pipeline.user.user_details",
+)
+
+SOCIAL_AUTH_LOGIN_ERROR_URL = "/login/?error=1"
+SOCIAL_AUTH_LOGIN_REDIRECT_URL = "/attendance/?welcome=1"
 
 WSGI_APPLICATION = "config.wsgi.application"
 
@@ -133,10 +225,17 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+if os.environ.get("DOCKER") == "1":
+    STATIC_ROOT = Path("/srv/.static")
+else:
+    STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # 멤버 프로필·가족 사진 등
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+if os.environ.get("DOCKER") == "1":
+    MEDIA_ROOT = Path("/srv/.media")
+else:
+    MEDIA_ROOT = BASE_DIR / "media"
 
 # 관리자 수정 로그 (users.admin)
 LOGGING = {

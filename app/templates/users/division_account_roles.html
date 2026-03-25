@@ -1,0 +1,349 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>부서 계정 직책 관리</title>
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}">
+  <style>
+    .jcc-division-roles-table th {
+      vertical-align: bottom;
+    }
+    .jcc-division-roles-table tbody td {
+      vertical-align: middle;
+    }
+    .jcc-division-roles-table .jcc-role-cell {
+      min-width: min(100%, 16rem);
+      max-width: 38rem;
+    }
+    .jcc-role-form {
+      margin: 0;
+      min-width: 0;
+    }
+    .role-options {
+      min-width: 0;
+    }
+    .jcc-role-panel {
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.22);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+      overflow: hidden;
+    }
+    .jcc-role-panel__toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .jcc-role-panel__toolbar select {
+      flex: 1 1 auto;
+      min-width: 0;
+      margin: 0;
+      font-size: 0.8125rem;
+    }
+    .jcc-role-panel__save {
+      flex: 0 0 auto;
+      padding: 0.38rem 0.75rem;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+    .jcc-role-panel__body {
+      padding: 0.4rem 0.5rem 0.45rem;
+      overflow-x: hidden;
+    }
+    .jcc-role-panel__body:not(.is-empty) {
+      max-height: 5.5rem;
+      overflow-y: auto;
+    }
+    .jcc-role-panel__body.is-empty {
+      padding-top: 0.32rem;
+      padding-bottom: 0.32rem;
+    }
+    .jcc-role-panel__empty-hint {
+      font-size: 0.75rem;
+      letter-spacing: 0.02em;
+      color: rgba(255, 255, 255, 0.42);
+      line-height: 1.35;
+    }
+    .jcc-role-picker__tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem 0.45rem;
+      padding: 0.1rem 0.15rem 0.05rem 0.1rem;
+    }
+    .jcc-role-tag {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      padding: 0.3rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.8125rem;
+      line-height: 1.2;
+      background: rgba(59, 130, 246, 0.22);
+      border: 1px solid rgba(96, 165, 250, 0.35);
+      color: inherit;
+      max-width: 100%;
+      overflow: visible;
+    }
+    .jcc-role-tag__text {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .jcc-role-tag__remove {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 1.05rem;
+      height: 1.05rem;
+      padding: 0;
+      margin: 0;
+      border: 1px solid rgba(96, 165, 250, 0.55);
+      border-radius: 50%;
+      font-size: 0.65rem;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.92);
+      color: #fff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+      transform: translate(32%, -32%);
+      z-index: 2;
+      opacity: 0;
+      transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+    .jcc-role-tag:hover .jcc-role-tag__remove,
+    .jcc-role-tag:focus-within .jcc-role-tag__remove {
+      opacity: 1;
+    }
+    .jcc-role-tag__remove:hover {
+      background: rgba(220, 38, 38, 0.85);
+    }
+  </style>
+</head>
+<body>
+  <div class="jcc-layout">
+    {% include 'includes/jcc_left_nav.html' %}
+    <div class="jcc-layout-content">
+      <header class="app-header">
+        <div class="jcc-detail-titleWrap">
+          <h1>부서 계정 직책 관리</h1>
+          <p class="subtitle">직책(Role) DB 기준 전체 목록에서 선택 · 출석·주차 권한은 해당 코드(팀장/셀장/출석부·주차 관리자 등)로 연동됩니다.</p>
+        </div>
+      </header>
+      <main>
+        {% include 'users/_account_manage_tabs.html' %}
+
+        {% if messages %}
+          <div class="card" style="margin-bottom: 1rem;">
+            {% for message in messages %}
+              <div class="msg{% if message.tags == 'error' %} err{% endif %}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="card" style="margin-bottom: 1rem;">
+          <h2>대상 부서</h2>
+          {% if active_division %}
+            {% if can_choose_division %}
+              <form method="get">
+                <div class="toolbar" style="padding:0; border:none; background:transparent;">
+                  <div class="field">
+                    <label>부서</label>
+                    <select name="division_code" onchange="this.form.submit()">
+                      {% for d in allowed_divisions %}
+                        <option value="{{ d.code }}" {% if active_division and d.id == active_division.id %}selected{% endif %}>
+                          {{ d.name }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+              </form>
+            {% else %}
+              <div class="msg">{{ active_division.name }}</div>
+            {% endif %}
+          {% else %}
+            <div class="msg err">관리 가능한 부서가 없습니다.</div>
+          {% endif %}
+        </div>
+
+        <div class="card">
+          <h2>부서 계정 목록</h2>
+          {% if users_payload %}
+            <div style="overflow-x:auto;">
+              <table class="jcc-division-roles-table">
+                <thead>
+                  <tr>
+                    <th>표시명</th>
+                    <th>로그인 ID</th>
+                    <th>휴대폰</th>
+                    <th>직급</th>
+                    <th>팀 설정</th>
+                    <th>직책 설정</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for u in users_payload %}
+                    <tr>
+                      <td>{{ u.display_name|default:u.username }}</td>
+                      <td>{{ u.username }}</td>
+                      <td>{{ u.phone|default:"-" }}</td>
+                      <td>{{ u.role_level_name }}</td>
+                      <td>
+                        <select name="team_id" form="role-form-{{ u.id }}">
+                          <option value="">팀 미지정</option>
+                          {% for tm in division_team_choices %}
+                            <option value="{{ tm.id }}" {% if u.team_id == tm.id %}selected{% endif %}>{{ tm.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                      <td class="jcc-role-cell">
+                        <form id="role-form-{{ u.id }}" class="jcc-role-form" method="post">
+                          {% csrf_token %}
+                          <input type="hidden" name="user_id" value="{{ u.id }}">
+                          <div
+                            class="role-options"
+                            data-role-api-url="{{ role_options_api_url }}"
+                            data-assigned='{{ u.assigned_role_codes_json|safe }}'
+                          ></div>
+                        </form>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="msg">해당 부서에 조회할 계정이 없습니다.</div>
+          {% endif %}
+        </div>
+      </main>
+    </div>
+  </div>
+  <script>
+    const roleContainers = document.querySelectorAll(".role-options");
+    function escAttr(s) {
+      return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+    }
+    function roleNameByCode(roles, code) {
+      const r = roles.find((x) => x.code === code);
+      return r ? r.name : code;
+    }
+    function mountRolePicker(el, roles) {
+      let selected = [];
+      try {
+        selected = JSON.parse(el.dataset.assigned || "[]");
+      } catch (e) {
+        selected = [];
+      }
+      if (!Array.isArray(selected)) selected = [];
+
+      el.innerHTML = `
+        <div class="jcc-role-panel">
+          <div class="jcc-role-panel__toolbar">
+            <select class="jcc-role-pick-select" aria-label="직책 선택·추가"></select>
+            <button type="submit" class="jcc-role-panel__save">저장</button>
+          </div>
+          <div class="jcc-role-panel__body is-empty">
+            <div class="jcc-role-picker__tags jcc-role-tags-mount"></div>
+          </div>
+        </div>
+        <div class="jcc-role-hidden-inputs" hidden aria-hidden="true"></div>
+      `;
+      const pickSelect = el.querySelector(".jcc-role-pick-select");
+      const panelBody = el.querySelector(".jcc-role-panel__body");
+      const tagsMount = el.querySelector(".jcc-role-tags-mount");
+      const hiddenMount = el.querySelector(".jcc-role-hidden-inputs");
+      const form = el.closest("form");
+
+      function fillSelectOptions() {
+        const taken = new Set(selected);
+        const available = roles.filter((r) => !taken.has(r.code));
+        pickSelect.innerHTML =
+          '<option value="">직책 선택으로 추가…</option>' +
+          available.map((r) => `<option value="${escAttr(r.code)}">${escAttr(r.name)}</option>`).join("");
+        pickSelect.disabled = available.length === 0;
+      }
+
+      function syncHiddenInputs() {
+        hiddenMount.innerHTML = "";
+        selected.forEach((code) => {
+          const inp = document.createElement("input");
+          inp.type = "hidden";
+          inp.name = "role_codes";
+          inp.value = code;
+          hiddenMount.appendChild(inp);
+        });
+      }
+
+      function renderTags() {
+        if (!selected.length) {
+          panelBody.classList.add("is-empty");
+          tagsMount.innerHTML = '<span class="jcc-role-panel__empty-hint">지정된 직책 없음 · 위 목록에서 선택</span>';
+          syncHiddenInputs();
+          return;
+        }
+        panelBody.classList.remove("is-empty");
+        tagsMount.innerHTML = selected
+          .map(
+            (code) => `
+          <span class="jcc-role-tag">
+            <span class="jcc-role-tag__text">${escAttr(roleNameByCode(roles, code))}</span>
+            <button type="button" class="jcc-role-tag__remove" data-code="${escAttr(code)}" aria-label="직책 제거">×</button>
+          </span>`
+          )
+          .join("");
+        tagsMount.querySelectorAll(".jcc-role-tag__remove").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const c = btn.getAttribute("data-code");
+            selected = selected.filter((x) => x !== c);
+            fillSelectOptions();
+            renderTags();
+          });
+        });
+        syncHiddenInputs();
+      }
+
+      function tryAdd() {
+        const code = (pickSelect.value || "").trim();
+        if (!code || selected.includes(code)) return;
+        selected.push(code);
+        fillSelectOptions();
+        renderTags();
+      }
+
+      pickSelect.addEventListener("change", () => {
+        tryAdd();
+      });
+
+      fillSelectOptions();
+      renderTags();
+
+      if (form) {
+        form.addEventListener("submit", () => {
+          syncHiddenInputs();
+        });
+      }
+    }
+
+    async function fillRoleOptions() {
+      if (!roleContainers.length) return;
+      const url = roleContainers[0].dataset.roleApiUrl;
+      const res = await fetch(url, { credentials: "same-origin" });
+      if (!res.ok) return;
+      const data = await res.json();
+      const roles = Array.isArray(data.results) ? data.results : [];
+      roleContainers.forEach((el) => mountRolePicker(el, roles));
+    }
+    fillRoleOptions();
+  </script>
+</body>
+</html>

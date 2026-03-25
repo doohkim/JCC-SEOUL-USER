@@ -2,6 +2,7 @@
  * 출석 프론트 — /api/v1/attendance/* (세션 쿠키)
  */
 const API = "/api/v1";
+const DASHBOARD_ACCESS = window.ATTENDANCE_DASHBOARD_ACCESS || { canChangeDivision: false };
 
 let charts = { sunVenue: null, sunPart: null, sunTeam: null, midweek: null };
 /** @type {Record<string, object>} week_sunday → 주차 rollup API 한 행 */
@@ -161,6 +162,7 @@ async function loadDivisions() {
     opt.textContent = d.name + " (" + d.code + ")";
     sel.appendChild(opt);
   });
+  sel.disabled = !DASHBOARD_ACCESS.canChangeDivision;
   if ([...sel.options].some((o) => o.value === "youth")) sel.value = "youth";
   if (list.length === 0) {
     setStatus(
@@ -607,6 +609,7 @@ function bindUi() {
   document.getElementById("btnApplySun").onclick = () => loadSunTable();
   document.getElementById("btnApplyMw").onclick = () => loadMwTable();
   document.getElementById("divisionCode").onchange = async () => {
+    if (!DASHBOARD_ACCESS.canChangeDivision) return;
     await loadWeeks();
     await loadTeams();
     await refreshAll();

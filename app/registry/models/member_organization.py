@@ -1,6 +1,7 @@
 """교적(Member)의 부서·팀·동아리·일하는 부서 소속."""
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from users.models.organization import Club, Division, FunctionalDepartment, Role, Team
@@ -41,14 +42,31 @@ class MemberDivisionTeam(models.Model):
         ordering = ["member", "-is_primary", "division", "sort_order"]
         constraints = [
             models.UniqueConstraint(
-                fields=["member", "division", "team"],
-                name="unique_member_division_team",
+                fields=["member", "division"],
+                name="unique_registry_member_division",
             )
         ]
 
     def __str__(self):
         tl = self.team.name if self.team_id else "(팀 미지정)"
         return f"{self.member.name} @ {self.division.name} · {tl}"
+
+    def clean(self):
+        super().clean()
+        if self.member_id and self.division_id:
+            qs = MemberDivisionTeam.objects.filter(
+                member_id=self.member_id,
+                division_id=self.division_id,
+            )
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError(
+                    {
+                        "division": "같은 부서에 서로 다른 팀 행을 둘 수 없습니다. "
+                        "한 부서당 한 팀(또는 팀 미지정)만 지정하세요."
+                    }
+                )
 
     def save(self, *args, **kwargs):
         if self.team_id and self.team.division_id != self.division_id:
