@@ -1,0 +1,179 @@
+version: "3.9"
+
+services:
+  nginx:
+    image: ${NGINX_IMAGE:-jonasal/nginx-certbot:latest}
+    container_name: nginx
+    restart: unless-stopped
+    env_file:
+      - ./.deploy/env/nginx-certbot.env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ${NGINX_SECRET:-./.deploy/letsencrypt}:/etc/letsencrypt
+      - ./.deploy/nginx/conf.d:/etc/nginx/user_conf.d:ro
+      - django-static:/srv/.static:ro
+      - django-media:/srv/.media:ro
+    depends_on:
+      django:
+        condition: service_healthy
+    networks:
+      default:
+        ipv4_address: 172.19.0.2
+
+  ddns-route53:
+    image: crazymax/ddns-route53:latest
+    container_name: ddns-route53
+    restart: always
+    volumes:
+      - ./.deploy/ddns-route53.yml:/ddns-route53.yml:ro
+    environment:
+      - TZ=Asia/Seoul
+      - SCHEDULE=*/15 * * * *
+      - LOG_LEVEL=info
+      - LOG_JSON=false
+    profiles:
+      - production
+    networks:
+      default:
+        ipv4_address: 172.19.0.3
+
+  django:
+    build:
+      context: .
+      dockerfile: ${DOCKERFILE}
+      args:
+        GUNICORN_CONF: ${GUNICORN_CONF}
+    container_name: django
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      - DOCKER=1
+      - IS_LOCAL=${IS_LOCAL:-0}
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings}
+      - SUBDOMAIN_ROUTING_ENABLED=true
+      - APP_HOST=shalom.jcc-seoul.com
+      - ADMIN_HOST=shalom.admin.jcc-seoul.com
+      - API_HOST=shalom.api.jcc-seoul.com
+      - DOCS_HOST=shalom.docs.jcc-seoul.com
+      - SECURE_SSL_REDIRECT=true
+      - SESSION_COOKIE_SECURE=true
+      - CSRF_COOKIE_SECURE=true
+    command:
+      [
+        "bash",
+        "-c",
+        "cd app && python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn -c /tmp/gunicorn.py ${GUNICORN_WSGI}",
+      ]
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8000/login/ || exit 1"]
+      interval: 10s
+      timeout: 30s
+      retries: 20
+    depends_on:
+      postgres-django:
+        condition: service_healthy
+    volumes:
+      - django-static:/srv/.static
+      - django-media:/srv/.media
+    networks:
+      default:
+        ipv4_address: 172.19.0.4
+
+  postgres-django:
+    image: postgres:15
+    container_name: postgres-django
+    restart: always
+    environment:
+      POSTGRES_USER: "assemble"
+      POSTGRES_PASSWORD: "assemble1!"
+      POSTGRES_DB: "crossfit"
+      TZ: Asia/Seoul
+    ports:
+      - "55432:5432"
+    volumes:
+      - ./.postgres-django/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U assemble -d crossfit"]
+      interval: 30s
+      timeout: 60s
+      retries: 20
+    networks:
+      default:
+        ipv4_address: 172.19.0.5
+
+  celery:
+    container_name: celery
+    build:
+      context: .
+      dockerfile: ${DOCKERFILE}
+      args:
+        GUNICORN_CONF: ${GUNICORN_CONF}
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      - DOCKER=1
+      - IS_LOCAL=${IS_LOCAL:-0}
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-config.settings}
+    command: >
+      bash -c "cd app &&
+      ../.deploy/wait-for-it.sh rabbitmq:5672 --
+      celery -A config worker -l INFO"
+    depends_on:
+      - postgres-django
+      - rabbitmq
+    networks:
+      default:
+        ipv4_address: 172.19.0.6
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    depends_on:
+      - postgres-django
+    networks:
+      default:
+        ipv4_address: 172.19.0.8
+
+  rabbitmq:
+    image: rabbitmq:4.0-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./.deploy/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - rabbitmq-data:/var/lib/rabbitmq/
+      - rabbitmq-log:/var/log/rabbitmq/
+    depends_on:
+      - postgres-django
+    networks:
+      default:
+        ipv4_address: 172.19.0.9
+
+  firefox:
+    image: seleniarm/standalone-firefox:latest
+    shm_size: 1gb
+    container_name: scraper-firefox
+    restart: unless-stopped
+    networks:
+      default:
+        ipv4_address: 172.19.0.30
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16
+          gateway: 172.19.0.1
+
+volumes:
+  django-static:
+  django-media:
+  rabbitmq-data:
+  rabbitmq-log:

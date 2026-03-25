@@ -1,0 +1,20 @@
+credentials:
+  # Prefer environment variable interpolation at runtime.
+  accessKeyID: "${AWS_ACCESS_KEY_ID}"
+  secretAccessKey: "${AWS_SECRET_ACCESS_KEY}"
+
+route53:
+  hostedZoneID: "Z00638971HPWL640X9081"
+  recordsSet:
+    - name: "shalom.admin.jcc-seoul.com"
+      type: "A"
+      ttl: 300
+    - name: "shalom.jcc-seoul.com"
+      type: "A"
+      ttl: 300
+    - name: "shalom.api.jcc-seoul.com"
+      type: "A"
+      ttl: 300
+    - name: "shalom.docs.jcc-seoul.com"
+      type: "A"
+      ttl: 300
