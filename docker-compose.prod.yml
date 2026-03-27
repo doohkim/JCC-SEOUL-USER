@@ -39,6 +39,24 @@ services:
       default:
         ipv4_address: 172.19.0.3
 
+  cloudflared:
+    image: ${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2024.11.0}
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    environment:
+      - TZ=Asia/Seoul
+    profiles:
+      - production
+    networks:
+      default:
+        ipv4_address: 172.19.0.10
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
   django:
     build:
       context: .
