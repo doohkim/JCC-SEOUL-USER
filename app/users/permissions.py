@@ -19,6 +19,7 @@ _REGISTRY_ROLE_CODES = frozenset({"pastor", "evangelist"})
 _ATTENDANCE_LEADER_ROLE_CODES = frozenset({"team_leader", "cell_leader"})
 _ATTENDANCE_MANAGER_ROLE_CODES = frozenset({"attendance_admin"})
 _PARKING_MANAGER_ROLE_CODES = frozenset({"parking_admin"})
+_ACCOUNT_MANAGER_ROLE_CODES = frozenset({"account_admin"})
 
 
 def can_access_member_registry(user: User) -> bool:
@@ -91,6 +92,8 @@ def is_attendance_manager(user: User) -> bool:
     """출석부 관리자(전체 인원 조회 허용) 여부."""
     if not user.is_authenticated or not user.is_active:
         return False
+    if getattr(user, "can_manage_attendance", False):
+        return True
     role_codes = _functional_role_codes_for(user)
     return bool(role_codes & _ATTENDANCE_MANAGER_ROLE_CODES)
 
@@ -180,6 +183,12 @@ def pastoral_divisions_for(user: User):
 
 
 def can_manage_division_accounts(user: User) -> bool:
+    if not user.is_authenticated or not user.is_active:
+        return False
+    if is_platform_admin(user):
+        return True
+    if getattr(user, "can_manage_accounts", False):
+        return True
     return pastoral_divisions_for(user).exists()
 
 
@@ -194,8 +203,24 @@ def is_parking_manager(user: User) -> bool:
         return False
     if is_platform_admin(user):
         return True
+    if getattr(user, "can_manage_parking", False):
+        return True
     role_codes = _functional_role_codes_for(user)
     return bool(role_codes & _PARKING_MANAGER_ROLE_CODES)
+
+
+def is_account_manager(user: User) -> bool:
+    """계정 관리(부서 계정 직책 관리) 권한."""
+    if not user.is_authenticated or not user.is_active:
+        return False
+    if is_platform_admin(user):
+        return True
+    if getattr(user, "can_manage_accounts", False):
+        return True
+    role_codes = _functional_role_codes_for(user)
+    if role_codes & _ACCOUNT_MANAGER_ROLE_CODES:
+        return True
+    return pastoral_divisions_for(user).exists()
 
 
 def members_visible_to(actor: User, division: Division | None = None):

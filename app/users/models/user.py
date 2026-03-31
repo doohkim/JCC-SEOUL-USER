@@ -16,6 +16,21 @@ class User(AbstractUser):
         verbose_name="직급/권한",
         help_text="목사/전도사/부장 등 → Admin·API 노출 범위",
     )
+    can_manage_attendance = models.BooleanField(
+        "출석 관리 권한",
+        default=False,
+        help_text="팀장 출석/출석부 관리 화면 접근 권한",
+    )
+    can_manage_parking = models.BooleanField(
+        "주차 관리 권한",
+        default=False,
+        help_text="주차권/주차 운영 관리 화면 접근 권한",
+    )
+    can_manage_accounts = models.BooleanField(
+        "계정 관리 권한",
+        default=False,
+        help_text="부서 계정 직책 관리 화면 접근 권한",
+    )
 
     class Meta:
         verbose_name = "사용자(계정)"
