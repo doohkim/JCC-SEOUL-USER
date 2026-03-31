@@ -1,4 +1,12 @@
 const API = "/api/v1";
+const TEAM_TONES = [
+  { bar: "#35578e", card: "#2a446f" },
+  { bar: "#2f6e67", card: "#275a54" },
+  { bar: "#5c4e86", card: "#4a3f6b" },
+  { bar: "#7a6845", card: "#66573a" },
+  { bar: "#425775", card: "#354660" },
+  { bar: "#4f4c74", card: "#403f5f" },
+];
 
 function setStatus(msg, isErr) {
   const el = document.getElementById("statusLine");
@@ -58,6 +66,31 @@ function escapeHtml(s) {
 
 function hrefDetail(id) {
   return `/members/${id}/`;
+}
+
+function formatMobilePhone(phone) {
+  const raw = String(phone || "").trim();
+  if (!raw) return "";
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 11) {
+    return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+  }
+  return "";
+}
+
+function buildMemberAvatar(m) {
+  const letter = escapeHtml((m.name || "?").trim().charAt(0) || "?");
+  const img = m.photo_url
+    ? `<img class="jcc-team-member-photo" src="${escapeHtml(m.photo_url)}" alt="${escapeHtml(
+        m.name || "멤버"
+      )}" loading="lazy" />`
+    : "";
+  return `
+    <div class="jcc-team-member-photoWrap">
+      ${img}
+      <span class="jcc-team-member-photoFallback" aria-hidden="true">${letter}</span>
+    </div>
+  `;
 }
 
 const moveState = {
@@ -161,30 +194,28 @@ async function loadMembers() {
 
     const membersHtml = members
       .map((m) => {
+        const phoneText = formatMobilePhone(m.phone || "");
         return `
           <li class="jcc-team-member">
-            <div class="jcc-team-member-main">
-              <a class="jcc-team-member-link" href="${hrefDetail(m.id)}">
-                ${escapeHtml(m.name)}
-              </a>
-              <span class="jcc-team-member-sub">${escapeHtml(m.name_alias || "")}</span>
-            </div>
-            <button type="button" class="secondary jcc-team-moveBtn" data-act="moveTeam"
-              data-member-id="${m.id}"
-              data-division-id="${g.division_id ?? ""}"
-              data-division-code="${escapeHtml(g.division_code || "")}"
-              data-membership-id="${m.membership_id ?? ""}"
-              data-current-team-id="${g.team_id ?? ""}"
-              data-division-name="${escapeHtml(g.division_name || "")}">
-              이동
-            </button>
+            <a class="jcc-team-member-cardLink${phoneText ? " has-phone" : ""}" href="${hrefDetail(m.id)}" aria-label="${escapeHtml(
+              m.name || "멤버"
+            )} 상세 보기">
+              ${buildMemberAvatar(m)}
+              <span class="jcc-team-member-name">${escapeHtml(m.name || "-")}</span>
+              <span class="jcc-team-member-phone">${escapeHtml(phoneText)}</span>
+            </a>
           </li>
         `;
       })
       .join("");
 
     const el = document.createElement("div");
-    el.className = "jcc-team-group";
+    el.className = `jcc-team-group jcc-team-group-tone-${idx % 4}`;
+    const tone = TEAM_TONES[idx % TEAM_TONES.length];
+    if (tone) {
+      el.style.setProperty("--jcc-team-tone-bar", tone.bar);
+      el.style.setProperty("--jcc-team-tone-card", tone.card);
+    }
     el.innerHTML = `
       <button type="button" class="jcc-team-group-toggle" aria-expanded="false" data-body-id="${bodyId}">
         <span class="jcc-team-group-title">${escapeHtml(g.team_name || "팀")}</span>
@@ -290,29 +321,6 @@ function bindUi() {
       if (chev) chev.textContent = isHidden ? "▾" : "▸";
       toggleBtn.setAttribute("aria-expanded", isHidden ? "true" : "false");
       return;
-    }
-
-    const moveBtn = e.target.closest("button[data-act='moveTeam']");
-    if (!moveBtn) return;
-
-    moveState.memberId = moveBtn.getAttribute("data-member-id");
-    moveState.divisionId = moveBtn.getAttribute("data-division-id");
-    moveState.divisionCode = moveBtn.getAttribute("data-division-code") || "";
-    moveState.currentMembershipId = moveBtn.getAttribute("data-membership-id");
-    moveState.currentTeamId = moveBtn.getAttribute("data-current-team-id");
-
-    setMoveStatus("");
-    const divName = moveBtn.getAttribute("data-division-name") || "-";
-    document.getElementById("moveCurrentDivision").textContent = divName;
-    document.getElementById("moveMakePrimary").checked = true;
-
-    showMoveModal();
-    try {
-      if (!moveState.divisionCode) throw new Error("division_code missing");
-      await loadMoveTeams(moveState.divisionCode);
-    } catch (err) {
-      console.error(err);
-      setMoveStatus("팀 목록 로드 실패: " + err.message, true);
     }
     };
   }

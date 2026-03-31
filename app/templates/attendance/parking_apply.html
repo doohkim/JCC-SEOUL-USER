@@ -14,7 +14,7 @@
       <header class="app-header">
         <div class="jcc-detail-titleWrap">
           <h1>주차권 신청</h1>
-          <p class="subtitle">차량번호를 등록하고 신청 내역을 수정/삭제할 수 있습니다.</p>
+          <p class="subtitle">부서별 신청 가능 시간 안에만 신청할 수 있습니다. 차량번호 등록·내역 수정/삭제는 아래에서 진행합니다.</p>
         </div>
       </header>
       <main>
@@ -23,6 +23,7 @@
             <a href="{% url 'parking_permit_apply' %}?tab=apply" class="jcc-page-tab{% if parking_tab == 'apply' %} is-active{% endif %}">내 신청</a>
             {% if is_parking_manager %}
               <a href="{% url 'parking_permit_apply' %}?tab=manage" class="jcc-page-tab{% if parking_tab == 'manage' %} is-active{% endif %}">관리 목록</a>
+              <a href="{% url 'parking_permit_apply' %}?tab=window" class="jcc-page-tab{% if parking_tab == 'window' %} is-active{% endif %}">신청시간 설정</a>
             {% endif %}
           </div>
         </div>
@@ -30,23 +31,83 @@
         {% if messages %}
           <div class="card" style="margin-bottom: 1rem;">
             {% for message in messages %}
-              <div class="msg{% if message.tags == 'error' %} err{% endif %}">{{ message }}</div>
+              {% if message.tags == 'error' %}
+                <div class="jcc-inline-alert jcc-inline-alert--err" role="alert">
+                  <span class="jcc-inline-alert-icon" aria-hidden="true">!</span>
+                  <p class="jcc-inline-alert-text">{{ message }}</p>
+                </div>
+              {% else %}
+                <div class="msg">{{ message }}</div>
+              {% endif %}
             {% endfor %}
           </div>
         {% endif %}
 
         {% if parking_tab == "apply" %}
           <div class="card" style="margin-bottom: 1rem;">
+            <h2>부서별 신청 가능 시간</h2>
+            <p class="msg" style="padding-bottom:0.5rem;">한국 시각 기준으로, 아래 시간 안에서만 신청이 가능합니다.</p>
+            {% if parking_windows %}
+              <div style="overflow-x:auto;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>요일</th>
+                      <th>시간</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in parking_windows %}
+                      <tr>
+                        <td>{{ row.weekday_label }}요일</td>
+                        <td>{{ row.start }} ~ {{ row.end }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="msg" style="padding:0;">이 부서에 등록된 신청 가능 시간이 없습니다. 관리자에게 문의해 주세요.</div>
+            {% endif %}
+          </div>
+
+          <div class="card" style="margin-bottom: 1rem;">
             <h2>신청 정보</h2>
             <div class="msg">소속: {{ my_division_name }} / {{ my_team_name }}</div>
+            {% if not parking_can_apply_now %}
+              <div class="jcc-inline-alert jcc-inline-alert--err" role="alert" style="margin-top:0.75rem;">
+                <span class="jcc-inline-alert-icon" aria-hidden="true">!</span>
+                <p class="jcc-inline-alert-text">{{ parking_window_message }}</p>
+              </div>
+            {% endif %}
             <form method="post" style="margin-top: 0.75rem; display:flex; gap:0.75rem; align-items:flex-end; flex-wrap:wrap;">
               {% csrf_token %}
+              <input type="hidden" name="list_date" value="{{ list_date }}">
               <div class="field">
                 <label for="{{ form.vehicle_number.id_for_label }}">차량번호</label>
                 {{ form.vehicle_number }}
               </div>
-              <button type="submit">신청</button>
+              <button type="submit" {% if not parking_can_apply_now %}disabled aria-disabled="true"{% endif %}>신청</button>
             </form>
+            <p class="msg" style="margin-top:0.75rem; padding-bottom:0;">
+              신청 시 <strong>한국 시각 기준 오늘 날짜</strong>로 접수됩니다. 같은 날·같은 차량번호는 하루에 한 번만 신청할 수 있습니다.
+            </p>
+          </div>
+
+          <div class="card" style="margin-bottom: 1rem;">
+            <h2 style="margin-bottom: 0.5rem;">조회 날짜</h2>
+            <form method="get" class="toolbar" style="padding:0; border:none; background:transparent; align-items:flex-end;">
+              <input type="hidden" name="tab" value="apply">
+              <div class="field">
+                <label for="parkingListDate">등록 기준일</label>
+                <input type="date" id="parkingListDate" name="date" value="{{ list_date }}" class="jcc-parking-dateInput">
+              </div>
+              <button type="submit" class="secondary">조회</button>
+            </form>
+            <p class="msg" style="padding: 0.5rem 0 0 0;">
+              조회일: <strong>{{ list_date_display }}</strong>
+              {% if list_date_is_today %}<span class="tag">오늘 (한국)</span>{% endif %}
+            </p>
           </div>
 
           <div class="card">
@@ -56,16 +117,18 @@
                 <table>
                   <thead>
                     <tr>
+                      <th>등록 기준일</th>
                       <th>차량번호</th>
                       <th>소속</th>
                       <th>상태</th>
-                      <th>신청일</th>
+                      <th>신청 시각</th>
                       <th>처리</th>
                     </tr>
                   </thead>
                   <tbody>
                     {% for a in applications %}
                       <tr>
+                        <td>{{ a.permit_date|date:"Y/m/d" }}</td>
                         <td>{{ a.vehicle_number }}</td>
                         <td>{{ a.division.name|default:"-" }} / {{ a.team.name|default:"-" }}</td>
                         <td>{{ a.get_status_display }}</td>
@@ -73,6 +136,7 @@
                         <td>
                           <form method="post" style="display:inline-flex; gap:0.5rem; align-items:center;">
                             {% csrf_token %}
+                            <input type="hidden" name="list_date" value="{{ list_date }}">
                             <input type="hidden" name="action" value="edit">
                             <input type="hidden" name="application_id" value="{{ a.id }}">
                             <input type="text" name="vehicle_number" value="{{ a.vehicle_number }}" style="max-width:140px;">
@@ -80,6 +144,7 @@
                           </form>
                           <form method="post" style="display:inline-block; margin-left:0.5rem;">
                             {% csrf_token %}
+                            <input type="hidden" name="list_date" value="{{ list_date }}">
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="application_id" value="{{ a.id }}">
                             <button type="submit" class="secondary">삭제</button>
@@ -91,10 +156,10 @@
                 </table>
               </div>
             {% else %}
-              <div class="msg">신청 내역이 없습니다.</div>
+              <div class="msg">선택한 날짜에 신청 내역이 없습니다.</div>
             {% endif %}
           </div>
-        {% else %}
+        {% elif parking_tab == "manage" %}
           <div class="card" style="margin-bottom:1rem;">
             <h2>필터</h2>
             <form method="get" class="toolbar" style="padding:0; border:none; background:transparent;">
@@ -123,11 +188,11 @@
               </div>
               <div class="field">
                 <label>시작일</label>
-                <input type="date" name="date_from" value="{{ date_from }}">
+                <input type="date" name="date_from" value="{{ date_from }}" class="jcc-parking-dateInput">
               </div>
               <div class="field">
                 <label>종료일</label>
-                <input type="date" name="date_to" value="{{ date_to }}">
+                <input type="date" name="date_to" value="{{ date_to }}" class="jcc-parking-dateInput">
               </div>
               <button type="submit">조회</button>
             </form>
@@ -140,7 +205,8 @@
               <table>
                 <thead>
                   <tr>
-                    <th>신청일</th>
+                    <th>등록 기준일</th>
+                    <th>신청 시각</th>
                     <th>표시명</th>
                     <th>차량번호</th>
                     <th>부서</th>
@@ -151,6 +217,7 @@
                 <tbody>
                   {% for a in manager_applications %}
                     <tr>
+                      <td>{{ a.permit_date|date:"Y/m/d" }}</td>
                       <td>{{ a.created_at|date:"Y-m-d H:i" }}</td>
                       <td>{{ parking_user_label_map|lookup_user_label:a.user_id }}</td>
                       <td>{{ a.vehicle_number }}</td>
@@ -159,11 +226,84 @@
                       <td>{{ a.get_status_display }}</td>
                     </tr>
                   {% empty %}
-                    <tr><td colspan="6">조회 결과가 없습니다.</td></tr>
+                    <tr><td colspan="7">조회 결과가 없습니다.</td></tr>
                   {% endfor %}
                 </tbody>
               </table>
             </div>
+          </div>
+        {% else %}
+          <div class="card" style="margin-bottom:1rem;">
+            <h2>부서별 신청 가능 시간 추가</h2>
+            <p class="msg" style="padding-bottom:0.5rem;">월~일 요일과 시작/종료 시간을 입력하면 해당 부서 신청 시간이 열립니다.</p>
+            <form method="post" class="toolbar jcc-parking-windowForm" style="padding:0; border:none; background:transparent; align-items:flex-end;">
+              {% csrf_token %}
+              <input type="hidden" name="tab" value="window">
+              <input type="hidden" name="action" value="window_create">
+              <div class="field">
+                <label>{{ window_form.division.label }}</label>
+                {{ window_form.division }}
+              </div>
+              <div class="field">
+                <label>{{ window_form.weekday.label }}</label>
+                {{ window_form.weekday }}
+              </div>
+              <div class="field">
+                <label>{{ window_form.start_time.label }}</label>
+                {{ window_form.start_time }}
+              </div>
+              <div class="field">
+                <label>{{ window_form.end_time.label }}</label>
+                {{ window_form.end_time }}
+              </div>
+              <div class="field" style="min-width: 80px;">
+                <label>{{ window_form.is_active.label }}</label>
+                <div style="padding-top:0.35rem;">{{ window_form.is_active }}</div>
+              </div>
+              <button type="submit">추가</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h2>설정된 신청 가능 시간</h2>
+            {% if window_rows %}
+              <div style="overflow-x:auto;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>부서</th>
+                      <th>요일</th>
+                      <th>시작</th>
+                      <th>종료</th>
+                      <th>사용</th>
+                      <th>처리</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for w in window_rows %}
+                      <tr>
+                        <td>{{ w.division.name }}</td>
+                        <td>{{ w.get_weekday_display }}요일</td>
+                        <td>{{ w.start_time|time:"H:i" }}</td>
+                        <td>{{ w.end_time|time:"H:i" }}</td>
+                        <td>{% if w.is_active %}사용{% else %}중지{% endif %}</td>
+                        <td>
+                          <form method="post" style="display:inline-block;">
+                            {% csrf_token %}
+                            <input type="hidden" name="tab" value="window">
+                            <input type="hidden" name="action" value="window_delete">
+                            <input type="hidden" name="window_id" value="{{ w.id }}">
+                            <button type="submit" class="secondary">삭제</button>
+                          </form>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="msg">설정된 신청 가능 시간이 없습니다.</div>
+            {% endif %}
           </div>
         {% endif %}
       </main>

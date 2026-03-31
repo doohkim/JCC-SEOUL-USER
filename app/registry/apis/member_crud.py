@@ -310,12 +310,19 @@ class MemberRegistryTeamsAccordionView(APIView):
                 phone = row.member.pastoral_profile.phone
             except Exception:
                 phone = ""
+            photo_url = ""
+            try:
+                photo_field = row.member.pastoral_profile.photo
+                photo_url = photo_field.url if photo_field else ""
+            except Exception:
+                photo_url = ""
 
             groups[t_id]["members"].append(
                 {
                     "id": row.member_id,
                     "name": row.member.name,
                     "name_alias": row.member.name_alias,
+                    "photo_url": photo_url,
                     "phone": phone,
                     "is_active": True,
                     "membership_id": row.id,
@@ -380,11 +387,10 @@ class MemberDetailUpdateView(APIView):
             .select_related("division")
             .order_by("sort_order", "id")
         )
-        # 상세 화면에서는 "최신 1개만" 표시합니다.
         visits = (
             MemberVisitLog.objects.filter(member=member)
             .select_related("recorded_by")
-            .order_by("-visit_date", "-created_at")[:1]
+            .order_by("-visit_date", "-created_at")
         )
 
         # 최근 출석(수요/토요/주일) 날짜 1개만 표시

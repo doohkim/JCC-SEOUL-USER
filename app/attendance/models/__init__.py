@@ -8,6 +8,7 @@ from .team_slot import (
 )
 from .weekly import MidweekAttendanceRecord, SundayAttendanceLine
 from .parking import ParkingPermitApplication
+from .parking_window import ParkingPermitWindow
 
 __all__ = [
     "MidweekAttendanceRecord",
@@ -20,4 +21,5 @@ __all__ = [
     "member_entry_status",
     "session_roster_stats",
     "ParkingPermitApplication",
+    "ParkingPermitWindow",
 ]

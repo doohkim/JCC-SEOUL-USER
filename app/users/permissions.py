@@ -13,7 +13,7 @@ from rest_framework.permissions import BasePermission
 
 from registry.models import Member
 
-from .models import Division, RoleLevel, User
+from .models import Division, RoleLevel, Team, User
 
 _REGISTRY_ROLE_CODES = frozenset({"pastor", "evangelist"})
 _ATTENDANCE_LEADER_ROLE_CODES = frozenset({"team_leader", "cell_leader"})
@@ -228,6 +228,39 @@ def users_visible_to(actor: User, division: Division | None = None):
         division_teams__division__in=divisions,
         is_active=True,
     ).distinct()
+
+
+def membership_divisions_for(user: User):
+    """
+    부서 선택 기본 범위: 사용자 소속(UserDivisionTeam) 부서만.
+    - 관리자/목사/전도사 포함 공통 규칙
+    - 교적/출석의 별도 상위 권한 로직과 무관하게 "소속" 기준으로만 반환
+    """
+    if not user.is_authenticated:
+        return Division.objects.none()
+    division_ids = user.division_teams.values_list("division_id", flat=True).distinct()
+    # 일부 계정은 UserDivisionTeam 연결이 없을 수 있다.
+    # 이 경우 화면이 전부 비어 보이지 않도록 DB 전체를 fallback으로 사용한다.
+    if not division_ids:
+        return Division.objects.all().order_by("sort_order", "name")
+    return Division.objects.filter(pk__in=division_ids).order_by("sort_order", "name")
+
+
+def visible_teams_for(user: User, division: Division):
+    """
+    선택한 부서에서 볼 수 있는 팀 범위.
+    - 관리자/목사/전도사: 해당 부서의 모든 팀
+    - 그 외: 해당 부서 내 본인 소속 팀만
+    """
+    if not user.is_authenticated:
+        return Team.objects.none()
+    role_code = getattr(getattr(user, "role_level", None), "code", None)
+    if is_platform_admin(user) or role_code in {"pastor", "evangelist"}:
+        return Team.objects.filter(division=division).order_by("sort_order", "name")
+    return Team.objects.filter(
+        division=division,
+        user_division_teams__user=user,
+    ).distinct().order_by("sort_order", "name")
 
 
 def has_role_level_or_above(user: User, min_level_code: str) -> bool:

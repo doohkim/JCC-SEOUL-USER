@@ -42,76 +42,87 @@
       <div id="statusLine" class="msg"></div>
       <div class="card" style="max-width: 900px; margin: 0 auto;">
         <div class="jcc-member-photo-header">
-          <div class="jcc-photo-preview-wrap">
-            <img
-              id="photoPreview"
-              class="jcc-photo-preview"
-              alt="프로필 사진 미리보기"
-              src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMTgwIDE4MCI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMTYiIGZpbGw9IiMwZjE3MjIiLz4KPGNpcmNsZSBjeD0iOTAiIGN5PSI3MiIgcj0iMjgiIGZpbGw9IiMxYjI0MzAiIHN0cm9rZT0iIzJhMzU0OCIvPgo8cGF0aCBkPSJNMzAgMTYwYzgtMzYgMzQtNTYgNjAtNTZzNTIgMjAgNjAgNTYiIGZpbGw9IiMxYjI0MzAiIHN0cm9rZT0iIzJhMzU0OCIvPgo8L3N2Zz4="
-            />
-            <div class="jcc-photo-meta">
-              <div class="jcc-photo-title">프로필 사진</div>
-              <div class="jcc-file-name" id="p_photoFileName"></div>
+          <div class="jcc-photo-card">
+            <div class="jcc-photo-preview-wrap">
+              <div class="jcc-photo-head">
+                <div class="jcc-photo-title">프로필 사진</div>
+              </div>
+              <img
+                id="photoPreview"
+                class="jcc-photo-preview"
+                alt="프로필 사진 미리보기"
+                src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMTgwIDE4MCI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMTYiIGZpbGw9IiMwZjE3MjIiLz4KPGNpcmNsZSBjeD0iOTAiIGN5PSI3MiIgcj0iMjgiIGZpbGw9IiMxYjI0MzAiIHN0cm9rZT0iIzJhMzU0OCIvPgo8cGF0aCBkPSJNMzAgMTYwYzgtMzYgMzQtNTYgNjAtNTZzNTIgMjAgNjAgNTYiIGZpbGw9IiMxYjI0MzAiIHN0cm9rZT0iIzJhMzU0OCIvPgo8L3N2Zz4="
+              />
+              <div class="jcc-photo-actions jcc-photo-actions--center">
+                <input type="file" id="p_photo" accept="image/*" class="jcc-file-input" />
+                <label for="p_photo" class="jcc-file-button">사진 선택</label>
+              </div>
+              <div class="jcc-photo-meta">
+                <div class="jcc-file-name" id="p_photoFileName"></div>
+              </div>
             </div>
           </div>
 
-          <div class="jcc-photo-actions">
-            <input type="file" id="p_photo" accept="image/*" class="jcc-file-input" />
-            <label for="p_photo" class="jcc-file-button">사진 선택</label>
-          </div>
-
-          <div class="jcc-photo-preview-wrap-family">
-            <img
-              id="familyPhotoPreview"
-              class="jcc-photo-preview-small"
-              alt="가족사진 미리보기"
-              src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiByeD0iMTQiIGZpbGw9IiMwZjE3MjIiLz4KPGNpcmNsZSBjeD0iNjAiIGN5PSI0OCIgcj0iMjIiIGZpbGw9IiMxYjI0MzAiIHN0cm9rZT0iIzJhMzU0OCIvPgo8cGF0aCBkPSJNMjIgMTE0YzYtMjggMjYtNDQgMzgtNDRzMzIgMTYgMzggNDQiIGZpbGw9IiMxYjI0MzAiIHN0cm9rZT0iIzJhMzU0OCIvPgo8L3N2Zz4="
-            />
-            <div class="jcc-photo-meta">
-              <div class="jcc-photo-title">가족 사진</div>
-              <div class="jcc-file-name" id="p_familyPhotoFileName"></div>
+          <div class="jcc-photo-card">
+            <div class="jcc-photo-preview-wrap-family">
+              <div class="jcc-photo-head">
+                <div class="jcc-photo-title">가족 사진</div>
+              </div>
+              <img
+                id="familyPhotoPreview"
+                class="jcc-photo-preview-small"
+                alt="가족사진 미리보기"
+                src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNjAiIGhlaWdodD0iMjYwIiB2aWV3Qm94PSIwIDAgMjYwIDI2MCI+CjxyZWN0IHdpZHRoPSIyNjAiIGhlaWdodD0iMjYwIiByeD0iMTYiIGZpbGw9IiMwZjE3MjIiLz4KPGNpcmNsZSBjeD0iMTA0IiBjeT0iMTAwIiByPSIzMCIgZmlsbD0iIzFiMjQzMCIgc3Ryb2tlPSIjMmEzNTQ4Ii8+CjxwYXRoIGQ9Ik00NiAyMzhjOC00NCAzOC02OCA1OC02OHM1MCAyNCA1OCA2OCIgZmlsbD0iIzFiMjQzMCIgc3Ryb2tlPSIjMmEzNTQ4Ii8+CjxjaXJjbGUgY3g9IjE2NiIgY3k9Ijg4IiByPSIyNCIgZmlsbD0iIzI0MmY0MSIgc3Ryb2tlPSIjMzA0MDU4Ii8+CjxwYXRoIGQ9Ik0xMzIgMjM4YzYtMzYgMzItNTYgNTAtNTZzNDQgMjAgNTAgNTYiIGZpbGw9IiMyNDJmNDEiIHN0cm9rZT0iIzMwNDA1OCIvPgo8L3N2Zz4="
+              />
+              <div class="jcc-photo-actions jcc-photo-actions--center">
+                <input
+                  type="file"
+                  id="p_family_photo"
+                  accept="image/*"
+                  class="jcc-file-input"
+                />
+                <label for="p_family_photo" class="jcc-file-button">사진 선택</label>
+              </div>
+              <div class="jcc-photo-meta">
+                <div class="jcc-file-name" id="p_familyPhotoFileName"></div>
+              </div>
             </div>
-          </div>
-
-          <div class="jcc-photo-actions">
-            <input
-              type="file"
-              id="p_family_photo"
-              accept="image/*"
-              class="jcc-file-input"
-            />
-            <label for="p_family_photo" class="jcc-file-button">선택</label>
           </div>
         </div>
 
-        <div class="jcc-reg-form-grid" style="padding: 0; border: none; background: transparent; margin-bottom: 0.25rem;">
+        <div class="jcc-reg-form-grid jcc-member-inline-form" style="padding: 0; border: none; background: transparent; margin-top: 0.45rem; margin-bottom: 0.75rem;">
           <div class="field"><label>이름*</label><input type="text" id="m_name" class="jcc-reg-control" /></div>
           <div class="field"><label>별칭</label><input type="text" id="m_alias" class="jcc-reg-control" /></div>
-          <div class="field"><label>활성</label><select id="m_active" class="jcc-reg-control"><option value="true">활성</option><option value="false">비활성</option></select></div>
+        </div>
+        <div class="jcc-reg-form-grid jcc-member-inline-form" style="padding: 0; border: none; background: transparent; margin-bottom: 1rem;">
           <div class="field"><label>부서</label><select id="m_division" class="jcc-reg-control"></select></div>
           <div class="field"><label>팀</label><select id="m_team" class="jcc-reg-control"></select></div>
         </div>
         <input type="hidden" id="m_membershipId" />
 
-        <h2 style="margin-top:1.25rem; margin-bottom:0.75rem">교적 프로필</h2>
-        <div class="jcc-reg-form-grid" style="padding:0; border:none; background:transparent;">
-          <div class="field"><label>생년월일</label><input type="date" id="p_birth" class="jcc-reg-control" /></div>
-          <div class="field"><label>핸드폰번호</label><input type="text" id="p_phone" class="jcc-reg-control" /></div>
-          <div class="field"><label>주소</label><input type="text" id="p_address" class="jcc-reg-control" /></div>
-        </div>
-        <div class="jcc-reg-form-grid" style="padding:0; border:none; background:transparent; margin-top:0.75rem;">
-          <div class="field">
-            <label>직책(카드)</label>
-            <select id="p_pos" class="jcc-reg-control"></select>
+        <section class="jcc-profile-section">
+          <h2 style="margin:0 0 0.85rem 0">교적 프로필</h2>
+          <div class="jcc-reg-form-grid jcc-member-inline-form" style="padding:0; border:none; background:transparent;">
+            <div class="field"><label>생년월일</label><input type="date" id="p_birth" class="jcc-reg-control" /></div>
+            <div class="field"><label>핸드폰번호</label><input type="text" id="p_phone" class="jcc-reg-control" /></div>
           </div>
-          <div class="field"><label>직장(업무)</label><input type="text" id="p_work" class="jcc-reg-control" /></div>
-        </div>
-        <div class="jcc-reg-form-grid" style="padding:0; border:none; background:transparent; margin-top:0.75rem;">
-          <div class="field" style="grid-column: 1 / -1;">
-            <label>목회 메모</label>
-            <textarea id="p_staff_notes" class="jcc-reg-control" rows="5"></textarea>
+          <div class="jcc-reg-form-grid jcc-member-inline-form" style="padding:0; border:none; background:transparent; margin-top:0.75rem;">
+            <div class="field jcc-field-full"><label>주소</label><input type="text" id="p_address" class="jcc-reg-control" /></div>
           </div>
-        </div>
+          <div class="jcc-reg-form-grid jcc-member-inline-form" style="padding:0; border:none; background:transparent; margin-top:0.75rem;">
+            <div class="field">
+              <label>직책(카드)</label>
+              <select id="p_pos" class="jcc-reg-control"></select>
+            </div>
+            <div class="field"><label>직장(업무)</label><input type="text" id="p_work" class="jcc-reg-control" /></div>
+          </div>
+          <div class="jcc-reg-form-grid jcc-member-inline-form" style="padding:0; border:none; background:transparent; margin-top:0.75rem;">
+            <div class="field jcc-field-full jcc-field-stack">
+              <label>메모</label>
+              <textarea id="p_staff_notes" class="jcc-reg-control" rows="5"></textarea>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
 
