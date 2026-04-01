@@ -12,7 +12,6 @@ THIRD_PARTY_APPS = [
     "phonenumber_field",
     "rest_framework",
     "rest_framework.authtoken",
-    "subdomains",
 ]
 
 LOCAL_APPS = [
@@ -21,7 +20,7 @@ LOCAL_APPS = [
     "registry",
     "attendance",
     "counseling",
-    # "utils",
+    "utils",
 ]
 
 DJANGO_APPS = [

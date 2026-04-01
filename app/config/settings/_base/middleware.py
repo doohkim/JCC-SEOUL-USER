@@ -3,7 +3,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     # 내가 쓰던거
-    # "subdomains.middleware.SubdomainURLRoutingMiddleware",
+    "subdomains.middleware.SubdomainURLRoutingMiddleware",
     
     "django.middleware.common.CommonMiddleware",
     # cursor 가 쓴거
