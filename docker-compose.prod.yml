@@ -8,7 +8,7 @@ services:
     env_file:
       - ./.deploy/env/nginx-certbot.env
     ports:
-      - "80:80"
+      - "${NGINX_HTTP_PORT:-8001}:80"
       - "443:443"
     volumes:
       - ${NGINX_SECRET:-./.deploy/letsencrypt}:/etc/letsencrypt
