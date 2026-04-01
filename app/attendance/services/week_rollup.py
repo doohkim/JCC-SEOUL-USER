@@ -6,7 +6,7 @@ from datetime import date, timedelta
 
 from django.http import Http404
 
-from attendance.choices import MidweekServiceType
+from attendance.choices import MidweekAttendanceStatus, MidweekServiceType
 from attendance.importers.member_resolve import week_sunday_on_or_before
 from attendance.models import MidweekAttendanceRecord, SundayAttendanceLine
 from users.models import Division
@@ -79,8 +79,16 @@ def midweek_records_for_week(division: Division, week_sunday: date):
 def rollup_row_for_week(division: Division, week_sunday: date) -> dict:
     sun_qs = sunday_lines_for_week(division, week_sunday)
     mw_qs = midweek_records_for_week(division, week_sunday)
-    wed_c = mw_qs.filter(service_type=MidweekServiceType.WEDNESDAY).count()
-    sat_c = mw_qs.filter(service_type=MidweekServiceType.SATURDAY).count()
+    # 대시보드 주차 라벨의 수/토 숫자는 "참석자 수"로 집계한다.
+    present_like = [MidweekAttendanceStatus.PRESENT, MidweekAttendanceStatus.ONLINE]
+    wed_c = mw_qs.filter(
+        service_type=MidweekServiceType.WEDNESDAY,
+        status__in=present_like,
+    ).count()
+    sat_c = mw_qs.filter(
+        service_type=MidweekServiceType.SATURDAY,
+        status__in=present_like,
+    ).count()
     return {
         "week_sunday": week_sunday.isoformat(),
         "division_code": division.code,
