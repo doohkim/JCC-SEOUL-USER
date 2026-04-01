@@ -1,0 +1,20 @@
+credentials:
+  # Prefer environment variable interpolation at runtime.
+  accessKeyID: ""
+  secretAccessKey: ""
+
+route53:
+  hostedZoneID: "Z03391243MWYGPI2LNKKZ"
+  recordsSet:
+    - name: "shalom.admin.jcc-seoul.com"
+      type: "A"
+      ttl: 300
+    - name: "shalom.jcc-seoul.com"
+      type: "A"
+      ttl: 300
+    - name: "shalom.api.jcc-seoul.com"
+      type: "A"
+      ttl: 300
+    - name: "shalom.docs.jcc-seoul.com"
+      type: "A"
+      ttl: 300

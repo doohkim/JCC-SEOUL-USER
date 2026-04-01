@@ -1,0 +1,15 @@
+NGINX_IMAGE=jonasal/nginx-certbot:latest
+NGINX_CONF=./.deploy/production/nginx/conf.d
+NGINX_SECRET=./.deploy/production/nginx/secrets
+NGINX_CONF_TARGET=/etc/nginx/user_conf.d
+NGINX_HTTP_PORT=
+NGINX_HTTPS_PORT=
+DOCKERFILE=Dockerfile
+IS_LOCAL=0
+DJANGO_SETTINGS_MODULE=config.settings.production
+GUNICORN_CONF=/srv/.deploy/production/gunicorn.py
+GUNICORN_WSGI=config.wsgi.production
+POSTGRES_DB=jccseoul
+POSTGRES_USER=jccseoul
+POSTGRES_PASSWORD=jccseoul1!
+CELERY_FLOWER_BROKER_URL=amqp://jccseoul:jccseoul1!@rabbitmq:5672//

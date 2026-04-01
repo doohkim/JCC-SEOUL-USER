@@ -1,0 +1,128 @@
+services:
+  nginx:
+    image: ${NGINX_IMAGE:-jonasal/nginx-certbot:latest}
+    container_name: nginx
+    restart: unless-stopped
+    env_file:
+      - ./nginx-certbot.env
+    ports:
+      - ${NGINX_HTTP_PORT:-80}:80
+      - ${NGINX_HTTPS_PORT:-443}:443
+    volumes:
+      - ${NGINX_SECRET}:/etc/letsencrypt
+      - ${NGINX_CONF}:${NGINX_CONF_TARGET}
+      - django-static:/srv/.static
+      - django-media:/srv/.media
+    networks:
+      default:
+        ipv4_address: 172.19.0.2
+
+  ddns-route53:
+    image: crazymax/ddns-route53:latest
+    container_name: ddns-route53
+    restart: always
+    volumes:
+      - ./ddns-route53.yml:/ddns-route53.yml:ro
+    environment:
+      - TZ=Asia/Seoul
+      - SCHEDULE=*/15 * * * *
+      - LOG_LEVEL=info
+      - LOG_JSON=false
+    networks:
+      default:
+        ipv4_address: 172.19.0.3
+
+  django:
+    &django
+    build:
+      context: .
+      dockerfile: ${DOCKERFILE}
+    container_name: django
+    restart: unless-stopped
+    environment:
+      - DOCKER=1
+      - IS_LOCAL=${IS_LOCAL}
+      - DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE}
+    command: bash -c '
+      python manage.py collectstatic --noinput &&
+      python manage.py migrate --noinput &&
+      gunicorn -c ${GUNICORN_CONF} ${GUNICORN_WSGI}'
+    volumes:
+      - django-static:/srv/.static
+      - django-media:/srv/.media
+    networks:
+      default:
+        ipv4_address: 172.19.0.4
+
+  postgres-django:
+    image: postgres:17
+    container_name: postgres-django
+    restart: always
+    environment:
+      POSTGRES_USER: "jccseoul"
+      POSTGRES_PASSWORD: "jccseoul1!"
+      POSTGRES_DB: "jccseoul"
+      TZ: Asia/Seoul
+    ports:
+      - ${POSTGRES_PORT:-5432}:5432
+    volumes:
+      - ./.postgres-django/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jccseoul -d jccseoul"]
+      interval: 30s
+      timeout: 60s
+      retries: 20
+    networks:
+      default:
+        ipv4_address: 172.19.0.5
+
+  celery:
+    <<: *django
+    container_name: celery
+    command: bash -c 'celery -A config worker -l INFO -Q celery --concurrency=5'
+    restart: always
+    depends_on:
+      - rabbitmq
+    networks:
+      default:
+        ipv4_address: 172.19.0.15
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    depends_on:
+      - postgres-django
+    networks:
+      default:
+        ipv4_address: 172.19.0.8
+
+  rabbitmq:
+    image: rabbitmq:4.0-management-alpine
+    container_name: rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./.deploy/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - rabbitmq-data:/var/lib/rabbitmq/
+      - rabbitmq-log:/var/log/rabbitmq/
+    depends_on:
+      - postgres-django
+    networks:
+      default:
+        ipv4_address: 172.19.0.9
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16
+          gateway: 172.19.0.1
+
+volumes:
+  django-static:
+  django-media:
+  rabbitmq-data:
+  rabbitmq-log:
