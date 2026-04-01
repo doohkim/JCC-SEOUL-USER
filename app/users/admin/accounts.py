@@ -85,11 +85,22 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
         "username",
         "email",
         "role_level",
+        "can_manage_accounts",
+        "can_manage_attendance",
+        "can_manage_parking",
         "onboarding_status",
         "is_staff",
         "is_active",
     ]
-    list_filter = ["is_staff", "is_active", "role_level", "profile__onboarding_status"]
+    list_filter = [
+        "is_staff",
+        "is_active",
+        "role_level",
+        "can_manage_accounts",
+        "can_manage_attendance",
+        "can_manage_parking",
+        "profile__onboarding_status",
+    ]
     search_fields = ["username", "email", "profile__display_name", "profile__phone"]
     ordering = ["username"]
     inlines = [
@@ -102,10 +113,29 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
     fieldsets = BaseUserAdmin.fieldsets + (
         (
             "조직/권한",
-            {"fields": ("role_level",)},
+            {
+                "fields": (
+                    "role_level",
+                    "can_manage_accounts",
+                    "can_manage_attendance",
+                    "can_manage_parking",
+                )
+            },
         ),
     )
-    add_fieldsets = BaseUserAdmin.add_fieldsets + (("조직/권한", {"fields": ("role_level",)}),)
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        (
+            "조직/권한",
+            {
+                "fields": (
+                    "role_level",
+                    "can_manage_accounts",
+                    "can_manage_attendance",
+                    "can_manage_parking",
+                )
+            },
+        ),
+    )
 
     def get_urls(self):
         opts = self.model._meta

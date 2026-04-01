@@ -30,6 +30,11 @@ const SUNDAY_OPTIONS = [
   { key: "branch", label: "지교회" },
 ];
 
+const SUNDAY_SEOUL_KEYS = new Set(["seoul_1", "seoul_2", "seoul_3", "seoul_4"]);
+const SUNDAY_INCHEON_KEYS = new Set(["incheon_1", "incheon_2", "incheon_3", "incheon_4"]);
+const SUNDAY_VENUE_KEYS = new Set([...SUNDAY_SEOUL_KEYS, ...SUNDAY_INCHEON_KEYS]);
+const SUNDAY_REMOTE_KEYS = new Set(["online", "branch"]);
+
 function setStatus(msg, isErr) {
   const el = document.getElementById("statusLine");
   if (!el) return;
@@ -62,11 +67,71 @@ function getCookie(name) {
   return v ? decodeURIComponent(v[2]) : "";
 }
 
+/** API 오류 본문(JSON/HTML)에서 사용자에게 보여줄 문장만 추출 */
+function humanizeApiErrorBody(raw) {
+  if (raw == null) return "";
+  const s = String(raw).trim();
+  if (!s) return "";
+  if (s.startsWith("{") || s.startsWith("[")) {
+    try {
+      const j = JSON.parse(s);
+      if (Array.isArray(j)) {
+        return j.map((x) => (typeof x === "string" ? x : JSON.stringify(x))).join(" ");
+      }
+      if (j && typeof j === "object") {
+        if (Array.isArray(j.detail)) {
+          return j.detail.map((x) => String(x)).filter(Boolean).join(" ");
+        }
+        if (typeof j.detail === "string") return j.detail;
+        if (Array.isArray(j.non_field_errors)) {
+          return j.non_field_errors.map((x) => String(x)).filter(Boolean).join(" ");
+        }
+        if (j.detail && typeof j.detail === "object" && !Array.isArray(j.detail)) {
+          return Object.entries(j.detail)
+            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(" ") : v}`)
+            .join(" ");
+        }
+        if (typeof j.message === "string") return j.message;
+      }
+    } catch (_) {
+      return s;
+    }
+  }
+  return s;
+}
+
+/** 모달 상태 줄: 일반 텍스트 또는 에러 알림 박스 */
+function setModalStatus(el, text, variant) {
+  if (!el) return;
+  el.classList.remove("jcc-modal-status--error");
+  el.innerHTML = "";
+  if (variant === "error") {
+    if (!text) return;
+    el.classList.add("jcc-modal-status--error");
+    const wrap = document.createElement("div");
+    wrap.className = "jcc-modal-alert";
+    wrap.setAttribute("role", "alert");
+    const icon = document.createElement("span");
+    icon.className = "jcc-modal-alert-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = "!";
+    const p = document.createElement("p");
+    p.className = "jcc-modal-alert-text";
+    p.textContent = text;
+    wrap.appendChild(icon);
+    wrap.appendChild(p);
+    el.appendChild(wrap);
+    return;
+  }
+  el.textContent = text || "";
+}
+
 async function apiGet(path) {
   const r = await fetch(API + path, { credentials: "same-origin" });
   if (!r.ok) {
     const t = await r.text();
-    throw new Error(t || r.statusText);
+    const msg = humanizeApiErrorBody(t) || r.statusText || `요청 실패 (${r.status})`;
+    throw new Error(msg);
   }
   return r.json();
 }
@@ -84,7 +149,8 @@ async function apiPost(path, payload) {
   });
   if (!r.ok) {
     const t = await r.text();
-    throw new Error(t || r.statusText);
+    const msg = humanizeApiErrorBody(t) || r.statusText || `요청 실패 (${r.status})`;
+    throw new Error(msg);
   }
   return r.json();
 }
@@ -255,16 +321,16 @@ function buildSundayOptionUI() {
   const remote = document.getElementById("sundayRemoteOptions");
   if (!seoul || !incheon || !remote) return;
 
-  const seoulKeys = new Set(["seoul_1", "seoul_2", "seoul_3", "seoul_4"]);
-  const incheonKeys = new Set(["incheon_1", "incheon_2", "incheon_3", "incheon_4"]);
-
   seoul.innerHTML = "";
   incheon.innerHTML = "";
   remote.innerHTML = "";
 
   SUNDAY_OPTIONS.forEach((opt) => {
-    const container =
-      seoulKeys.has(opt.key) ? seoul : incheonKeys.has(opt.key) ? incheon : remote;
+    const container = SUNDAY_SEOUL_KEYS.has(opt.key)
+      ? seoul
+      : SUNDAY_INCHEON_KEYS.has(opt.key)
+        ? incheon
+        : remote;
     const id = "sundayOpt_" + opt.key;
     const chk = document.createElement("div");
     chk.innerHTML = `
@@ -274,6 +340,40 @@ function buildSundayOptionUI() {
       </label>
     `;
     container.appendChild(chk);
+  });
+
+  bindSundayVenueRemoteExclusivity();
+}
+
+/**
+ * 온라인·지교회 선택 시 서울/인천·상대 원격 옵션·불참 해제 (불참과 동일한 단일 모드).
+ * 서울/인천 선택 시 온라인·지교회·불참 해제.
+ */
+function bindSundayVenueRemoteExclusivity() {
+  const inputs = document.querySelectorAll("#sundayEditOverlay input[type='checkbox'][value]");
+  inputs.forEach((el) => {
+    el.addEventListener("change", () => {
+      if (!el.checked) return;
+      const key = el.value;
+      const absentChk = document.getElementById("sundayAbsentChk");
+
+      if (SUNDAY_REMOTE_KEYS.has(key)) {
+        inputs.forEach((other) => {
+          if (other !== el) other.checked = false;
+        });
+        if (absentChk && absentChk.checked) absentChk.checked = false;
+        setSundayAbsentState(false);
+        return;
+      }
+
+      if (SUNDAY_VENUE_KEYS.has(key)) {
+        inputs.forEach((other) => {
+          if (SUNDAY_REMOTE_KEYS.has(other.value)) other.checked = false;
+        });
+        if (absentChk && absentChk.checked) absentChk.checked = false;
+        setSundayAbsentState(false);
+      }
+    });
   });
 }
 
@@ -332,11 +432,11 @@ function openSundayModal(member, team) {
   }
 
   const st = document.getElementById("sundayEditStatus");
-  if (st) {
-    st.textContent = isAbsent
-      ? "불참을 선택했습니다. 다른 참석 선택은 해제됩니다."
-      : "";
-  }
+  setModalStatus(
+    st,
+    isAbsent ? "불참을 선택했습니다. 다른 참석 선택은 해제됩니다." : "",
+    "plain"
+  );
 
   showOverlay("sundayEditOverlay");
 }
@@ -361,7 +461,7 @@ function openMidweekModal(member, team) {
   }
 
   const st = document.getElementById("midweekEditStatus");
-  if (st) st.textContent = "";
+  setModalStatus(st, "", "plain");
 
   const presentBtn = document.getElementById("btnMidweekPresent");
   const absentBtn = document.getElementById("btnMidweekAbsent");
@@ -400,7 +500,7 @@ async function saveSundayModal() {
   const entry_state = isAbsent ? "absent" : keys.length ? "present" : "unset";
 
   const statusEl = document.getElementById("sundayEditStatus");
-  if (statusEl) statusEl.textContent = "저장 중…";
+  setModalStatus(statusEl, "저장 중…", "plain");
 
   const payload = {
     updates: [
@@ -429,7 +529,7 @@ async function saveMidweekModal() {
   const statusKey = getMidweekSelection(); // present|absent|unset
 
   const statusEl = document.getElementById("midweekEditStatus");
-  if (statusEl) statusEl.textContent = "저장 중…";
+  setModalStatus(statusEl, "저장 중…", "plain");
 
   const payload = {
     updates: [
@@ -596,12 +696,16 @@ function bindUi() {
         ).some((el) => el.checked);
 
         if (st) {
-          st.textContent = anySelected
-            ? "불참을 선택하면 다른 참석 선택이 모두 해제됩니다."
-            : "불참을 선택했습니다.";
+          setModalStatus(
+            st,
+            anySelected
+              ? "불참을 선택하면 다른 참석 선택이 모두 해제됩니다."
+              : "불참을 선택했습니다.",
+            "plain"
+          );
         }
       } else {
-        if (st) st.textContent = "";
+        if (st) setModalStatus(st, "", "plain");
       }
 
       setSundayAbsentState(isAbsent);
@@ -618,7 +722,7 @@ function bindUi() {
       } catch (e) {
         console.error(e);
         const st = document.getElementById("sundayEditStatus");
-        if (st) st.textContent = "저장 실패: " + e.message;
+        setModalStatus(st, e.message || "저장에 실패했습니다.", "error");
       }
     });
 
@@ -645,7 +749,7 @@ function bindUi() {
       } catch (e) {
         console.error(e);
         const st = document.getElementById("midweekEditStatus");
-        if (st) st.textContent = "저장 실패: " + e.message;
+        setModalStatus(st, e.message || "저장에 실패했습니다.", "error");
       }
     });
 }

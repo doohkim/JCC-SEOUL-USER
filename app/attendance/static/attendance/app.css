@@ -339,23 +339,23 @@ main {
   margin: 0 auto;
 }
 
+/* 2열 그리드: 예배=「주일」만 선택 시 차트 3개(2+1)일 때도
+   flex + justify-content:center 처럼 한 줄짜리 카드가 가운데로 몰리지 않고
+   위 줄과 왼쪽·너비가 맞게 정렬된다. */
 .grid-charts {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
   margin-bottom: 1.5rem;
 }
 
 .grid-charts .card {
-  flex: 1 1 520px;
-  max-width: 720px;
+  min-width: 0;
 }
 
 @media (max-width: 900px) {
-  .grid-charts .card {
-    flex: 1 1 100%;
-    max-width: none;
+  .grid-charts {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -585,6 +585,82 @@ tr:hover td {
   color: #f87171;
 }
 
+/* 주차권 등 인라인 에러(메시지 프레임워크) */
+.jcc-inline-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.14), rgba(127, 29, 29, 0.2));
+  margin-bottom: 0.5rem;
+}
+
+.jcc-inline-alert:last-child {
+  margin-bottom: 0;
+}
+
+.jcc-inline-alert-icon {
+  flex-shrink: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: rgba(248, 113, 113, 0.45);
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  margin-top: 0.06rem;
+}
+
+.jcc-inline-alert-text {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #fecaca;
+}
+
+/* parking page: prettier date/time selectors */
+.jcc-parking-dateInput,
+.jcc-parking-input {
+  min-width: 10.5rem;
+  min-height: 2.35rem;
+  border-radius: 10px;
+  border: 1px solid rgba(74, 158, 255, 0.25);
+  background: linear-gradient(180deg, #141d29 0%, #121820 100%);
+  color: var(--text);
+  font-weight: 700;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18) inset;
+}
+
+.jcc-parking-dateInput:focus,
+.jcc-parking-input:focus {
+  outline: none;
+  border-color: rgba(74, 158, 255, 0.6);
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.16);
+}
+
+.jcc-parking-dateInput::-webkit-calendar-picker-indicator {
+  background: rgba(74, 158, 255, 0.16);
+  border: 1px solid rgba(74, 158, 255, 0.35);
+  border-radius: 7px;
+  padding: 4px;
+}
+
+.jcc-parking-windowForm .field {
+  min-width: 9.2rem;
+}
+
+.jcc-parking-checkbox {
+  width: 1rem;
+  height: 1rem;
+}
+
 .tag {
   display: inline-block;
   padding: 0.1rem 0.35rem;
@@ -668,13 +744,101 @@ tr:hover td {
   margin: 0;
 }
 
+/* registry member form: label/value inline rows */
+.jcc-member-inline-form .field {
+  display: grid;
+  grid-template-columns: 5.4rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.jcc-member-inline-form {
+  column-gap: 2.2rem;
+  row-gap: 1.15rem;
+}
+
+.jcc-member-inline-form .field .jcc-reg-control {
+  max-width: 20rem;
+}
+
+.jcc-member-inline-form .jcc-field-full .jcc-reg-control {
+  max-width: none;
+}
+
+.jcc-member-inline-form .field label {
+  margin: 0;
+  font-size: 0.82rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.jcc-member-inline-form .field .jcc-reg-control {
+  width: 100%;
+  min-width: 0;
+}
+
+.jcc-member-inline-form input.jcc-reg-control,
+.jcc-member-inline-form textarea.jcc-reg-control {
+  box-sizing: border-box;
+  padding-left: 1rem;
+}
+
+.jcc-member-inline-form select.jcc-reg-control {
+  box-sizing: border-box;
+  padding-left: 0.78rem;
+  padding-right: 2rem;
+  text-indent: 0;
+}
+
+.jcc-member-inline-form select.jcc-reg-control option {
+  background: #131c29;
+  color: var(--text);
+}
+
+.jcc-member-inline-form select.jcc-reg-control option:checked {
+  background: #1f324a;
+  color: #e9f2ff;
+}
+
+.jcc-member-inline-form .jcc-field-full {
+  grid-column: 1 / -1;
+}
+
+.jcc-member-inline-form .jcc-field-full textarea.jcc-reg-control {
+  min-height: 6rem;
+}
+
+.jcc-member-inline-form .jcc-field-stack {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.jcc-profile-section {
+  margin-top: 1.2rem;
+  padding-top: 0.6rem;
+}
+
+.jcc-profile-section h2 {
+  font-size: 1.22rem;
+  letter-spacing: -0.01em;
+}
+
 /* registry member form - photo + nicer file picker */
 .jcc-member-photo-header {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: stretch;
   margin-bottom: 1rem;
+}
+
+.jcc-photo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.25rem 0.25rem 0.8rem;
 }
 
 .jcc-member-form-actions {
@@ -684,13 +848,15 @@ tr:hover td {
 .jcc-photo-preview-wrap {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  min-width: 260px;
+  gap: 0.7rem;
+  min-width: 0;
+  align-items: center;
 }
 
 .jcc-photo-preview {
-  width: 180px;
-  height: 180px;
+  width: min(100%, 260px);
+  aspect-ratio: 1 / 1;
+  height: auto;
   border-radius: 14px;
   object-fit: cover;
   background: #0f1722;
@@ -707,14 +873,15 @@ tr:hover td {
 .jcc-photo-preview-wrap-family {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  min-width: 220px;
+  gap: 0.7rem;
+  min-width: 0;
   align-items: center;
 }
 
 .jcc-photo-preview-small {
-  width: 120px;
-  height: 120px;
+  width: min(100%, 260px);
+  aspect-ratio: 1 / 1;
+  height: auto;
   border-radius: 14px;
   object-fit: cover;
   background: #0f1722;
@@ -724,24 +891,49 @@ tr:hover td {
 .jcc-photo-meta {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.jcc-photo-metaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.jcc-photo-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  text-align: center;
 }
 
 .jcc-photo-title {
   font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
 }
 
 .jcc-file-name {
   color: var(--muted);
   font-size: 0.85rem;
+  min-height: 1.2rem;
 }
 
 .jcc-photo-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  justify-content: flex-start;
+  justify-content: flex-end;
+  align-items: center;
   position: relative;
+}
+
+.jcc-photo-actions--center {
+  justify-content: center;
+  width: 100%;
+  margin-top: 0.2rem;
 }
 
 .jcc-file-input {
@@ -754,13 +946,14 @@ tr:hover td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem 0.9rem;
+  padding: 0.44rem 0.82rem;
   background: #1b2430;
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 10px;
   cursor: pointer;
   font-weight: 700;
+  font-size: 0.83rem;
   transition: transform 0.06s ease, background 0.15s ease;
 }
 
@@ -834,6 +1027,21 @@ tr:hover td {
   min-width: 230px;
 }
 
+.jcc-detail-basicGrid {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.35rem;
+  align-items: start;
+}
+
+.jcc-detail-basicPhotoCol {
+  min-width: 0;
+}
+
+.jcc-detail-basicInfoCol {
+  min-width: 0;
+}
+
 .jcc-detail-photoPreview {
   width: 220px;
   height: 220px;
@@ -848,16 +1056,127 @@ tr:hover td {
   min-width: 320px;
 }
 
-.jcc-visit-contentField input {
+.jcc-visit-contentField input,
+.jcc-visit-contentField textarea {
   min-width: 0 !important;
   width: 100%;
+  min-height: 5.2rem;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+/* registry member detail: visit table layout stability */
+.jcc-visits-table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 760px;
+}
+
+.jcc-visits-table th:nth-child(1),
+.jcc-visits-table td:nth-child(1) {
+  width: 9rem;
+}
+
+.jcc-visits-table th:nth-child(2),
+.jcc-visits-table td:nth-child(2) {
+  width: 5.6rem;
+}
+
+.jcc-visits-table th:nth-child(4),
+.jcc-visits-table td:nth-child(4) {
+  width: 10rem;
+}
+
+.jcc-visits-table .jcc-visit-col-date {
+  width: 9rem;
+  white-space: nowrap !important;
+  word-break: keep-all;
+}
+
+.jcc-visits-table .jcc-visit-col-method {
+  width: 5.6rem;
+  white-space: nowrap !important;
+  word-break: keep-all;
+  text-align: left;
+}
+
+.jcc-visits-table .jcc-visit-col-content {
+  line-height: 1.4;
+}
+
+.jcc-visits-table .jcc-visit-col-content--preview {
+  max-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jcc-visits-table .jcc-visit-col-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.jcc-visits-table .jcc-row-actionBtn {
+  min-width: 3.2rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.jcc-visits-table .jcc-visit-col-content--full {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* member detail family table column balance:
+   narrow affiliation/position, wide name, widest remarks */
+.jcc-family-table {
+  table-layout: fixed;
+}
+
+.jcc-family-table th:nth-child(1),
+.jcc-family-table td:nth-child(1) {
+  width: 18%;
+}
+
+.jcc-family-table th:nth-child(2),
+.jcc-family-table td:nth-child(2) {
+  width: 9%;
+}
+
+.jcc-family-table th:nth-child(3),
+.jcc-family-table td:nth-child(3) {
+  width: 14%;
+}
+
+.jcc-family-table th:nth-child(4),
+.jcc-family-table td:nth-child(4) {
+  width: 12%;
+}
+
+.jcc-family-table th:nth-child(5),
+.jcc-family-table td:nth-child(5) {
+  width: 35%;
+}
+
+.jcc-family-table th:nth-child(6),
+.jcc-family-table td:nth-child(6) {
+  width: 12%;
 }
 
 /* registry member detail - key/value rows */
 .jcc-detail-kv {
   display: flex;
   align-items: baseline;
-  gap: 0.65rem;
+  gap: 0.45rem;
   padding: 0.25rem 0;
 }
 
@@ -866,7 +1185,7 @@ tr:hover td {
   font-weight: 800;
   font-size: 0.98rem;
   letter-spacing: 0.01em;
-  min-width: 8.8rem;
+  min-width: 6.2rem;
 }
 
 .jcc-detail-kvValue {
@@ -888,6 +1207,18 @@ tr:hover td {
 /* subtle rhythm line between rows (keeps it polished without being heavy) */
 .jcc-detail-kv + .jcc-detail-kv {
   border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+@media (max-width: 980px) {
+  .jcc-detail-basicGrid {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .jcc-detail-basicGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* registry member detail - family/visit add forms */
@@ -974,6 +1305,50 @@ tr:hover td {
 
 .jcc-modal .card {
   margin: 0;
+}
+
+.jcc-modal-statusSlot {
+  padding: 0 0 0.75rem 0;
+  min-height: 0;
+}
+
+.jcc-modal-status--error.jcc-modal-statusSlot {
+  padding-bottom: 0.75rem;
+}
+
+.jcc-modal-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 113, 113, 0.42);
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.14), rgba(127, 29, 29, 0.2));
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15) inset;
+}
+
+.jcc-modal-alert-icon {
+  flex-shrink: 0;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  background: rgba(248, 113, 113, 0.45);
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  margin-top: 0.06rem;
+}
+
+.jcc-modal-alert-text {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #fecaca;
 }
 
 /* responsive tweaks */
@@ -1073,8 +1448,13 @@ tr:hover td {
   }
 
   .jcc-photo-preview-small {
-    width: 100px;
-    height: 100px;
+    width: 140px;
+    height: 140px;
+  }
+
+  .jcc-photo-card {
+    min-width: 220px;
+    padding: 0.7rem;
   }
 
   /* team accordion responsive */
@@ -1098,14 +1478,14 @@ tr:hover td {
 .jcc-team-groups {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.95rem;
 }
 
 .jcc-team-group {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(21, 27, 36, 0.6);
+  border: none;
+  border-radius: 16px;
+  overflow: visible;
+  background: transparent;
 }
 
 .jcc-team-group-toggle {
@@ -1115,28 +1495,29 @@ tr:hover td {
   grid-template-columns: 1fr 5rem 1.2rem;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.85rem 1rem;
+  padding: 0.95rem 1.15rem;
   cursor: pointer;
-  background: #121820;
-  color: var(--text);
+  background: var(--jcc-team-tone-bar, #35578e);
+  color: #fff;
   border: none;
+  border-radius: 16px;
 }
 
 .jcc-team-group-toggle:hover {
-  background: #141e2a;
+  filter: brightness(0.98);
 }
 
 .jcc-team-group-title {
   font-weight: 900;
-  font-size: 1rem;
-  justify-self: center;
-  text-align: center;
+  font-size: 1.35rem;
+  justify-self: start;
+  text-align: left;
 }
 
 .jcc-team-group-count {
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.95);
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.98rem;
   justify-self: end;
   text-align: right;
   width: 5rem;
@@ -1144,58 +1525,148 @@ tr:hover td {
 }
 
 .jcc-team-group-chevron {
-  color: var(--accent);
+  color: #fff;
   font-weight: 900;
+  font-size: 1.1rem;
   justify-self: end;
   transition: transform 0.15s ease;
 }
 
 .jcc-team-group-body {
-  padding: 0.75rem 1rem 1rem 1rem;
+  padding: 0.95rem 0.25rem 1.05rem;
 }
 
 .jcc-team-memberList {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.8rem;
 }
 
 .jcc-team-member {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.55rem 0.65rem;
-  border-radius: 10px;
-  border: 1px solid rgba(42, 53, 72, 0.8);
-  background: rgba(12, 15, 20, 0.35);
+  margin: 0;
 }
 
-.jcc-team-member-main {
+.jcc-team-member-cardLink {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-}
-
-.jcc-team-member-link {
-  color: var(--accent);
+  align-items: center;
+  gap: 0.35rem;
   text-decoration: none;
+  padding: 1.05rem 0.68rem 0.45rem;
+  border-radius: 12px;
+  border: none;
+  background: var(--jcc-team-tone-card, #2a446f);
+  min-height: 0;
+}
+
+.jcc-team-member-cardLink:hover {
+  filter: brightness(0.98);
+}
+
+.jcc-team-member-photoWrap {
+  width: 112px;
+  height: 112px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f2f4f7;
+  border: none;
+  position: relative;
+}
+
+.jcc-team-member-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: relative;
+  z-index: 2;
+}
+
+.jcc-team-member-photoFallback {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #d7e5fb;
+  font-size: 1.75rem;
   font-weight: 900;
+  background: linear-gradient(180deg, #23324a 0%, #182336 100%);
+}
+
+.jcc-team-member-name {
+  color: #fff;
+  font-weight: 900;
+  font-size: 0.88rem;
   line-height: 1.2;
+  text-align: center;
+  letter-spacing: -0.01em;
 }
 
-.jcc-team-member-link:hover {
-  text-decoration: underline;
+.jcc-team-member-phone {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  font-size: 0.76rem;
+  line-height: 1.05;
+  min-height: 1.2rem;
+  text-align: center;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
 }
 
-.jcc-team-member-sub {
-  color: var(--muted);
-  font-size: 0.85rem;
+.jcc-team-member-phone:empty {
+  visibility: hidden;
 }
 
-.jcc-team-moveBtn {
-  white-space: nowrap;
+.jcc-team-group-tone-0 .jcc-team-group-toggle,
+.jcc-team-group-tone-1 .jcc-team-group-toggle,
+.jcc-team-group-tone-2 .jcc-team-group-toggle,
+.jcc-team-group-tone-3 .jcc-team-group-toggle {
+  background: var(--jcc-team-tone-bar, #35578e);
+}
+
+@media (max-width: 600px) {
+  .jcc-team-group-body {
+    padding: 0.7rem 0 0.85rem;
+  }
+  .jcc-team-group-title {
+    font-size: 1.08rem;
+  }
+  .jcc-team-group-count {
+    font-size: 0.82rem;
+  }
+  .jcc-team-memberList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+  }
+  .jcc-team-member-cardLink {
+    min-height: 0;
+    padding: 0.62rem 0.38rem 0.52rem;
+  }
+  .jcc-team-member-photoWrap {
+    width: 86px;
+    height: 86px;
+    border-radius: 9px;
+  }
+  .jcc-team-member-name {
+    font-size: 0.73rem;
+  }
+
+  .jcc-team-member-phone {
+    font-size: 0.67rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .jcc-member-inline-form .field {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+    align-items: stretch;
+  }
+
+  .jcc-member-photo-header {
+    grid-template-columns: 1fr;
+  }
 }

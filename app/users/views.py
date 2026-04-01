@@ -23,7 +23,13 @@ from users.models import (
     UserFunctionalDeptRole,
     UserProfile,
 )
-from users.permissions import can_access_member_registry, is_platform_admin, pastoral_divisions_for
+from users.permissions import (
+    can_access_member_registry,
+    can_manage_division_accounts,
+    is_platform_admin,
+    membership_divisions_for,
+    pastoral_divisions_for,
+)
 from users.services.user_display import kakao_nickname_map_for_user_ids, user_display_name
 
 
@@ -407,15 +413,22 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
     template_name = "users/division_account_roles.html"
     login_url = reverse_lazy("user_login")
 
+    def _manageable_divisions(self):
+        if is_platform_admin(self.request.user):
+            return Division.objects.all().order_by("sort_order", "name")
+        if can_access_member_registry(self.request.user):
+            return pastoral_divisions_for(self.request.user).order_by("sort_order", "name")
+        return membership_divisions_for(self.request.user).order_by("sort_order", "name")
+
     def dispatch(self, request, *args, **kwargs):
-        if not can_access_member_registry(request.user):
+        if not can_manage_division_accounts(request.user):
             raise PermissionDenied("계정 직책 관리 페이지 권한이 없습니다.")
-        if not pastoral_divisions_for(request.user).exists():
+        if not self._manageable_divisions().exists():
             raise PermissionDenied("담당 부서가 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 
     def _resolve_active_division(self):
-        divisions = pastoral_divisions_for(self.request.user).order_by("sort_order", "name")
+        divisions = self._manageable_divisions()
         if not divisions.exists():
             return None, divisions
 
@@ -447,6 +460,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         team_id = (request.POST.get("team_id") or "").strip()
         valid_role_codes = set(Role.objects.values_list("code", flat=True))
         selected_role_codes = [c for c in request.POST.getlist("role_codes") if c in valid_role_codes]
+        manage_attendance = request.POST.get("can_manage_attendance") == "on"
+        manage_parking = request.POST.get("can_manage_parking") == "on"
+        manage_accounts = request.POST.get("can_manage_accounts") == "on"
         if not user_id.isdigit():
             messages.error(request, "대상 사용자를 선택해 주세요.")
             return HttpResponseRedirect(
@@ -464,6 +480,19 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             return HttpResponseRedirect(
                 f"{reverse_lazy('user_division_account_roles')}?division_code={active_division.code}"
             )
+
+        user_updates = []
+        if target_user.can_manage_attendance != manage_attendance:
+            target_user.can_manage_attendance = manage_attendance
+            user_updates.append("can_manage_attendance")
+        if target_user.can_manage_parking != manage_parking:
+            target_user.can_manage_parking = manage_parking
+            user_updates.append("can_manage_parking")
+        if target_user.can_manage_accounts != manage_accounts:
+            target_user.can_manage_accounts = manage_accounts
+            user_updates.append("can_manage_accounts")
+        if user_updates:
+            target_user.save(update_fields=user_updates)
 
         selected_team = None
         if team_id:
@@ -582,6 +611,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                         "assigned_role_codes_json": json.dumps(
                             sorted(list(role_map.get(u.id, set()))), ensure_ascii=False
                         ),
+                        "can_manage_attendance": bool(getattr(u, "can_manage_attendance", False)),
+                        "can_manage_parking": bool(getattr(u, "can_manage_parking", False)),
+                        "can_manage_accounts": bool(getattr(u, "can_manage_accounts", False)),
                     }
                 )
 
@@ -601,16 +633,19 @@ class AssignableRoleOptionsApiView(LoginRequiredMixin, TemplateView):
     """직책(Role) 전체 목록. 출석/주차 등 권한 연동용 코드는 없을 때 자동 생성."""
 
     _bootstrap_role_codes = (
-        ("president", "회장", 10),
-        ("team_leader", "팀장", 41),
-        ("cell_leader", "셀장", 42),
-        ("attendance_admin", "출석부 관리자", 43),
-        ("parking_admin", "주차장 관리자", 44),
+        ("dept_head", "부장", 10),
+        ("deputy_dept_head", "차장", 11),
+        ("secretary", "간사", 12),
+        ("instrument_leader", "기악장", 13),
+        ("worship_leader", "워십장", 14),
+        ("choir_leader", "단장", 15),
+        ("vice_choir_leader", "부단장", 16),
+        ("leader", "리더", 17),
     )
     login_url = reverse_lazy("user_login")
 
     def get(self, request, *args, **kwargs):
-        if not can_access_member_registry(request.user):
+        if not can_manage_division_accounts(request.user):
             raise PermissionDenied("직책 목록 조회 권한이 없습니다.")
         for code, name_ko, order in self._bootstrap_role_codes:
             Role.objects.get_or_create(code=code, defaults={"name": name_ko, "sort_order": order})

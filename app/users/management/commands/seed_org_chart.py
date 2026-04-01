@@ -20,15 +20,32 @@ class Command(BaseCommand):
     def _seed_role_levels(self):
         levels = [
             ("목사", "pastor", 100),
-            ("전도사", "evangelist", 80),
-            ("부장", "dept_head", 60),
-            ("일반", "member", 0),
+            ("전도사", "evangelist", 90),
+            ("회장", "president", 80),
+            ("부회장", "vice_president", 70),
+            ("총무", "secretary_general", 60),
+            ("팀장", "team_leader", 50),
+            ("셀장", "cell_leader", 40),
+            ("팀원", "team_member", 10),
         ]
         for name_ko, code, level in levels:
-            RoleLevel.objects.get_or_create(
+            obj, _ = RoleLevel.objects.get_or_create(
                 code=code,
                 defaults={"name": name_ko, "level": level, "sort_order": 100 - level},
             )
+            updates = []
+            if obj.name != name_ko:
+                obj.name = name_ko
+                updates.append("name")
+            if obj.level != level:
+                obj.level = level
+                updates.append("level")
+            target_sort = 100 - level
+            if obj.sort_order != target_sort:
+                obj.sort_order = target_sort
+                updates.append("sort_order")
+            if updates:
+                obj.save(update_fields=updates)
         self.stdout.write(f"  RoleLevel {len(levels)}개 생성/유지")
 
     def _seed_divisions(self):
@@ -51,31 +68,29 @@ class Command(BaseCommand):
 
     def _seed_roles(self):
         roles = [
-            ("회장", "president", 10),
-            ("부회장", "vice_president", 11),
-            ("총무", "secretary_general", 12),
-            ("서기", "secretary", 13),
-            ("담당 목사", "pastor_in_charge", 1),
-            ("간사", "coordinator", 20),
-            ("부장", "dept_head", 21),
-            ("차장", "deputy_head", 22),
-            ("기획편집국", "planning_editor", 23),
-            ("단장", "praise_leader", 30),
-            ("부단장", "praise_deputy", 31),
-            ("리더", "praise_leader_role", 32),
-            ("고문", "advisor", 33),
-            ("기악팀장", "instrumental_leader", 34),
-            ("워십팀장", "worship_leader", 35),
-            ("지역장", "region_leader", 40),
-            ("팀장", "team_leader", 41),
-            ("셀장", "cell_leader", 42),
-            ("출석부 관리자", "attendance_admin", 43),
-            ("주차장 관리자", "parking_admin", 44),
+            ("부장", "dept_head", 10),
+            ("차장", "deputy_dept_head", 11),
+            ("간사", "secretary", 12),
+            ("기악장", "instrument_leader", 13),
+            ("워십장", "worship_leader", 14),
+            ("단장", "choir_leader", 15),
+            ("부단장", "vice_choir_leader", 16),
+            ("리더", "leader", 17),
         ]
         for name_ko, code, order in roles:
-            Role.objects.get_or_create(
-                code=code, defaults={"name": name_ko, "sort_order": order}
+            obj, _ = Role.objects.get_or_create(
+                code=code,
+                defaults={"name": name_ko, "sort_order": order},
             )
+            updates = []
+            if obj.name != name_ko:
+                obj.name = name_ko
+                updates.append("name")
+            if obj.sort_order != order:
+                obj.sort_order = order
+                updates.append("sort_order")
+            if updates:
+                obj.save(update_fields=updates)
         self.stdout.write(f"  Role {len(roles)}개 생성/유지")
 
     def _seed_functional_departments(self):

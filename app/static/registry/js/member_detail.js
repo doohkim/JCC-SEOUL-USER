@@ -24,6 +24,9 @@ const familyEditState = {
 const visitEditState = {
   visitId: null,
 };
+const visitState = {
+  allVisits: [],
+};
 
 function setStatus(msg, isErr) {
   const el = document.getElementById("statusLine");
@@ -146,21 +149,45 @@ function renderVisitsTable(visits) {
   const tb = document.getElementById("tbodyVisits");
   tb.innerHTML = "";
   const rows = Array.isArray(visits) ? visits : [];
-  if (!rows.length) {
+  const limited = rows.slice(0, 3);
+  if (!limited.length) {
     tb.innerHTML = `<tr><td colspan="4">기록이 없습니다.</td></tr>`;
     return;
   }
 
+  limited.forEach((v) => {
+    const rawContent = String(v.content || "");
+    const previewContent =
+      rawContent.length > 90 ? `${rawContent.slice(0, 90)}…` : rawContent;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="jcc-visit-col-date">${escapeHtml(v.visit_date || "")}</td>
+      <td class="jcc-visit-col-method">${escapeHtml(VISIT_METHOD_LABEL[v.contact_method] || v.contact_method || "")}</td>
+      <td class="jcc-visit-col-content jcc-visit-col-content--preview">${escapeHtml(previewContent)}</td>
+      <td class="jcc-visit-col-actions">
+        <button type="button" class="secondary jcc-row-actionBtn" data-act="editVisit" data-id="${v.id}">수정</button>
+        <button type="button" class="secondary jcc-row-actionBtn" data-act="delVisit" data-id="${v.id}">삭제</button>
+      </td>
+    `;
+    tb.appendChild(tr);
+  });
+}
+
+function renderVisitsAllTable(visits) {
+  const tb = document.getElementById("tbodyVisitsAll");
+  if (!tb) return;
+  tb.innerHTML = "";
+  const rows = Array.isArray(visits) ? visits : [];
+  if (!rows.length) {
+    tb.innerHTML = `<tr><td colspan="3">기록이 없습니다.</td></tr>`;
+    return;
+  }
   rows.forEach((v) => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${escapeHtml(v.visit_date || "")}</td>
-      <td>${escapeHtml(VISIT_METHOD_LABEL[v.contact_method] || v.contact_method || "")}</td>
-      <td>${escapeHtml(v.content || "")}</td>
-      <td>
-        <button type="button" class="secondary" data-act="editVisit" data-id="${v.id}">수정</button>
-        <button type="button" data-act="delVisit" data-id="${v.id}" style="margin-left:0.5rem;background:#3a4556;color:#fff;border:none;padding:0.35rem 0.75rem;border-radius:6px;cursor:pointer;">삭제</button>
-      </td>
+      <td class="jcc-visit-col-date">${escapeHtml(v.visit_date || "")}</td>
+      <td class="jcc-visit-col-method">${escapeHtml(VISIT_METHOD_LABEL[v.contact_method] || v.contact_method || "")}</td>
+      <td class="jcc-visit-col-content jcc-visit-col-content--full">${escapeHtml(v.content || "")}</td>
     `;
     tb.appendChild(tr);
   });
@@ -204,7 +231,9 @@ async function loadDetail() {
   document.getElementById("linkEdit").href = `/members/${memberId}/edit/`;
 
   renderFamilyTable(data.family || []);
-  renderVisitsTable(data.visits || []);
+  visitState.allVisits = Array.isArray(data.visits) ? data.visits : [];
+  renderVisitsTable(visitState.allVisits);
+  renderVisitsAllTable(visitState.allVisits);
 
   setStatus("");
 }
@@ -259,6 +288,17 @@ function bindUi() {
     visitEditState.visitId = null;
   }
 
+  function showVisitAllModal() {
+    const ov = document.getElementById("visitAllOverlay");
+    ov?.classList.add("show");
+    ov?.setAttribute("aria-hidden", "false");
+  }
+  function hideVisitAllModal() {
+    const ov = document.getElementById("visitAllOverlay");
+    ov?.classList.remove("show");
+    ov?.setAttribute("aria-hidden", "true");
+  }
+
   // 가족 수정 팝업: 관계/직책 옵션
   fillSelect(document.getElementById("e_rel"), relItems, null);
 
@@ -270,6 +310,10 @@ function bindUi() {
   ]);
 
   document.getElementById("btnVisitEditCancel").onclick = () => hideVisitEditModal();
+  const btnVisitAll = document.getElementById("btnVisitAll");
+  if (btnVisitAll) btnVisitAll.onclick = () => showVisitAllModal();
+  const btnVisitAllClose = document.getElementById("btnVisitAllClose");
+  if (btnVisitAllClose) btnVisitAllClose.onclick = () => hideVisitAllModal();
   document.getElementById("btnVisitEditSave").onclick = async () => {
     const visitId = visitEditState.visitId;
     if (!visitId) return setVisitEditStatus("수정할 기록을 찾을 수 없습니다.", true);

@@ -46,6 +46,7 @@ const memberFormState = {
   currentDivisionId: null,
   currentTeamId: null,
   currentMembershipId: null,
+  isActive: true,
 };
 
 const divisionCodeToId = new Map();
@@ -104,7 +105,7 @@ function fillForm(data) {
 
   document.getElementById("m_name").value = m.name || "";
   document.getElementById("m_alias").value = m.name_alias || "";
-  document.getElementById("m_active").value = m.is_active ? "true" : "false";
+  memberFormState.isActive = Boolean(m.is_active);
 
   memberFormState.currentDivisionId = pm.division_id ?? null;
   memberFormState.currentTeamId = pm.team_id ?? null;
@@ -253,7 +254,7 @@ async function init() {
       const fd = new FormData();
       fd.set("name", getElValue("m_name"));
       fd.set("name_alias", getElValue("m_alias"));
-      fd.set("is_active", getElValue("m_active") === "true" ? "true" : "false");
+      fd.set("is_active", memberFormState.isActive ? "true" : "false");
 
       fd.set("birth_date", getElValue("p_birth") || "");
       fd.set("phone", getElValue("p_phone") || "");

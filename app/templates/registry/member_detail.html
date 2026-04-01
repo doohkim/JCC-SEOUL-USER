@@ -41,8 +41,8 @@
           <div id="statusLine" class="msg"></div>
           <div class="card">
         <h2 style="margin-bottom: 0.5rem">기본 정보</h2>
-        <div style="display:flex; gap:1.5rem; flex-wrap:wrap; align-items:flex-start">
-          <div class="jcc-detail-photoWrap">
+        <div class="jcc-detail-basicGrid">
+          <div class="jcc-detail-basicPhotoCol">
             <img
               id="memberPhotoPreview"
               class="jcc-detail-photoPreview"
@@ -50,7 +50,7 @@
               src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgMTgwIDE4MCI+CjxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iMTgwIiByeD0iMTYiIGZpbGw9IiMwZjE3MjIiLz4KPGNpcmNsZSBjeD0iOTAiIGN5PSI3MiIgcj0iMjgiIGZpbGw9IiMxYjI0MzAiIHN0cm9rZT0iIzJhMzU0OCIvPgo8cGF0aCBkPSJNMzAgMTYwYzgtMzYgMzQtNTYgNjAtNTZzNTIgMjAgNjAgNTYiIGZpbGw9IiMxYjI0MzAiIHN0cm9rZT0iIzJhMzU0OCIvPgo8L3N2Zz4="
             />
           </div>
-          <div style="min-width: 260px">
+          <div class="jcc-detail-basicInfoCol">
             <div class="jcc-detail-kv" style="margin-bottom:0.75rem">
               <span class="jcc-detail-kvLabel">이름 :</span>
               <span id="memberName" class="jcc-detail-kvValue"></span>
@@ -72,7 +72,7 @@
               <span id="memberTeam" class="jcc-detail-kvValue"></span>
             </div>
           </div>
-          <div style="flex:1; min-width: 280px">
+          <div class="jcc-detail-basicInfoCol">
             <div class="jcc-detail-kv" style="margin-bottom:0.75rem">
               <span class="jcc-detail-kvLabel">주소 :</span>
               <span id="memberAddress" class="jcc-detail-kvValue"></span>
@@ -104,7 +104,7 @@
       <div class="card" style="margin-top:1.25rem">
         <h2 style="margin-bottom:0.75rem">가족(행)</h2>
         <div style="overflow-x:auto;">
-          <table>
+          <table class="jcc-visits-table jcc-family-table">
             <thead>
               <tr>
                 <th>이름</th>
@@ -133,9 +133,12 @@
       </div>
 
       <div class="card" style="margin-top:1.25rem">
-        <h2 style="margin-bottom:0.75rem">심방/통화 기록</h2>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; margin-bottom:0.75rem;">
+          <h2 style="margin:0;">심방/통화 기록</h2>
+          <button type="button" class="secondary" id="btnVisitAll">전체보기</button>
+        </div>
         <div style="overflow-x:auto;">
-          <table>
+          <table class="jcc-visits-table">
             <thead>
               <tr>
                 <th>날짜</th>
@@ -151,14 +154,18 @@
         <h3 style="margin-top:1rem; margin-bottom:0.5rem; color: var(--muted); font-size:0.95rem;">
           기록 추가
         </h3>
-        <div class="toolbar jcc-detail-addToolbar" style="padding:0; border:none; background:transparent;">
-          <div class="field"><label>날짜</label><input type="date" id="v_date" class="jcc-reg-control"/></div>
-          <div class="field"><label>방식</label><select id="v_method" class="jcc-reg-control"></select></div>
+        <div style="display:flex; flex-direction:column; gap:0.6rem;">
+          <div class="toolbar jcc-detail-addToolbar" style="padding:0; border:none; background:transparent;">
+            <div class="field"><label>날짜</label><input type="date" id="v_date" class="jcc-reg-control"/></div>
+            <div class="field"><label>방식</label><select id="v_method" class="jcc-reg-control"></select></div>
+          </div>
           <div class="field jcc-visit-contentField">
             <label>내용</label>
-            <input type="text" id="v_content" class="jcc-reg-control"/>
+            <textarea id="v_content" class="jcc-reg-control" rows="4"></textarea>
           </div>
-          <button type="button" id="btnVisitAdd">추가</button>
+          <div style="display:flex; justify-content:flex-end;">
+            <button type="button" id="btnVisitAdd">추가</button>
+          </div>
         </div>
       </div>
         </main>
@@ -193,18 +200,20 @@
           <h2 style="margin: 0 0 0.75rem 0;">심방/통화 기록 수정</h2>
           <div id="visitEditStatus" class="msg" style="padding:0 0 0.75rem 0;"></div>
 
-          <div class="toolbar jcc-detail-addToolbar" style="padding:0; border:none; background:transparent;">
-            <div class="field">
-              <label>날짜</label>
-              <input type="date" id="e_v_date" class="jcc-reg-control"/>
+          <div style="display:flex; flex-direction:column; gap:0.6rem;">
+            <div class="toolbar jcc-detail-addToolbar" style="padding:0; border:none; background:transparent;">
+              <div class="field">
+                <label>날짜</label>
+                <input type="date" id="e_v_date" class="jcc-reg-control"/>
+              </div>
+              <div class="field">
+                <label>방식</label>
+                <select id="e_v_method" class="jcc-reg-control"></select>
+              </div>
             </div>
-            <div class="field">
-              <label>방식</label>
-              <select id="e_v_method" class="jcc-reg-control"></select>
-            </div>
-            <div class="field" style="flex: 2;">
+            <div class="field jcc-visit-contentField">
               <label>내용</label>
-              <input type="text" id="e_v_content" class="jcc-reg-control"/>
+              <textarea id="e_v_content" class="jcc-reg-control" rows="5"></textarea>
             </div>
           </div>
 
@@ -216,12 +225,33 @@
       </div>
     </div>
 
+    <div class="jcc-modal-overlay" id="visitAllOverlay" aria-hidden="true">
+      <div class="jcc-modal" style="max-width: 980px;">
+        <div class="card">
+          <h2 style="margin: 0 0 0.75rem 0;">심방/통화 기록 전체</h2>
+          <div style="overflow-x:auto; max-height: 62vh;">
+            <table class="jcc-visits-table">
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th>방식</th>
+                  <th>내용</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyVisitsAll"></tbody>
+            </table>
+          </div>
+          <div class="toolbar" style="padding:0; border:none; background:transparent; margin-top:1rem; justify-content:flex-end;">
+            <button type="button" class="secondary" id="btnVisitAllClose">닫기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
       window.__MEMBER_ID__ = "{{ member_id|default:'null' }}";
     </script>
     <script src="{% static 'registry/js/member_detail.js' %}"></script>
-    </div>
-  </div>
   </body>
 </html>
 

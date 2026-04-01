@@ -135,7 +135,7 @@
       <header class="app-header">
         <div class="jcc-detail-titleWrap">
           <h1>부서 계정 직책 관리</h1>
-          <p class="subtitle">직책(Role) DB 기준 전체 목록에서 선택 · 출석·주차 권한은 해당 코드(팀장/셀장/출석부·주차 관리자 등)로 연동됩니다.</p>
+          <p class="subtitle">직급(서열), 직책(보직), 기능권한(출석·주차·계정관리)을 분리해 관리합니다.</p>
         </div>
       </header>
       <main>
@@ -187,6 +187,7 @@
                     <th>휴대폰</th>
                     <th>직급</th>
                     <th>팀 설정</th>
+                    <th>기능권한</th>
                     <th>직책 설정</th>
                   </tr>
                 </thead>
@@ -204,6 +205,20 @@
                             <option value="{{ tm.id }}" {% if u.team_id == tm.id %}selected{% endif %}>{{ tm.name }}</option>
                           {% endfor %}
                         </select>
+                      </td>
+                      <td>
+                        <label style="display:flex; gap:0.35rem; align-items:center; margin-bottom:0.3rem;">
+                          <input type="checkbox" name="can_manage_attendance" form="role-form-{{ u.id }}" {% if u.can_manage_attendance %}checked{% endif %}>
+                          <span style="font-size:0.8rem;">출석관리</span>
+                        </label>
+                        <label style="display:flex; gap:0.35rem; align-items:center; margin-bottom:0.3rem;">
+                          <input type="checkbox" name="can_manage_parking" form="role-form-{{ u.id }}" {% if u.can_manage_parking %}checked{% endif %}>
+                          <span style="font-size:0.8rem;">주차관리</span>
+                        </label>
+                        <label style="display:flex; gap:0.35rem; align-items:center;">
+                          <input type="checkbox" name="can_manage_accounts" form="role-form-{{ u.id }}" {% if u.can_manage_accounts %}checked{% endif %}>
+                          <span style="font-size:0.8rem;">계정관리</span>
+                        </label>
                       </td>
                       <td class="jcc-role-cell">
                         <form id="role-form-{{ u.id }}" class="jcc-role-form" method="post">
