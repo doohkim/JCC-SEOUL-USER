@@ -1,7 +1,7 @@
 credentials:
   # Prefer environment variable interpolation at runtime.
-  accessKeyID: ""
-  secretAccessKey: ""
+  accessKeyID: "AKIAZT52BNCPVLXQQYAK"
+  secretAccessKey: "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"
 
 route53:
   hostedZoneID: "Z03391243MWYGPI2LNKKZ"

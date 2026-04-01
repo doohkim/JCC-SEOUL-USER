@@ -16,6 +16,11 @@ from config.admin_legacy_redirect import (
 )
 
 api_urlpatterns = [
+    path(
+        "",
+        RedirectView.as_view(url="/login/?next=/attendance/", permanent=False),
+        name="root_login_redirect",
+    ),
     re_path(LEGACY_USERS_ADMIN_PATTERN, redirect_legacy_users_admin),
     re_path(LEGACY_USERS_ADMIN_PATTERN, redirect_legacy_users_admin),
     path("docs/", TemplateView.as_view(template_name="docs/index.html"), name="docs_index"),

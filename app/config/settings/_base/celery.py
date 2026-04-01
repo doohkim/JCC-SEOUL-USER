@@ -4,8 +4,11 @@ from . import _secrets as secrets
 
 IS_DOCKER = bool(os.environ.get("DOCKER"))
 RABBITMQ_HOST = "rabbitmq" if IS_DOCKER else "127.0.0.1"
-RABBITMQ_USER = "priceone" if IS_DOCKER else "guest"
-RABBITMQ_PASSWORD = secrets.RABBITMQ_PASSWORD if IS_DOCKER else ""
+RABBITMQ_USER = os.environ.get("RABBITMQ_USER", "jccseoul" if IS_DOCKER else "guest")
+RABBITMQ_PASSWORD = os.environ.get(
+    "RABBITMQ_PASSWORD",
+    "jccseoul1!" if IS_DOCKER else "",
+)
 
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_CACHE_BACKEND = "django-cache"

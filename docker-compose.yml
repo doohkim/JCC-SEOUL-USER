@@ -39,6 +39,8 @@ services:
       dockerfile: ${DOCKERFILE}
     container_name: django
     restart: unless-stopped
+    env_file:
+      - ./.deploy/production/env
     environment:
       - DOCKER=1
       - IS_LOCAL=${IS_LOCAL}
@@ -101,6 +103,9 @@ services:
     image: rabbitmq:4.0-management-alpine
     container_name: rabbitmq
     restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-jccseoul}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-jccseoul1!}
     ports:
       - "5672:5672"
       - "15672:15672"
