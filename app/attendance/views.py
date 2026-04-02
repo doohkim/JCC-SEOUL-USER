@@ -101,6 +101,15 @@ class AttendanceTeamRosterCheckView(OnboardingRequiredMixin, LoginRequiredMixin,
     def dispatch(self, request, *args, **kwargs):
         if not can_access_attendance_roster(request.user):
             raise PermissionDenied("출석부 페이지 권한이 없습니다.")
+
+        # 목사/전도사처럼 팀 소속이 없는 경우에는 탭 자체에 접근하지 못하게 하고,
+        # 대시보드 통계만 보도록 리다이렉트한다.
+        role_code = getattr(getattr(request.user, "role_level", None), "code", None)
+        if role_code in {"pastor", "evangelist"}:
+            has_team = request.user.division_teams.filter(team__isnull=False).exists()
+            if not has_team:
+                return HttpResponseRedirect(reverse_lazy("attendance_dashboard"))
+
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -132,6 +141,13 @@ class AttendanceTeamRosterMyPageView(OnboardingRequiredMixin, LoginRequiredMixin
     def dispatch(self, request, *args, **kwargs):
         if not can_access_attendance_roster(request.user):
             raise PermissionDenied("출석부 페이지 권한이 없습니다.")
+
+        role_code = getattr(getattr(request.user, "role_level", None), "code", None)
+        if role_code in {"pastor", "evangelist"}:
+            has_team = request.user.division_teams.filter(team__isnull=False).exists()
+            if not has_team:
+                return HttpResponseRedirect(reverse_lazy("attendance_dashboard"))
+
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):

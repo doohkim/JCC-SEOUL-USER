@@ -7,6 +7,8 @@ from registry.apis.member_crud import (
     MemberFamilyDetailView,
     MemberFamilyListCreateView,
     MemberListCreateView,
+    MemberLinkUserChoicesView,
+    MemberLinkUserSetView,
     MemberRegistryTeamsAccordionView,
     MemberRoleOptionsView,
     MemberVisitLogDetailView,
@@ -65,6 +67,16 @@ urlpatterns = [
         "api/v1/member/<int:member_id>/",
         MemberDetailUpdateView.as_view(),
         name="api_member_detail_update",
+    ),
+    path(
+        "api/v1/member/<int:member_id>/link-user/choices/",
+        MemberLinkUserChoicesView.as_view(),
+        name="api_member_link_user_choices",
+    ),
+    path(
+        "api/v1/member/<int:member_id>/link-user/",
+        MemberLinkUserSetView.as_view(),
+        name="api_member_link_user_set",
     ),
     path(
         "api/v1/member/<int:member_id>/family/",

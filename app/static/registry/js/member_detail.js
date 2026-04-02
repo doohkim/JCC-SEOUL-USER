@@ -213,6 +213,12 @@ async function loadDetail() {
   document.getElementById("memberDivision").textContent = pm.division_name || "";
   document.getElementById("memberTeam").textContent = pm.team_name || "";
   document.getElementById("memberActive").textContent = m.is_active ? "활성" : "비활성";
+  const linkedEl = document.getElementById("memberLinkedUser");
+  if (linkedEl) {
+    const linkedId = m.linked_user_id;
+    const label = m.linked_user_username ? m.linked_user_username : linkedId ? `#${linkedId}` : "";
+    linkedEl.textContent = linkedId ? (label || "연결됨") : "없음";
+  }
   const rn = data.recent_attendance || {};
   const recentEl = document.getElementById("memberRecentAttendance");
   if (recentEl) {
@@ -239,6 +245,138 @@ async function loadDetail() {
 }
 
 function bindUi() {
+  const memberId = window.__MEMBER_ID__;
+
+  const linkUserState = {
+    choicesLimit: 20,
+    currentQ: "",
+  };
+
+  function setLinkUserStatus(msg, isErr) {
+    const st = document.getElementById("linkUserStatus");
+    if (!st) return;
+    const s = msg || "";
+    st.textContent = String(s).length > 220 ? String(s).slice(0, 220) + "…" : s;
+    st.className = "msg" + (isErr ? " err" : "");
+  }
+
+  function openLinkUserModal() {
+    const ov = document.getElementById("linkUserOverlay");
+    ov?.classList.add("show");
+    ov?.setAttribute("aria-hidden", "false");
+    linkUserState.currentQ = "";
+    const qEl = document.getElementById("linkUserQ");
+    if (qEl) qEl.value = "";
+    setLinkUserStatus("", false);
+    const tbody = document.getElementById("tbodyLinkUserChoices");
+    if (tbody) tbody.innerHTML = "";
+    loadLinkUserChoices("");
+  }
+
+  function closeLinkUserModal() {
+    const ov = document.getElementById("linkUserOverlay");
+    ov?.classList.remove("show");
+    ov?.setAttribute("aria-hidden", "true");
+  }
+
+  async function loadLinkUserChoices(q) {
+    try {
+      setLinkUserStatus("계정 목록 불러오는 중…");
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      params.set("limit", String(linkUserState.choicesLimit));
+      const data = await apiGet(
+        `/member/${memberId}/link-user/choices/?${params.toString()}`
+      );
+      const results = Array.isArray(data.results) ? data.results : [];
+      const tbody = document.getElementById("tbodyLinkUserChoices");
+      if (!tbody) return;
+      if (!results.length) {
+        tbody.innerHTML = `<tr><td colspan="4">표시할 계정이 없습니다.</td></tr>`;
+        setLinkUserStatus("표시할 계정이 없습니다.", false);
+        return;
+      }
+      tbody.innerHTML = results
+        .map((u) => {
+          const phone = u.phone ? String(u.phone) : "";
+          const display = u.display_name ? String(u.display_name) : "";
+          const uname = u.username ? String(u.username) : "";
+          return `
+            <tr>
+              <td>${escapeHtml(uname)}</td>
+              <td>${escapeHtml(display)}</td>
+              <td>${escapeHtml(phone)}</td>
+              <td>
+                <button type="button" class="secondary" data-user-id="${escapeHtml(
+                  u.id
+                )}">연결</button>
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+      setLinkUserStatus("");
+    } catch (e) {
+      console.error(e);
+      setLinkUserStatus("계정 목록 로드 실패: " + (e.message || e), true);
+    }
+  }
+
+  async function linkUser(userId) {
+    try {
+      setLinkUserStatus("연결 중…");
+      await apiPost(`/member/${memberId}/link-user/`, { linked_user_id: userId });
+      closeLinkUserModal();
+      await loadDetail();
+      setStatus("계정 연결 완료");
+    } catch (e) {
+      console.error(e);
+      setLinkUserStatus("연결 실패: " + (e.message || e), true);
+    }
+  }
+
+  const btnLinkUser = document.getElementById("btnLinkUser");
+  if (btnLinkUser) {
+    btnLinkUser.onclick = openLinkUserModal;
+  }
+
+  const btnLinkUserCancel = document.getElementById("btnLinkUserCancel");
+  if (btnLinkUserCancel) {
+    btnLinkUserCancel.onclick = closeLinkUserModal;
+  }
+
+  const btnLinkUserSearch = document.getElementById("btnLinkUserSearch");
+  if (btnLinkUserSearch) {
+    btnLinkUserSearch.onclick = async () => {
+      const qEl = document.getElementById("linkUserQ");
+      const q = qEl ? qEl.value.trim() : "";
+      linkUserState.currentQ = q;
+      await loadLinkUserChoices(q);
+    };
+  }
+
+  const linkUserQ = document.getElementById("linkUserQ");
+  if (linkUserQ) {
+    linkUserQ.onkeydown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        btnLinkUserSearch?.click();
+      }
+    };
+  }
+
+  const tbodyLinkUserChoices = document.getElementById("tbodyLinkUserChoices");
+  if (tbodyLinkUserChoices) {
+    tbodyLinkUserChoices.onclick = (e) => {
+      const btn = e.target.closest("button[data-user-id]");
+      if (!btn) return;
+      const userIdStr = btn.getAttribute("data-user-id");
+      const userId = userIdStr ? Number(userIdStr) : null;
+      if (!userId) return setLinkUserStatus("계정 id가 올바르지 않습니다.", true);
+      linkUser(userId);
+    };
+  }
+
   const relItems = [
     { value: "father", label: "부" },
     { value: "mother", label: "모" },

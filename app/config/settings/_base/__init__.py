@@ -16,6 +16,7 @@ from .phonenumber import *
 from .static import *
 from .logging import *
 from .subdomain import *
+from .attendance import *
 from .templates import *
 
 IS_RUNSERVER = len(sys.argv) > 1 and sys.argv[1] == "runserver"

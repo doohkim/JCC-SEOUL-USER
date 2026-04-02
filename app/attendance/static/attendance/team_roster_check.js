@@ -182,6 +182,20 @@ function weekSundayOnOrAfterTodayLocal() {
   return addDaysToIsoDate(todayIso, offset);
 }
 
+function isoToLocalDateAtNoon(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  // DST 등으로 하루 경계가 흔들리지 않게 정오로 고정
+  dt.setHours(12, 0, 0, 0);
+  return dt;
+}
+
+function absDiffDaysIso(aIso, bIso) {
+  const a = isoToLocalDateAtNoon(aIso);
+  const b = isoToLocalDateAtNoon(bIso);
+  return Math.abs(a - b) / 86400000;
+}
+
 function parseQuery() {
   const u = new URL(window.location.href);
   const division_code = u.searchParams.get("division_code") || "youth";
@@ -623,7 +637,23 @@ async function loadWeeks() {
       const candidate = `${state.service_type}|${state.week_sunday}`;
       if ([...sel.options].some((opt) => opt.value === candidate)) return candidate;
     }
-    return sel.options.length ? sel.options[0].value : "";
+    // 기본값: "오늘"과 가장 가까운 예배일을 선택한다(과거/미래 모두 허용).
+    // tie-break: 같은 거리면 미래(오늘 포함 이후)를 우선한다.
+    const todayIso = isoDateTodayLocal();
+    let best = null;
+    let bestDiff = Infinity;
+    let bestIsFuture = false;
+    for (const o of options) {
+      if (!o.service_date) continue;
+      const diff = absDiffDaysIso(o.service_date, todayIso);
+      const isFuture = o.service_date >= todayIso; // ISO 날짜 문자열은 사전식 비교가 날짜 순서와 일치
+      if (diff < bestDiff || (diff === bestDiff && isFuture && !bestIsFuture)) {
+        best = o.value;
+        bestDiff = diff;
+        bestIsFuture = isFuture;
+      }
+    }
+    return best || (sel.options.length ? sel.options[0].value : "");
   };
 
   const chosen = pickValue();

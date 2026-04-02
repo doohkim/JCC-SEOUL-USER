@@ -98,3 +98,47 @@ class UserProfile(models.Model):
             and self.requested_team.division_id != self.requested_division_id
         ):
             raise ValidationError({"requested_team": "신청 팀은 신청 부서에 속해야 합니다."})
+
+
+class UserProfileAvatar(models.Model):
+    """
+    프로필 이미지 히스토리(여러 개 누적 저장용).
+
+    - 동일 이미지(내용 해시 동일)는 중복 저장하지 않음
+    - 카카오에서 이미지가 “사라져도” 기존 이미지는 삭제하지 않음
+    - 새 이미지(해시가 다름)만 추가 저장
+    """
+
+    user_profile = models.ForeignKey(
+        UserProfile,
+        on_delete=models.CASCADE,
+        related_name="avatar_history",
+        verbose_name="프로필",
+    )
+    image = models.ImageField(
+        "프로필 이미지(히스토리)",
+        upload_to="users/avatars/",
+        null=True,
+        blank=True,
+    )
+    source_url = models.URLField("원본 URL", null=True, blank=True)
+    content_hash = models.CharField(
+        "이미지 콘텐츠 해시(sha256 hex)",
+        max_length=64,
+        db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "users_userprofileavatar"
+        verbose_name = "사용자 프로필 이미지(히스토리)"
+        verbose_name_plural = "사용자 프로필 이미지(히스토리)"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user_profile", "content_hash"],
+                name="uniq_userprofile_avatar_content_hash",
+            )
+        ]
+
+    def __str__(self):
+        return f"ProfileAvatar · user={self.user_profile.user_id} · {self.created_at.isoformat()}"

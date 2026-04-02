@@ -22,7 +22,17 @@ def can_access_registry_tab(user):
 
 @register.filter(name="can_access_attendance_tab")
 def can_access_attendance_tab(user):
-    return can_access_attendance_roster(user)
+    if not can_access_attendance_roster(user):
+        return False
+
+    # 목사/전도사(팀 소속 없음)는 탭 출석부 접근을 막고 대시보드 통계만 보게 한다.
+    role_code = getattr(getattr(user, "role_level", None), "code", None)
+    if role_code in {"pastor", "evangelist"}:
+        has_team = user.division_teams.filter(team__isnull=False).exists()
+        if not has_team:
+            return False
+
+    return True
 
 
 @register.filter(name="can_access_parking_tab")

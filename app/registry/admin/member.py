@@ -157,6 +157,7 @@ class MemberAdmin(
         MemberFamilyMemberInline,
         MemberVisitLogInline,
     ]
+
     fieldsets = (
         ("필수", {"classes": ("jcc-required",), "fields": ("name",)}),
         (

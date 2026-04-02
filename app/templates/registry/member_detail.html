@@ -35,6 +35,9 @@
         <div class="toolbar jcc-detail-actions">
           <a class="jcc-action-link" href="{% url 'registry_member_list' %}">목록</a>
           <a class="jcc-action-link secondary" id="linkEdit" href="#">수정</a>
+          <button type="button" class="jcc-action-link secondary" id="btnLinkUser">
+            앱 계정 연결/변경
+          </button>
         </div>
 
         <main>
@@ -70,6 +73,10 @@
             <div class="jcc-detail-kv" style="margin-bottom:0.75rem">
               <span class="jcc-detail-kvLabel">팀 :</span>
               <span id="memberTeam" class="jcc-detail-kvValue"></span>
+            </div>
+            <div class="jcc-detail-kv" style="margin-bottom:0.75rem">
+              <span class="jcc-detail-kvLabel">연결된 계정 :</span>
+              <span id="memberLinkedUser" class="jcc-detail-kvValue"></span>
             </div>
           </div>
           <div class="jcc-detail-basicInfoCol">
@@ -220,6 +227,43 @@
           <div class="toolbar" style="padding:0; border:none; background:transparent; margin-top:1rem;">
             <button type="button" class="secondary" id="btnVisitEditCancel">취소</button>
             <button type="button" id="btnVisitEditSave">수정</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="jcc-modal-overlay" id="linkUserOverlay" aria-hidden="true">
+      <div class="jcc-modal" style="max-width: 860px;">
+        <div class="card">
+          <h2 style="margin: 0 0 0.75rem 0;">앱 계정 연결</h2>
+          <div id="linkUserStatus" class="msg" style="padding:0 0 0.75rem 0;"></div>
+
+          <div class="toolbar" style="padding:0; border:none; background:transparent; margin-bottom:1rem;">
+            <div class="field" style="flex: 1;">
+              <label>계정 검색</label>
+              <input type="search" id="linkUserQ" class="jcc-reg-control" placeholder="username / display_name / phone / email" />
+            </div>
+            <div class="field" style="min-width: 120px; display:flex; align-items:flex-end; justify-content:flex-end;">
+              <button type="button" class="secondary" id="btnLinkUserSearch" style="height: 38px;">검색</button>
+            </div>
+          </div>
+
+          <div style="overflow-x:auto; max-height: 52vh;">
+            <table class="jcc-visits-table" style="min-width: 680px;">
+              <thead>
+                <tr>
+                  <th style="width: 160px;">계정</th>
+                  <th>표시 이름</th>
+                  <th style="width: 180px;">연락처</th>
+                  <th style="width: 140px;">작업</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyLinkUserChoices"></tbody>
+            </table>
+          </div>
+
+          <div class="toolbar" style="padding:0; border:none; background:transparent; margin-top:1rem; justify-content:flex-end;">
+            <button type="button" class="secondary" id="btnLinkUserCancel">닫기</button>
           </div>
         </div>
       </div>

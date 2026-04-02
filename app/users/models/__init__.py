@@ -2,7 +2,7 @@
 
 from .role_level import RoleLevel
 from .user import User
-from .user_profile import UserProfile
+from .user_profile import UserProfile, UserProfileAvatar
 from .organization import (
     Club,
     Division,
@@ -18,6 +18,7 @@ from .organization import (
 __all__ = [
     "User",
     "UserProfile",
+    "UserProfileAvatar",
     "RoleLevel",
     "Division",
     "Team",

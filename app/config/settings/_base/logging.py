@@ -29,5 +29,10 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        "users.services.kakao_auth": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }

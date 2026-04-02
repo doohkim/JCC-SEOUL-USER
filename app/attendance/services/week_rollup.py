@@ -8,7 +8,11 @@ from django.http import Http404
 
 from attendance.choices import MidweekAttendanceStatus, MidweekServiceType
 from attendance.importers.member_resolve import week_sunday_on_or_before
-from attendance.models import MidweekAttendanceRecord, SundayAttendanceLine
+from attendance.models import (
+    MidweekAttendanceRecord,
+    SundayAttendanceLine,
+    TeamAttendanceSession,
+)
 from users.models import Division
 
 __all__ = [
@@ -56,6 +60,13 @@ def distinct_week_sundays_for_division(division: Division) -> list[date]:
     for d in MidweekAttendanceRecord.objects.filter(division=division).values_list(
         "service_date", flat=True
     ).distinct():
+        keys.add(week_sunday_on_or_after(d))
+    # 팀 출석부만 있고 주일/수토 명단 라인이 아직 없을 때도 예배일 선택 가능하게
+    for d in (
+        TeamAttendanceSession.objects.filter(team__division=division)
+        .values_list("session_date", flat=True)
+        .distinct()
+    ):
         keys.add(week_sunday_on_or_after(d))
     return sorted(keys, reverse=True)
 

@@ -217,22 +217,24 @@ class MidweekAttendanceParseTests(SimpleTestCase):
 
 
 class TeamAttendanceSessionWindowTests(SimpleTestCase):
-    def test_apr2_2026_thursday_window_lists_sat_sun_wed(self):
+    def test_apr2_2026_thursday_three_day_window_lists_only_sat(self):
         from attendance.services.team_attendance_sessions import (
-            worship_service_dates_in_seven_day_window,
+            worship_service_dates_in_rolling_window,
         )
 
         anchor = date(2026, 4, 2)
         self.assertEqual(anchor.weekday(), 3)
-        got = worship_service_dates_in_seven_day_window(anchor)
-        self.assertEqual(got, [date(2026, 4, 4), date(2026, 4, 5), date(2026, 4, 8)])
+        got = worship_service_dates_in_rolling_window(anchor, days=3)
+        # (anchor~anchor+2 = 4/2~4/4 에서 예배일은 토요일 4/4 하나뿐)
+        self.assertEqual(got, [date(2026, 4, 4)])
 
-    def test_apr5_2026_sunday_window_includes_next_sunday(self):
+    def test_apr5_2026_sunday_three_day_window_includes_today_only(self):
         from attendance.services.team_attendance_sessions import (
-            worship_service_dates_in_seven_day_window,
+            worship_service_dates_in_rolling_window,
         )
 
         anchor = date(2026, 4, 5)
         self.assertEqual(anchor.weekday(), 6)
-        got = worship_service_dates_in_seven_day_window(anchor)
-        self.assertIn(date(2026, 4, 11), got)
+        got = worship_service_dates_in_rolling_window(anchor, days=3)
+        self.assertIn(date(2026, 4, 5), got)
+        self.assertNotIn(date(2026, 4, 11), got)

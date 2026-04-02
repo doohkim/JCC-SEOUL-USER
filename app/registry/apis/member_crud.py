@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import Http404
 from rest_framework import status
@@ -26,7 +26,7 @@ from registry.serializers.member_crud import (
 )
 from attendance.choices.attendance import MidweekServiceType
 from attendance.models.weekly import MidweekAttendanceRecord, SundayAttendanceLine
-from users.models import Division, Role, Team
+from users.models import Division, Role, Team, User
 from users.permissions import IsPastoralRegistryStaff, members_visible_to, registry_divisions_for
 
 
@@ -446,6 +446,10 @@ class MemberDetailUpdateView(APIView):
                 "name": member.name,
                 "name_alias": member.name_alias,
                 "is_active": member.is_active,
+                "linked_user_id": member.linked_user_id,
+                "linked_user_username": member.linked_user.username
+                if member.linked_user_id
+                else "",
             },
             "profile": MemberProfileSerializer(profile).data if profile else None,
             "primary_membership": {
@@ -492,6 +496,114 @@ class MemberDetailUpdateView(APIView):
             return Response({"detail": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"ok": True})
+
+class MemberLinkUserChoicesView(APIView):
+    """
+    교적부(Member) ↔ 앱 계정(User) 수동 연결을 위한 선택지 검색 API.
+    """
+
+    permission_classes = [IsPastoralRegistryStaff]
+
+    def get(self, request, member_id: int, *args, **kwargs):
+        q = (request.query_params.get("q") or "").strip()
+        limit = int(request.query_params.get("limit") or 20)
+        limit = max(1, min(limit, 50))
+
+        divisions = registry_divisions_for(request.user)
+        qs = (
+            User.objects.filter(
+                is_active=True,
+                division_teams__division__in=divisions,
+            )
+            .select_related("profile")
+            .distinct()
+        )
+
+        if q:
+            qs = qs.filter(
+                Q(username__icontains=q)
+                | Q(email__icontains=q)
+                | Q(profile__display_name__icontains=q)
+                | Q(profile__phone__icontains=q)
+            )
+
+        results = []
+        for u in qs.order_by("id")[:limit]:
+            results.append(
+                {
+                    "id": u.id,
+                    "username": u.username,
+                    "display_name": getattr(u, "profile", None).display_name
+                    if getattr(u, "profile", None)
+                    else "",
+                    "phone": getattr(getattr(u, "profile", None), "phone", "") or "",
+                    "avatar": getattr(getattr(u, "profile", None), "avatar", None).url
+                    if getattr(getattr(u, "profile", None), "avatar", None)
+                    else "",
+                }
+            )
+
+        return Response({"count": len(results), "results": results})
+
+
+class MemberLinkUserSetView(APIView):
+    """
+    교적부(Member)의 linked_user를 수동으로 설정/해제한다.
+
+    body:
+    - linked_user_id: number | null
+    """
+
+    permission_classes = [IsPastoralRegistryStaff]
+    parser_classes = [JSONParser]
+
+    def _get_visible_member(self, request, member_id: int) -> Member:
+        qs = members_visible_to(request.user)
+        try:
+            return qs.get(pk=member_id)
+        except Member.DoesNotExist as e:
+            raise Http404("member not found") from e
+
+    def post(self, request, member_id: int, *args, **kwargs):
+        m = self._get_visible_member(request, member_id)
+        linked_user_id = request.data.get("linked_user_id", None)
+
+        divisions = registry_divisions_for(request.user)
+
+        if linked_user_id is None or linked_user_id == "":
+            m.linked_user = None
+            m.save(update_fields=["linked_user"])
+            return Response({"ok": True, "linked_user_id": None})
+
+        try:
+            linked_user_id_int = int(linked_user_id)
+        except (TypeError, ValueError):
+            return Response({"detail": "linked_user_id must be an integer or null"}, status=status.HTTP_400_BAD_REQUEST)
+
+        u = (
+            User.objects.filter(
+                id=linked_user_id_int,
+                is_active=True,
+                division_teams__division__in=divisions,
+            )
+            .distinct()
+            .first()
+        )
+        if not u:
+            return Response({"detail": "선택된 계정은 허용 범위가 아닙니다."}, status=status.HTTP_403_FORBIDDEN)
+
+        # linked_user는 OneToOne이라 Unique constraint 충돌이 날 수 있음
+        try:
+            m.linked_user = u
+            m.save(update_fields=["linked_user"])
+        except IntegrityError:
+            # OneToOne 충돌/DB 예외는 메시지만 친절하게 반환
+            return Response(
+                {"ok": False, "detail": "이 계정은 이미 다른 교적부에 연결되어 있습니다."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        return Response({"ok": True, "linked_user_id": m.linked_user_id})
 
 
 class MemberFamilyListCreateView(APIView):

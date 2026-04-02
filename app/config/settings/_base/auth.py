@@ -19,7 +19,8 @@ DEFAULT_USERS = {
 SOCIAL_AUTH_KAKAO_KEY = os.environ.get("KAKAO_REST_API_KEY", "")
 SOCIAL_AUTH_KAKAO_SECRET = os.environ.get("KAKAO_CLIENT_SECRET", "")
 SOCIAL_AUTH_KAKAO_REDIRECT_URI = os.environ.get("KAKAO_REDIRECT_URI", "")
-SOCIAL_AUTH_KAKAO_SCOPE = ["profile_nickname"]
+# 카카오에서 프로필 이미지 URL까지 받기 위해 scope에 profile_image 포함
+SOCIAL_AUTH_KAKAO_SCOPE = ["profile_nickname", "profile_image"]
 
 SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.social_auth.social_details",
