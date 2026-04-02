@@ -17,4 +17,4 @@ RABBITMQ_PASSWORD=jccseoul1!
 CELERY_FLOWER_BROKER_URL=amqp://jccseoul:jccseoul1!@rabbitmq:5672//
 KAKAO_REST_API_KEY=9b447e91c11b028bda11f6f647d815b2
 KAKAO_CLIENT_SECRET=MiJMzYQxHPh3FuqAt5KiCbkpnEPkDbSW
-KAKAO_REDIRECT_URI=http://shalom.jcc-seoul.com/auth/complete/kakao/
+KAKAO_REDIRECT_URI=https://shalom.jcc-seoul.com/auth/complete/kakao/
