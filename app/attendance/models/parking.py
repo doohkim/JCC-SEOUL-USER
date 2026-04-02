@@ -94,7 +94,9 @@ class ParkingPermitApplication(models.Model):
                     "이미 해당 날짜에 같은 차량번호로 신청하셨습니다. 하루에 한 번만 신청할 수 있습니다."
                 )
 
-        if self._state.adding:
+        # ModelForm 검증 단계에서는 user/division이 아직 주입되기 전일 수 있다.
+        # 실제 신청 저장 직전에 full_clean()을 다시 호출하므로, 그 시점에 시간창을 강제한다.
+        if self._state.adding and self.user_id and self.division_id:
             ok, window_msg = parking_request_allowed_now(self.division_id)
             if not ok:
                 raise ValidationError(window_msg)

@@ -89,6 +89,18 @@ services:
       default:
         ipv4_address: 172.19.0.15
 
+  celery-beat:
+    <<: *django
+    container_name: celery-beat
+    command: bash -c 'celery -A config beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler'
+    restart: always
+    depends_on:
+      - rabbitmq
+      - django
+    networks:
+      default:
+        ipv4_address: 172.19.0.16
+
   redis:
     image: redis:7-alpine
     container_name: redis

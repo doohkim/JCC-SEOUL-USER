@@ -214,3 +214,25 @@ class MidweekAttendanceParseTests(SimpleTestCase):
         self.assertEqual(dropped, 1)
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0].status, MidweekAttendanceStatus.PRESENT)
+
+
+class TeamAttendanceSessionWindowTests(SimpleTestCase):
+    def test_apr2_2026_thursday_window_lists_sat_sun_wed(self):
+        from attendance.services.team_attendance_sessions import (
+            worship_service_dates_in_seven_day_window,
+        )
+
+        anchor = date(2026, 4, 2)
+        self.assertEqual(anchor.weekday(), 3)
+        got = worship_service_dates_in_seven_day_window(anchor)
+        self.assertEqual(got, [date(2026, 4, 4), date(2026, 4, 5), date(2026, 4, 8)])
+
+    def test_apr5_2026_sunday_window_includes_next_sunday(self):
+        from attendance.services.team_attendance_sessions import (
+            worship_service_dates_in_seven_day_window,
+        )
+
+        anchor = date(2026, 4, 5)
+        self.assertEqual(anchor.weekday(), 6)
+        got = worship_service_dates_in_seven_day_window(anchor)
+        self.assertIn(date(2026, 4, 11), got)
