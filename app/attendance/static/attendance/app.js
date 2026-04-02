@@ -69,7 +69,8 @@ function pathFromDrfUrl(url) {
 async function apiGet(path) {
   const r = await fetch(API + path, { credentials: "same-origin" });
   if (r.status === 401) {
-    window.location = "/admin/login/?next=" + encodeURIComponent(location.pathname);
+    const nextPath = location.pathname + location.search;
+    window.location = "/login/?next=" + encodeURIComponent(nextPath);
     throw new Error("unauthorized");
   }
   if (!r.ok) {
