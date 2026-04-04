@@ -1,0 +1,104 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>가족 정보 · 교적부</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+  </head>
+  <body>
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <button
+            type="button"
+            class="jcc-back-link"
+            id="btnBackDetail"
+            aria-label="교적 상세로"
+          >
+            ←
+          </button>
+          <div class="jcc-detail-titleWrap">
+            <h1>가족 정보</h1>
+            <p class="subtitle" id="familyPageSubtitle">멤버: <span id="familyPageMemberName">…</span></p>
+          </div>
+        </header>
+
+        <div class="toolbar jcc-detail-actions">
+          <a class="jcc-action-link" href="{% url 'registry_member_list' %}">목록</a>
+          <a class="jcc-action-link secondary" id="linkMemberDetail" href="#">교적 상세</a>
+        </div>
+
+        <main>
+          <div id="statusLine" class="msg"></div>
+
+          <div class="card">
+            <h2 style="margin-bottom: 0.75rem">가족(행)</h2>
+            <div style="overflow-x: auto">
+              <table class="jcc-visits-table jcc-family-table">
+                <thead>
+                  <tr>
+                    <th>이름</th>
+                    <th>관계</th>
+                    <th>소속</th>
+                    <th>직분</th>
+                    <th>비고</th>
+                    <th>작업</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodyFamily"></tbody>
+              </table>
+            </div>
+
+            <h3 style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--muted); font-size: 0.95rem">
+              가족 추가
+            </h3>
+            <div class="toolbar jcc-detail-addToolbar" style="padding: 0; border: none; background: transparent">
+              <div class="field"><label>이름 *</label><input type="text" id="f_name" class="jcc-reg-control" /></div>
+              <div class="field"><label>관계 *</label><select id="f_rel" class="jcc-reg-control"></select></div>
+              <div class="field"><label>소속</label><input type="text" id="f_aff" class="jcc-reg-control" /></div>
+              <div class="field"><label>직책</label><select id="f_pos" class="jcc-reg-control"></select></div>
+              <div class="field"><label>비고</label><input type="text" id="f_note" class="jcc-reg-control" /></div>
+              <button type="button" id="btnFamilyAdd">추가</button>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="jcc-modal-overlay" id="familyEditOverlay" aria-hidden="true">
+      <div class="jcc-modal">
+        <div class="card">
+          <h2 style="margin: 0 0 0.75rem 0">가족 수정</h2>
+          <div id="familyEditStatus" class="msg" style="padding: 0 0 0.75rem 0"></div>
+
+          <div class="toolbar jcc-detail-addToolbar" style="padding: 0; border: none; background: transparent">
+            <div class="field"><label>이름 *</label><input type="text" id="e_name" class="jcc-reg-control" /></div>
+            <div class="field"><label>관계 *</label><select id="e_rel" class="jcc-reg-control"></select></div>
+            <div class="field"><label>소속</label><input type="text" id="e_aff" class="jcc-reg-control" /></div>
+            <div class="field"><label>직책</label><select id="e_pos" class="jcc-reg-control"></select></div>
+            <div class="field"><label>비고</label><input type="text" id="e_note" class="jcc-reg-control" /></div>
+          </div>
+
+          <div class="toolbar" style="padding: 0; border: none; background: transparent; margin-top: 1rem">
+            <button type="button" class="secondary" id="btnFamilyEditCancel">취소</button>
+            <button type="button" id="btnFamilyEditSave">수정</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__MEMBER_ID__ = "{{ member_id|default:'null' }}";
+    </script>
+    <script src="{% static 'registry/js/member_family.js' %}"></script>
+  </body>
+</html>

@@ -2,6 +2,8 @@
 
 from django.contrib import admin
 
+from users.permissions import limits_registry_division_scope, registry_divisions_for
+
 from ..models import (
     Club,
     Division,
@@ -27,6 +29,13 @@ class DivisionAdmin(JccModelAdmin):
     list_editable = ["sort_order"]
     search_fields = ["name", "code"]
     raw_id_fields = ["parent"]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not limits_registry_division_scope(request.user):
+            return qs
+        allowed = registry_divisions_for(request.user)
+        return qs.filter(pk__in=allowed.values_list("pk", flat=True))
     fieldsets = (
         ("필수", {"classes": ("jcc-required",), "fields": ("name", "code")}),
         (
@@ -43,8 +52,16 @@ class DivisionAdmin(JccModelAdmin):
 @admin.register(Team)
 class TeamAdmin(JccModelAdmin):
     list_display = ["name", "code", "division", "parent", "sort_order"]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if not limits_registry_division_scope(request.user):
+            return qs
+        allowed = registry_divisions_for(request.user)
+        return qs.filter(division_id__in=allowed.values_list("pk", flat=True))
     list_filter = ["division"]
     list_editable = ["sort_order"]
+    ordering = ("division", "sort_order", "name")
     search_fields = ["name", "code"]
     raw_id_fields = ["division", "parent"]
     autocomplete_fields = ["division"]

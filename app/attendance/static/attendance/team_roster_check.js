@@ -1,6 +1,6 @@
 /**
- * 팀장 전용 탭 출석부 프론트:
- * - 팀원 리스트(팀별 아코디언 느낌의 카드) 표시
+ * 탭 출석부 프론트:
+ * - 팀원 리스트(팀별 카드) 표시
  * - 팀원 클릭 → 팝업(주일: 다중선택 / 수·토: 참석/불참)
  * - 저장 후 리스트 갱신
  */
@@ -35,6 +35,132 @@ const SUNDAY_INCHEON_KEYS = new Set(["incheon_1", "incheon_2", "incheon_3", "inc
 const SUNDAY_VENUE_KEYS = new Set([...SUNDAY_SEOUL_KEYS, ...SUNDAY_INCHEON_KEYS]);
 const SUNDAY_REMOTE_KEYS = new Set(["online", "branch"]);
 
+/** @param {string[]} keysSorted */
+function parseSundayVenueKeys(keysSorted) {
+  const seoul = [];
+  const incheon = [];
+  let hasOnline = false;
+  let hasBranch = false;
+  for (const k of keysSorted) {
+    if (k === "online") hasOnline = true;
+    else if (k === "branch") hasBranch = true;
+    else if (String(k).startsWith("seoul_")) {
+      const n = parseInt(String(k).replace("seoul_", ""), 10);
+      if (!Number.isNaN(n)) seoul.push(n);
+    } else if (String(k).startsWith("incheon_")) {
+      const n = parseInt(String(k).replace("incheon_", ""), 10);
+      if (!Number.isNaN(n)) incheon.push(n);
+    }
+  }
+  const uniqSort = (arr) => [...new Set(arr)].sort((a, b) => a - b);
+  return {
+    seoul: uniqSort(seoul),
+    incheon: uniqSort(incheon),
+    hasOnline,
+    hasBranch,
+  };
+}
+
+/**
+ * 대시보드 주일 출석판과 동일: 서울/인천은 첫 줄 1·2부, 이후 들여쓰기 줄.
+ * @param {HTMLElement} el
+ * @param {string[]} keysSorted
+ */
+function fillSundayMarkStructured(el, keysSorted) {
+  el.textContent = "";
+  const { seoul: sp, incheon: ip, hasOnline, hasBranch } = parseSundayVenueKeys(keysSorted);
+  const stack = document.createElement("div");
+  stack.className = "jcc-excel-mark-stack";
+
+  function appendVenueBlock(regionName, parts) {
+    const p = parts;
+    if (!p.length) return;
+    const block = document.createElement("div");
+    block.className = "jcc-excel-venue-block";
+
+    function addLine(partsText, { continuation } = { continuation: false }) {
+      const line = document.createElement("div");
+      line.className = "jcc-excel-venue-line";
+      if (continuation) {
+        const ghost = document.createElement("span");
+        ghost.className = "jcc-excel-venue-region jcc-excel-venue-region--ghost";
+        ghost.setAttribute("aria-hidden", "true");
+        ghost.textContent = regionName;
+        line.appendChild(ghost);
+      } else {
+        const reg = document.createElement("span");
+        reg.className = "jcc-excel-venue-region";
+        reg.textContent = regionName;
+        line.appendChild(reg);
+      }
+      const rest = document.createElement("span");
+      rest.className = "jcc-excel-venue-parts";
+      rest.textContent = partsText;
+      line.appendChild(rest);
+      block.appendChild(line);
+    }
+
+    if (p.length === 1) {
+      addLine(`${p[0]}부`, { continuation: false });
+    } else {
+      addLine(`${p[0]}부, ${p[1]}부`, { continuation: false });
+      let idx = 2;
+      while (idx < p.length) {
+        const chunk = p.slice(idx, idx + 2);
+        addLine(chunk.map((x) => `${x}부`).join(", "), { continuation: true });
+        idx += chunk.length;
+      }
+    }
+    stack.appendChild(block);
+  }
+
+  appendVenueBlock("서울", sp);
+  appendVenueBlock("인천", ip);
+  if (hasOnline) {
+    const d = document.createElement("div");
+    d.className = "jcc-excel-mark-line";
+    d.textContent = "온라인";
+    stack.appendChild(d);
+  }
+  if (hasBranch) {
+    const d = document.createElement("div");
+    d.className = "jcc-excel-mark-line";
+    d.textContent = "지교회";
+    stack.appendChild(d);
+  }
+  el.appendChild(stack);
+}
+
+/** 팀 출석판과 동일: 미입력 → 서울 → 인천 → 온라인 → 지교회 → 불참 */
+function sundayMemberSortGroup(m) {
+  const st = m.entry_state;
+  const hasSel = Array.isArray(m.selections) && m.selections.length > 0;
+  const keys = hasSel
+    ? m.selections
+    : m.selection && m.selection !== "absent"
+      ? [m.selection]
+      : [];
+  if (st === "unset" || (st == null && !hasSel && !m.selection)) return 0;
+  if (st === "absent" || m.selection === "absent") return 5;
+  if (!keys.length) return 0;
+  const hasSeoul = keys.some((k) => String(k).startsWith("seoul_"));
+  const hasIncheon = keys.some((k) => String(k).startsWith("incheon_"));
+  const hasOnline = keys.includes("online");
+  const hasBranch = keys.includes("branch");
+  if (hasSeoul) return 1;
+  if (hasIncheon) return 2;
+  if (hasOnline) return 3;
+  if (hasBranch) return 4;
+  return 0;
+}
+
+function compareSundayMembersForBoard(a, b) {
+  const ga = sundayMemberSortGroup(a);
+  const gb = sundayMemberSortGroup(b);
+  if (ga !== gb) return ga - gb;
+  return (a.member_name || "").localeCompare(b.member_name || "", "ko");
+}
+
 function setStatus(msg, isErr) {
   const el = document.getElementById("statusLine");
   if (!el) return;
@@ -55,6 +181,25 @@ function renderNoAccess() {
   const boardWrap = document.getElementById("boardWrap");
   if (boardWrap) boardWrap.innerHTML = "";
   setStatus("");
+  const hint = document.getElementById("teamRosterReadOnlyHint");
+  if (hint) {
+    hint.style.display = "none";
+    hint.textContent = "";
+  }
+}
+
+/** API의 can_edit과 동기화: 수정 불가 시 이유 안내 */
+function updateReadOnlyHint() {
+  const el = document.getElementById("teamRosterReadOnlyHint");
+  if (!el) return;
+  if (state.can_edit) {
+    el.style.display = "none";
+    el.textContent = "";
+    return;
+  }
+  el.style.display = "block";
+  el.textContent =
+    "이 화면에서 수정할 수 있는 팀이 없습니다. 부서에 팀이 있는지, 또는 API 권한 오류인지 확인해 주세요.";
 }
 
 function renderAccessEmpty() {
@@ -228,33 +373,50 @@ function renderTeamsSunday(teams) {
     `;
 
     const membersWrap = card.querySelector(".team-roster-members");
-    (t.members || []).forEach((m) => {
+    const rosterMembers = [...(t.members || [])].sort(compareSundayMembersForBoard);
+    rosterMembers.forEach((m) => {
       const selections = Array.isArray(m.selections) ? m.selections : [];
-      const labels = selections
-        .map((k) => SUNDAY_OPTIONS.find((o) => o.key === k)?.label)
-        .filter(Boolean);
+      const orderIdx = (k) => {
+        const i = SUNDAY_OPTIONS.findIndex((o) => o.key === k);
+        return i === -1 ? 999 : i;
+      };
+      const sortedKeys = [...selections].sort((a, b) => orderIdx(a) - orderIdx(b));
 
-      const entryState = m.entry_state || (labels.length ? "present" : "unset");
+      const entryState = m.entry_state || (sortedKeys.length ? "present" : "unset");
       let disp = "";
       let isMuted = true;
       if (entryState === "unset") {
         disp = "미입력";
       } else if (entryState === "absent") {
         disp = "불참";
-      } else {
-        disp = labels.length ? labels.join(", ") : "미입력";
+      } else if (sortedKeys.length) {
         isMuted = false;
+      } else {
+        disp = "미입력";
       }
 
-      const row = document.createElement("button");
-      row.type = "button";
-      row.className = "team-roster-memberRow";
+      const row = document.createElement(state.can_edit ? "button" : "div");
+      if (state.can_edit) {
+        row.type = "button";
+        row.addEventListener("click", () => openSundayModal(m, t));
+      } else {
+        row.setAttribute("role", "listitem");
+      }
+      row.className = "team-roster-memberRow" + (state.can_edit ? "" : " is-readonly");
       if (isMuted) row.classList.add("is-muted");
-      row.innerHTML = `
-        <span class="team-roster-memberName">${m.member_name}</span>
-        <span class="team-roster-memberValue">${disp}</span>
-      `;
-      row.addEventListener("click", () => openSundayModal(m, t));
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "team-roster-memberName";
+      nameSpan.textContent = m.member_name || "—";
+      const valSpan = document.createElement("span");
+      valSpan.className = "team-roster-memberValue";
+      if (isMuted) {
+        valSpan.textContent = disp;
+      } else {
+        fillSundayMarkStructured(valSpan, sortedKeys);
+      }
+      row.appendChild(nameSpan);
+      row.appendChild(valSpan);
       membersWrap.appendChild(row);
     });
 
@@ -282,21 +444,26 @@ function renderTeamsMidweek(teams) {
 
     const membersWrap = card.querySelector(".team-roster-members");
     (t.members || []).forEach((m) => {
-      const row = document.createElement("button");
-      row.type = "button";
-      row.className = "team-roster-memberRow";
+      const row = document.createElement(state.can_edit ? "button" : "div");
+      if (state.can_edit) {
+        row.type = "button";
+        row.addEventListener("click", () => openMidweekModal(m, t));
+      } else {
+        row.setAttribute("role", "listitem");
+      }
+      row.className = "team-roster-memberRow" + (state.can_edit ? "" : " is-readonly");
 
       if (m.entry_state === "unset") row.classList.add("is-muted");
 
       let st = "불참";
       if (m.entry_state === "unset") st = "미입력";
+      else if (m.status === "online") st = "온라인";
       else if (m.status === "present") st = "참석";
 
       row.innerHTML = `
         <span class="team-roster-memberName">${m.member_name}</span>
         <span class="team-roster-memberValue">${st}</span>
       `;
-      row.addEventListener("click", () => openMidweekModal(m, t));
       membersWrap.appendChild(row);
     });
 
@@ -309,6 +476,7 @@ let state = {
   week_sunday: null,
   service_type: "sunday", // sunday | wednesday | saturday
   filter_mode: "all", // all | unset
+  can_edit: false,
   sundayMember: null,
   sundayTeam: null,
   midweekMember: null,
@@ -419,6 +587,7 @@ function setSundayAbsentState(isAbsent) {
 }
 
 function openSundayModal(member, team) {
+  if (!state.can_edit) return;
   state.sundayMember = member;
   state.sundayTeam = team;
   const weekSel = document.getElementById("weekId");
@@ -456,6 +625,7 @@ function openSundayModal(member, team) {
 }
 
 function openMidweekModal(member, team) {
+  if (!state.can_edit) return;
   state.midweekMember = member;
   state.midweekTeam = team;
   const weekSel = document.getElementById("weekId");
@@ -803,6 +973,7 @@ async function loadBoard() {
         division_code
       )}`
     );
+    state.can_edit = data.can_edit === true;
     const teams = data.teams || [];
     if (state.filter_mode === "unset") {
       teams.forEach((t) => {
@@ -811,6 +982,7 @@ async function loadBoard() {
     }
     renderTeamsSunday(teams);
     setStatus("");
+    updateReadOnlyHint();
     return;
   }
 
@@ -819,6 +991,7 @@ async function loadBoard() {
       division_code
     )}&service_type=${encodeURIComponent(state.service_type)}`
   );
+  state.can_edit = data.can_edit === true;
   const teams = data.teams || [];
   if (state.filter_mode === "unset") {
     teams.forEach((t) => {
@@ -827,6 +1000,7 @@ async function loadBoard() {
   }
   renderTeamsMidweek(teams);
   setStatus("");
+  updateReadOnlyHint();
 }
 
 async function init() {

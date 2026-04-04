@@ -115,25 +115,7 @@ header.app-header a:hover {
   overflow: hidden;
 }
 
-.jcc-leftNavExpandBtn {
-  position: fixed;
-  left: 10px;
-  top: 95px;
-  z-index: 1300;
-  appearance: none;
-  border: 1px solid rgba(74, 158, 255, 0.35);
-  background: #121820;
-  color: var(--accent);
-  border-radius: 12px;
-  padding: 0.55rem 0.7rem;
-  font-weight: 900;
-  cursor: pointer;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
-}
-
-.jcc-leftNavExpandBtn.is-hidden {
-  display: none;
-}
+/* 모바일: 좌측 드로어는 왼쪽 가장자리 스와이프로만 열기 (펼치기 버튼 없음) */
 
 .jcc-leftNav-tabs {
   display: flex;
@@ -192,38 +174,80 @@ header.app-header a:hover {
     flex-direction: column;
   }
 
+  /* 좌측 탭: 상단 가로줄이 아니라 PC와 같이 왼쪽에서 슬라이드되는 오버레이 드로어 */
   .jcc-leftNav {
-    width: 100%;
-    height: auto;
-    position: relative;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    flex-direction: row;
-    align-items: flex-end;
-    gap: 0.75rem;
-    padding: 0.9rem 0.9rem;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1400;
+    width: min(290px, 88vw);
+    height: 100vh;
+    height: 100dvh;
+    padding: 1.15rem 0.95rem;
+    border-right: 1px solid var(--border);
+    border-bottom: none;
+    background: linear-gradient(180deg, #121820 0%, #0c0f14 100%);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.1rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.45);
+    transition: transform 0.3s ease, visibility 0.3s ease;
+    transform: translateX(-100%);
+    visibility: visible;
+    opacity: 1;
+    pointer-events: none;
   }
 
-  .jcc-leftNavExpandBtn {
-    top: 85px;
-    left: 8px;
+  .jcc-leftNav.collapsed {
+    width: min(290px, 88vw) !important;
+    padding: 1.15rem 0.95rem !important;
+    transform: translateX(-100%);
+    pointer-events: none;
+    opacity: 1 !important;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+  }
+
+  .jcc-leftNav:not(.collapsed) {
+    transform: translateX(0);
+    pointer-events: auto;
+    opacity: 1 !important;
   }
 
   .jcc-leftNav-tabs {
-    flex-direction: row;
-    gap: 0.55rem;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
   .jcc-leftNav-item {
-    padding: 0.55rem 0.8rem;
+    padding: 0.65rem 0.85rem;
     font-size: 0.95rem;
   }
 
   .jcc-leftNav-bottom {
-    margin-top: 0;
-    flex: 1;
-    align-items: flex-end;
+    margin-top: auto;
+    flex: 0 0 auto;
+    align-items: stretch;
   }
+}
+
+.jcc-leftNav-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1390;
+  background: rgba(5, 8, 12, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.jcc-leftNav-backdrop[hidden] {
+  display: none;
+}
+
+body.jcc-leftNav-drawer-open {
+  overflow: hidden;
 }
 
 .toolbar {
@@ -339,6 +363,22 @@ main {
   margin: 0 auto;
 }
 
+@media (max-width: 640px) {
+  main {
+    padding: 1rem 0.85rem 1.5rem;
+  }
+
+  .toolbar {
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+  }
+
+  header.app-header {
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+  }
+}
+
 /* 2열 그리드: 예배=「주일」만 선택 시 차트 3개(2+1)일 때도
    flex + justify-content:center 처럼 한 줄짜리 카드가 가운데로 몰리지 않고
    위 줄과 왼쪽·너비가 맞게 정렬된다. */
@@ -408,11 +448,299 @@ main {
   background: linear-gradient(180deg, #4a9eff 0%, #2d6bb3 100%);
 }
 
+button.jcc-page-tab {
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.88rem;
+}
+
+/* 테마에 맞는 얇은 스크롤바 + 스크롤이 페이지로 새지 않도록 */
+.jcc-scroll-surface {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 158, 255, 0.42) rgba(255, 255, 255, 0.06);
+}
+
+.jcc-scroll-surface::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.jcc-scroll-surface::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 100px;
+}
+
+.jcc-scroll-surface::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(74, 158, 255, 0.5), rgba(74, 158, 255, 0.22));
+  border-radius: 100px;
+  border: 2px solid rgba(12, 15, 20, 0.4);
+}
+
+.jcc-scroll-surface::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 출석 표: 가로 스크롤만 (세로는 카드·페이지) */
+.jcc-table-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 10px;
+  border: 1px solid rgba(42, 53, 72, 0.85);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.jcc-table-scroll table {
+  min-width: 520px;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .jcc-table-scroll table {
+    min-width: 480px;
+  }
+}
+
+/* 대시보드 · 팀 출석판(엑셀형) */
+.jcc-excel-board-panel {
+  margin-top: 0.25rem;
+}
+
+.jcc-excel-board-panel .jcc-excel-board-meta {
+  margin-top: 0;
+}
+
+.jcc-excel-board-meta {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 0.45rem;
+}
+
+.jcc-excel-board-total {
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.jcc-excel-board-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.jcc-excel-board-hint strong {
+  color: rgba(184, 204, 230, 0.95);
+  font-weight: 700;
+}
+
+.jcc-excel-board-viewport {
+  border-radius: 12px;
+  border: 1px solid rgba(42, 53, 72, 0.95);
+  background: linear-gradient(180deg, rgba(10, 14, 20, 0.65) 0%, rgba(12, 15, 20, 0.9) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.jcc-excel-board-wrap {
+  overflow-x: visible;
+  overflow-y: visible;
+  padding: 0.55rem 0.65rem 0.7rem;
+  max-width: 100%;
+}
+
+
+.jcc-excel-board {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  /* 줄 간격이 한 카드 높이에 묶이지 않도록 열 높이를 통일함 */
+  gap: 0.5rem 0.55rem;
+  align-items: stretch;
+  align-content: flex-start;
+  min-height: 120px;
+  padding-bottom: 0.15rem;
+  width: 100%;
+}
+
+.jcc-excel-col {
+  box-sizing: border-box;
+  flex: 1 1 10rem;
+  width: auto;
+  max-width: 12rem;
+  min-width: 8.2rem;
+  /* 내용이 적어도 카드 높이를 같게 해 두 줄 사이 빈틈을 없앰 */
+  height: min(64vh, 520px);
+  max-height: min(64vh, 520px);
+  border: 1px solid rgba(42, 53, 72, 0.9);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.025);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 640px) {
+  .jcc-excel-col {
+    flex: 1 1 7.8rem;
+    max-width: 10rem;
+    min-width: 7.4rem;
+    height: min(58dvh, 460px);
+    max-height: min(58dvh, 460px);
+  }
+}
+
+.jcc-excel-col-head {
+  flex: 0 0 auto;
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 0.48rem 0.5rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  background: rgba(15, 23, 34, 0.75);
+  line-height: 1.25;
+}
+
+.jcc-excel-col-sub {
+  flex: 0 0 auto;
+  font-size: 0.74rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 0.32rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.jcc-excel-col-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.3rem 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  overscroll-behavior-x: none;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 158, 255, 0.38) rgba(255, 255, 255, 0.05);
+}
+
+.jcc-excel-col-body::-webkit-scrollbar {
+  width: 5px;
+}
+
+.jcc-excel-col-body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 100px;
+}
+
+.jcc-excel-col-body::-webkit-scrollbar-thumb {
+  background: rgba(74, 158, 255, 0.4);
+  border-radius: 100px;
+}
+
+.jcc-excel-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0.42rem 0.45rem;
+  font-size: 0.76rem;
+  border-bottom: 1px solid rgba(42, 53, 72, 0.55);
+}
+
+.jcc-excel-row:last-child {
+  border-bottom: none;
+}
+
+.jcc-excel-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jcc-excel-mark {
+  flex: 1 1 5rem;
+  min-width: 0;
+  max-width: 58%;
+  text-align: right;
+  font-weight: 800;
+  font-size: 0.65rem;
+  line-height: 1.3;
+  color: #5ab87a;
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.jcc-excel-mark-stack {
+  display: inline-block;
+  max-width: 100%;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.jcc-excel-mark-stack > * + * {
+  margin-top: 0.12em;
+}
+
+.jcc-excel-venue-block .jcc-excel-venue-line + .jcc-excel-venue-line {
+  margin-top: 0.1em;
+}
+
+.jcc-excel-venue-line {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  line-height: 1.38;
+}
+
+.jcc-excel-venue-region {
+  flex-shrink: 0;
+}
+
+.jcc-excel-venue-region--ghost {
+  visibility: hidden;
+  user-select: none;
+  pointer-events: none;
+}
+
+.jcc-excel-venue-parts {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.jcc-excel-mark-line {
+  line-height: 1.38;
+}
+
+.jcc-excel-mark--muted {
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* team roster check (attendance/team/roster/) */
 .team-roster-members {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+}
+
+.team-roster-readonly-hint {
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--muted);
+  border: 1px solid rgba(42, 53, 72, 0.85);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .team-roster-memberRow {
@@ -425,13 +753,20 @@ main {
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.02);
   border-radius: 12px;
-  cursor: pointer;
   text-align: left;
   color: var(--text);
   font-weight: 600;
 }
 
-.team-roster-memberRow:hover {
+.team-roster-memberRow:not(.is-readonly) {
+  cursor: pointer;
+}
+
+.team-roster-memberRow.is-readonly {
+  cursor: default;
+}
+
+.team-roster-memberRow:not(.is-readonly):hover {
   background: rgba(255, 255, 255, 0.05);
 }
 
@@ -443,12 +778,23 @@ main {
 .team-roster-memberValue {
   font-weight: 900;
   color: var(--ok);
-  white-space: nowrap;
+  white-space: normal;
   text-align: right;
+  max-width: 62%;
+  line-height: 1.35;
+  font-size: 0.92rem;
+}
+
+.team-roster-memberValue .jcc-excel-mark-stack {
+  display: inline-block;
+  max-width: 100%;
+  text-align: left;
+  vertical-align: middle;
 }
 
 .team-roster-memberRow.is-muted .team-roster-memberValue {
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .team-roster-tabs button {
@@ -521,10 +867,22 @@ main {
 .chart-wrap {
   position: relative;
   height: 280px;
+  overflow: hidden;
+  border-radius: 8px;
 }
 
 .chart-wrap.tall {
   height: 320px;
+}
+
+@media (max-width: 640px) {
+  .chart-wrap {
+    height: 230px;
+  }
+
+  .chart-wrap.tall {
+    height: 260px;
+  }
 }
 
 .tables {
@@ -822,6 +1180,37 @@ tr:hover td {
 .jcc-profile-section h2 {
   font-size: 1.22rem;
   letter-spacing: -0.01em;
+}
+
+/* 교적 폼: 상단 카드 = 기본+교적 프로필, 하단 카드 = 가족 정보(상세 페이지와 동일하게 분리) */
+.jcc-profile-section--registryProfile {
+  margin-top: 1.25rem;
+  padding-top: 0.5rem;
+}
+
+.jcc-member-form-familyCard .jcc-profile-section--family {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.jcc-family-form-addRow {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 0.35rem;
+}
+
+/* 교적 수정 폼: 가족은 상세와 동일하게 전용 화면 안내 */
+.jcc-member-form-familyEditBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.jcc-member-detail-familyTableWrap {
+  overflow-x: auto;
+  margin-top: 0.85rem;
 }
 
 /* registry member form - photo + nicer file picker */

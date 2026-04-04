@@ -100,7 +100,7 @@
         </div>
         <input type="hidden" id="m_membershipId" />
 
-        <section class="jcc-profile-section">
+        <section class="jcc-profile-section jcc-profile-section--registryProfile">
           <h2 style="margin:0 0 0.85rem 0">교적 프로필</h2>
           <div class="jcc-reg-form-grid jcc-member-inline-form" style="padding:0; border:none; background:transparent;">
             <div class="field"><label>생년월일</label><input type="date" id="p_birth" class="jcc-reg-control" /></div>
@@ -124,6 +124,31 @@
           </div>
         </section>
       </div>
+
+      {% if mode == "create" %}
+      <div class="card jcc-member-form-familyCard" style="max-width: 900px; margin: 1.25rem auto 0;">
+        <section class="jcc-profile-section jcc-profile-section--family">
+          <h2 style="margin:0 0 0.35rem 0">가족 정보</h2>
+          <p class="subtitle" style="margin:0 0 0.75rem 0; font-size: 0.9rem">
+            가족 구성원을 행 단위로 입력합니다. (선택)
+          </p>
+          <div id="familyRowsHost"></div>
+          <div class="jcc-family-form-addRow">
+            <button type="button" class="secondary" id="btnAddFamilyRow">가족 행 추가</button>
+          </div>
+        </section>
+      </div>
+      {% else %}
+      <div class="card jcc-member-form-familyCard" style="max-width: 900px; margin: 1.25rem auto 0;">
+        <div class="jcc-member-form-familyEditBanner">
+          <div>
+            <h2 style="margin:0 0 0.25rem 0">가족 정보</h2>
+            <p class="subtitle" style="margin:0">가족 행 추가·수정은 전용 화면에서 합니다.</p>
+          </div>
+          <a class="jcc-action-link" href="{% url 'registry_member_family' member_id %}">가족 정보 관리</a>
+        </div>
+      </div>
+      {% endif %}
     </main>
 
     <script>

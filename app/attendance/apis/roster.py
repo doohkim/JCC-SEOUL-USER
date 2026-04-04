@@ -133,9 +133,13 @@ class AttendanceMidweekRosterView(APIView):
             team_key = str(r.team_id or "") + "|" + (r.team_name_snapshot or "")
             display_name = _normalize_hoejangdan_label(r.team_name_snapshot or "")
             if team_key not in teams:
+                sort_order = 9999
+                if r.team_id and r.team:
+                    sort_order = int(r.team.sort_order)
                 teams[team_key] = {
                     "team_id": r.team_id,
                     "team_name": display_name or (r.team.name if r.team_id else ""),
+                    "sort_order": sort_order,
                     "members": [],
                 }
             teams[team_key]["members"].append(
@@ -147,9 +151,9 @@ class AttendanceMidweekRosterView(APIView):
                 }
             )
 
-        # stable ordering by team_name
         team_list = sorted(
-            teams.values(), key=lambda t: (t["team_name"] or "", len(t["members"]))
+            teams.values(),
+            key=lambda t: (t.get("sort_order", 9999), t["team_name"] or ""),
         )
         return Response(
             {
@@ -242,11 +246,25 @@ class AttendanceSundayRosterView(APIView):
             .order_by("member_id", "venue", "-session_part", "id")
             .select_related("member")
         )
-        # member_id -> one line (deterministic first)
-        by_member: dict[int, SundayAttendanceLine] = {}
+        # 탭 출석부와 동일: 멤버당 다중 슬롯 집계
+        selections_by_member: dict[int, set[str]] = {mid: set() for mid in member_ids_in_chosen}
+        has_any_line: dict[int, bool] = {mid: False for mid in member_ids_in_chosen}
         for line in lines_qs:
-            if line.member_id not in by_member:
-                by_member[line.member_id] = line
+            has_any_line[line.member_id] = True
+            part = int(line.session_part or 0)
+            if line.venue in ("seoul", "incheon") and part == 5:
+                if line.venue == "seoul":
+                    selections_by_member[line.member_id].add("seoul_3")
+                    selections_by_member[line.member_id].add("seoul_4")
+                else:
+                    selections_by_member[line.member_id].add("incheon_3")
+                    selections_by_member[line.member_id].add("incheon_4")
+                continue
+            key = _sunday_slot_key_from_line(line)
+            if key == "absent":
+                pass
+            elif key:
+                selections_by_member[line.member_id].add(key)
 
         teams: dict[int, dict[str, Any]] = {}
         for mid, mdt in chosen.items():
@@ -255,21 +273,35 @@ class AttendanceSundayRosterView(APIView):
                 teams[team_id] = {
                     "team_id": team_id,
                     "team_name": mdt.team.name if mdt.team_id else "",
+                    "sort_order": int(mdt.team.sort_order) if mdt.team_id and mdt.team else 0,
                     "members": [],
                 }
+            if not has_any_line.get(mid, False):
+                entry_state = "unset"
+                selections: list[str] = []
+                primary = ""
+            elif selections_by_member.get(mid):
+                entry_state = "present"
+                selections = sorted(selections_by_member.get(mid, set()))
+                primary = selections[0] if selections else ""
+            else:
+                entry_state = "absent"
+                selections = []
+                primary = "absent"
             teams[team_id]["members"].append(
                 {
                     "member_id": mid,
                     "member_name": mdt.member.name,
                     "team_id": team_id,
-                    "selection": _sunday_slot_key_from_line(by_member.get(mid)),
+                    "selection": primary,
+                    "selections": selections,
+                    "entry_state": entry_state,
                 }
             )
 
-        # stable team ordering by team.sort_order (default 0)
         team_list = sorted(
             teams.values(),
-            key=lambda t: (t["team_name"] or ""),
+            key=lambda t: (t.get("sort_order", 0), t["team_name"] or ""),
         )
         for t in team_list:
             t["members"].sort(key=lambda x: x["member_name"])

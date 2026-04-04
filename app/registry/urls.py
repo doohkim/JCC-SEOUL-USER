@@ -23,6 +23,7 @@ from registry.views import (
     RegistryMemberCreatePageView,
     RegistryMemberDetailPageView,
     RegistryMemberEditPageView,
+    RegistryMemberFamilyPageView,
     RegistryMemberListPageView,
 )
 
@@ -43,6 +44,11 @@ urlpatterns = [
         "members/<int:member_id>/edit/",
         RegistryMemberEditPageView.as_view(),
         name="registry_member_edit",
+    ),
+    path(
+        "members/<int:member_id>/family/",
+        RegistryMemberFamilyPageView.as_view(),
+        name="registry_member_family",
     ),
 
     path(

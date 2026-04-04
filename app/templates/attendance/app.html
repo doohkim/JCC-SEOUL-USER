@@ -35,19 +35,18 @@
           <label>예배 구분</label>
           <select id="worshipType"></select>
         </div>
-        {% if user|can_access_registry_tab %}
-          <div style="display:flex; align-items:center; gap:0.75rem; margin-left:auto;">
-            <button
-              type="button"
-              class="secondary"
-              data-href="{% url 'registry_member_list' %}"
-              onclick="window.location.href=this.dataset.href"
-            >
-              교적부
-            </button>
-          </div>
-        {% endif %}
         <button type="button" id="btnRefresh">새로고침</button>
+      </div>
+
+      <div class="card" style="margin-bottom: 1rem;">
+        <div class="jcc-page-tabs" id="dashboardInnerTabs">
+          <button type="button" class="jcc-page-tab is-active" id="dashboardTabStats" data-dashboard-tab="stats">
+            통계
+          </button>
+          <button type="button" class="jcc-page-tab" id="dashboardTabBoard" data-dashboard-tab="board">
+            팀 출석판
+          </button>
+        </div>
       </div>
 
       <main>
@@ -64,6 +63,7 @@
         {% endif %}
         <div id="statusLine" class="msg"></div>
 
+        <div id="dashboardPanelStats">
         <div class="grid-charts" id="chartArea">
           <div class="card" id="cardSunVenue" style="display:none;">
             <h2>주일 · 장소별</h2>
@@ -112,7 +112,7 @@
               </div>
               <button type="button" class="secondary" id="btnApplySun">적용</button>
             </div>
-            <div style="overflow-x:auto;">
+            <div class="jcc-table-scroll jcc-scroll-surface" role="region" aria-label="주일 출석 표">
               <table>
                 <thead>
                   <tr>
@@ -157,7 +157,7 @@
               </div>
               <button type="button" class="secondary" id="btnApplyMw">적용</button>
             </div>
-            <div style="overflow-x:auto;">
+            <div class="jcc-table-scroll jcc-scroll-surface" role="region" aria-label="수·토 출석 표">
               <table>
                 <thead>
                   <tr>
@@ -172,6 +172,27 @@
               </table>
             </div>
             <div class="pager" id="pagerMw"></div>
+          </div>
+        </div>
+        </div>
+
+        <div id="dashboardPanelBoard" style="display: none;">
+          <div id="boardStatusLine" class="msg"></div>
+          <div class="card jcc-excel-board-panel">
+            <div id="excelBoardMeta" class="jcc-excel-board-meta"></div>
+            <div id="excelBoardTotal" class="jcc-excel-board-total"></div>
+            <p class="jcc-excel-board-hint">
+              팀 열은 <strong>가로로 줄바꿈</strong>되어 두 줄 이상으로 보입니다. 각 열 안 이름은 <strong>위아래</strong>로 스크롤됩니다.
+            </p>
+            <div class="jcc-excel-board-viewport">
+              <div
+                class="jcc-excel-board-wrap jcc-scroll-surface"
+                role="region"
+                aria-label="팀별 출석판"
+              >
+                <div class="jcc-excel-board" id="attendanceExcelBoard"></div>
+              </div>
+            </div>
           </div>
         </div>
       </main>

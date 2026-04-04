@@ -43,6 +43,8 @@ class MemberProfileSerializer(serializers.ModelSerializer):
 
 
 class MemberFamilyMemberSerializer(serializers.ModelSerializer):
+    division_name = serializers.SerializerMethodField()
+
     class Meta:
         model = MemberFamilyMember
         fields = [
@@ -53,11 +55,17 @@ class MemberFamilyMemberSerializer(serializers.ModelSerializer):
             "relationship_note",
             "affiliation_text",
             "division",
+            "division_name",
             "church_position",
             "remarks",
             "sort_order",
         ]
-        read_only_fields = ["id", "member"]
+        read_only_fields = ["id", "member", "division_name"]
+
+    def get_division_name(self, obj: MemberFamilyMember) -> str:
+        if obj.division_id and obj.division:
+            return obj.division.name or ""
+        return ""
 
 
 class MemberVisitLogSerializer(serializers.ModelSerializer):

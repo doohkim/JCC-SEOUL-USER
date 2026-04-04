@@ -4,6 +4,186 @@
 const API = "/api/v1";
 const DASHBOARD_ACCESS = window.ATTENDANCE_DASHBOARD_ACCESS || { canChangeDivision: false };
 
+/** 팀 출석판(주일) 슬롯 키 → 표시 라벨 (`attendance/team_roster_check.js` 와 동일 체계) */
+const SUNDAY_BOARD_OPTIONS = [
+  { key: "seoul_1", label: "서울 1부" },
+  { key: "seoul_2", label: "서울 2부" },
+  { key: "seoul_3", label: "서울 3부" },
+  { key: "seoul_4", label: "서울 4부" },
+  { key: "incheon_1", label: "인천 1부" },
+  { key: "incheon_2", label: "인천 2부" },
+  { key: "incheon_3", label: "인천 3부" },
+  { key: "incheon_4", label: "인천 4부" },
+  { key: "online", label: "온라인" },
+  { key: "branch", label: "지교회" },
+];
+
+function sundayBoardKeyOrder(k) {
+  const i = SUNDAY_BOARD_OPTIONS.findIndex((o) => o.key === k);
+  return i === -1 ? 999 : i;
+}
+
+/** @param {string[]} keysSorted */
+function parseSundayVenueKeys(keysSorted) {
+  const seoul = [];
+  const incheon = [];
+  let hasOnline = false;
+  let hasBranch = false;
+  for (const k of keysSorted) {
+    if (k === "online") hasOnline = true;
+    else if (k === "branch") hasBranch = true;
+    else if (String(k).startsWith("seoul_")) {
+      const n = parseInt(String(k).replace("seoul_", ""), 10);
+      if (!Number.isNaN(n)) seoul.push(n);
+    } else if (String(k).startsWith("incheon_")) {
+      const n = parseInt(String(k).replace("incheon_", ""), 10);
+      if (!Number.isNaN(n)) incheon.push(n);
+    }
+  }
+  const uniqSort = (arr) => [...new Set(arr)].sort((a, b) => a - b);
+  return {
+    seoul: uniqSort(seoul),
+    incheon: uniqSort(incheon),
+    hasOnline,
+    hasBranch,
+  };
+}
+
+/**
+ * 서울/인천: 지역명과 첫 부 사이 공백 없음(서울1부, 2부). 이어지는 줄은 지역명 폭만큼
+ * 숨김 스팬으로 맞춰 1부 열에 3부·4부가 맞춰짐.
+ * @param {HTMLElement} el
+ * @param {string[]} keysSorted
+ */
+function fillSundayMarkStructured(el, keysSorted) {
+  el.textContent = "";
+  const { seoul: sp, incheon: ip, hasOnline, hasBranch } = parseSundayVenueKeys(keysSorted);
+  const stack = document.createElement("div");
+  stack.className = "jcc-excel-mark-stack";
+
+  function appendVenueBlock(regionName, parts) {
+    const p = parts;
+    if (!p.length) return;
+    const block = document.createElement("div");
+    block.className = "jcc-excel-venue-block";
+
+    function addLine(partsText, { continuation } = { continuation: false }) {
+      const line = document.createElement("div");
+      line.className = "jcc-excel-venue-line";
+      if (continuation) {
+        const ghost = document.createElement("span");
+        ghost.className = "jcc-excel-venue-region jcc-excel-venue-region--ghost";
+        ghost.setAttribute("aria-hidden", "true");
+        ghost.textContent = regionName;
+        line.appendChild(ghost);
+      } else {
+        const reg = document.createElement("span");
+        reg.className = "jcc-excel-venue-region";
+        reg.textContent = regionName;
+        line.appendChild(reg);
+      }
+      const rest = document.createElement("span");
+      rest.className = "jcc-excel-venue-parts";
+      rest.textContent = partsText;
+      line.appendChild(rest);
+      block.appendChild(line);
+    }
+
+    if (p.length === 1) {
+      addLine(`${p[0]}부`, { continuation: false });
+    } else {
+      addLine(`${p[0]}부, ${p[1]}부`, { continuation: false });
+      let idx = 2;
+      while (idx < p.length) {
+        const chunk = p.slice(idx, idx + 2);
+        addLine(chunk.map((x) => `${x}부`).join(", "), { continuation: true });
+        idx += chunk.length;
+      }
+    }
+    stack.appendChild(block);
+  }
+
+  appendVenueBlock("서울", sp);
+  appendVenueBlock("인천", ip);
+  if (hasOnline) {
+    const d = document.createElement("div");
+    d.className = "jcc-excel-mark-line";
+    d.textContent = "온라인";
+    stack.appendChild(d);
+  }
+  if (hasBranch) {
+    const d = document.createElement("div");
+    d.className = "jcc-excel-mark-line";
+    d.textContent = "지교회";
+    stack.appendChild(d);
+  }
+  el.appendChild(stack);
+}
+
+/** @returns {{ muted: true, text: string } | { muted: false, keys: string[] }} */
+function formatSundayBoardMemberCell(m) {
+  const st = m.entry_state;
+  const hasSel = Array.isArray(m.selections) && m.selections.length > 0;
+  if (st === "unset" || (st == null && !hasSel && !m.selection)) {
+    return { muted: true, text: "미입력" };
+  }
+  if (st === "absent" || m.selection === "absent") {
+    return { muted: true, text: "불참" };
+  }
+  const keys = hasSel
+    ? [...m.selections].sort((a, b) => sundayBoardKeyOrder(a) - sundayBoardKeyOrder(b))
+    : m.selection && m.selection !== "absent"
+      ? [m.selection]
+      : [];
+  if (!keys.length) {
+    return { muted: true, text: "미입력" };
+  }
+  return { muted: false, keys };
+}
+
+function memberHasSundayOnSite(m) {
+  const keys =
+    Array.isArray(m.selections) && m.selections.length
+      ? m.selections
+      : m.selection && m.selection !== "absent"
+        ? [m.selection]
+        : [];
+  return keys.some((k) => sundaySelectionOnSite(k));
+}
+
+/**
+ * 팀 출석판 열 안 정렬: 미입력 → 서울 → 인천 → 온라인 → 지교회 → 불참, 같은 그룹은 이름 순.
+ * @returns {number} 0..5
+ */
+function sundayMemberSortGroup(m) {
+  const st = m.entry_state;
+  const hasSel = Array.isArray(m.selections) && m.selections.length > 0;
+  const keys = hasSel
+    ? m.selections
+    : m.selection && m.selection !== "absent"
+      ? [m.selection]
+      : [];
+  if (st === "unset" || (st == null && !hasSel && !m.selection)) return 0;
+  if (st === "absent" || m.selection === "absent") return 5;
+  if (!keys.length) return 0;
+  const hasSeoul = keys.some((k) => String(k).startsWith("seoul_"));
+  const hasIncheon = keys.some((k) => String(k).startsWith("incheon_"));
+  const hasOnline = keys.includes("online");
+  const hasBranch = keys.includes("branch");
+  if (hasSeoul) return 1;
+  if (hasIncheon) return 2;
+  if (hasOnline) return 3;
+  if (hasBranch) return 4;
+  return 0;
+}
+
+function compareSundayMembersForBoard(a, b) {
+  const ga = sundayMemberSortGroup(a);
+  const gb = sundayMemberSortGroup(b);
+  if (ga !== gb) return ga - gb;
+  return (a.member_name || "").localeCompare(b.member_name || "", "ko");
+}
+
 let charts = { sunVenue: null, sunPart: null, sunTeam: null, midweek: null };
 /** @type {Record<string, object>} week_sunday → 주차 rollup API 한 행 */
 let weekRollups = {};
@@ -562,6 +742,11 @@ async function loadMwTable(url) {
 async function refreshAll() {
   try {
     setStatus("불러오는 중…");
+    if (getDashboardTab() === "board") {
+      await window.loadAttendanceExcelBoard();
+      setStatus("");
+      return;
+    }
     await loadSummary();
     const wtype = document.getElementById("worshipType").value;
     if (wtype === "all" || wtype === "sunday") await loadSunTable();
@@ -605,10 +790,252 @@ async function refreshAll() {
   }
 }
 
+function getDashboardTab() {
+  const u = new URL(window.location.href);
+  return u.searchParams.get("tab") === "board" ? "board" : "stats";
+}
+
+function applyDashboardTab() {
+  const tab = getDashboardTab();
+  const stats = document.getElementById("dashboardPanelStats");
+  const board = document.getElementById("dashboardPanelBoard");
+  const tabStats = document.getElementById("dashboardTabStats");
+  const tabBoard = document.getElementById("dashboardTabBoard");
+  if (!stats || !board) return;
+  const isBoard = tab === "board";
+  stats.style.display = isBoard ? "none" : "";
+  board.style.display = isBoard ? "block" : "none";
+  if (tabStats) tabStats.classList.toggle("is-active", !isBoard);
+  if (tabBoard) tabBoard.classList.toggle("is-active", isBoard);
+}
+
+function setDashboardTab(tab) {
+  const u = new URL(window.location.href);
+  if (tab === "board") u.searchParams.set("tab", "board");
+  else u.searchParams.delete("tab");
+  window.history.replaceState({}, "", u);
+  applyDashboardTab();
+  refreshAll();
+}
+
+function sundaySelectionOnSite(sel) {
+  if (!sel || sel === "absent") return false;
+  return String(sel).startsWith("seoul_") || String(sel).startsWith("incheon_");
+}
+
+function renderExcelSundayBoard(data, host, totalEl, metaEl) {
+  const teams = Array.isArray(data.teams) ? data.teams : [];
+  let sumOnSite = 0;
+  host.innerHTML = "";
+  teams.forEach((t) => {
+    const members = Array.isArray(t.members) ? [...t.members].sort(compareSundayMembersForBoard) : [];
+    let onSite = 0;
+    const col = document.createElement("div");
+    col.className = "jcc-excel-col";
+    const head = document.createElement("div");
+    head.className = "jcc-excel-col-head";
+    head.textContent = t.team_name || "팀";
+    const sub = document.createElement("div");
+    sub.className = "jcc-excel-col-sub";
+    members.forEach((m) => {
+      if (memberHasSundayOnSite(m)) onSite += 1;
+    });
+    sub.textContent = "현장 " + onSite;
+    sumOnSite += onSite;
+    col.appendChild(head);
+    col.appendChild(sub);
+    const body = document.createElement("div");
+    body.className = "jcc-excel-col-body";
+    members.forEach((m) => {
+      const row = document.createElement("div");
+      row.className = "jcc-excel-row";
+      const name = document.createElement("span");
+      name.className = "jcc-excel-name";
+      name.textContent = m.member_name || "—";
+      const mark = document.createElement("span");
+      const cell = formatSundayBoardMemberCell(m);
+      mark.className = "jcc-excel-mark" + (cell.muted ? " jcc-excel-mark--muted" : "");
+      if (cell.muted) {
+        mark.textContent = cell.text;
+      } else {
+        fillSundayMarkStructured(mark, cell.keys);
+      }
+      row.appendChild(name);
+      row.appendChild(mark);
+      body.appendChild(row);
+    });
+    col.appendChild(body);
+    host.appendChild(col);
+  });
+  if (totalEl) {
+    totalEl.innerHTML = "";
+    const strong = document.createElement("strong");
+    strong.textContent = "현장 합계 " + sumOnSite;
+    totalEl.appendChild(strong);
+  }
+  if (metaEl && data.service_date) {
+    metaEl.textContent = "예배일 " + data.service_date + " · 주일";
+  }
+}
+
+function renderExcelMidweekBoard(data, host, totalEl, metaEl) {
+  const teams = Array.isArray(data.teams) ? data.teams : [];
+  let sumOnSite = 0;
+  host.innerHTML = "";
+  const stLabel = data.service_type === "wednesday" ? "수요" : "토요";
+  teams.forEach((t) => {
+    const members = Array.isArray(t.members) ? t.members : [];
+    let onSite = 0;
+    const col = document.createElement("div");
+    col.className = "jcc-excel-col";
+    const head = document.createElement("div");
+    head.className = "jcc-excel-col-head";
+    head.textContent = t.team_name || "팀";
+    const sub = document.createElement("div");
+    sub.className = "jcc-excel-col-sub";
+    members.forEach((m) => {
+      if (m.status === "present") onSite += 1;
+    });
+    sub.textContent = "현장 " + onSite;
+    sumOnSite += onSite;
+    col.appendChild(head);
+    col.appendChild(sub);
+    const body = document.createElement("div");
+    body.className = "jcc-excel-col-body";
+    members.forEach((m) => {
+      const row = document.createElement("div");
+      row.className = "jcc-excel-row";
+      const name = document.createElement("span");
+      name.className = "jcc-excel-name";
+      name.textContent = m.member_name || "—";
+      const mark = document.createElement("span");
+      let txt = "불참";
+      let muted = true;
+      if (m.entry_state === "unset") {
+        txt = "미입력";
+      } else if (m.status === "online") {
+        txt = "온라인";
+        muted = false;
+      } else if (m.status === "present") {
+        txt = "참석";
+        muted = false;
+      }
+      mark.className = "jcc-excel-mark" + (muted ? " jcc-excel-mark--muted" : "");
+      mark.textContent = txt;
+      row.appendChild(name);
+      row.appendChild(mark);
+      body.appendChild(row);
+    });
+    col.appendChild(body);
+    host.appendChild(col);
+  });
+  if (totalEl) {
+    totalEl.innerHTML = "";
+    const strong = document.createElement("strong");
+    strong.textContent = "현장 합계 " + sumOnSite;
+    totalEl.appendChild(strong);
+  }
+  if (metaEl && data.service_date) {
+    metaEl.textContent = "예배일 " + data.service_date + " · " + stLabel;
+  }
+}
+
+window.loadAttendanceExcelBoard = async function loadAttendanceExcelBoard() {
+  const host = document.getElementById("attendanceExcelBoard");
+  const statusEl = document.getElementById("boardStatusLine");
+  const totalEl = document.getElementById("excelBoardTotal");
+  const metaEl = document.getElementById("excelBoardMeta");
+  if (!host) return;
+  const wid = document.getElementById("weekId").value;
+  const code = (document.getElementById("divisionCode").value || "").trim();
+  const wtype = document.getElementById("worshipType").value;
+  if (!code || !wid) {
+    host.innerHTML = "";
+    if (totalEl) totalEl.textContent = "";
+    if (metaEl) metaEl.textContent = "";
+    if (statusEl) {
+      statusEl.textContent = "부서와 주차를 선택하세요.";
+      statusEl.className = "msg err";
+    }
+    return;
+  }
+  if (statusEl) {
+    statusEl.textContent = "불러오는 중…";
+    statusEl.className = "msg";
+  }
+  try {
+    if (wtype === "all" || wtype === "midweek") {
+      host.innerHTML =
+        '<div class="msg">팀 출석판은 예배 구분을 <strong>주일</strong>, <strong>수요일</strong>, <strong>토요일</strong> 중 하나로 선택해 주세요.</div>';
+      if (totalEl) totalEl.textContent = "";
+      if (metaEl) metaEl.textContent = "";
+      if (statusEl) {
+        statusEl.textContent = "";
+        statusEl.className = "msg";
+      }
+      return;
+    }
+    if (wtype === "sunday") {
+      const path =
+        "/attendance/weeks/" +
+        encodeURIComponent(wid) +
+        "/roster/sunday/?division_code=" +
+        encodeURIComponent(code);
+      const data = await apiGet(path);
+      if (!data.teams || !data.teams.length) {
+        host.innerHTML = '<div class="msg">표시할 팀·멤버가 없습니다.</div>';
+        if (totalEl) totalEl.textContent = "";
+        if (metaEl) metaEl.textContent = "";
+      } else {
+        renderExcelSundayBoard(data, host, totalEl, metaEl);
+      }
+    } else {
+      const path =
+        "/attendance/weeks/" +
+        encodeURIComponent(wid) +
+        "/roster/midweek/?division_code=" +
+        encodeURIComponent(code) +
+        "&service_type=" +
+        encodeURIComponent(wtype);
+      const data = await apiGet(path);
+      if (!data.teams || !data.teams.length) {
+        host.innerHTML = '<div class="msg">표시할 팀·멤버가 없습니다.</div>';
+        if (totalEl) totalEl.textContent = "";
+        if (metaEl) metaEl.textContent = "";
+      } else {
+        renderExcelMidweekBoard(data, host, totalEl, metaEl);
+      }
+    }
+    if (statusEl) {
+      statusEl.textContent = "";
+      statusEl.className = "msg";
+    }
+  } catch (e) {
+    console.error(e);
+    host.innerHTML = "";
+    if (totalEl) totalEl.textContent = "";
+    if (metaEl) metaEl.textContent = "";
+    if (statusEl) {
+      statusEl.textContent = "오류: " + e.message;
+      statusEl.className = "msg err";
+    }
+  }
+};
+
 function bindUi() {
   document.getElementById("btnRefresh").onclick = refreshAll;
   document.getElementById("btnApplySun").onclick = () => loadSunTable();
   document.getElementById("btnApplyMw").onclick = () => loadMwTable();
+  const tabStats = document.getElementById("dashboardTabStats");
+  const tabBoard = document.getElementById("dashboardTabBoard");
+  if (tabStats)
+    tabStats.onclick = () => {
+      setDashboardTab("stats");
+    };
+  if (tabBoard)
+    tabBoard.onclick = () => {
+      setDashboardTab("board");
+    };
   document.getElementById("divisionCode").onchange = async () => {
     if (!DASHBOARD_ACCESS.canChangeDivision) return;
     await loadWeeks();
@@ -629,6 +1056,7 @@ async function init() {
     await loadDivisions();
     await loadWeeks();
     await loadTeams();
+    applyDashboardTab();
     await refreshAll();
   } catch (e) {
     console.error(e);

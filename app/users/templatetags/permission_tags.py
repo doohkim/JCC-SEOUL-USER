@@ -3,11 +3,11 @@ from __future__ import annotations
 from django import template
 
 from users.permissions import (
-    can_access_attendance_roster,
     can_access_counseling_manage_tab,
     can_access_counseling_tab,
     can_access_member_registry,
     can_access_parking_tab,
+    can_access_team_roster_tab,
     is_parking_manager,
 )
 from users.services.user_display import user_display_name as resolve_user_display_name
@@ -22,17 +22,8 @@ def can_access_registry_tab(user):
 
 @register.filter(name="can_access_attendance_tab")
 def can_access_attendance_tab(user):
-    if not can_access_attendance_roster(user):
-        return False
-
-    # 목사/전도사(팀 소속 없음)는 탭 출석부 접근을 막고 대시보드 통계만 보게 한다.
-    role_code = getattr(getattr(user, "role_level", None), "code", None)
-    if role_code in {"pastor", "evangelist"}:
-        has_team = user.division_teams.filter(team__isnull=False).exists()
-        if not has_team:
-            return False
-
-    return True
+    """탭 출석부: 팀장·셀장(직급 또는 기능 직책) 또는 목사·전도사·회장·부회장·총무·출석관리·운영."""
+    return bool(user and can_access_team_roster_tab(user))
 
 
 @register.filter(name="can_access_parking_tab")

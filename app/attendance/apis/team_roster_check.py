@@ -1,10 +1,11 @@
 """
-팀장(본인 팀만) 전용 출석 체크 API.
+탭 출석부(팀별 명단) API.
 
 요구사항 반영:
 - 주일예배: 여러 예배 슬롯 동시 선택(다중선택). 선택 없으면 미입력/불참 처리.
 - 수요/토요예배: 참석/불참만 체크.
-- 로그인 사용자는 본인 소속 팀 인원만 조회/수정 가능.
+- 팀장·셀장: 본인 팀만 / 목사·전도사·회장·부회장·총무·관리자: 부서 전체 팀
+  (``users.permissions.can_access_team_roster_tab`` 미만은 403).
 """
 
 from __future__ import annotations
@@ -31,9 +32,8 @@ from attendance.models import MidweekAttendanceRecord, SundayAttendanceLine
 from registry.models import MemberDivisionTeam
 from users.models import Team
 from users.permissions import (
-    can_access_attendance_roster,
-    is_attendance_manager,
-    is_platform_admin,
+    can_access_team_roster_tab,
+    is_team_roster_broad_access,
 )
 
 
@@ -45,23 +45,18 @@ class MemberBoardRow:
     team_name: str
 
 
-def _get_team_ids_for_division(request, division) -> list[int]:
+def _get_view_team_ids_for_division(request, division) -> list[int]:
     """
-    로그인 사용자의 "본인 팀 범위"를 구합니다.
+    조회·수정에 공통으로 쓰는 팀 범위.
 
-    - superuser: 해당 division 내 모든 팀 허용
-    - 일반 사용자: division_teams 중 `team!=NULL`
-      - `is_primary=True`가 있으면 그 팀만
-      - 없으면 정렬 우선순위 상 첫 팀 1개만 사용
+    - 목사·전도사·회장·부회장·총무·운영·출석관리: 부서 전체 팀
+    - 팀장·셀장(기능 직책): 해당 부서에서 본인 소속 팀 1개만
     """
 
-    if is_platform_admin(request.user):
+    if not can_access_team_roster_tab(request.user):
+        raise PermissionDenied("출석부를 이용할 권한이 없습니다.")
+    if is_team_roster_broad_access(request.user):
         return list(Team.objects.filter(division=division).values_list("id", flat=True))
-    if is_attendance_manager(request.user):
-        return list(Team.objects.filter(division=division).values_list("id", flat=True))
-    if not can_access_attendance_roster(request.user):
-        raise PermissionDenied("출석부 페이지 권한이 없습니다.")
-
     qs = request.user.division_teams.filter(division=division, team__isnull=False).order_by(
         "-is_primary",
         "sort_order",
@@ -69,9 +64,15 @@ def _get_team_ids_for_division(request, division) -> list[int]:
         "id",
     )
     first = qs.first()
-    if not first or not first.team_id:
-        raise PermissionDenied("팀장(관리) 권한이 없습니다.")
-    return [int(first.team_id)]
+    if first and first.team_id:
+        return [int(first.team_id)]
+    raise PermissionDenied("이 부서에 소속된 팀이 없습니다.")
+
+
+def _get_edit_team_ids_for_division(request, division) -> list[int]:
+    """저장(POST) 허용 팀 — 조회와 동일(출석부 입력 권한을 조회 범위에 맞춤)."""
+
+    return _get_view_team_ids_for_division(request, division)
 
 
 def _build_member_board(*, division, allowed_team_ids: list[int]) -> list[MemberBoardRow]:
@@ -115,7 +116,13 @@ def _group_rows_by_team(rows: list[MemberBoardRow]) -> list[dict]:
         if r.team_id is None:
             continue
         by_team.setdefault(r.team_id, []).append(r)
-    team_ids = sorted(by_team.keys())
+    if not by_team:
+        return []
+    team_ids = list(
+        Team.objects.filter(pk__in=by_team.keys())
+        .order_by("sort_order", "name")
+        .values_list("id", flat=True)
+    )
     out: list[dict] = []
     for tid in team_ids:
         rs = by_team[tid]
@@ -138,7 +145,7 @@ class AttendanceTeamSundayRosterView(APIView):
     def _get_board(self, request, week_sunday: str):
         division = division_for_attendance_request(request)
         ws = _parse_week_sunday(week_sunday)
-        allowed_team_ids = _get_team_ids_for_division(request, division)
+        allowed_team_ids = _get_view_team_ids_for_division(request, division)
 
         # 팀(허용 범위) + 멤버(대표 1행) 보드
         rows = _build_member_board(division=division, allowed_team_ids=allowed_team_ids)
@@ -196,12 +203,14 @@ class AttendanceTeamSundayRosterView(APIView):
 
     def get(self, request, week_sunday: str):
         division, ws, payload = self._get_board(request, week_sunday)
+        can_edit = bool(_get_edit_team_ids_for_division(request, division))
         return Response(
             {
                 "mode": "team_sunday",
                 "week_sunday": ws.isoformat(),
                 "service_date": ws.isoformat(),
                 "division_code": division.code,
+                "can_edit": can_edit,
                 "teams": payload.get("teams", []),
             }
         )
@@ -216,7 +225,7 @@ class AttendanceTeamSundayRosterView(APIView):
         if not isinstance(updates, list):
             return Response({"error": "updates must be a list"}, status=400)
 
-        allowed_team_ids = _get_team_ids_for_division(request, division)
+        allowed_team_ids = _get_edit_team_ids_for_division(request, division)
         rows = _build_member_board(division=division, allowed_team_ids=allowed_team_ids)
         member_ids_allowed = {r.member_id for r in rows}
         team_by_member = {r.member_id: r.team_id for r in rows}
@@ -329,7 +338,7 @@ class AttendanceTeamMidweekRosterView(APIView):
             raise Http404("service_type is required: wednesday|saturday")
 
         service_date = _midweek_service_date(ws, service_type)
-        allowed_team_ids = _get_team_ids_for_division(request, division)
+        allowed_team_ids = _get_view_team_ids_for_division(request, division)
         rows = _build_member_board(division=division, allowed_team_ids=allowed_team_ids)
         member_ids = [r.member_id for r in rows]
 
@@ -372,6 +381,7 @@ class AttendanceTeamMidweekRosterView(APIView):
     def get(self, request, week_sunday: str):
         service_type = request.query_params.get("service_type") or ""
         division, service_date, teams = self._get_board(request, week_sunday, service_type)
+        can_edit = bool(_get_edit_team_ids_for_division(request, division))
         return Response(
             {
                 "mode": "team_midweek",
@@ -379,6 +389,7 @@ class AttendanceTeamMidweekRosterView(APIView):
                 "service_date": service_date.isoformat(),
                 "division_code": division.code,
                 "service_type": service_type,
+                "can_edit": can_edit,
                 "teams": teams,
             }
         )
@@ -398,7 +409,7 @@ class AttendanceTeamMidweekRosterView(APIView):
         if not isinstance(updates, list):
             return Response({"error": "updates must be a list"}, status=400)
 
-        allowed_team_ids = _get_team_ids_for_division(request, division)
+        allowed_team_ids = _get_edit_team_ids_for_division(request, division)
         rows = _build_member_board(division=division, allowed_team_ids=allowed_team_ids)
         member_ids_allowed = {r.member_id for r in rows}
         team_by_member = {r.member_id: r.team_id for r in rows}

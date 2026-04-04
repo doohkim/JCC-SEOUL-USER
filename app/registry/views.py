@@ -64,3 +64,20 @@ class RegistryMemberEditPageView(OnboardingRequiredMixin, LoginRequiredMixin, Te
         ctx["mode"] = "edit"
         ctx["member_id"] = kwargs.get("member_id")
         return ctx
+
+
+class RegistryMemberFamilyPageView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
+    """멤버 가족(행) 전용 화면."""
+
+    template_name = "registry/member_family.html"
+    login_url = reverse_lazy("user_login")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not can_access_member_registry(request.user):
+            raise PermissionDenied("교적부 페이지 권한이 없습니다.")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["member_id"] = kwargs.get("member_id")
+        return ctx

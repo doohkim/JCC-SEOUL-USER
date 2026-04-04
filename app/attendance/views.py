@@ -22,11 +22,12 @@ from users.mixins import OnboardingRequiredMixin
 from users.models import Team, User
 from users.services.user_display import kakao_nickname_map_for_user_ids, user_display_name
 from users.permissions import (
-    can_access_attendance_roster,
+    can_access_team_roster_tab,
     can_change_dashboard_division,
     is_platform_admin,
     is_parking_manager,
     membership_divisions_for,
+    visible_divisions_for,
     visible_teams_for,
 )
 
@@ -93,23 +94,14 @@ class AttendanceRosterEditView(OnboardingRequiredMixin, LoginRequiredMixin, Temp
 
 
 class AttendanceTeamRosterCheckView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
-    """팀장 전용 탭 출석부(주일 다중선택 / 수·토 예/불)."""
+    """탭 출석부(주일 다중선택 / 수·토 예/불). 팀장·지정 직급·관리자만."""
 
     template_name = "attendance/team_roster_check.html"
     login_url = reverse_lazy("user_login")
 
     def dispatch(self, request, *args, **kwargs):
-        if not can_access_attendance_roster(request.user):
-            raise PermissionDenied("출석부 페이지 권한이 없습니다.")
-
-        # 목사/전도사처럼 팀 소속이 없는 경우에는 탭 자체에 접근하지 못하게 하고,
-        # 대시보드 통계만 보도록 리다이렉트한다.
-        role_code = getattr(getattr(request.user, "role_level", None), "code", None)
-        if role_code in {"pastor", "evangelist"}:
-            has_team = request.user.division_teams.filter(team__isnull=False).exists()
-            if not has_team:
-                return HttpResponseRedirect(reverse_lazy("attendance_dashboard"))
-
+        if request.user.is_authenticated and not can_access_team_roster_tab(request.user):
+            raise PermissionDenied("출석부를 이용할 권한이 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
@@ -121,12 +113,8 @@ class AttendanceTeamRosterCheckView(OnboardingRequiredMixin, LoginRequiredMixin,
             ctx["team_leader_is_superuser"] = True
             ctx["team_leader_is_superuser_json"] = "true"
         else:
-            division_codes = (
-                u.division_teams.filter(team__isnull=False)
-                .values_list("division__code", flat=True)
-                .distinct()
-            )
-            ctx["team_leader_allowed_division_codes_json"] = json.dumps(list(division_codes))
+            division_codes = list(visible_divisions_for(u).values_list("code", flat=True))
+            ctx["team_leader_allowed_division_codes_json"] = json.dumps(division_codes)
             ctx["team_leader_is_superuser"] = False
             ctx["team_leader_is_superuser_json"] = "false"
 
@@ -139,15 +127,8 @@ class AttendanceTeamRosterMyPageView(OnboardingRequiredMixin, LoginRequiredMixin
     login_url = reverse_lazy("user_login")
 
     def dispatch(self, request, *args, **kwargs):
-        if not can_access_attendance_roster(request.user):
-            raise PermissionDenied("출석부 페이지 권한이 없습니다.")
-
-        role_code = getattr(getattr(request.user, "role_level", None), "code", None)
-        if role_code in {"pastor", "evangelist"}:
-            has_team = request.user.division_teams.filter(team__isnull=False).exists()
-            if not has_team:
-                return HttpResponseRedirect(reverse_lazy("attendance_dashboard"))
-
+        if request.user.is_authenticated and not can_access_team_roster_tab(request.user):
+            raise PermissionDenied("출석부를 이용할 권한이 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):

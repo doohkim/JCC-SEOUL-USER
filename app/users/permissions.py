@@ -3,8 +3,10 @@
 
 - **운영 데이터(출석·부서 목록 등)**: 로그인 사용자는 ``UserDivisionTeam`` 으로 연결된
   상위 부서(Division)만 조회 가능. 타 부서 데이터는 API/쿼리에서 차단.
-- **교적(Member·registry Admin·조직 API)**: 목사·전도사만 (RoleLevel 코드 ``pastor`` /
-  ``evangelist``, 또는 level ≥ 80). 그 외 직급은 교적 미노출.
+- **교적(Member·registry Admin·조직 API)**: 목사·전도사·Django staff 등 (``can_access_member_registry``).
+  부서 범위는 ``registry_divisions_for`` — 목사·전도사는 담당/소속 부서만, 그 외 교적 접근 계정은 전체 부서.
+- **탭 출석부** (``can_access_team_roster_tab``): 팀장·셀장은 기능 직책 **또는** 직급(RoleLevel)
+  ``team_leader`` / ``cell_leader`` — 본인 팀만. 목사·전도사·회장·부회장·총무 및 출석관리·운영은 부서 전체 팀.
 """
 
 from __future__ import annotations
@@ -18,6 +20,16 @@ from .models import Division, RoleLevel, Team, User
 _REGISTRY_ROLE_CODES = frozenset({"pastor", "evangelist"})
 _ATTENDANCE_LEADER_ROLE_CODES = frozenset({"team_leader", "cell_leader"})
 _ATTENDANCE_MANAGER_ROLE_CODES = frozenset({"attendance_admin"})
+# 탭 출석부: 부서 전체 팀 조회·입력 (직급 RoleLevel.code)
+_TEAM_ROSTER_BROAD_ROLE_LEVEL_CODES = frozenset(
+    {
+        "pastor",
+        "evangelist",
+        "president",
+        "vice_president",
+        "secretary_general",
+    }
+)
 _PARKING_MANAGER_ROLE_CODES = frozenset({"parking_admin"})
 _ACCOUNT_MANAGER_ROLE_CODES = frozenset({"account_admin"})
 
@@ -53,6 +65,16 @@ def _is_pastoral(user: User) -> bool:
     if not user.is_authenticated or not user.role_level_id:
         return False
     return getattr(user.role_level, "code", None) in _REGISTRY_ROLE_CODES
+
+
+def limits_registry_division_scope(user: User) -> bool:
+    """
+    교적·조직 API/Admin에서 부서·팀 선택지를 담당·소속으로 제한할지.
+    목사·전도사(슈퍼유저 제외)만 True.
+    """
+    if not user.is_authenticated or user.is_superuser:
+        return False
+    return _is_pastoral(user)
 
 
 def _primary_user_division_ids(user: User) -> list[int]:
@@ -98,14 +120,54 @@ def is_attendance_manager(user: User) -> bool:
     return bool(role_codes & _ATTENDANCE_MANAGER_ROLE_CODES)
 
 
-def can_access_attendance_roster(user: User) -> bool:
-    """출석부(팀장 화면) 접근 허용 여부."""
+def is_team_roster_broad_access(user: User) -> bool:
+    """
+    탭 출석부에서 부서 **전체 팀**을 볼 수 있고 입력할 수 있는지.
+
+    - Django 운영·출석 관리 플래그/직책
+    - 직급: 목사·전도사·회장·부회장·총무 (RoleLevel.code)
+    """
+
     if not user.is_authenticated or not user.is_active:
         return False
     if is_platform_admin(user) or is_attendance_manager(user):
         return True
-    role_codes = _functional_role_codes_for(user)
-    return bool(role_codes & _ATTENDANCE_LEADER_ROLE_CODES)
+    rl = getattr(user, "role_level", None)
+    code = getattr(rl, "code", None) if rl is not None else None
+    return code in _TEAM_ROSTER_BROAD_ROLE_LEVEL_CODES
+
+
+def is_team_roster_leader_only(user: User) -> bool:
+    """
+    팀장·셀장 — broad 가 아닐 때 본인 팀만.
+
+    인정: ``UserFunctionalDeptRole`` 의 역할 코드 **또는** ``User.role_level`` 직급 코드
+    (운영에서 직급만 맞춰 두고 기능 직책 행을 안 쓴 경우가 많음).
+    """
+
+    if not user.is_authenticated or not user.is_active:
+        return False
+    if is_team_roster_broad_access(user):
+        return False
+    if _functional_role_codes_for(user) & _ATTENDANCE_LEADER_ROLE_CODES:
+        return True
+    rl = getattr(user, "role_level", None)
+    code = getattr(rl, "code", None) if rl is not None else None
+    return code in _ATTENDANCE_LEADER_ROLE_CODES
+
+
+def can_access_team_roster_tab(user: User) -> bool:
+    """좌측 '출석부' 탭·탭 출석부 API·HTML 접근 가능 여부."""
+
+    if not user.is_authenticated or not user.is_active:
+        return False
+    return is_team_roster_broad_access(user) or is_team_roster_leader_only(user)
+
+
+def can_access_attendance_roster(user: User) -> bool:
+    """탭 출석부 접근 — ``can_access_team_roster_tab`` 과 동일."""
+
+    return can_access_team_roster_tab(user)
 
 
 def visible_divisions_for(user: User):
@@ -129,12 +191,28 @@ def can_change_dashboard_division(user: User) -> bool:
 
 
 def registry_divisions_for(user: User):
-    """교적 Member 가 필터링되는 상위 부서 범위."""
+    """
+    교적 Member·조직 API·부서 드롭다운의 상위 부서 범위.
+
+    - 슈퍼유저: 전체 부서
+    - 목사·전도사: ``pastoral_divisions_for`` (담당 부서) + 미지정 시 ``UserDivisionTeam`` 소속만
+    - 교적 접근 가능한 그 외(주로 Django staff, 목사 직급 아님): 전체 부서
+    """
     if not user.is_authenticated:
         return Division.objects.none()
-    if is_platform_admin(user) or can_access_member_registry(user):
+    if user.is_superuser:
         return Division.objects.all()
-    return Division.objects.none()
+    if not can_access_member_registry(user):
+        return Division.objects.none()
+    if _is_pastoral(user):
+        qs = pastoral_divisions_for(user)
+        if qs.exists():
+            return qs
+        division_ids = user.division_teams.values_list("division_id", flat=True).distinct()
+        if division_ids:
+            return Division.objects.filter(pk__in=division_ids)
+        return Division.objects.none()
+    return Division.objects.all()
 
 
 def can_see_division(user: User, division: Division) -> bool:
@@ -150,7 +228,7 @@ def can_see_division_for_registry(user: User, division: Division) -> bool:
     """교적 맥락에서 해당 부서 회원을 다룰 수 있는지."""
     if not user.is_authenticated:
         return False
-    if is_platform_admin(user):
+    if user.is_superuser:
         return True
     return registry_divisions_for(user).filter(pk=division.pk).exists()
 

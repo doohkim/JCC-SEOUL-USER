@@ -28,7 +28,7 @@
           </button>
           <div class="jcc-detail-titleWrap">
             <h1>교적부 · 상세</h1>
-            <p class="subtitle">가족/심방 기록 포함</p>
+            <p class="subtitle">심방·통화 기록</p>
           </div>
         </header>
 
@@ -109,8 +109,14 @@
       </div>
 
       <div class="card" style="margin-top:1.25rem">
-        <h2 style="margin-bottom:0.75rem">가족(행)</h2>
-        <div style="overflow-x:auto;">
+        <div class="jcc-member-form-familyEditBanner">
+          <div>
+            <h2 style="margin:0 0 0.25rem 0;">가족 정보</h2>
+            <p class="subtitle" style="margin:0;">가족 행 추가·수정은 전용 화면에서 합니다.</p>
+          </div>
+          <a class="jcc-action-link" href="{% url 'registry_member_family' member_id %}">가족 정보 관리</a>
+        </div>
+        <div class="jcc-member-detail-familyTableWrap">
           <table class="jcc-visits-table jcc-family-table">
             <thead>
               <tr>
@@ -119,23 +125,10 @@
                 <th>소속</th>
                 <th>직분</th>
                 <th>비고</th>
-                <th>작업</th>
               </tr>
             </thead>
-            <tbody id="tbodyFamily"></tbody>
+            <tbody id="tbodyFamilyDetail"></tbody>
           </table>
-        </div>
-
-        <h3 style="margin-top:1rem; margin-bottom:0.5rem; color: var(--muted); font-size:0.95rem;">
-          가족 추가
-        </h3>
-        <div class="toolbar jcc-detail-addToolbar" style="padding:0; border:none; background:transparent;">
-          <div class="field"><label>이름 *</label><input type="text" id="f_name" class="jcc-reg-control"/></div>
-          <div class="field"><label>관계 *</label><select id="f_rel" class="jcc-reg-control"></select></div>
-          <div class="field"><label>소속</label><input type="text" id="f_aff" class="jcc-reg-control"/></div>
-          <div class="field"><label>직책</label><select id="f_pos" class="jcc-reg-control"></select></div>
-          <div class="field"><label>비고</label><input type="text" id="f_note" class="jcc-reg-control"/></div>
-          <button type="button" id="btnFamilyAdd">추가</button>
         </div>
       </div>
 
@@ -176,28 +169,6 @@
         </div>
       </div>
         </main>
-      </div>
-    </div>
-
-    <div class="jcc-modal-overlay" id="familyEditOverlay" aria-hidden="true">
-      <div class="jcc-modal">
-        <div class="card">
-          <h2 style="margin: 0 0 0.75rem 0;">가족 수정</h2>
-          <div id="familyEditStatus" class="msg" style="padding:0 0 0.75rem 0;"></div>
-
-          <div class="toolbar jcc-detail-addToolbar" style="padding:0; border:none; background:transparent;">
-            <div class="field"><label>이름 *</label><input type="text" id="e_name" class="jcc-reg-control"/></div>
-            <div class="field"><label>관계 *</label><select id="e_rel" class="jcc-reg-control"></select></div>
-            <div class="field"><label>소속</label><input type="text" id="e_aff" class="jcc-reg-control"/></div>
-            <div class="field"><label>직책</label><select id="e_pos" class="jcc-reg-control"></select></div>
-            <div class="field"><label>비고</label><input type="text" id="e_note" class="jcc-reg-control"/></div>
-          </div>
-
-          <div class="toolbar" style="padding:0; border:none; background:transparent; margin-top:1rem;">
-            <button type="button" class="secondary" id="btnFamilyEditCancel">취소</button>
-            <button type="button" id="btnFamilyEditSave">수정</button>
-          </div>
-        </div>
       </div>
     </div>
 

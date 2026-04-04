@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>팀장 출석 체크</title>
+    <title>출석부</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -19,7 +19,7 @@
       <div class="jcc-layout-content">
         <header class="app-header">
           <div class="jcc-detail-titleWrap">
-            <h1>팀장 출석 체크</h1>
+            <h1>출석부</h1>
             <p class="subtitle">예배일 출석부 · 전체/미입력 필터</p>
           </div>
         </header>
@@ -41,10 +41,16 @@
 
         <main>
           <div id="statusLine" class="msg"></div>
+          <div
+            id="teamRosterReadOnlyHint"
+            class="msg team-roster-readonly-hint"
+            style="display: none"
+            role="status"
+          ></div>
           <div id="noAccessWrap" class="card" style="display:none;">
             <h2 style="margin: 0 0 0.8rem 0;">권한이 없습니다.</h2>
             <p class="subtitle" style="margin:0 0 1rem 0;">
-              출석부는 팀장(관리) 범위 내 팀 인원만 수정할 수 있습니다.
+              이 계정으로는 선택한 부서 출석을 볼 수 없습니다. 소속·승인 상태를 확인해 주세요.
             </p>
             <a class="btn-link" href="{{ attendance_team_roster_mypage_url }}">내 소속 보기</a>
           </div>
