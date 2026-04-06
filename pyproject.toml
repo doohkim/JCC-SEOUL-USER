@@ -27,8 +27,13 @@ dependencies = [
     "django-phonenumber-field (>=8.4.0,<9.0.0)",
     "phonenumbers (>=9.0.27,<10.0.0)",
     "django-filter (>=25.2,<26.0)",
+    "drf-spectacular (>=0.29.0,<0.30.0)",
 ]
 
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.local"
+pythonpath = ["app"]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
