@@ -10,4 +10,12 @@ SUBDOMAIN_URLCONFS = {
     SUBDOMAIN_ADMIN: "config.urls.admin",
     SUBDOMAIN_API: "config.urls.api",
 }
+
+# ``/`` 접근 시 Swagger UI로 보낼 호스트 (예: docs 서브도메인).
+DOCS_SWAGGER_HOSTS = frozenset(
+    {
+        "shalom.docs.jcc-seoul.com",
+        "docs.localhost",
+    }
+)
 SUBDOMAIN_IGNORE_HOSTS = ["health-check"]

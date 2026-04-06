@@ -386,6 +386,20 @@ class IsPastoralRegistryStaff(BasePermission):
         return bool(u and u.is_authenticated and can_access_member_registry(u))
 
 
+class IsIntegrationService(BasePermission):
+    """
+    외부 서버 연동 — ``IntegrationServiceAuthentication`` 으로 발급된
+    :class:`~users.models.ExternalServiceClient` 가 ``request.auth`` 에 있을 때만 허용.
+    """
+
+    message = "유효한 연동 서비스 키(X-JCC-Integration-Key)가 필요합니다."
+
+    def has_permission(self, request, view):
+        from .models import ExternalServiceClient
+
+        return isinstance(getattr(request, "auth", None), ExternalServiceClient)
+
+
 def can_access_counseling_tab(user: User) -> bool:
     """상담 메뉴·페이지 접근(로그인 사용자)."""
     if not user.is_authenticated or not user.is_active:

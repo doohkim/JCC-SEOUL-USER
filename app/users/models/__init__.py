@@ -1,5 +1,6 @@
 """users 앱: 계정·조직 마스터(부서·팀 등)."""
 
+from .external_service import ExternalServiceClient
 from .role_level import RoleLevel
 from .user import User
 from .user_profile import UserProfile, UserProfileAvatar
@@ -16,6 +17,7 @@ from .organization import (
 )
 
 __all__ = [
+    "ExternalServiceClient",
     "User",
     "UserProfile",
     "UserProfileAvatar",

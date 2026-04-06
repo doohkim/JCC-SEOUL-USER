@@ -8,4 +8,5 @@ Admin 모듈. models 패키지와 같이 역할별 파일로 분리.
 """
 
 from . import accounts  # noqa: F401
+from . import external_service  # noqa: F401
 from . import organization  # noqa: F401

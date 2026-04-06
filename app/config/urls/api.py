@@ -1,25 +1,28 @@
-from django.urls import path, include
-
-
-from config.urls._base import urlpatterns as base_urlpatterns
-
 from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib import admin
 from django.urls import include, path, re_path
-from django.views.generic import RedirectView
 from django.views.generic import TemplateView
+
+from config.urls._base import urlpatterns as base_urlpatterns
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from config.admin_legacy_redirect import (
     LEGACY_USERS_ADMIN_PATTERN,
     redirect_legacy_users_admin,
 )
+from config.views import api_root_redirect
 
 api_urlpatterns = [
     path(
         "",
-        RedirectView.as_view(url="/login/?next=/attendance/", permanent=False),
+        api_root_redirect,
         name="root_login_redirect",
+    ),
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/schema/swagger-ui/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
     ),
     re_path(LEGACY_USERS_ADMIN_PATTERN, redirect_legacy_users_admin),
     re_path(LEGACY_USERS_ADMIN_PATTERN, redirect_legacy_users_admin),

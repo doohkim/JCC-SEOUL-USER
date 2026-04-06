@@ -9,6 +9,7 @@ from .cache import *
 from .celery import *
 from .databases import *
 from .drf import *
+from .spectacular import *
 from .installed_apps import *
 from .middleware import *
 from .password import *
@@ -52,6 +53,19 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # django-cors-headers
 CORS_ALLOW_ALL_ORIGINS = True
+
+# 외부 서버 연동 API (서비스 키 + 선택적 DRF Token 검증)
+INTEGRATION_API_ENABLED = os.environ.get("INTEGRATION_API_ENABLED", "1") not in (
+    "0",
+    "false",
+    "False",
+)
+INTEGRATION_KEY_PEPPER = os.environ.get("INTEGRATION_KEY_PEPPER", "") or SECRET_KEY
+ALLOW_INTEGRATION_DEBUG_TOKEN = os.environ.get("ALLOW_INTEGRATION_DEBUG_TOKEN", "0") in (
+    "1",
+    "true",
+    "True",
+)
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
