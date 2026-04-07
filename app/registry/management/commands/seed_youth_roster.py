@@ -1,12 +1,15 @@
 """
-2026 예배 출석 명단.xlsx → 청년부 팀·멤버(Member)·부서 소속(MemberDivisionTeam).
+``예배 출석 명단.xlsx``(부서 회장단 + 팀 열) → 팀·멤버(Member)·부서 소속(MemberDivisionTeam).
 
-기본 시트: ``주일 88`` (부서 회장단 헤더 + 팀 열 구조)
+기본 시트: ``주일 88``. 경로 생략 시 저장소 ``_test_rosters/2026/2026 예배 출석 명단.xlsx`` 를 우선 사용하고,
+없으면 ``~/Downloads/2026 예배 출석 명단.xlsx`` 를 씁니다.
 
-사용:
-  python manage.py seed_youth_roster
-  python manage.py seed_youth_roster /path/to/2026\\ 예배\\ 출석\\ 명단.xlsx
-  python manage.py seed_youth_roster --sheet "26.03.22 주일예배" --dry-run
+사용 (프로젝트 ``app/`` 에서):
+
+  poetry run python manage.py seed_youth_roster --dry-run
+  poetry run python manage.py seed_youth_roster "../_test_rosters/2026/2026 예배 출석 명단.xlsx"
+  poetry run python manage.py seed_youth_roster --sheet "26.03.22 주일예배" --dry-run
+  poetry run python manage.py seed_youth_roster --division-code youth
 """
 
 from __future__ import annotations
@@ -26,7 +29,15 @@ from registry.importers.youth_roster_xlsx import (
 from registry.models import Member, MemberDivisionTeam
 from users.models import Division, Team
 
-DEFAULT_XLSX = Path.home() / "Downloads" / "2026 예배 출석 명단.xlsx"
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+_DEFAULT_TEST_XLSX = _REPO_ROOT / "_test_rosters" / "2026" / "2026 예배 출석 명단.xlsx"
+_DEFAULT_DOWNLOADS_XLSX = Path.home() / "Downloads" / "2026 예배 출석 명단.xlsx"
+
+
+def _default_xlsx_path() -> Path:
+    if _DEFAULT_TEST_XLSX.is_file():
+        return _DEFAULT_TEST_XLSX
+    return _DEFAULT_DOWNLOADS_XLSX
 
 
 class Command(BaseCommand):
@@ -37,13 +48,18 @@ class Command(BaseCommand):
             "xlsx_path",
             nargs="?",
             type=str,
-            default=str(DEFAULT_XLSX),
-            help=f"엑셀 경로 (기본: {DEFAULT_XLSX})",
+            default="",
+            help="엑셀 경로 (생략 시 저장소 테스트 파일 또는 ~/Downloads/2026 예배 출석 명단.xlsx)",
         )
         parser.add_argument(
             "--sheet",
             default="주일 88",
             help="읽을 시트 이름 (기본: 주일 88)",
+        )
+        parser.add_argument(
+            "--division-code",
+            default="youth",
+            help="부서 Division.code (기본: youth)",
         )
         parser.add_argument(
             "--dry-run",
@@ -52,12 +68,21 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        path = Path(options["xlsx_path"]).expanduser().resolve()
+        raw_path = (options["xlsx_path"] or "").strip()
+        path = (
+            Path(raw_path).expanduser().resolve()
+            if raw_path
+            else _default_xlsx_path()
+        )
         sheet_name = options["sheet"]
+        division_code = (options["division_code"] or "youth").strip() or "youth"
         dry = options["dry_run"]
 
         if not path.is_file():
-            raise CommandError(f"파일이 없습니다: {path}")
+            raise CommandError(
+                f"파일이 없습니다: {path}\n"
+                f"경로를 지정하거나 {_DEFAULT_TEST_XLSX} / {_DEFAULT_DOWNLOADS_XLSX} 를 준비하세요."
+            )
 
         try:
             rows = load_workbook_rows(path, sheet_name)
@@ -73,7 +98,8 @@ class Command(BaseCommand):
         except ValueError as e:
             raise CommandError(str(e)) from e
 
-        self.stdout.write(f"시트: {sheet_name}, 팀 열 {len(team_cols)}개")
+        self.stdout.write(f"파일: {path}")
+        self.stdout.write(f"시트: {sheet_name}, 부서 코드: {division_code}, 팀 열 {len(team_cols)}개")
         for tn, names in sorted(team_members.items()):
             self.stdout.write(f"  {tn}: {len(names)}명")
 
@@ -82,11 +108,14 @@ class Command(BaseCommand):
             return
 
         with transaction.atomic():
+            div_defaults = {"name": "청년부", "sort_order": 10}
+            if division_code != "youth":
+                div_defaults = {"name": division_code, "sort_order": 10}
             div, _ = Division.objects.get_or_create(
-                code="youth",
-                defaults={"name": "청년부", "sort_order": 10},
+                code=division_code,
+                defaults=div_defaults,
             )
-            if div.name != "청년부":
+            if division_code == "youth" and div.name != "청년부":
                 div.name = "청년부"
                 div.save(update_fields=["name"])
 
