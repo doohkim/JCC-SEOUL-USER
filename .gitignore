@@ -33,6 +33,7 @@ env/
 .env.*
 !.env.example
 .deploy/env/nginx-certbot.env
+.deploy/production/nginx/secrets/
 local_settings.py
 secrets.json
 
