@@ -24,7 +24,6 @@ from users.services.user_display import kakao_nickname_map_for_user_ids, user_di
 from users.permissions import (
     can_access_team_roster_tab,
     can_change_dashboard_division,
-    is_platform_admin,
     is_parking_manager,
     membership_divisions_for,
     visible_divisions_for,
@@ -108,7 +107,7 @@ class AttendanceTeamRosterCheckView(OnboardingRequiredMixin, LoginRequiredMixin,
         ctx = super().get_context_data(**kwargs)
         u = self.request.user
 
-        if is_platform_admin(u):
+        if u.is_superuser:
             ctx["team_leader_allowed_division_codes_json"] = "null"
             ctx["team_leader_is_superuser"] = True
             ctx["team_leader_is_superuser_json"] = "true"

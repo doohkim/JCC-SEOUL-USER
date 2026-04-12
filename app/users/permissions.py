@@ -3,8 +3,10 @@
 
 - **운영 데이터(출석·부서 목록 등)**: 로그인 사용자는 ``UserDivisionTeam`` 으로 연결된
   상위 부서(Division)만 조회 가능. 타 부서 데이터는 API/쿼리에서 차단.
-- **교적(Member·registry Admin·조직 API)**: 목사·전도사·Django staff 등 (``can_access_member_registry``).
-  부서 범위는 ``registry_divisions_for`` — 목사·전도사는 담당/소속 부서만, 그 외 교적 접근 계정은 전체 부서.
+- **교적(Member·registry Admin·조직 API)**: ``can_access_member_registry`` — **직급이 목사·전도사인 계정만**
+  (Django staff·기능권한만으로는 탭/API/페이지 불가). 슈퍼유저는 예외.
+  부서 범위는 ``registry_divisions_for`` — **목회 담당 부서** (``PastoralDivisionAssignment``)만.
+  담당이 없으면 빈 범위(화면에 안내 문구). **전체 부서** 조회는 ``is_superuser`` 만.
 - **탭 출석부** (``can_access_team_roster_tab``): 팀장·셀장은 기능 직책 **또는** 직급(RoleLevel)
   ``team_leader`` / ``cell_leader`` — 본인 팀만. 목사·전도사·회장·부회장·총무 및 출석관리·운영은 부서 전체 팀.
 """
@@ -35,12 +37,10 @@ _ACCOUNT_MANAGER_ROLE_CODES = frozenset({"account_admin"})
 
 
 def can_access_member_registry(user: User) -> bool:
-    """교적(registry) Admin·조직 변경 API·멤버 쿼리 허용 여부."""
+    """교적(registry) Admin·조직 변경 API·멤버 쿼리·좌측 '교적부' 탭 허용 여부."""
     if not user.is_authenticated or not user.is_active:
         return False
     if user.is_superuser:
-        return True
-    if user.is_staff:
         return True
     rl = getattr(user, "role_level", None)
     if rl is None:
@@ -89,19 +89,38 @@ def _primary_user_division_ids(user: User) -> list[int]:
     return [int(first)] if first else []
 
 
+def _divisions_from_udt(user: User):
+    """소속(UserDivisionTeam) 부서만 (복수). 없으면 빈 쿼리셋."""
+    division_ids = list(user.division_teams.values_list("division_id", flat=True).distinct())
+    if not division_ids:
+        return Division.objects.none()
+    return Division.objects.filter(pk__in=division_ids).order_by("sort_order", "name")
+
+
+def _pastoral_assigned_divisions(user: User):
+    """
+    목사·전도사 업무 부서: **목회 담당** (PastoralDivisionAssignment)만.
+    미지정 시 빈 범위 — 소속(UDT)으로는 채우지 않음.
+    """
+    pastoral_ids = list(
+        user.pastoral_divisions.values_list("division_id", flat=True).distinct()
+    )
+    if not pastoral_ids:
+        return Division.objects.none()
+    return Division.objects.filter(pk__in=pastoral_ids).order_by("sort_order", "name")
+
+
 def dashboard_divisions_for(user: User):
-    """출석 대시보드에서 선택 가능한 부서 범위."""
+    """출석 대시보드에서 선택 가능한 부서 범위. 전체 부서는 슈퍼유저만."""
     if not user.is_authenticated:
         return Division.objects.none()
-    if is_platform_admin(user) or is_attendance_manager(user):
+    if user.is_superuser:
         return Division.objects.all()
+    if is_attendance_manager(user) or (user.is_staff and not user.is_superuser):
+        return _divisions_from_udt(user)
 
     if _is_pastoral(user):
-        pastoral_ids = list(
-            user.pastoral_divisions.values_list("division_id", flat=True).distinct()
-        )
-        if pastoral_ids:
-            return Division.objects.filter(pk__in=pastoral_ids)
+        return _pastoral_assigned_divisions(user)
 
     # 일반/팀장/셀장: 주 소속 1개만.
     primary_ids = _primary_user_division_ids(user)
@@ -183,8 +202,10 @@ def visible_divisions_for(user: User):
 def can_change_dashboard_division(user: User) -> bool:
     if not user.is_authenticated:
         return False
-    if is_platform_admin(user) or is_attendance_manager(user):
+    if user.is_superuser:
         return True
+    if is_attendance_manager(user):
+        return dashboard_divisions_for(user).count() > 1
     if _is_pastoral(user):
         return dashboard_divisions_for(user).count() > 1
     return False
@@ -195,8 +216,8 @@ def registry_divisions_for(user: User):
     교적 Member·조직 API·부서 드롭다운의 상위 부서 범위.
 
     - 슈퍼유저: 전체 부서
-    - 목사·전도사: ``pastoral_divisions_for`` (담당 부서) + 미지정 시 ``UserDivisionTeam`` 소속만
-    - 교적 접근 가능한 그 외(주로 Django staff, 목사 직급 아님): 전체 부서
+    - 목사·전도사: 목회 담당 부서만 (없으면 빈 쿼리셋)
+    - 그 외: 접근 불가 (빈 쿼리셋)
     """
     if not user.is_authenticated:
         return Division.objects.none()
@@ -204,15 +225,18 @@ def registry_divisions_for(user: User):
         return Division.objects.all()
     if not can_access_member_registry(user):
         return Division.objects.none()
-    if _is_pastoral(user):
-        qs = pastoral_divisions_for(user)
-        if qs.exists():
-            return qs
-        division_ids = user.division_teams.values_list("division_id", flat=True).distinct()
-        if division_ids:
-            return Division.objects.filter(pk__in=division_ids)
-        return Division.objects.none()
-    return Division.objects.all()
+    return _pastoral_assigned_divisions(user)
+
+
+def registry_scope_notice(user: User) -> str:
+    """교적 화면/API: 담당 부서가 없을 때 안내 문구 (없으면 빈 문자열)."""
+    if not user.is_authenticated or user.is_superuser:
+        return ""
+    if not can_access_member_registry(user):
+        return ""
+    if registry_divisions_for(user).exists():
+        return ""
+    return "담당 부서가 없어 교적을 조회할 수 없습니다. 관리자에게 목회 담당 부서 등록을 요청해 주세요."
 
 
 def can_see_division(user: User, division: Division) -> bool:
@@ -234,28 +258,21 @@ def can_see_division_for_registry(user: User, division: Division) -> bool:
 
 
 def pastoral_divisions_for(user: User):
-    """목사/전도사/관리자용 계정 관리 페이지의 부서 범위."""
+    """
+    가입 승인·부서 계정 관리 등에서 쓰는 부서 범위.
+
+    - 슈퍼유저: 전체 부서
+    - 목사·전도사: 목회 담당 부서만 (없으면 빈 쿼리셋)
+    - 그 외: 없음
+    """
     if not user.is_authenticated:
         return Division.objects.none()
-    if is_platform_admin(user):
+    if user.is_superuser:
         return Division.objects.all()
 
     role_code = getattr(getattr(user, "role_level", None), "code", None)
-    if role_code == "pastor":
-        pastoral_ids = list(
-            user.pastoral_divisions.values_list("division_id", flat=True).distinct()
-        )
-        if pastoral_ids:
-            return Division.objects.filter(pk__in=pastoral_ids)
-        division_ids = user.division_teams.values_list("division_id", flat=True).distinct()
-        return Division.objects.filter(pk__in=division_ids)
-
-    if role_code == "evangelist":
-        primary_ids = _primary_user_division_ids(user)
-        if primary_ids:
-            return Division.objects.filter(pk__in=primary_ids)
-        division_ids = user.division_teams.values_list("division_id", flat=True).distinct()[:1]
-        return Division.objects.filter(pk__in=division_ids)
+    if role_code in ("pastor", "evangelist"):
+        return _pastoral_assigned_divisions(user)
 
     return Division.objects.none()
 
@@ -263,7 +280,7 @@ def pastoral_divisions_for(user: User):
 def can_manage_division_accounts(user: User) -> bool:
     if not user.is_authenticated or not user.is_active:
         return False
-    if is_platform_admin(user):
+    if user.is_superuser:
         return True
     if getattr(user, "can_manage_accounts", False):
         return True
@@ -336,29 +353,26 @@ def users_visible_to(actor: User, division: Division | None = None):
 def membership_divisions_for(user: User):
     """
     부서 선택 기본 범위: 사용자 소속(UserDivisionTeam) 부서만.
-    - 관리자/목사/전도사 포함 공통 규칙
-    - 교적/출석의 별도 상위 권한 로직과 무관하게 "소속" 기준으로만 반환
+    소속 행이 없으면 빈 목록(전체 부서 fallback 없음).
     """
     if not user.is_authenticated:
         return Division.objects.none()
     division_ids = user.division_teams.values_list("division_id", flat=True).distinct()
-    # 일부 계정은 UserDivisionTeam 연결이 없을 수 있다.
-    # 이 경우 화면이 전부 비어 보이지 않도록 DB 전체를 fallback으로 사용한다.
     if not division_ids:
-        return Division.objects.all().order_by("sort_order", "name")
+        return Division.objects.none()
     return Division.objects.filter(pk__in=division_ids).order_by("sort_order", "name")
 
 
 def visible_teams_for(user: User, division: Division):
     """
     선택한 부서에서 볼 수 있는 팀 범위.
-    - 관리자/목사/전도사: 해당 부서의 모든 팀
+    - 슈퍼유저·목사·전도사: 해당 부서의 모든 팀
     - 그 외: 해당 부서 내 본인 소속 팀만
     """
     if not user.is_authenticated:
         return Team.objects.none()
     role_code = getattr(getattr(user, "role_level", None), "code", None)
-    if is_platform_admin(user) or role_code in {"pastor", "evangelist"}:
+    if user.is_superuser or role_code in {"pastor", "evangelist"}:
         return Team.objects.filter(division=division).order_by("sort_order", "name")
     return Team.objects.filter(
         division=division,
@@ -424,7 +438,7 @@ def counselors_queryset_for_applicant(actor: User):
     """
     if not actor.is_authenticated:
         return User.objects.none()
-    if is_platform_admin(actor):
+    if actor.is_superuser:
         return User.objects.filter(
             role_level__code__in=_REGISTRY_ROLE_CODES,
             is_active=True,

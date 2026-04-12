@@ -8,6 +8,7 @@ from users.permissions import (
     can_access_member_registry,
     can_access_parking_tab,
     can_access_team_roster_tab,
+    can_manage_division_accounts,
     is_parking_manager,
 )
 from users.services.user_display import user_display_name as resolve_user_display_name
@@ -17,7 +18,14 @@ register = template.Library()
 
 @register.filter(name="can_access_registry_tab")
 def can_access_registry_tab(user):
+    """좌측 '교적부' 탭 — 목사·전도사(및 슈퍼유저)만."""
     return can_access_member_registry(user)
+
+
+@register.filter(name="can_manage_division_accounts_tab")
+def can_manage_division_accounts_tab(user):
+    """좌측 '계정관리' 탭 — 운영자·목회 담당·기능권한 등 (교적부와 별도)."""
+    return bool(user and can_manage_division_accounts(user))
 
 
 @register.filter(name="can_access_attendance_tab")

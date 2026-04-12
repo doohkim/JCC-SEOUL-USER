@@ -122,8 +122,15 @@ function setMoveStatus(msg, isErr) {
   st.className = "msg" + (isErr ? " err" : "");
 }
 
+function applyScopeNotice(data) {
+  if (data && data.scope_notice) {
+    setStatus(data.scope_notice, true);
+  }
+}
+
 async function loadDivisions() {
   const data = await apiGet(`/member/teams/accordion/?meta_only=1`);
+  applyScopeNotice(data);
   const items = [{ value: "", label: "전체" }];
   (Array.isArray(data.division_options) ? data.division_options : []).forEach((d) => {
     items.push({ value: d.code, label: d.name });
@@ -138,6 +145,7 @@ async function loadTeams(divisionCode, currentTeamId) {
     divisionCode ? `&division_code=${encodeURIComponent(divisionCode)}` : ""
   }`;
   const data = await apiGet(url);
+  applyScopeNotice(data);
   const items = [{ value: "", label: "전체" }];
   (Array.isArray(data.team_options) ? data.team_options : []).forEach((t) => {
     const v = t.id === null || t.id === undefined ? "" : t.id;
@@ -174,12 +182,20 @@ async function loadMembers() {
   const container = document.getElementById("teamGroups");
   if (!container) return;
 
+  if (data.scope_notice) {
+    setStatus(data.scope_notice, true);
+  }
+
   const groups = Array.isArray(data.groups) ? data.groups : [];
   container.innerHTML = "";
 
   if (!groups.length) {
-    container.innerHTML = `<div class="msg">표시할 멤버가 없습니다.</div>`;
-    setStatus("표시할 멤버가 없습니다.");
+    if (data.scope_notice) {
+      container.innerHTML = `<div class="msg err">${escapeHtml(data.scope_notice)}</div>`;
+    } else {
+      container.innerHTML = `<div class="msg">표시할 멤버가 없습니다.</div>`;
+      setStatus("표시할 멤버가 없습니다.");
+    }
     return;
   }
 
@@ -243,6 +259,7 @@ async function refreshFiltersPreserveSelection() {
   const curTeam = teamSel ? teamSel.value : "";
 
   const divData = await apiGet(`/member/teams/accordion/?meta_only=1`);
+  applyScopeNotice(divData);
   const divItems = [{ value: "", label: "전체" }];
   (Array.isArray(divData.division_options) ? divData.division_options : []).forEach((d) => {
     divItems.push({ value: d.code, label: d.name });

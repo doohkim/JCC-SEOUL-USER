@@ -17,6 +17,11 @@ def is_onboarding_complete(user, profile: UserProfile | None = None) -> bool:
     if not user.is_authenticated or user.is_superuser:
         return True
     profile = profile or ensure_user_profile(user)
+    # 목사·전도사: 관리자가 직급만 부여한 계정은 소속·가입 승인 절차 없이도 교적 등 업무 화면을 써야 함.
+    # (그렇지 않으면 OnboardingRequiredMixin 에 교적부가 막혀 "전도사인데 교적이 안 보인다"가 됨.)
+    role_code = getattr(getattr(user, "role_level", None), "code", None)
+    if role_code in ("pastor", "evangelist"):
+        return True
     has_membership = user.division_teams.exists()
 
     # 승인 상태인데 소속 행이 없으면 신청값 기준으로 1회 자동 보정.

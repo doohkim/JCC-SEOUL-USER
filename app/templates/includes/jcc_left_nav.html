@@ -10,6 +10,8 @@
     {% endif %}
     {% if user|can_access_registry_tab %}
       <a class="jcc-leftNav-item" href="{% url 'registry_member_list' %}">교적부</a>
+    {% endif %}
+    {% if user|can_manage_division_accounts_tab %}
       <a class="jcc-leftNav-item" href="{% url 'user_division_account_roles' %}">계정관리</a>
     {% endif %}
     {% if user|can_access_counseling_tab %}

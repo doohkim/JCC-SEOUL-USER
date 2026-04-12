@@ -27,7 +27,12 @@ from registry.serializers.member_crud import (
 from attendance.choices.attendance import MidweekServiceType
 from attendance.models.weekly import MidweekAttendanceRecord, SundayAttendanceLine
 from users.models import Division, Role, Team, User
-from users.permissions import IsPastoralRegistryStaff, members_visible_to, registry_divisions_for
+from users.permissions import (
+    IsPastoralRegistryStaff,
+    members_visible_to,
+    registry_divisions_for,
+    registry_scope_notice,
+)
 
 
 class MemberListCreateView(APIView):
@@ -160,6 +165,7 @@ class MemberRegistryTeamsAccordionView(APIView):
                 team_id = None
 
         divisions_qs = registry_divisions_for(request.user).order_by("sort_order", "name")
+        scope_notice = registry_scope_notice(request.user)
         if division_code:
             div = divisions_qs.filter(code=division_code).first()
             if not div:
@@ -193,6 +199,7 @@ class MemberRegistryTeamsAccordionView(APIView):
                     "division_options": division_options,
                     "team_options": team_options,
                     "groups": [],
+                    "scope_notice": scope_notice,
                 }
             )
 
@@ -341,10 +348,6 @@ class MemberRegistryTeamsAccordionView(APIView):
         group_list = list(groups.values())
         group_list.sort(key=lambda g: (g["team_name"] or "", g["members"][0]["name"] if g["members"] else ""))
 
-        if meta_only:
-            # hide members in meta mode
-            group_list = []
-
         return Response(
             {
                 "division_options": [{"code": d["code"], "name": d["name"]} for d in division_options],
@@ -353,6 +356,7 @@ class MemberRegistryTeamsAccordionView(APIView):
                     for t in team_options
                 ],
                 "groups": group_list,
+                "scope_notice": scope_notice,
             }
         )
 

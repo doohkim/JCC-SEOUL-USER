@@ -26,7 +26,6 @@ from users.models import (
 from users.permissions import (
     can_access_member_registry,
     can_manage_division_accounts,
-    is_platform_admin,
     membership_divisions_for,
     pastoral_divisions_for,
 )
@@ -205,7 +204,7 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
 
         role_code = getattr(getattr(self.request.user, "role_level", None), "code", "")
         requested_code = (self.request.GET.get("division_code") or self.request.POST.get("division_code") or "").strip()
-        if role_code == "pastor" or is_platform_admin(self.request.user):
+        if role_code in ("pastor", "evangelist") or self.request.user.is_superuser:
             active = divisions.filter(code=requested_code).first() if requested_code else None
             if active is None:
                 active = divisions.first()
@@ -353,7 +352,9 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
         start_dt, end_dt, date_from, date_to = self._parse_updated_at_range()
 
         role_code = getattr(getattr(self.request.user, "role_level", None), "code", "")
-        ctx["can_choose_onboarding_division"] = role_code == "pastor" or is_platform_admin(self.request.user)
+        ctx["can_choose_onboarding_division"] = (
+            role_code in ("pastor", "evangelist") or self.request.user.is_superuser
+        )
         ctx["allowed_divisions"] = list(allowed_divisions)
         ctx["active_division"] = active_division
         ctx["date_from"] = date_from
@@ -414,7 +415,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
     login_url = reverse_lazy("user_login")
 
     def _manageable_divisions(self):
-        if is_platform_admin(self.request.user):
+        if self.request.user.is_superuser:
             return Division.objects.all().order_by("sort_order", "name")
         if can_access_member_registry(self.request.user):
             return pastoral_divisions_for(self.request.user).order_by("sort_order", "name")
@@ -434,13 +435,13 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
 
         role_code = getattr(getattr(self.request.user, "role_level", None), "code", "")
         requested_code = (self.request.GET.get("division_code") or "").strip()
-        if role_code == "pastor":
+        if role_code in ("pastor", "evangelist"):
             active = divisions.filter(code=requested_code).first() if requested_code else None
             if active is None:
                 active = divisions.first()
             return active, divisions
 
-        # 전도사 및 일반 관리자는 선택 UI 없이 첫 부서 고정
+        # 그 외(기능권한만 등): 첫 부서 고정
         return divisions.first(), divisions
 
     def _division_functional_department(self, division: Division):
@@ -562,7 +563,11 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         active_division, allowed_divisions = self._resolve_active_division()
         role_code = getattr(getattr(self.request.user, "role_level", None), "code", "")
-        can_choose_division = role_code == "pastor" or self.request.user.is_staff or self.request.user.is_superuser
+        can_choose_division = (
+            role_code in ("pastor", "evangelist")
+            or self.request.user.is_staff
+            or self.request.user.is_superuser
+        )
 
         users_payload = []
         if active_division:

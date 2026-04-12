@@ -1,10 +1,13 @@
+{% load permission_tags %}
 <div class="card" style="margin-bottom: 1rem;">
   <div class="jcc-page-tabs">
     <a href="{% url 'user_division_account_roles' %}" class="jcc-page-tab{% if account_tab == 'roles' %} is-active{% endif %}">
       계정 직책
     </a>
+    {% if user|can_access_registry_tab %}
     <a href="{% url 'user_account_approvals' %}" class="jcc-page-tab{% if account_tab == 'approvals' %} is-active{% endif %}">
       가입 승인
     </a>
+    {% endif %}
   </div>
 </div>
