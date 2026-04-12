@@ -1,4 +1,7 @@
-:root {
+/* 기본 = 다크 모드 (data-theme 생략 시 동일) */
+:root,
+html[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #0c0f14;
   --card: #151b24;
   --text: #e8edf4;
@@ -7,6 +10,48 @@
   --accent-dim: #2d6bb3;
   --border: #2a3548;
   --ok: #34c759;
+  --surface: #121820;
+  --surface-2: #293443;
+  --toolbar-bg: #121820;
+  --header-grad-0: #121820;
+  --header-grad-1: var(--bg);
+  --nav-bg: rgba(12, 15, 20, 0.35);
+  --nav-mobile-grad-0: #121820;
+  --nav-mobile-grad-1: #0c0f14;
+  --nav-drawer-shadow: 8px 0 32px rgba(0, 0, 0, 0.45);
+  --backdrop: rgba(5, 8, 12, 0.55);
+  --nav-item-hover-bg: rgba(255, 255, 255, 0.03);
+  --nav-item-hover-border: rgba(74, 158, 255, 0.35);
+  --input-elev-0: #141d29;
+  --input-elev-1: #121820;
+  --tag-bg: #2d3a4f;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #e8ecf2;
+  --card: #ffffff;
+  --text: #152232;
+  --muted: #5a6b7d;
+  --accent: #1d64d8;
+  --accent-dim: #1558b8;
+  --border: #c5d0e0;
+  --ok: #15803d;
+  --surface: #ffffff;
+  --surface-2: #e8eef5;
+  --toolbar-bg: #f1f4f9;
+  --header-grad-0: #f5f8fc;
+  --header-grad-1: #e8ecf2;
+  --nav-bg: rgba(255, 255, 255, 0.88);
+  --nav-mobile-grad-0: #ffffff;
+  --nav-mobile-grad-1: #eef2f7;
+  --nav-drawer-shadow: 8px 0 28px rgba(15, 23, 42, 0.14);
+  --backdrop: rgba(15, 23, 42, 0.32);
+  --nav-item-hover-bg: rgba(29, 100, 216, 0.08);
+  --nav-item-hover-border: rgba(29, 100, 216, 0.35);
+  --input-elev-0: #ffffff;
+  --input-elev-1: #f0f4fa;
+  --tag-bg: #dbe4f0;
 }
 
 * {
@@ -29,7 +74,7 @@ header.app-header {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem 1.25rem;
-  background: linear-gradient(180deg, #121820 0%, var(--bg) 100%);
+  background: linear-gradient(180deg, var(--header-grad-0) 0%, var(--header-grad-1) 100%);
 }
 
 header.app-header h1 {
@@ -84,7 +129,7 @@ header.app-header a:hover {
   width: 235px;
   padding: 1.2rem 0.9rem;
   border-right: 1px solid var(--border);
-  background: rgba(12, 15, 20, 0.35);
+  background: var(--nav-bg);
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -97,7 +142,7 @@ header.app-header a:hover {
 .jcc-leftNav-toggle {
   appearance: none;
   border: 1px solid var(--border);
-  background: #121820;
+  background: var(--surface);
   color: var(--accent);
   border-radius: 12px;
   padding: 0.55rem 0.75rem;
@@ -135,8 +180,8 @@ header.app-header a:hover {
 }
 
 .jcc-leftNav-item:hover {
-  border-color: rgba(74, 158, 255, 0.35);
-  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--nav-item-hover-border);
+  background: var(--nav-item-hover-bg);
 }
 
 .jcc-leftNav-bottom {
@@ -144,6 +189,48 @@ header.app-header a:hover {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+}
+
+/* 테마 토글 (다크 ↔ 라이트) */
+.jcc-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.jcc-theme-toggle:hover {
+  border-color: var(--nav-item-hover-border);
+  background: var(--nav-item-hover-bg);
+}
+
+.jcc-theme-toggle:active {
+  transform: scale(0.98);
+}
+
+.jcc-theme-toggle .jcc-theme-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+}
+
+.jcc-theme-toggle .jcc-theme-icon--sun {
+  color: #fbbf24;
+}
+
+.jcc-theme-toggle .jcc-theme-icon--sun-dark {
+  color: #1e293b;
+}
+
+html[data-theme="light"] .jcc-theme-toggle .jcc-theme-icon--sun-dark {
+  color: #334155;
 }
 
 .jcc-leftNav-user {
@@ -156,7 +243,7 @@ header.app-header a:hover {
 .jcc-leftNav-logout {
   padding: 0.65rem 0.9rem;
   border-radius: 12px;
-  background: #293443;
+  background: var(--surface-2);
   color: var(--accent);
   font-weight: 900;
   text-decoration: none;
@@ -186,14 +273,14 @@ header.app-header a:hover {
     padding: 1.15rem 0.95rem;
     border-right: 1px solid var(--border);
     border-bottom: none;
-    background: linear-gradient(180deg, #121820 0%, #0c0f14 100%);
+    background: linear-gradient(180deg, var(--nav-mobile-grad-0) 0%, var(--nav-mobile-grad-1) 100%);
     flex-direction: column;
     align-items: stretch;
     gap: 1.1rem;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    box-shadow: 8px 0 32px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--nav-drawer-shadow);
     transition: transform 0.3s ease, visibility 0.3s ease;
     transform: translateX(-100%);
     visibility: visible;
@@ -238,7 +325,7 @@ header.app-header a:hover {
   position: fixed;
   inset: 0;
   z-index: 1390;
-  background: rgba(5, 8, 12, 0.55);
+  background: var(--backdrop);
   backdrop-filter: blur(2px);
 }
 
@@ -256,7 +343,7 @@ body.jcc-leftNav-drawer-open {
   gap: 0.75rem 1rem;
   align-items: flex-end;
   padding: 1rem 1.5rem;
-  background: #121820;
+  background: var(--toolbar-bg);
   border-bottom: 1px solid var(--border);
 }
 
@@ -295,11 +382,22 @@ input[type="file"] {
   padding: 0.35rem 0.5rem;
 }
 
-/* date picker visibility on dark UI */
+/* date picker: 테마에 맞춤 */
 input[type="date"] {
   color-scheme: dark;
   min-height: 2.3rem;
   padding-right: 2.1rem;
+}
+
+html[data-theme="light"] input[type="date"] {
+  color-scheme: light;
+}
+
+html[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.9;
+  background: rgba(29, 100, 216, 0.12);
+  border: 1px solid rgba(29, 100, 216, 0.35);
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
@@ -990,7 +1088,7 @@ tr:hover td {
   min-height: 2.35rem;
   border-radius: 10px;
   border: 1px solid rgba(74, 158, 255, 0.25);
-  background: linear-gradient(180deg, #141d29 0%, #121820 100%);
+  background: linear-gradient(180deg, var(--input-elev-0) 0%, var(--input-elev-1) 100%);
   color: var(--text);
   font-weight: 700;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18) inset;
@@ -1024,7 +1122,7 @@ tr:hover td {
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
   font-size: 0.72rem;
-  background: #2d3a4f;
+  background: var(--tag-bg);
 }
 
 /* registry (교적부) pages - slightly more polished layout */
@@ -2058,4 +2156,26 @@ tr:hover td {
   .jcc-member-photo-header {
     grid-template-columns: 1fr;
   }
+}
+
+/* 라이트 모드: 남은 다크 전용 색 보정 */
+html[data-theme="light"] .jcc-photo-preview,
+html[data-theme="light"] .jcc-photo-preview-small {
+  background: #e2e8f0;
+}
+
+html[data-theme="light"] .jcc-member-inline-form select.jcc-reg-control option {
+  background: #ffffff;
+  color: var(--text);
+}
+
+html[data-theme="light"] .jcc-member-inline-form select.jcc-reg-control option:checked {
+  background: #dbeafe;
+  color: var(--text);
+}
+
+html[data-theme="light"] .jcc-parking-dateInput,
+html[data-theme="light"] .jcc-parking-input {
+  border-color: rgba(29, 100, 216, 0.28);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.06) inset;
 }

@@ -25,9 +25,31 @@
         {{ user|user_display_name }}
       {% endif %}
     </div>
+    <button
+      type="button"
+      class="jcc-theme-toggle"
+      id="jccThemeToggle"
+      aria-label="밝은 모드로 전환"
+      title="밝은 모드"
+      aria-pressed="true"
+    >
+      {# 다크 UI 중: 노란 태양 → 클릭 시 라이트 모드 #}
+      <svg class="jcc-theme-icon jcc-theme-icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="2" />
+        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+      </svg>
+      {# 라이트 UI 중: 어두운 태양 느낌(채움+광선) → 클릭 시 다크 모드 #}
+      <svg class="jcc-theme-icon jcc-theme-icon--sun-dark" viewBox="0 0 24 24" hidden aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="4" fill="currentColor" opacity="0.35" />
+        <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="2" />
+        <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+      </svg>
+    </button>
     <a class="jcc-leftNav-logout" href="{% url 'user_logout' %}">로그아웃</a>
   </div>
 </aside>
+
+<script src="{% static 'attendance/jcc-theme.js' %}" defer></script>
 
 <div
   class="jcc-leftNav-backdrop"
