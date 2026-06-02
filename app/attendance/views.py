@@ -446,7 +446,9 @@ class ParkingPermitApplyView(OnboardingRequiredMixin, LoginRequiredMixin, FormVi
                 for u in User.objects.filter(pk__in=uid_set).select_related("profile")
             }
             ctx["division_options"] = list(
-                scoped_divisions.values("code", "name").order_by("name")
+                scoped_divisions.select_related("region")
+                .order_by("region__sort_order", "sort_order", "name")
+                .values("code", "name", "region__code", "region__name")
             )
             ctx["team_options"] = list(
                 scoped_teams.values("id", "name", "division__code").order_by("name")

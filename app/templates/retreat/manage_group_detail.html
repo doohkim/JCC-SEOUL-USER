@@ -1,0 +1,249 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ group.name }} · 조 관리</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603j" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header jcc-retreat-groupHeader">
+          <div class="jcc-retreat-groupHeaderInner">
+            <div class="jcc-detail-titleWrap">
+              <h1>{{ group.name }}</h1>
+              <p class="subtitle">
+                {{ event.name }} · {{ group.region.name }} {{ group.division.name }}
+              </p>
+            </div>
+            <a href="{{ back_url }}" class="jcc-retreat-backLink">{{ back_label }}</a>
+          </div>
+        </header>
+        <main>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='manage_groups' %}
+          {% if can_mutate %}
+            <div class="jcc-retreat-listTop">
+              <div class="msg" id="retreatStatus" role="status"></div>
+              <button type="button" class="secondary" id="btnAddAttendee">+ 조원 추가</button>
+            </div>
+          {% else %}
+            <div class="msg">읽기 전용입니다.</div>
+          {% endif %}
+
+          <div class="card">
+            <div class="jcc-retreat-tableWrap">
+              <table class="jcc-retreat-attendeeTable jcc-retreat-manageTable">
+                <thead>
+                  <tr>
+                    <th class="jcc-retreat-attCol-name">이름</th>
+                    <th class="jcc-retreat-attCol-gender">성별</th>
+                    <th class="jcc-retreat-attCol-phone">연락처</th>
+                    <th class="jcc-retreat-stampCol">입실 시각</th>
+                    <th class="jcc-retreat-stampCol">퇴실 시각</th>
+                    <th class="jcc-retreat-attCol-status">상태</th>
+                    <th class="jcc-retreat-attCol-lodging">숙소</th>
+                    {% if can_mutate %}
+                      <th class="jcc-retreat-attCol-actions"></th>
+                    {% endif %}
+                  </tr>
+                </thead>
+                <tbody id="retreatAttBody">
+                  {% for a in attendees %}
+                    <tr
+                      data-attendee-id="{{ a.id }}"
+                      data-check-in="{{ a.check_in_status }}"
+                      data-gender="{{ a.gender }}"
+                      data-checked-in-at="{% if a.checked_in_at %}{{ a.checked_in_at|date:'c' }}{% endif %}"
+                      data-checked-out-at="{% if a.checked_out_at %}{{ a.checked_out_at|date:'c' }}{% endif %}"
+                      data-expected-in-at="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'c' }}{% endif %}"
+                      data-expected-out-at="{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'c' }}{% endif %}"
+                    >
+                      <td class="jcc-retreat-attCol-name">
+                        <span class="jcc-retreat-attName" data-name>{{ a.name }}</span>
+                        {% if a.memo %}
+                          <div class="jcc-retreat-attMemo" data-memo>{{ a.memo }}</div>
+                        {% else %}
+                          <div class="jcc-retreat-attMemo" data-memo hidden></div>
+                        {% endif %}
+                      </td>
+                      <td class="jcc-retreat-attCol-gender" data-gender-cell>{{ a.get_gender_display|default:"-" }}</td>
+                      <td class="jcc-retreat-attCol-phone" data-phone>{{ a.phone|default:"-" }}</td>
+                      <td class="jcc-retreat-stampCell" data-stamp-in-cell>
+                        {% if can_edit_timestamps %}
+                          <input
+                            type="datetime-local"
+                            class="jcc-retreat-stampInput"
+                            data-stamp-field="checked_in_at"
+                            aria-label="{{ a.name }} 입실 시각"
+                            {% if a.checked_in_at %}value="{{ a.checked_in_at|date:'Y-m-d\TH:i' }}"{% endif %}
+                          />
+                        {% else %}
+                          <span data-stamp-display-in>{% if a.checked_in_at %}{{ a.checked_in_at|date:"m/d H:i" }}{% else %}-{% endif %}</span>
+                        {% endif %}
+                      </td>
+                      <td class="jcc-retreat-stampCell" data-stamp-out-cell>
+                        {% if can_edit_timestamps %}
+                          <input
+                            type="datetime-local"
+                            class="jcc-retreat-stampInput"
+                            data-stamp-field="checked_out_at"
+                            aria-label="{{ a.name }} 퇴실 시각"
+                            {% if a.checked_out_at %}value="{{ a.checked_out_at|date:'Y-m-d\TH:i' }}"{% endif %}
+                          />
+                        {% else %}
+                          <span data-stamp-display-out>{% if a.checked_out_at %}{{ a.checked_out_at|date:"m/d H:i" }}{% else %}-{% endif %}</span>
+                        {% endif %}
+                      </td>
+                      <td class="jcc-retreat-attCol-status">
+                        <div
+                          class="jcc-retreat-statusGroup jcc-retreat-checkInGroup"
+                          role="group"
+                          aria-label="{{ a.name }} 입퇴실"
+                          data-check-in-group
+                        ></div>
+                      </td>
+                      <td class="jcc-retreat-attCol-lodging" data-lodging-cell data-lodging-room="{% if a.lodging_room_id %}{{ a.lodging_room_id }}{% endif %}">
+                        {% if can_mutate %}
+                          <select class="jcc-retreat-lodgingSelect" data-lodging-select aria-label="{{ a.name }} 숙소 배정">
+                            <option value="">(미배정)</option>
+                            {% for room in event_rooms %}
+                              <option value="{{ room.id }}" {% if a.lodging_room_id == room.id %}selected{% endif %}>{{ room.lodging.name }} {{ room.number }}</option>
+                            {% endfor %}
+                          </select>
+                        {% else %}
+                          <span class="jcc-retreat-lodgingLabel{% if not a.lodging_room_id %} muted{% endif %}" data-lodging-label>
+                            {% if a.lodging_room_id %}{{ a.lodging_room.lodging.name }} {{ a.lodging_room.number }}{% else %}-{% endif %}
+                          </span>
+                        {% endif %}
+                      </td>
+                      {% if can_mutate %}
+                        <td class="jcc-retreat-attCol-actions">
+                          <button type="button" class="jcc-retreat-rowHistory" data-history aria-label="{{ a.name }} 이력">이력</button>
+                          <button type="button" class="jcc-retreat-rowEdit" data-edit aria-label="{{ a.name }} 수정">수정</button>
+                          <button type="button" class="jcc-retreat-rowDel" data-del aria-label="{{ a.name }} 삭제">삭제</button>
+                        </td>
+                      {% endif %}
+                    </tr>
+                  {% empty %}
+                    <tr>
+                      <td colspan="{% if can_mutate %}8{% else %}7{% endif %}">
+                        <div class="msg">조원이 없습니다.{% if can_mutate %} 우측 상단에서 추가하세요.{% endif %}</div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="jcc-retreat-toast" id="retreatToast" role="alert" aria-live="polite" hidden></div>
+        </main>
+
+        <div class="jcc-retreat-modalOverlay jcc-retreat-confirmOverlay" id="retreatConfirmOverlay" hidden aria-hidden="true">
+          <div class="jcc-retreat-modal jcc-retreat-confirmModal card" role="alertdialog" aria-modal="true" aria-labelledby="retreatConfirmTitle" aria-describedby="retreatConfirmMsg">
+            <h2 id="retreatConfirmTitle" class="jcc-retreat-modalTitle">확인</h2>
+            <p id="retreatConfirmMsg" class="jcc-retreat-confirmMsg"></p>
+            <div class="jcc-retreat-modalFooter">
+              <button type="button" class="secondary" id="retreatConfirmCancel">취소</button>
+              <button type="button" id="retreatConfirmOk">확인</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="jcc-retreat-modalOverlay jcc-retreat-historyOverlay" id="retreatHistoryOverlay" hidden aria-hidden="true">
+          <div class="jcc-retreat-modal jcc-retreat-historyModal card" role="dialog" aria-modal="true" aria-labelledby="retreatHistoryTitle">
+            <header class="jcc-retreat-historyHead">
+              <div>
+                <h2 id="retreatHistoryTitle" class="jcc-retreat-modalTitle">변경 이력</h2>
+                <p class="jcc-retreat-historySubject" id="retreatHistorySubject"></p>
+              </div>
+              <button type="button" class="jcc-retreat-historyCloseBtn" id="retreatHistoryClose" aria-label="닫기">×</button>
+            </header>
+            <div class="jcc-retreat-historyTabs" role="tablist">
+              <button type="button" class="jcc-retreat-historyTab is-active" data-history-tab="check_in" role="tab">입·퇴실 이력</button>
+              <button type="button" class="jcc-retreat-historyTab" data-history-tab="attendance" role="tab">세션별 출석 이력</button>
+            </div>
+            <div class="jcc-retreat-historyBody">
+              <div id="retreatHistoryPanelCheckIn" class="jcc-retreat-historyPanel" role="tabpanel"></div>
+              <div id="retreatHistoryPanelAttendance" class="jcc-retreat-historyPanel" role="tabpanel" hidden></div>
+            </div>
+          </div>
+        </div>
+
+        {% if can_mutate %}
+          <div class="jcc-retreat-modalOverlay" id="retreatModalOverlay" hidden aria-hidden="true">
+            <div class="jcc-retreat-modal card" role="dialog" aria-modal="true" aria-labelledby="retreatModalTitle">
+              <h2 id="retreatModalTitle" class="jcc-retreat-modalTitle">조원 추가</h2>
+              <form id="retreatAttendeeForm">
+                <div class="jcc-retreat-modalGrid">
+                  <div class="field jcc-retreat-modalField--full">
+                    <label for="retreatAttName">이름 *</label>
+                    <input type="text" id="retreatAttName" name="name" required maxlength="60" autocomplete="off">
+                  </div>
+                  <div class="field">
+                    <label for="retreatAttGender">성별</label>
+                    <select id="retreatAttGender" name="gender">
+                      <option value="">미지정</option>
+                      <option value="male">남성</option>
+                      <option value="female">여성</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="retreatAttPhone">연락처</label>
+                    <input type="tel" id="retreatAttPhone" name="phone" maxlength="30" autocomplete="off">
+                  </div>
+                  <div class="field">
+                    <label for="retreatAttCheckIn">입·퇴실</label>
+                    <select id="retreatAttCheckIn" name="check_in_status">
+                      <option value="pending" selected>입실전</option>
+                      <option value="checked_in">입실</option>
+                      <option value="checked_out">퇴실</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="retreatAttExpectedIn">예상 입실 시각</label>
+                    <input type="datetime-local" id="retreatAttExpectedIn" name="expected_check_in_at" autocomplete="off">
+                  </div>
+                  <div class="field">
+                    <label for="retreatAttExpectedOut">예상 퇴실 시각</label>
+                    <input type="datetime-local" id="retreatAttExpectedOut" name="expected_check_out_at" autocomplete="off">
+                  </div>
+                  <div class="field jcc-retreat-modalField--full">
+                    <label for="retreatAttMemo">메모</label>
+                    <input type="text" id="retreatAttMemo" name="memo" maxlength="200" autocomplete="off">
+                  </div>
+                </div>
+                <div class="jcc-retreat-modalFooter">
+                  <button type="button" class="secondary" id="retreatModalCancel">취소</button>
+                  <button type="submit" id="retreatModalSubmit">저장</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <script>
+      window.RETREAT_CTX = {
+        eventId: {{ event.id }},
+        groupId: {{ group.id }},
+        canMutate: {{ can_mutate|yesno:"true,false" }},
+        canEditTimestamps: {{ can_edit_timestamps|yesno:"true,false" }},
+        csrfToken: "{{ csrf_token }}",
+        urls: {
+          attendeesList: "/api/v1/retreat/groups/{{ group.id }}/attendees/",
+          attendeeDetailTemplate: "/api/v1/retreat/attendees/__id__/",
+          attendeeHistoryTemplate: "/api/v1/retreat/attendees/__id__/history/",
+        },
+      };
+    </script>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+    <script src="{% static 'retreat/manage_group.js' %}?v=20260603j" defer></script>
+  </body>
+</html>

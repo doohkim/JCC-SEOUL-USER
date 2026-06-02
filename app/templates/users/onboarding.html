@@ -83,6 +83,18 @@
             {{ form.requested_team }}
             {{ form.requested_team.errors }}
           </div>
+          {% if active_retreat_event %}
+            <div class="field">
+              <label>
+                {{ form.requested_retreat_participation }}
+                {{ active_retreat_event.name }} 수련회 참여
+              </label>
+            </div>
+            <div class="field" id="retreatRoleField">
+              <label for="{{ form.requested_retreat_role.id_for_label }}">수련회 희망 역할</label>
+              {{ form.requested_retreat_role }}
+            </div>
+          {% endif %}
         {% endif %}
         <div class="actions">
           {% if is_pending_locked %}

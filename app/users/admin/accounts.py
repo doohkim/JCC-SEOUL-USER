@@ -83,6 +83,7 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
         css = {"all": ("admin/css/jcc_fieldsets.css",)}
 
     list_display = [
+        "display_name",
         "username",
         "email",
         "role_level",
@@ -154,6 +155,13 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
             ),
         ]
         return extra + super().get_urls()
+
+    @admin.display(description="이름", ordering="profile__display_name")
+    def display_name(self, obj):
+        try:
+            return obj.profile.display_name or "-"
+        except UserProfile.DoesNotExist:
+            return "-"
 
     @admin.display(description="온보딩 상태")
     def onboarding_status(self, obj):

@@ -159,10 +159,15 @@
                   <div class="field">
                     <label>부서</label>
                     <select name="division_code" onchange="this.form.submit()">
-                      {% for d in allowed_divisions %}
-                        <option value="{{ d.code }}" {% if active_division and d.id == active_division.id %}selected{% endif %}>
-                          {{ d.name }}
-                        </option>
+                      {% regroup allowed_divisions by region.name as region_groups %}
+                      {% for group in region_groups %}
+                        <optgroup label="{{ group.grouper|default:'(지역 미지정)' }}">
+                          {% for d in group.list %}
+                            <option value="{{ d.code }}" {% if active_division and d.id == active_division.id %}selected{% endif %}>
+                              {{ d.name }}
+                            </option>
+                          {% endfor %}
+                        </optgroup>
                       {% endfor %}
                     </select>
                   </div>

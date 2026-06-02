@@ -4,14 +4,17 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from registry.models import Member, MemberDivisionTeam
-from users.models import Division, Team, UserDivisionTeam
+from users.models import Division, Region, Team, UserDivisionTeam
 
 User = get_user_model()
 
 
 class LinkedUserOrgSyncTests(TestCase):
     def setUp(self):
-        self.div_youth = Division.objects.create(name="청년부", code="youth", sort_order=1)
+        self.seoul = Region.objects.get(code="seoul")
+        self.div_youth = Division.objects.create(
+            region=self.seoul, name="청년부", code="youth", sort_order=1
+        )
         self.team_a = Team.objects.create(
             division=self.div_youth, name="A팀", code="a", sort_order=1
         )
@@ -56,7 +59,9 @@ class LinkedUserOrgSyncTests(TestCase):
         )
 
     def test_mdt_delete_removes_udt_for_that_division_other_division_unchanged(self):
-        div_elem = Division.objects.create(name="유년부", code="elem", sort_order=2)
+        div_elem = Division.objects.create(
+            region=self.seoul, name="유년부", code="elem", sort_order=2
+        )
         team_elem = Team.objects.create(
             division=div_elem, name="E팀", code="e", sort_order=1
         )

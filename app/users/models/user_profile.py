@@ -81,6 +81,25 @@ class UserProfile(models.Model):
         verbose_name="신청 팀",
     )
     onboarding_note = models.TextField("온보딩 메모", blank=True, default="")
+    requested_retreat_participation = models.BooleanField(
+        "수련회 참여 희망",
+        default=False,
+    )
+    requested_retreat_event = models.ForeignKey(
+        "retreat.RetreatEvent",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_user_profiles",
+        verbose_name="희망 수련회",
+    )
+    requested_retreat_role = models.CharField(
+        "수련회 희망 역할",
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="participant | leader | vice_leader",
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

@@ -1,0 +1,77 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>수련회 대시보드 · {{ event.name }}</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603h" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>수련회 대시보드</h1>
+            <p class="subtitle">{{ event.name }}</p>
+          </div>
+        </header>
+        <main>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='dashboard' %}
+          <div class="toolbar card">
+            <div class="field">
+              <label for="sessionId">출석부(시간대)</label>
+              <select id="sessionId">
+                {% for s in sessions %}
+                  <option value="{{ s.id }}">{{ s.name }}{% if s.occurs_at %} · {{ s.occurs_at|date:"m/d H:i" }}{% endif %}</option>
+                {% empty %}
+                  <option value="">출석부 없음</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="button" class="secondary" id="btnRefresh">새로고침</button>
+          </div>
+          <div id="dashboardStatus" class="msg" role="status"></div>
+          <div class="jcc-retreat-dashGrid">
+            <section class="card">
+              <h2 class="jcc-retreat-sectionTitle">시간대별 조 입실 현황</h2>
+              <div id="groupGrid" class="jcc-retreat-tripleGrid"></div>
+              <div class="jcc-retreat-grandTotal" id="groupGrandTotal"></div>
+            </section>
+            <section class="card">
+              <h2 class="jcc-retreat-sectionTitle">시간대별 인원체크</h2>
+              <div class="jcc-table-scroll">
+                <table class="jcc-table" id="divisionTable">
+                  <thead>
+                    <tr>
+                      <th>지역</th>
+                      <th>부서</th>
+                      <th>조</th>
+                      <th>총 입실</th>
+                      <th>퇴실(예정)</th>
+                      <th>현재 입실</th>
+                      <th>최종 참석</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+    <script>
+      window.RETREAT_DASHBOARD_CTX = {
+        eventId: {{ event.id }},
+        apiDashboard: "{% url 'api_retreat_event_dashboard' event.id %}",
+        isStaff: {{ is_retreat_staff|yesno:"true,false" }}
+      };
+    </script>
+    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260602g" defer></script>
+  </body>
+</html>

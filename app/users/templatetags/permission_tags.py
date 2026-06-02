@@ -7,9 +7,11 @@ from users.permissions import (
     can_access_counseling_tab,
     can_access_member_registry,
     can_access_parking_tab,
+    can_access_retreat_tab,
     can_access_team_roster_tab,
     can_manage_division_accounts,
     is_parking_manager,
+    is_retreat_council_any,
 )
 from users.services.user_display import user_display_name as resolve_user_display_name
 
@@ -49,6 +51,38 @@ def user_display_name(user):
     return resolve_user_display_name(user)
 
 
+@register.filter(name="user_org_summary")
+def user_org_summary(user):
+    """좌측 네비 프로필 보조 라인 — '지역 · 부서 · 팀 · 직급'.
+
+    - 주 소속(`is_primary`) UserDivisionTeam 1개를 우선, 없으면 sort_order 순.
+    - 비어 있는 부분(팀 미배정·직급 미설정 등)은 생략.
+    - 익명 사용자에게는 빈 문자열을 돌려준다.
+    """
+    if not user or not getattr(user, "is_authenticated", False):
+        return ""
+    udt = (
+        user.division_teams.select_related(
+            "division", "division__region", "team"
+        )
+        .order_by("-is_primary", "sort_order", "division__sort_order", "id")
+        .first()
+    )
+    parts: list[str] = []
+    if udt:
+        region = getattr(udt.division, "region", None)
+        if region and getattr(region, "name", ""):
+            parts.append(region.name)
+        if getattr(udt.division, "name", ""):
+            parts.append(udt.division.name)
+        if udt.team and getattr(udt.team, "name", ""):
+            parts.append(udt.team.name)
+    role = getattr(user, "role_level", None)
+    if role and getattr(role, "name", ""):
+        parts.append(role.name)
+    return " · ".join(parts)
+
+
 @register.filter(name="can_access_counseling_tab")
 def can_access_counseling_tab_filter(user):
     return can_access_counseling_tab(user)
@@ -57,6 +91,18 @@ def can_access_counseling_tab_filter(user):
 @register.filter(name="can_access_counseling_manage_tab")
 def can_access_counseling_manage_tab_filter(user):
     return can_access_counseling_manage_tab(user)
+
+
+@register.filter(name="can_access_retreat_tab")
+def can_access_retreat_tab_filter(user):
+    """좌측 '수련회' 탭 — 조장/부조장 또는 운영진(staff)·회장단·슈퍼유저."""
+    return can_access_retreat_tab(user)
+
+
+@register.filter(name="is_retreat_council_any")
+def is_retreat_council_any_filter(user):
+    """수련회 회장단(어떤 행사든) 여부 — 좌측 탭/UI 노출용."""
+    return is_retreat_council_any(user)
 
 
 @register.filter(name="lookup_user_label")

@@ -4,18 +4,40 @@
 """
 from django.core.management.base import BaseCommand
 
-from users.models import Division, FunctionalDepartment, Role, RoleLevel
+from users.models import Division, FunctionalDepartment, Region, Role, RoleLevel
 
 
 class Command(BaseCommand):
-    help = "교회 조직도 초기 데이터 생성 (상위 부서, 직급, 직책, 일하는 부서)"
+    help = "교회 조직도 초기 데이터 생성 (지역, 상위 부서, 직급, 직책, 일하는 부서)"
 
     def handle(self, *args, **options):
+        self._seed_regions()
         self._seed_role_levels()
         self._seed_divisions()
         self._seed_roles()
         self._seed_functional_departments()
         self.stdout.write(self.style.SUCCESS("조직도 시드 완료."))
+
+    def _seed_regions(self):
+        regions = [
+            ("서울", "seoul", 10),
+            ("인천", "incheon", 20),
+        ]
+        for name_ko, code, sort_order in regions:
+            obj, _ = Region.objects.get_or_create(
+                code=code,
+                defaults={"name": name_ko, "sort_order": sort_order},
+            )
+            updates = []
+            if obj.name != name_ko:
+                obj.name = name_ko
+                updates.append("name")
+            if obj.sort_order != sort_order:
+                obj.sort_order = sort_order
+                updates.append("sort_order")
+            if updates:
+                obj.save(update_fields=updates)
+        self.stdout.write(f"  Region {len(regions)}개 생성/유지")
 
     def _seed_role_levels(self):
         levels = [
@@ -49,21 +71,42 @@ class Command(BaseCommand):
         self.stdout.write(f"  RoleLevel {len(levels)}개 생성/유지")
 
     def _seed_divisions(self):
+        # (지역 code, 부서 이름, 부서 code, 정렬)
+        # 기본 시드는 서울 부서만 둔다. 인천 등 다른 지역 부서는 운영자가 추가.
         divisions = [
-            ("청년부", "youth", 10),
-            ("대학부", "university", 20),
-            ("중고등부", "middle_high", 30),
-            ("철산 교구", "cheolsan", 40),
-            ("동작 교구", "dongjak", 50),
+            ("seoul", "청년부", "youth", 10),
+            ("seoul", "대학부", "university", 20),
+            ("seoul", "중고등부", "middle_high", 30),
+            ("seoul", "철산 교구", "cheolsan", 40),
+            ("seoul", "동작 교구", "dongjak", 50),
         ]
-        for name_ko, code, sort_order in divisions:
+        region_cache: dict[str, Region] = {}
+        for region_code, name_ko, code, sort_order in divisions:
+            region = region_cache.get(region_code)
+            if region is None:
+                region = Region.objects.filter(code=region_code).first()
+                if region is None:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"  Region '{region_code}' 미존재 — '{code}' 부서 건너뜀"
+                        )
+                    )
+                    continue
+                region_cache[region_code] = region
             obj, created = Division.objects.get_or_create(
                 code=code,
-                defaults={"name": name_ko, "sort_order": sort_order},
+                defaults={"name": name_ko, "sort_order": sort_order, "region": region},
             )
-            if not created and obj.sort_order != sort_order:
-                obj.sort_order = sort_order
-                obj.save(update_fields=["sort_order"])
+            updates = []
+            if not created:
+                if obj.sort_order != sort_order:
+                    obj.sort_order = sort_order
+                    updates.append("sort_order")
+                if obj.region_id != region.id:
+                    obj.region = region
+                    updates.append("region")
+            if updates:
+                obj.save(update_fields=updates)
         self.stdout.write(f"  Division {len(divisions)}개 생성/유지")
 
     def _seed_roles(self):

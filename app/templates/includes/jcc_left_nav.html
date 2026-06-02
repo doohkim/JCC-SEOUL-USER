@@ -1,30 +1,111 @@
 {% load static permission_tags %}
+<button
+  type="button"
+  class="jcc-mobile-menu-btn"
+  id="jccMobileMenuBtn"
+  aria-label="메뉴 열기"
+  aria-controls="jcc-leftNav"
+  aria-expanded="false"
+>
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+    <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+</button>
+
 <aside class="jcc-leftNav" id="jcc-leftNav" aria-label="주 메뉴">
+  <div class="jcc-leftNav-profile">
+    {% if user.is_authenticated %}
+      <div class="jcc-leftNav-avatar" aria-hidden="true">{{ user|user_display_name|slice:":1" }}</div>
+      <div class="jcc-leftNav-profileInfo">
+        <div class="jcc-leftNav-profileName">{{ user|user_display_name }}</div>
+        {% with org=user|user_org_summary %}
+          <div class="jcc-leftNav-profileSub" title="{{ org|default:'JCC Seoul' }}">
+            {{ org|default:"JCC Seoul" }}
+          </div>
+        {% endwith %}
+      </div>
+    {% else %}
+      <div class="jcc-leftNav-avatar jcc-leftNav-avatar--guest" aria-hidden="true">?</div>
+      <div class="jcc-leftNav-profileInfo">
+        <div class="jcc-leftNav-profileName">방문자</div>
+        <div class="jcc-leftNav-profileSub">로그인이 필요합니다</div>
+      </div>
+    {% endif %}
+    <button type="button" class="jcc-leftNav-close" id="jccLeftNavClose" aria-label="메뉴 닫기">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="jcc-leftNav-sectionLabel">메뉴</div>
+
   <div class="jcc-leftNav-tabs">
-    <a class="jcc-leftNav-item" href="{% url 'attendance_dashboard' %}">대시보드</a>
+    <a class="jcc-leftNav-item" href="{% url 'attendance_dashboard' %}" data-tab="dashboard">
+      <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M4 11h6v9H4v-9zm10 0h6v9h-6v-9zM4 4h6v5H4V4zm10 0h6v5h-6V4z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+      </svg>
+      <span>대시보드</span>
+    </a>
     {% if user|can_access_attendance_tab %}
-      <a class="jcc-leftNav-item" href="{% url 'attendance_team_roster_check' %}">출석부</a>
+      <a class="jcc-leftNav-item" href="{% url 'attendance_team_roster_check' %}" data-tab="attendance">
+        <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+          <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.75"/>
+          <path d="M9 12h6M9 16h6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+        </svg>
+        <span>출석부</span>
+      </a>
     {% endif %}
     {% if user|can_access_parking_tab %}
-      <a class="jcc-leftNav-item" href="{% url 'parking_permit_apply' %}">주차권</a>
+      <a class="jcc-leftNav-item" href="{% url 'parking_permit_apply' %}" data-tab="parking">
+        <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <rect x="3" y="3" width="18" height="18" rx="4" stroke="currentColor" stroke-width="1.75"/>
+          <path d="M10 17V8h3.5a2.75 2.75 0 010 5.5H10" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>주차권</span>
+      </a>
     {% endif %}
     {% if user|can_access_registry_tab %}
-      <a class="jcc-leftNav-item" href="{% url 'registry_member_list' %}">교적부</a>
+      <a class="jcc-leftNav-item" href="{% url 'registry_member_list' %}" data-tab="registry">
+        <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+          <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.75"/>
+          <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+        </svg>
+        <span>교적부</span>
+      </a>
     {% endif %}
     {% if user|can_manage_division_accounts_tab %}
-      <a class="jcc-leftNav-item" href="{% url 'user_division_account_roles' %}">계정관리</a>
+      <a class="jcc-leftNav-item" href="{% url 'user_division_account_roles' %}" data-tab="accounts">
+        <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h0a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v0a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>계정관리</span>
+      </a>
     {% endif %}
     {% if user|can_access_counseling_tab %}
-      <a class="jcc-leftNav-item" href="{% url 'counseling_home' %}">상담</a>
+      <a class="jcc-leftNav-item" href="{% url 'counseling_home' %}" data-tab="counseling">
+        <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+        </svg>
+        <span>상담</span>
+      </a>
+    {% endif %}
+    {% if user|can_access_retreat_tab %}
+      <a class="jcc-leftNav-item" href="{% url 'retreat_home' %}" data-tab="retreat">
+        <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <path d="M3 21l3-9 6 6-9 3z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+          <path d="M14 4l6 6-7 7-6-6 7-7z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+          <circle cx="17" cy="7" r="1.2" fill="currentColor"/>
+        </svg>
+        <span>수련회</span>
+      </a>
     {% endif %}
   </div>
 
   <div class="jcc-leftNav-bottom">
-    <div class="jcc-leftNav-user">
-      {% if user.is_authenticated %}
-        {{ user|user_display_name }}
-      {% endif %}
-    </div>
     <button
       type="button"
       class="jcc-theme-toggle"
@@ -51,6 +132,48 @@
 
 <script src="{% static 'attendance/jcc-theme.js' %}" defer></script>
 
+<nav class="jcc-bottomTabs" id="jccBottomTabs" aria-label="모바일 주요 메뉴">
+  <a class="jcc-bottomTab" href="{% url 'attendance_dashboard' %}" data-tab="dashboard">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+      <path d="M4 11h6v9H4v-9zm10 0h6v9h-6v-9zM4 4h6v5H4V4zm10 0h6v5h-6V4z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+    </svg>
+    <span>대시보드</span>
+  </a>
+  {% if user|can_access_attendance_tab %}
+    <a class="jcc-bottomTab" href="{% url 'attendance_team_roster_check' %}" data-tab="attendance">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+        <rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.75"/>
+        <path d="M9 12h6M9 16h6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+      </svg>
+      <span>출석부</span>
+    </a>
+  {% endif %}
+  {% if user|can_access_registry_tab %}
+    <a class="jcc-bottomTab" href="{% url 'registry_member_list' %}" data-tab="registry">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+        <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.75"/>
+        <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+      </svg>
+      <span>교적부</span>
+    </a>
+  {% endif %}
+  <button
+    type="button"
+    class="jcc-bottomTab jcc-bottomTab--more"
+    id="jccBottomTabMore"
+    aria-label="전체 메뉴 열기"
+    aria-controls="jcc-leftNav"
+    aria-expanded="false"
+  >
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+      <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span>메뉴</span>
+  </button>
+</nav>
+
 <div
   class="jcc-leftNav-backdrop"
   id="jcc-leftNavBackdrop"
@@ -62,55 +185,100 @@
   document.addEventListener("DOMContentLoaded", () => {
     const nav = document.getElementById("jcc-leftNav");
     const backdrop = document.getElementById("jcc-leftNavBackdrop");
+    const menuBtn = document.getElementById("jccMobileMenuBtn");
+    const closeBtn = document.getElementById("jccLeftNavClose");
+    const bottomTabMore = document.getElementById("jccBottomTabMore");
+    const bottomTabs = document.getElementById("jccBottomTabs");
     if (!nav) return;
 
     const mqMobile = window.matchMedia("(max-width: 900px)");
     nav.classList.add("collapsed");
 
-    const AUTO_CLOSE_MS = 12000;
-    let autoCloseTimer = null;
     let edgeStart = null;
+    let lastFocused = null;
+
+    const FOCUSABLE =
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
     function isMobileLayout() {
       return mqMobile.matches;
     }
 
-    function clearAutoClose() {
-      if (autoCloseTimer) {
-        clearTimeout(autoCloseTimer);
-        autoCloseTimer = null;
-      }
+    function getDrawerFocusables() {
+      return Array.from(nav.querySelectorAll(FOCUSABLE));
     }
 
-    function scheduleAutoClose() {
-      clearAutoClose();
-      autoCloseTimer = setTimeout(() => {
-        if (isMobileLayout() && !nav.classList.contains("collapsed")) {
-          closeNav();
-        }
-      }, AUTO_CLOSE_MS);
+    function syncExpanded(open) {
+      const val = open ? "true" : "false";
+      if (menuBtn) menuBtn.setAttribute("aria-expanded", val);
+      if (bottomTabMore) bottomTabMore.setAttribute("aria-expanded", val);
     }
 
     function openNav() {
       nav.classList.remove("collapsed");
       if (isMobileLayout()) {
+        lastFocused = document.activeElement;
         if (backdrop) {
           backdrop.hidden = false;
           backdrop.setAttribute("aria-hidden", "false");
         }
+        nav.setAttribute("role", "dialog");
+        nav.setAttribute("aria-modal", "true");
         document.body.classList.add("jcc-leftNav-drawer-open");
-        scheduleAutoClose();
+        syncExpanded(true);
+        requestAnimationFrame(() => {
+          if (closeBtn) closeBtn.focus();
+        });
       }
     }
 
     function closeNav() {
       nav.classList.add("collapsed");
-      clearAutoClose();
       if (backdrop) {
         backdrop.hidden = true;
         backdrop.setAttribute("aria-hidden", "true");
       }
+      nav.removeAttribute("role");
+      nav.removeAttribute("aria-modal");
       document.body.classList.remove("jcc-leftNav-drawer-open");
+      syncExpanded(false);
+      if (isMobileLayout() && lastFocused && typeof lastFocused.focus === "function") {
+        lastFocused.focus();
+      }
+      lastFocused = null;
+    }
+
+    function toggleNav() {
+      if (nav.classList.contains("collapsed")) openNav();
+      else closeNav();
+    }
+
+    function trapFocus(e) {
+      if (e.key !== "Tab" || !isMobileLayout() || nav.classList.contains("collapsed")) return;
+      const focusables = getDrawerFocusables();
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    if (menuBtn) {
+      menuBtn.addEventListener("click", toggleNav);
+    }
+    if (closeBtn) {
+      closeBtn.addEventListener("click", closeNav);
+    }
+    if (bottomTabMore) {
+      bottomTabMore.addEventListener("click", () => {
+        if (nav.classList.contains("collapsed")) openNav();
+        else closeNav();
+      });
     }
 
     if (backdrop) {
@@ -123,6 +291,7 @@
       if (e.key === "Escape" && isMobileLayout() && !nav.classList.contains("collapsed")) {
         closeNav();
       }
+      trapFocus(e);
     });
 
     /** 데스크톱: 왼쪽 가장자리 호버로 펼침 (기존 동작) */
@@ -143,7 +312,7 @@
       }
     });
 
-    /** 모바일: 왼쪽 끝에서 오른쪽으로 스와이프 → 드로어 열기 */
+    /** 모바일: 왼쪽 끝에서 오른쪽으로 스와이프 → 드로어 열기 (보조) */
     document.addEventListener(
       "touchstart",
       (e) => {
@@ -173,18 +342,6 @@
       edgeStart = null;
     });
 
-    nav.addEventListener(
-      "touchstart",
-      () => {
-        if (isMobileLayout()) scheduleAutoClose();
-      },
-      { passive: true }
-    );
-
-    nav.addEventListener("click", () => {
-      if (isMobileLayout()) scheduleAutoClose();
-    });
-
     /** 모바일에서 메뉴 링크 선택 시 드로어 닫기 */
     nav.querySelectorAll(".jcc-leftNav-item, .jcc-leftNav-logout").forEach((el) => {
       el.addEventListener("click", () => {
@@ -197,5 +354,52 @@
         closeNav();
       }
     });
+
+    /** 현재 경로 기준 활성 탭 표시 (사이드 + 하단 공통) */
+    function normalizePath(p) {
+      if (!p.endsWith("/")) return p + "/";
+      return p;
+    }
+
+    const TAB_MATCHERS = {
+      dashboard: (p) => p === "/attendance/",
+      attendance: (p) =>
+        p.startsWith("/attendance/team/") ||
+        p.startsWith("/attendance/roster/"),
+      parking: (p) => p.startsWith("/attendance/parking/"),
+      registry: (p) => p.startsWith("/members/"),
+      accounts: (p) => p.startsWith("/accounts/"),
+      counseling: (p) => p.startsWith("/counseling/"),
+      retreat: (p) => p.startsWith("/retreat/"),
+      retreat_dashboard: (p) => /\/retreat\/\d+\/dashboard\//.test(p),
+      retreat_rosters: (p) =>
+        /\/retreat\/\d+\/rosters\//.test(p) ||
+        /\/retreat\/\d+\/roster\//.test(p),
+      retreat_results: (p) => /\/retreat\/\d+\/results\//.test(p),
+    };
+
+    function applyActive(selector) {
+      const path = normalizePath(window.location.pathname);
+      document.querySelectorAll(selector).forEach((el) => {
+        const key = el.getAttribute("data-tab");
+        const match = TAB_MATCHERS[key] && TAB_MATCHERS[key](path);
+        el.classList.toggle("is-active", !!match);
+        if (match) el.setAttribute("aria-current", "page");
+        else el.removeAttribute("aria-current");
+      });
+    }
+
+    applyActive(".jcc-leftNav-item[data-tab]");
+    applyActive(".jcc-bottomTab[data-tab]");
+
+    const retreatMore = document.getElementById("jccRetreatBottomTabMore");
+    if (retreatMore) {
+      retreatMore.addEventListener("click", () => {
+        if (menuBtn) menuBtn.click();
+      });
+    }
+    if (document.getElementById("jccRetreatBottomTabs")) {
+      applyActive(".jcc-retreatBottomTabs .jcc-bottomTab[data-tab]");
+    }
   });
 </script>

@@ -29,8 +29,13 @@
               <div class="field">
                 <label>부서</label>
                 <select name="division_code" onchange="this.form.submit()">
-                  {% for d in allowed_divisions %}
-                    <option value="{{ d.code }}" {% if active_division and d.id == active_division.id %}selected{% endif %}>{{ d.name }}</option>
+                  {% regroup allowed_divisions by region.name as region_groups %}
+                  {% for group in region_groups %}
+                    <optgroup label="{{ group.grouper|default:'(지역 미지정)' }}">
+                      {% for d in group.list %}
+                        <option value="{{ d.code }}" {% if active_division and d.id == active_division.id %}selected{% endif %}>{{ d.name }}</option>
+                      {% endfor %}
+                    </optgroup>
                   {% endfor %}
                 </select>
               </div>
@@ -70,6 +75,7 @@
                     <th>사용자</th>
                     <th>신청 부서</th>
                     <th>신청 팀</th>
+                    {% if active_retreat_event %}<th>수련회</th>{% endif %}
                     <th>상태</th>
                     <th>메모</th>
                     <th style="width:5rem;">저장</th>
@@ -82,14 +88,38 @@
                       <td>
                         <select name="requested_division_id" form="save-{{ p.id }}" class="pending-division" data-team-select-id="team-{{ p.id }}">
                           <option value="">부서 선택</option>
-                          {% for d in division_choices %}
-                            <option value="{{ d.id }}" {% if p.requested_division_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                          {% regroup division_choices by region.name as save_region_groups %}
+                          {% for group in save_region_groups %}
+                            <optgroup label="{{ group.grouper|default:'(지역 미지정)' }}">
+                              {% for d in group.list %}
+                                <option value="{{ d.id }}" {% if p.requested_division_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                              {% endfor %}
+                            </optgroup>
                           {% endfor %}
                         </select>
                       </td>
                       <td>
                         <select id="team-{{ p.id }}" name="requested_team_id" form="save-{{ p.id }}" class="pending-team" data-selected="{{ p.requested_team_id|default:'' }}"></select>
                       </td>
+                      {% if active_retreat_event %}
+                      <td>
+                        {% if p.requested_retreat_participation %}
+                          <div class="msg">참여 · {{ p.requested_retreat_role|default:"participant" }}</div>
+                          <select name="retreat_group_id" form="save-{{ p.id }}" style="min-width:8rem;">
+                            <option value="">조 배정</option>
+                            {% for g in retreat_groups %}
+                              <option value="{{ g.id }}">{{ g.region.name }} {{ g.division.name }} {{ g.name }}</option>
+                            {% endfor %}
+                          </select>
+                          <select name="retreat_role" form="save-{{ p.id }}" style="min-width:6rem;">
+                            <option value="leader" {% if p.requested_retreat_role == "leader" %}selected{% endif %}>조장</option>
+                            <option value="vice_leader" {% if p.requested_retreat_role == "vice_leader" %}selected{% endif %}>부조장</option>
+                          </select>
+                        {% else %}
+                          -
+                        {% endif %}
+                      </td>
+                      {% endif %}
                       <td>
                         <select name="onboarding_status" form="save-{{ p.id }}" class="onboarding-status-select" aria-label="상태" style="min-width:9rem;">
                           {% for code, label in onboarding_status_choices %}
@@ -143,8 +173,13 @@
                       <td>
                         <select name="requested_division_id" form="approved-save-{{ p.id }}" class="pending-division" data-team-select-id="approved-team-{{ p.id }}">
                           <option value="">부서 선택</option>
-                          {% for d in division_choices %}
-                            <option value="{{ d.id }}" {% if p.requested_division_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                          {% regroup division_choices by region.name as approved_region_groups %}
+                          {% for group in approved_region_groups %}
+                            <optgroup label="{{ group.grouper|default:'(지역 미지정)' }}">
+                              {% for d in group.list %}
+                                <option value="{{ d.id }}" {% if p.requested_division_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                              {% endfor %}
+                            </optgroup>
                           {% endfor %}
                         </select>
                       </td>
@@ -204,8 +239,13 @@
                       <td>
                         <select name="requested_division_id" form="rejected-save-{{ p.id }}" class="pending-division" data-team-select-id="rejected-team-{{ p.id }}">
                           <option value="">부서 선택</option>
-                          {% for d in division_choices %}
-                            <option value="{{ d.id }}" {% if p.requested_division_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                          {% regroup division_choices by region.name as rejected_region_groups %}
+                          {% for group in rejected_region_groups %}
+                            <optgroup label="{{ group.grouper|default:'(지역 미지정)' }}">
+                              {% for d in group.list %}
+                                <option value="{{ d.id }}" {% if p.requested_division_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+                              {% endfor %}
+                            </optgroup>
                           {% endfor %}
                         </select>
                       </td>

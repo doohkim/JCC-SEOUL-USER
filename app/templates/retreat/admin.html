@@ -1,0 +1,341 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ event.name }} · 관리자</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603h" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>{{ event.name }} · 관리자</h1>
+            <p class="subtitle">
+              {{ event.start_date|date:"Y.m.d" }} ~ {{ event.end_date|date:"Y.m.d" }} ·
+              세션 {{ total_sessions }}개 ·
+              {% if overall_rate is not None %}
+                전체 출석률 <strong>{{ overall_rate }}%</strong>
+              {% else %}
+                출석 데이터 없음
+              {% endif %}
+            </p>
+          </div>
+        </header>
+        <main>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='admin' %}
+          <nav class="jcc-page-tabs" aria-label="관리 하위 메뉴">
+            <a class="jcc-page-tab{% if active_tab == 'sessions' %} is-active{% endif %}" href="{% url 'retreat_admin' event.id %}?tab=sessions">출석부</a>
+            <a class="jcc-page-tab{% if active_tab == 'groups' %} is-active{% endif %}" href="{% url 'retreat_admin' event.id %}?tab=groups">조</a>
+            <a class="jcc-page-tab{% if active_tab == 'changelog' %} is-active{% endif %}" href="{% url 'retreat_admin' event.id %}?tab=changelog">변경 이력</a>
+          </nav>
+
+          {% if active_tab == 'sessions' %}
+            {% if can_manage_sessions %}
+              <div class="jcc-retreat-listTop">
+                <span class="jcc-retreat-pill">회장단</span>
+                <button type="button" class="secondary" id="btnNewRoster">+ 출석부 만들기</button>
+              </div>
+            {% endif %}
+            <div class="card">
+              <div class="jcc-table-scroll">
+                <table class="jcc-table" id="rosterTable">
+                  <thead>
+                    <tr>
+                      <th>제목</th>
+                      <th>상태</th>
+                      <th>생성 일시</th>
+                      <th>생성자</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for s in sessions %}
+                      <tr data-session-id="{{ s.id }}">
+                        <td>{{ s.name }}</td>
+                        <td>
+                          <span class="jcc-retreat-pill{% if s.is_closed %} jcc-retreat-pill--alt{% endif %}">
+                            {{ s.get_status_display }}
+                          </span>
+                        </td>
+                        <td class="jcc-retreat-rosterDateCell">
+                          <div class="jcc-retreat-rosterDate">{{ s.created_at|date:"Y-m-d" }}</div>
+                          <div class="jcc-retreat-rosterTime">{{ s.created_at|date:"H:i" }}</div>
+                        </td>
+                        <td>{% if s.created_by %}{{ s.created_by.username }}{% else %}-{% endif %}</td>
+                        <td class="jcc-retreat-rosterActions">
+                          {% if can_manage_sessions %}
+                            {% if s.is_closed %}
+                              <button type="button" class="jcc-retreat-rowEdit" data-session-reopen data-session-id="{{ s.id }}">재오픈</button>
+                            {% else %}
+                              <button type="button" class="jcc-retreat-rowEdit" data-session-close data-session-id="{{ s.id }}">마감</button>
+                            {% endif %}
+                          {% endif %}
+                          {% if visible_groups|length == 0 %}
+                            <span class="muted">담당 조 없음</span>
+                          {% elif visible_groups|length == 1 %}
+                            {% with g=visible_groups.0 %}
+                              <a class="btn-link" href="{% url 'retreat_roster_check' event.id s.id g.id %}">{{ g.name }} 체크</a>
+                            {% endwith %}
+                          {% else %}
+                            <select class="jcc-retreat-rosterSelect" data-session-id="{{ s.id }}" aria-label="조 선택">
+                              <option value="">조 선택…</option>
+                              {% regroup visible_groups by division_id as div_groups %}
+                              {% for divg in div_groups %}
+                                <optgroup label="{{ divg.list.0.region.name }} {{ divg.list.0.division.name }}">
+                                  {% for g in divg.list %}
+                                    <option value="{% url 'retreat_roster_check' event.id s.id g.id %}">{{ g.name }}</option>
+                                  {% endfor %}
+                                </optgroup>
+                              {% endfor %}
+                            </select>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% empty %}
+                      <tr><td colspan="5">등록된 출석부가 없습니다.</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% elif active_tab == 'groups' %}
+            <div class="card">
+              <div class="jcc-retreat-tableWrap">
+                <table class="jcc-retreat-adminTable">
+                  <thead>
+                    <tr>
+                      <th>지역</th>
+                      <th>부서</th>
+                      <th>조</th>
+                      <th>조장 / 부조장</th>
+                      <th class="num">조원</th>
+                      <th class="num">출석률</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for r in rows %}
+                      <tr data-group-id="{{ r.group.id }}" data-group-label="{{ r.group.region.name }} {{ r.group.division.name }} · {{ r.group.name }}">
+                        <td>{{ r.group.region.name }}</td>
+                        <td>{{ r.group.division.name }}</td>
+                        <td>{{ r.group.name }}</td>
+                        <td class="jcc-retreat-leaderCell" data-leader-cell>
+                          {% if r.leaders %}
+                            {% for m in r.leaders %}
+                              <span class="jcc-retreat-pill jcc-retreat-pill--alt">
+                                {% with m.user.profile.display_name|default:m.user.username as shown %}{{ shown }}{% endwith %} · {{ m.get_role_display }}
+                              </span>
+                            {% endfor %}
+                          {% else %}
+                            <span class="jcc-retreat-empty">미지정</span>
+                          {% endif %}
+                        </td>
+                        <td class="num">{{ r.attendee_count }}</td>
+                        <td class="num">
+                          {% if r.attendance_rate is not None %}
+                            {{ r.attendance_rate }}%
+                          {% else %}
+                            -
+                          {% endif %}
+                        </td>
+                        <td class="jcc-retreat-adminRowActions">
+                          {% if can_manage_sessions %}
+                            <button type="button" class="jcc-retreat-rowEdit" data-leader-edit>운영진</button>
+                          {% endif %}
+                          <a class="btn-link" href="{% url 'retreat_group_detail' event.id r.group.id %}">조 화면</a>
+                        </td>
+                      </tr>
+                    {% empty %}
+                      <tr><td colspan="7">
+                        <div class="msg">표시할 조가 없습니다.</div>
+                      </td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% else %}
+            <div class="card">
+              <div class="jcc-table-scroll">
+                <table class="jcc-table">
+                  <thead>
+                    <tr>
+                      <th>일시</th>
+                      <th>작업자</th>
+                      <th>요약</th>
+                      <th>상세</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for entry in changelog_entries %}
+                      <tr>
+                        <td>{{ entry.log.changed_at|date:"m/d H:i:s" }}</td>
+                        <td>{{ entry.actor }}</td>
+                        <td>{{ entry.summary }}</td>
+                        <td class="jcc-retreat-logPayload">
+                          {% if entry.detail %}
+                            {% for line in entry.detail %}
+                              <small>{{ line }}</small>{% if not forloop.last %}<br>{% endif %}
+                            {% endfor %}
+                          {% else %}
+                            <small>-</small>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% empty %}
+                      <tr><td colspan="4">변경 이력이 없습니다.</td></tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% endif %}
+        </main>
+      </div>
+    </div>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+
+    {% if can_manage_sessions %}
+      <dialog class="jcc-retreat-modal" id="rosterModal">
+        <form method="dialog" class="jcc-retreat-modalInner" id="rosterForm">
+          <h2>출석부 만들기</h2>
+          <div class="field">
+            <label for="rosterEvent">연결할 행사</label>
+            <select id="rosterEvent" required>
+              {% for ev in creatable_events %}
+                <option value="{{ ev.id }}" {% if ev.id == event.id %}selected{% endif %}>
+                  {{ ev.name }} ({{ ev.start_date|date:"Y.m.d" }} ~ {{ ev.end_date|date:"Y.m.d" }})
+                </option>
+              {% empty %}
+                <option value="{{ event.id }}" selected>{{ event.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="rosterName">제목</label>
+            <input type="text" id="rosterName" required maxlength="120" />
+          </div>
+          <div class="field">
+            <label for="rosterOccursAt">진행 일시</label>
+            <input type="datetime-local" id="rosterOccursAt" />
+          </div>
+          <div class="field">
+            <label for="rosterLocation">장소</label>
+            <input type="text" id="rosterLocation" maxlength="200" />
+          </div>
+          <div class="field">
+            <label for="rosterStatus">상태값</label>
+            <select id="rosterStatus">
+              {% for code, label in session_status_choices %}
+                <option value="{{ code }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="rosterClosedAt">마감 일시</label>
+            <input type="datetime-local" id="rosterClosedAt" />
+            <small class="muted" id="rosterClosedAtHint">상태값이 '마감'일 때만 적용됩니다. 비워두면 저장 시각으로 자동 기록.</small>
+          </div>
+          <div class="jcc-retreat-modalActions">
+            <button type="button" class="secondary" id="rosterCancel">취소</button>
+            <button type="submit">저장</button>
+          </div>
+        </form>
+      </dialog>
+    {% endif %}
+
+    <div class="jcc-retreat-modalOverlay" id="leaderModalOverlay" hidden aria-hidden="true">
+      <div class="jcc-retreat-modal card" role="dialog" aria-modal="true" aria-labelledby="leaderModalTitle">
+        <h2 id="leaderModalTitle" style="margin:0 0 0.5rem 0;">조 운영진 관리</h2>
+        <p class="subtitle" id="leaderModalGroupLabel" style="margin:0 0 0.75rem 0;"></p>
+        <div class="msg" id="leaderModalStatus" role="status"></div>
+
+        <div class="jcc-retreat-leaderListWrap">
+          <table class="jcc-table jcc-retreat-leaderList" id="leaderModalList">
+            <thead>
+              <tr>
+                <th>사용자</th>
+                <th>역할</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="leaderModalTbody">
+              <tr><td colspan="3" class="muted">불러오는 중…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <form id="leaderAddForm" class="jcc-retreat-inlineForm" autocomplete="off">
+          <div class="field jcc-retreat-userPickerField">
+            <label for="leaderAddUsername">사용자</label>
+            <div class="jcc-retreat-userPicker" data-user-picker>
+              <input
+                type="text"
+                id="leaderAddUsername"
+                class="jcc-retreat-userPickerInput"
+                placeholder="이름 또는 username 검색"
+                required
+                maxlength="150"
+                autocomplete="off"
+                data-user-picker-input
+              />
+              <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
+              <input type="hidden" data-user-picker-id />
+            </div>
+            <small class="muted" data-user-picker-hint>아래 목록에서 선택해야 등록할 수 있어요.</small>
+          </div>
+          <div class="field">
+            <label for="leaderAddRole">역할</label>
+            <select id="leaderAddRole">
+              {% for code, label in role_choices %}
+                <option value="{{ code }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="jcc-retreat-modalFooter">
+            <button type="button" class="secondary" id="leaderModalClose">닫기</button>
+            <button type="submit" id="leaderAddSubmit">추가</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      window.RETREAT_ADMIN_CTX = {
+        eventId: {{ event.id }},
+        groupMembershipsBase: "/api/v1/retreat/groups/__gid__/memberships/",
+        membershipDetailBase: "/api/v1/retreat/group-memberships/",
+        userSearchUrl: "{% url 'api_retreat_user_search' %}",
+        roleLabels: {
+          {% for code, label in role_choices %}"{{ code }}": "{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}
+        }
+      };
+      {% if can_manage_sessions %}
+      window.RETREAT_ROSTERS_CTX = {
+        eventId: {{ event.id }},
+        canManage: true,
+        apiSessions: "{% url 'api_retreat_event_sessions' event.id %}",
+        apiSessionsTemplate: "/api/v1/retreat/events/__id__/sessions/",
+        closeTemplate: "/api/v1/retreat/events/{{ event.id }}/sessions/__id__/close/",
+        reopenTemplate: "/api/v1/retreat/events/{{ event.id }}/sessions/__id__/reopen/"
+      };
+      {% endif %}
+    </script>
+    <script src="{% static 'retreat/retreat_admin.js' %}?v=20260602i" defer></script>
+    {% if can_manage_sessions %}
+      <script src="{% static 'retreat/retreat_rosters.js' %}?v=20260602i" defer></script>
+    {% endif %}
+  </body>
+</html>

@@ -1,0 +1,214 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ event.name }} · 방배정</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603l" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>방배정</h1>
+            <p class="subtitle">{{ event.name }} · 호실을 지역·부서에 배정합니다.</p>
+          </div>
+        </header>
+        <main>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='lodging_assign' %}
+          <nav class="jcc-retreat-subTabs" aria-label="숙소 관리 서브탭">
+            <a class="jcc-retreat-subTab" href="{% url 'retreat_lodging' event.id %}">숙소·호수 관리</a>
+            <a class="jcc-retreat-subTab is-active" href="{% url 'retreat_lodging_assign' event.id %}">방배정</a>
+          </nav>
+
+          <div class="jcc-retreat-listTop">
+            <div class="msg" id="retreatStatus" role="status">
+              {% if can_manage_lodging %}
+                지역·부서 카드에서 호실을 다른 부서로 옮기거나 미배정으로 해제할 수 있습니다.
+                조원 → 호실 배정은 <strong>조 관리</strong> 페이지에서 처리하세요.
+              {% else %}
+                읽기 전용입니다. 호실 → 지역·부서 매핑 변경은 운영진만 가능합니다.
+              {% endif %}
+            </div>
+          </div>
+
+          {% if regions %}
+            {% for region_entry in regions %}
+              <section class="card jcc-retreat-regionSection" data-region-id="{{ region_entry.region.id }}">
+                <header class="jcc-retreat-regionHeader">
+                  <h2 class="jcc-retreat-regionTitle">{{ region_entry.region.name }}</h2>
+                </header>
+                {% for div_entry in region_entry.divisions %}
+                  <div class="jcc-retreat-divisionBlock" data-division-id="{{ div_entry.division.id }}">
+                    <h3 class="jcc-retreat-divisionTitle">
+                      {{ div_entry.division.name }}
+                      <span class="muted">· 호실 {{ div_entry.rooms|length }}개</span>
+                    </h3>
+                    <div class="jcc-retreat-tableWrap">
+                      <table class="jcc-retreat-attendeeTable jcc-retreat-roomTable">
+                        <thead>
+                          <tr>
+                            <th>숙소·호수</th>
+                            <th>정원</th>
+                            <th>성별</th>
+                            <th>현재 인원</th>
+                            <th>배정된 조원</th>
+                            {% if can_manage_lodging %}
+                              <th class="jcc-retreat-attCol-actions">매핑 변경</th>
+                            {% endif %}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for room in div_entry.rooms %}
+                            <tr
+                              data-room-id="{{ room.id }}"
+                              data-room-region-id="{{ room.region_id }}"
+                              data-room-division-id="{{ room.division_id }}"
+                            >
+                              <td>{{ room.lodging.name }} {{ room.number }}</td>
+                              <td>{% if room.capacity %}{{ room.capacity }}{% else %}무제한{% endif %}</td>
+                              <td>
+                                <span class="jcc-retreat-roomGenderPill jcc-retreat-roomGenderPill--{{ room.recommended_gender|default:'unknown' }}">
+                                  {{ room.get_recommended_gender_display|default:"미지정" }}
+                                </span>
+                              </td>
+                              <td>{{ room.attendees.all|length }}</td>
+                              <td>
+                                {% for a in room.attendees.all %}<span class="jcc-retreat-roomAssignee">{{ a.name }}<small class="muted">({{ a.group.name }})</small></span>{% empty %}<span class="muted">-</span>{% endfor %}
+                              </td>
+                              {% if can_manage_lodging %}
+                                <td class="jcc-retreat-attCol-actions">
+                                  <div class="jcc-retreat-roomScopeEdit">
+                                    <select class="jcc-retreat-lodgingSelect" data-room-region aria-label="{{ room.lodging.name }} {{ room.number }} 지역">
+                                      <option value="">(미배정)</option>
+                                      {% for r in all_regions %}
+                                        <option value="{{ r.id }}" {% if r.id == room.region_id %}selected{% endif %}>{{ r.name }}</option>
+                                      {% endfor %}
+                                    </select>
+                                    <select class="jcc-retreat-lodgingSelect" data-room-division aria-label="{{ room.lodging.name }} {{ room.number }} 부서">
+                                      <option value="">(미배정)</option>
+                                    </select>
+                                    <button type="button" class="secondary" data-room-save>적용</button>
+                                  </div>
+                                </td>
+                              {% endif %}
+                            </tr>
+                          {% empty %}
+                            <tr>
+                              <td colspan="{% if can_manage_lodging %}6{% else %}5{% endif %}">
+                                <div class="msg">
+                                  이 부서에 배정된 호실이 없습니다.
+                                  {% if can_manage_lodging %} 아래 미배정 호실에서 옮기거나, 숙소·호수 관리에서 추가해 주세요.{% endif %}
+                                </div>
+                              </td>
+                            </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                {% endfor %}
+              </section>
+            {% endfor %}
+          {% else %}
+            <div class="card">
+              <div class="msg">표시할 지역·부서 매핑이 없습니다. 숙소·호수 관리에서 호실을 먼저 추가해 주세요.</div>
+            </div>
+          {% endif %}
+
+          <section class="card jcc-retreat-regionSection" data-region-id="">
+            <header class="jcc-retreat-regionHeader">
+              <h2 class="jcc-retreat-regionTitle">미배정 호실</h2>
+              <p class="muted">지역 또는 부서가 비어있는 호실 — 어떤 조에도 노출되지 않습니다.</p>
+            </header>
+            <div class="jcc-retreat-tableWrap">
+              <table class="jcc-retreat-attendeeTable jcc-retreat-roomTable">
+                <thead>
+                  <tr>
+                    <th>숙소·호수</th>
+                    <th>정원</th>
+                    <th>성별</th>
+                    <th>현재 매핑</th>
+                    {% if can_manage_lodging %}
+                      <th class="jcc-retreat-attCol-actions">지역·부서 지정</th>
+                    {% endif %}
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for room in unassigned_rooms %}
+                    <tr
+                      data-room-id="{{ room.id }}"
+                      data-room-region-id="{{ room.region_id|default_if_none:'' }}"
+                      data-room-division-id="{{ room.division_id|default_if_none:'' }}"
+                    >
+                      <td>{{ room.lodging.name }} {{ room.number }}</td>
+                      <td>{% if room.capacity %}{{ room.capacity }}{% else %}무제한{% endif %}</td>
+                      <td>
+                        <span class="jcc-retreat-roomGenderPill jcc-retreat-roomGenderPill--{{ room.recommended_gender|default:'unknown' }}">
+                          {{ room.get_recommended_gender_display|default:"미지정" }}
+                        </span>
+                      </td>
+                      <td>
+                        {% if room.region or room.division %}
+                          <span class="jcc-retreat-roomScope">
+                            {% if room.region %}{{ room.region.name }}{% else %}<span class="muted">지역 미지정</span>{% endif %}
+                            · {% if room.division %}{{ room.division.name }}{% else %}<span class="muted">부서 미지정</span>{% endif %}
+                          </span>
+                        {% else %}
+                          <span class="muted">-</span>
+                        {% endif %}
+                      </td>
+                      {% if can_manage_lodging %}
+                        <td class="jcc-retreat-attCol-actions">
+                          <div class="jcc-retreat-roomScopeEdit">
+                            <select class="jcc-retreat-lodgingSelect" data-room-region aria-label="{{ room.lodging.name }} {{ room.number }} 지역">
+                              <option value="">(미배정)</option>
+                              {% for r in all_regions %}
+                                <option value="{{ r.id }}" {% if r.id == room.region_id %}selected{% endif %}>{{ r.name }}</option>
+                              {% endfor %}
+                            </select>
+                            <select class="jcc-retreat-lodgingSelect" data-room-division aria-label="{{ room.lodging.name }} {{ room.number }} 부서">
+                              <option value="">(미배정)</option>
+                            </select>
+                            <button type="button" class="secondary" data-room-save>적용</button>
+                          </div>
+                        </td>
+                      {% endif %}
+                    </tr>
+                  {% empty %}
+                    <tr>
+                      <td colspan="{% if can_manage_lodging %}5{% else %}4{% endif %}">
+                        <div class="msg">미배정 호실이 없습니다.</div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <div class="jcc-retreat-toast" id="retreatToast" role="alert" aria-live="polite" hidden></div>
+        </main>
+      </div>
+    </div>
+
+    <script id="retreatDivisionList" type="application/json">[{% for d in all_divisions %}{"id":{{ d.id }},"name":"{{ d.name|escapejs }}","region_id":{% if d.region_id %}{{ d.region_id }}{% else %}null{% endif %}}{% if not forloop.last %},{% endif %}{% endfor %}]</script>
+    <script>
+      window.RETREAT_ASSIGN_CTX = {
+        eventId: {{ event.id }},
+        canManage: {{ can_manage_lodging|yesno:"true,false" }},
+        csrfToken: "{{ csrf_token }}",
+        urls: {
+          roomDetailTemplate: "/api/v1/retreat/lodging-rooms/__id__/",
+        },
+      };
+    </script>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+    <script src="{% static 'retreat/lodging_assign.js' %}?v=20260603l" defer></script>
+  </body>
+</html>

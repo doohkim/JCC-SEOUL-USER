@@ -1,0 +1,104 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>출석부 · {{ event.name }}</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603h" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>출석부</h1>
+            <p class="subtitle">{{ event.name }}</p>
+          </div>
+        </header>
+        <main>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='rosters' %}
+          <div class="card">
+            <div class="jcc-table-scroll">
+              <table class="jcc-table" id="rosterTable">
+                <thead>
+                  <tr>
+                    <th>제목</th>
+                    <th>상태</th>
+                    <th>생성 일시</th>
+                    <th>생성자</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for s in sessions %}
+                    <tr data-session-id="{{ s.id }}">
+                      <td>{{ s.name }}</td>
+                      <td>
+                        <span class="jcc-retreat-pill{% if s.is_closed %} jcc-retreat-pill--alt{% endif %}">
+                          {{ s.get_status_display }}
+                        </span>
+                      </td>
+                      <td class="jcc-retreat-rosterDateCell">
+                        <div class="jcc-retreat-rosterDate">{{ s.created_at|date:"Y-m-d" }}</div>
+                        <div class="jcc-retreat-rosterTime">{{ s.created_at|date:"H:i" }}</div>
+                      </td>
+                      <td>{% if s.created_by %}{{ s.created_by.username }}{% else %}-{% endif %}</td>
+                      <td class="jcc-retreat-rosterActions">
+                        {% if visible_groups|length == 0 %}
+                          <span class="muted">담당 조 없음</span>
+                        {% elif visible_groups|length == 1 %}
+                          {% with g=visible_groups.0 %}
+                            <a class="btn-link" href="{% url 'retreat_roster_check' event.id s.id g.id %}">{{ g.name }} 체크</a>
+                          {% endwith %}
+                        {% else %}
+                          <select class="jcc-retreat-rosterSelect" data-session-id="{{ s.id }}" aria-label="조 선택">
+                            <option value="">조 선택…</option>
+                            {% regroup visible_groups by division_id as div_groups %}
+                            {% for divg in div_groups %}
+                              <optgroup label="{{ divg.list.0.region.name }} {{ divg.list.0.division.name }}">
+                                {% for g in divg.list %}
+                                  <option value="{% url 'retreat_roster_check' event.id s.id g.id %}">{{ g.name }}</option>
+                                {% endfor %}
+                              </optgroup>
+                            {% endfor %}
+                          </select>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="5">등록된 출석부가 없습니다.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {% if my_groups %}
+            <section class="card">
+              <h2 class="jcc-retreat-sectionTitle">내 조 바로가기</h2>
+              <div class="jcc-retreat-groupGrid">
+                {% for g in my_groups %}
+                  <a class="jcc-retreat-groupCard" href="{% url 'retreat_group_detail' event.id g.id %}">
+                    <div class="jcc-retreat-groupName">{{ g.name }}</div>
+                    <div class="jcc-retreat-groupMeta">{{ g.region.name }} {{ g.division.name }}</div>
+                  </a>
+                {% endfor %}
+              </div>
+            </section>
+          {% endif %}
+        </main>
+      </div>
+    </div>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+    <script>
+      window.RETREAT_ROSTERS_CTX = {
+        eventId: {{ event.id }},
+        canManage: false
+      };
+    </script>
+    <script src="{% static 'retreat/retreat_rosters.js' %}?v=20260602i" defer></script>
+  </body>
+</html>

@@ -1,0 +1,106 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>수련회 회장단 · {{ event.name }}</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603h" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>수련회 회장단</h1>
+            <p class="subtitle">{{ event.name }} · 출석부 생성·관리 권한 보유</p>
+          </div>
+        </header>
+        <main>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='council' %}
+
+          {% if is_retreat_council %}
+            <div class="card">
+              <h2 class="jcc-retreat-sectionTitle">회장단 추가</h2>
+              <form id="councilAddForm" class="jcc-retreat-inlineForm">
+                <div class="field">
+                  <label for="newUsername">사용자 ID</label>
+                  <input type="text" id="newUsername" required placeholder="username" />
+                </div>
+                <div class="field">
+                  <label for="newRole">역할</label>
+                  <select id="newRole">
+                    {% for code, label in role_choices %}
+                      <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="newNote">메모</label>
+                  <input type="text" id="newNote" maxlength="200" />
+                </div>
+                <button type="submit">추가</button>
+              </form>
+              <div id="councilStatus" class="msg" role="status"></div>
+            </div>
+          {% endif %}
+
+          <div class="card">
+            <h2 class="jcc-retreat-sectionTitle">명단</h2>
+            <div class="jcc-table-scroll">
+              <table class="jcc-table">
+                <thead>
+                  <tr>
+                    <th>사용자</th>
+                    <th>역할</th>
+                    <th>메모</th>
+                    <th>등록일</th>
+                    {% if is_retreat_council %}<th></th>{% endif %}
+                  </tr>
+                </thead>
+                <tbody id="councilTbody">
+                  {% for m in memberships %}
+                    <tr data-membership-id="{{ m.id }}">
+                      <td>{{ m.user.profile.display_name|default:m.user.username }}</td>
+                      <td>
+                        {% if is_retreat_council %}
+                          <select class="council-role-select" data-prev="{{ m.role }}">
+                            {% for code, label in role_choices %}
+                              <option value="{{ code }}" {% if m.role == code %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                          </select>
+                        {% else %}
+                          {{ m.get_role_display }}
+                        {% endif %}
+                      </td>
+                      <td>{{ m.note|default:"-" }}</td>
+                      <td>{{ m.created_at|date:"Y-m-d" }}</td>
+                      {% if is_retreat_council %}
+                        <td><button type="button" class="secondary council-delete">삭제</button></td>
+                      {% endif %}
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="{% if is_retreat_council %}5{% else %}4{% endif %}">등록된 회장단이 없습니다.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+    <script>
+      window.RETREAT_COUNCIL_CTX = {
+        eventId: {{ event.id }},
+        canManage: {{ is_retreat_council|yesno:"true,false" }},
+        apiList: "{% url 'api_retreat_event_council' event.id %}",
+        apiDetailBase: "/api/v1/retreat/events/{{ event.id }}/council/"
+      };
+    </script>
+    <script src="{% static 'retreat/retreat_council.js' %}?v=20260602g" defer></script>
+  </body>
+</html>

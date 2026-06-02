@@ -1,4 +1,4 @@
-"""부서·팀·메타 선택지 API."""
+"""지역·부서·팀·메타 선택지 API."""
 
 from __future__ import annotations
 
@@ -14,14 +14,31 @@ from attendance.serializers import (
 )
 from attendance.services.attendance_summary import build_meta_choices_payload
 from users.models import Team
-from users.permissions import visible_divisions_for
+from users.permissions import visible_divisions_for, visible_regions_for
+
+
+class AttendanceRegionListView(APIView):
+    """현재 사용자에게 노출 가능한 지역 목록."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = visible_regions_for(request.user)
+        return Response(
+            [{"code": r.code, "name": r.name} for r in qs]
+        )
 
 
 class AttendanceDivisionListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = visible_divisions_for(request.user).order_by("sort_order", "name")
+        region_code = (request.query_params.get("region_code") or "").strip() or None
+        qs = (
+            visible_divisions_for(request.user, region=region_code)
+            .select_related("region")
+            .order_by("region__sort_order", "sort_order", "name")
+        )
         return Response(DivisionBriefSerializer(qs, many=True).data)
 
 

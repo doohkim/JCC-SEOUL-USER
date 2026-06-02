@@ -160,7 +160,12 @@ header.app-header a:hover {
   overflow: hidden;
 }
 
-/* 모바일: 좌측 드로어는 왼쪽 가장자리 스와이프로만 열기 (펼치기 버튼 없음) */
+/* 모바일: 햄버거·하단 탭바·드로어 닫기 (jcc_left_nav.html) */
+.jcc-mobile-menu-btn,
+.jcc-leftNav-close,
+.jcc-bottomTabs {
+  display: none;
+}
 
 .jcc-leftNav-tabs {
   display: flex;
@@ -169,19 +174,107 @@ header.app-header a:hover {
 }
 
 .jcc-leftNav-item {
-  display: block;
-  padding: 0.7rem 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.85rem;
   border-radius: 12px;
-  font-weight: 900;
+  font-weight: 800;
   color: var(--text);
   text-decoration: none;
   background: transparent;
   border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .jcc-leftNav-item:hover {
   border-color: var(--nav-item-hover-border);
   background: var(--nav-item-hover-bg);
+}
+
+.jcc-leftNav-item.is-active,
+.jcc-leftNav-item[aria-current="page"] {
+  background: var(--nav-item-hover-bg);
+  border-color: var(--nav-item-hover-border);
+  color: var(--accent);
+}
+
+.jcc-leftNav-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: color 0.15s ease;
+}
+
+.jcc-leftNav-item:hover .jcc-leftNav-icon,
+.jcc-leftNav-item.is-active .jcc-leftNav-icon,
+.jcc-leftNav-item[aria-current="page"] .jcc-leftNav-icon {
+  color: var(--accent);
+}
+
+.jcc-leftNav-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.4rem 0.2rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.jcc-leftNav-avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1rem;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), #6c5ce7);
+  letter-spacing: 0;
+}
+
+.jcc-leftNav-avatar--guest {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.jcc-leftNav-profileInfo {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.jcc-leftNav-profileName {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jcc-leftNav-profileSub {
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jcc-leftNav-sectionLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 0.4rem;
+  margin-top: 0.2rem;
 }
 
 .jcc-leftNav-bottom {
@@ -319,6 +412,144 @@ html[data-theme="light"] .jcc-theme-toggle .jcc-theme-icon--sun-dark {
     flex: 0 0 auto;
     align-items: stretch;
   }
+
+  .jcc-mobile-menu-btn {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+    left: 0.35rem;
+    z-index: 1500;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    cursor: pointer;
+    padding: 0;
+    appearance: none;
+    transition: background 0.15s ease;
+  }
+
+  .jcc-mobile-menu-btn:hover,
+  .jcc-mobile-menu-btn:active,
+  .jcc-mobile-menu-btn:focus-visible {
+    background: var(--nav-item-hover-bg);
+    outline: none;
+  }
+
+  .jcc-mobile-menu-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  body.jcc-leftNav-drawer-open .jcc-mobile-menu-btn {
+    display: none;
+  }
+
+  .jcc-leftNav-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    appearance: none;
+  }
+
+  .jcc-leftNav-avatar {
+    width: 46px;
+    height: 46px;
+    font-size: 1.1rem;
+  }
+
+  .jcc-leftNav-profileName {
+    font-size: 1rem;
+  }
+
+  .jcc-leftNav-close svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .jcc-bottomTabs {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1380;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12);
+  }
+
+  .jcc-bottomTab {
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-decoration: none;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    padding: 4px 2px;
+    font-family: inherit;
+  }
+
+  .jcc-bottomTab svg {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+
+  .jcc-bottomTab.is-active,
+  .jcc-bottomTab[aria-current="page"] {
+    color: var(--accent);
+  }
+
+  .jcc-bottomTab--more.is-active {
+    color: var(--muted);
+  }
+
+  .jcc-layout-content {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  header.app-header {
+    justify-content: center;
+    text-align: center;
+    padding-left: 3.5rem;
+    padding-right: 3.5rem;
+  }
+
+  header.app-header .jcc-detail-titleWrap {
+    align-items: center;
+    text-align: center;
+    max-width: 100%;
+  }
+
+  header.app-header .subtitle {
+    width: auto;
+    max-width: 100%;
+  }
 }
 
 .jcc-leftNav-backdrop {
@@ -364,6 +595,8 @@ select,
 input[type="search"],
 input[type="text"],
 input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
 textarea {
   background: var(--card);
   border: 1px solid var(--border);
@@ -371,6 +604,17 @@ textarea {
   padding: 0.45rem 0.65rem;
   border-radius: 6px;
   min-width: 10rem;
+}
+
+input[type="datetime-local"],
+input[type="time"] {
+  color-scheme: dark;
+  min-height: 2.3rem;
+}
+
+html[data-theme="light"] input[type="datetime-local"],
+html[data-theme="light"] input[type="time"] {
+  color-scheme: light;
 }
 
 input[type="file"] {
@@ -472,8 +716,8 @@ main {
   }
 
   header.app-header {
-    padding-left: 0.85rem;
-    padding-right: 0.85rem;
+    padding-left: 3rem;
+    padding-right: 3rem;
   }
 }
 

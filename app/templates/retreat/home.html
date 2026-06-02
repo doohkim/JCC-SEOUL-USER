@@ -1,0 +1,78 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>수련회</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603h" />
+  </head>
+  <body>
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>수련회</h1>
+            <p class="subtitle">행사·내 조 바로가기</p>
+          </div>
+        </header>
+        <main>
+          {% if not event_cards %}
+            <div class="card jcc-retreat-emptyCard">
+              <h2>표시할 수련회 행사가 없습니다.</h2>
+              <p class="subtitle">활성 행사가 생성되면 이곳에 표시됩니다.</p>
+            </div>
+          {% else %}
+            {% for c in event_cards %}
+              <section class="card jcc-retreat-eventCard">
+                <header class="jcc-retreat-eventHeader">
+                  <div>
+                    <h2 class="jcc-retreat-eventName">{{ c.event.name }}</h2>
+                    <div class="subtitle">
+                      {{ c.event.start_date|date:"Y.m.d" }} ~ {{ c.event.end_date|date:"Y.m.d" }}
+                    </div>
+                  </div>
+                  <a class="btn-link" href="{% url 'retreat_dashboard' c.event.id %}">대시보드 →</a>
+                </header>
+                <div class="jcc-retreat-eventQuickLinks">
+                  <a class="btn-link" href="{% url 'retreat_rosters' c.event.id %}">출석부</a>
+                  <a class="btn-link" href="{% url 'retreat_results' c.event.id %}">결과</a>
+                  {% if c.is_staff_or_council %}
+                    <a class="btn-link" href="{% url 'retreat_admin' c.event.id %}">관리</a>
+                    <a class="btn-link" href="{% url 'retreat_council' c.event.id %}">회장단</a>
+                  {% endif %}
+                </div>
+                <div class="jcc-retreat-groupGrid">
+                  {% for g in c.groups %}
+                    <a
+                      class="jcc-retreat-groupCard"
+                      href="{% url 'retreat_group_detail' c.event.id g.id %}"
+                    >
+                      <div class="jcc-retreat-groupRegion">
+                        <span class="jcc-retreat-pill">{{ g.region.name }}</span>
+                        <span class="jcc-retreat-pill jcc-retreat-pill--alt">{{ g.division.name }}</span>
+                      </div>
+                      <div class="jcc-retreat-groupName">{{ g.name }}</div>
+                      <div class="jcc-retreat-groupMeta">조원 {{ g.attendee_count }}명</div>
+                    </a>
+                  {% empty %}
+                    <div class="msg">아직 조가 없습니다. 관리자에서 조를 추가하세요.</div>
+                  {% endfor %}
+                </div>
+              </section>
+            {% endfor %}
+          {% endif %}
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

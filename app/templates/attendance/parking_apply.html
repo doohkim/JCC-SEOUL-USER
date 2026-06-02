@@ -169,8 +169,13 @@
                 <label>부서</label>
                 <select name="division_code">
                   <option value="">전체</option>
-                  {% for d in division_options %}
-                    <option value="{{ d.code }}" {% if division_code == d.code %}selected{% endif %}>{{ d.name }}</option>
+                  {% regroup division_options by region__name as parking_region_groups %}
+                  {% for group in parking_region_groups %}
+                    <optgroup label="{{ group.grouper|default:'(지역 미지정)' }}">
+                      {% for d in group.list %}
+                        <option value="{{ d.code }}" {% if division_code == d.code %}selected{% endif %}>{{ d.name }}</option>
+                      {% endfor %}
+                    </optgroup>
                   {% endfor %}
                 </select>
               </div>

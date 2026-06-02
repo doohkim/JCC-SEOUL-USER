@@ -8,6 +8,7 @@ from attendance.apis import (
     AttendanceMetaChoicesView,
     AttendanceMidweekRosterView,
     AttendanceMidweekRecordListView,
+    AttendanceRegionListView,
     AttendanceSundayRosterView,
     AttendanceSundayLineListView,
     AttendanceTeamListView,
@@ -44,6 +45,11 @@ urlpatterns = [
         "api/v1/attendance/meta/",
         AttendanceMetaChoicesView.as_view(),
         name="api_attendance_meta",
+    ),
+    path(
+        "api/v1/attendance/regions/",
+        AttendanceRegionListView.as_view(),
+        name="api_attendance_regions",
     ),
     path(
         "api/v1/attendance/divisions/",

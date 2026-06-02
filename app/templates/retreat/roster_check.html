@@ -1,0 +1,81 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ session.name }} · {{ group.name }}</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603h" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>{{ session.name }}</h1>
+            <p class="subtitle">{{ group.name }} · {{ event.name }}</p>
+          </div>
+        </header>
+        <main>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='rosters' %}
+          <div class="card jcc-retreat-sessionBar" role="tablist">
+            {% for s in sessions %}
+              <a
+                class="jcc-retreat-sessionTab{% if s.id == session.id %} is-active{% endif %}"
+                href="{% url 'retreat_roster_check' event.id s.id group.id %}"
+              >{{ s.name }}</a>
+            {% endfor %}
+          </div>
+          {% if session.is_closed %}
+            <div class="msg">마감된 출석부입니다. 회장단/관리자만 재오픈할 수 있으며 이 화면에서는 변경할 수 없습니다.</div>
+          {% elif can_mutate %}
+            <div id="retreatStatus" class="msg" role="status"></div>
+          {% else %}
+            <div class="msg">읽기 전용입니다.</div>
+          {% endif %}
+          <div class="card">
+            <table class="jcc-table">
+              <thead>
+                <tr>
+                  <th>이름</th>
+                  <th>출석</th>
+                </tr>
+              </thead>
+              <tbody id="retreatAttBody">
+                {% for a in attendees %}
+                  <tr data-enrollment-id="{{ a.id }}" data-attendee-id="{{ a.id }}" data-check-in="{{ a.check_in_status }}">
+                    <td>
+                      <span class="jcc-retreat-attName">{{ a.name }}</span>
+                      <span class="jcc-retreat-checkInBadge jcc-retreat-checkInBadge--{{ a.check_in_status }}">{{ a.get_check_in_status_display }}</span>
+                    </td>
+                    <td class="jcc-retreat-statusCell"></td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="2">조원이 없습니다.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <p><a class="btn-link" href="{% url 'retreat_group_detail' event.id group.id %}?session_id={{ session.id }}">조원 관리</a></p>
+        </main>
+      </div>
+    </div>
+    <div id="retreatToast" class="jcc-retreat-toast" hidden role="status"></div>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+    {{ matrix|json_script:"retreatInitialMatrix" }}
+    <script>
+      window.RETREAT_CTX = {
+        eventId: {{ event.id }},
+        groupId: {{ group.id }},
+        sessionId: {{ session.id }},
+        sessionClosed: {{ session.is_closed|yesno:"true,false" }},
+        canMutate: {{ can_mutate|yesno:"true,false" }},
+        bulkUpsertUrl: "{% url 'api_retreat_attendance_bulk_upsert' %}"
+      };
+    </script>
+    <script src="{% static 'retreat/roster_check.js' %}?v=20260603h" defer></script>
+  </body>
+</html>

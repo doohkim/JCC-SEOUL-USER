@@ -9,6 +9,7 @@ from ..models import (
     Division,
     FunctionalDepartment,
     PastoralDivisionAssignment,
+    Region,
     Role,
     Team,
     UserClub,
@@ -22,13 +23,22 @@ class JccModelAdmin(admin.ModelAdmin):
         css = {"all": ("admin/css/jcc_fieldsets.css",)}
 
 
+@admin.register(Region)
+class RegionAdmin(JccModelAdmin):
+    list_display = ["name", "code", "sort_order"]
+    list_editable = ["sort_order"]
+    search_fields = ["name", "code"]
+    ordering = ("sort_order", "name")
+
+
 @admin.register(Division)
 class DivisionAdmin(JccModelAdmin):
-    list_display = ["name", "code", "parent", "sort_order"]
-    list_filter = ["parent"]
+    list_display = ["name", "code", "region", "parent", "sort_order"]
+    list_filter = ["region", "parent"]
     list_editable = ["sort_order"]
     search_fields = ["name", "code"]
     raw_id_fields = ["parent"]
+    autocomplete_fields = ["region"]
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -37,7 +47,7 @@ class DivisionAdmin(JccModelAdmin):
         allowed = registry_divisions_for(request.user)
         return qs.filter(pk__in=allowed.values_list("pk", flat=True))
     fieldsets = (
-        ("필수", {"classes": ("jcc-required",), "fields": ("name", "code")}),
+        ("필수", {"classes": ("jcc-required",), "fields": ("region", "name", "code")}),
         (
             "선택",
             {

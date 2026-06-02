@@ -3,6 +3,7 @@
 from attendance.apis.divisions_meta import (
     AttendanceDivisionListView,
     AttendanceMetaChoicesView,
+    AttendanceRegionListView,
     AttendanceTeamListView,
 )
 from attendance.apis.records import (
@@ -23,6 +24,7 @@ __all__ = [
     "AttendanceDivisionListView",
     "AttendanceMetaChoicesView",
     "AttendanceMidweekRecordListView",
+    "AttendanceRegionListView",
     "AttendanceSundayLineListView",
     "AttendanceTeamListView",
     "AttendanceWeekListView",

@@ -50,6 +50,48 @@ function fillSelect(selectEl, items, currentValue) {
   });
 }
 
+/** division 목록을 region 별 optgroup 으로 채운다.
+ *  divisions: [{ code, name, region_code, region_name }]
+ *  - region 종류가 1개뿐이면 optgroup 없이 평면으로 표시.
+ *  - leadingItems: 맨 앞에 (예: 전체) 옵션. group 없이 평면 추가.
+ */
+function fillDivisionSelect(selectEl, divisions, currentValue, leadingItems) {
+  selectEl.innerHTML = "";
+  (leadingItems || []).forEach((it) => {
+    const opt = document.createElement("option");
+    opt.value = it.value;
+    opt.textContent = it.label;
+    if (currentValue !== undefined && String(currentValue) === String(it.value)) {
+      opt.selected = true;
+    }
+    selectEl.appendChild(opt);
+  });
+  const groups = new Map();
+  (divisions || []).forEach((d) => {
+    const key = d.region_code || "_none";
+    const label = d.region_name || "(지역 미지정)";
+    if (!groups.has(key)) groups.set(key, { label, items: [] });
+    groups.get(key).items.push(d);
+  });
+  const useGroup = groups.size > 1;
+  groups.forEach((group) => {
+    const container = useGroup ? document.createElement("optgroup") : selectEl;
+    if (useGroup) {
+      container.label = group.label;
+      selectEl.appendChild(container);
+    }
+    group.items.forEach((d) => {
+      const opt = document.createElement("option");
+      opt.value = d.code;
+      opt.textContent = d.name;
+      if (currentValue !== undefined && String(currentValue) === String(d.code)) {
+        opt.selected = true;
+      }
+      container.appendChild(opt);
+    });
+  });
+}
+
 async function apiGet(path) {
   const r = await fetch(API + path, { credentials: "same-origin" });
   if (!r.ok) {
@@ -131,11 +173,12 @@ function applyScopeNotice(data) {
 async function loadDivisions() {
   const data = await apiGet(`/member/teams/accordion/?meta_only=1`);
   applyScopeNotice(data);
-  const items = [{ value: "", label: "전체" }];
-  (Array.isArray(data.division_options) ? data.division_options : []).forEach((d) => {
-    items.push({ value: d.code, label: d.name });
-  });
-  fillSelect(document.getElementById("fltDivision"), items);
+  fillDivisionSelect(
+    document.getElementById("fltDivision"),
+    Array.isArray(data.division_options) ? data.division_options : [],
+    undefined,
+    [{ value: "", label: "전체" }]
+  );
 }
 
 async function loadTeams(divisionCode, currentTeamId) {
@@ -260,12 +303,12 @@ async function refreshFiltersPreserveSelection() {
 
   const divData = await apiGet(`/member/teams/accordion/?meta_only=1`);
   applyScopeNotice(divData);
-  const divItems = [{ value: "", label: "전체" }];
-  (Array.isArray(divData.division_options) ? divData.division_options : []).forEach((d) => {
-    divItems.push({ value: d.code, label: d.name });
-  });
-
-  fillSelect(divSel, divItems, curDiv);
+  fillDivisionSelect(
+    divSel,
+    Array.isArray(divData.division_options) ? divData.division_options : [],
+    curDiv,
+    [{ value: "", label: "전체" }]
+  );
 
   const nextDivCode = divSel.value || "";
   await loadTeams(nextDivCode, curTeam);

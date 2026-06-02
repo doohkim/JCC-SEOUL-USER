@@ -42,6 +42,7 @@ class MemberListCreateView(APIView):
 
     def get(self, request, *args, **kwargs):
         q = (request.query_params.get("q") or "").strip()
+        region_code = (request.query_params.get("region_code") or "").strip() or None
         division_code = (request.query_params.get("division_code") or "").strip() or None
         team_id_raw = (request.query_params.get("team_id") or "").strip() or None
         team_id = None
@@ -63,6 +64,8 @@ class MemberListCreateView(APIView):
                 division = None
 
         qs = members_visible_to(request.user, division=division).select_related("pastoral_profile")
+        if region_code and division is None:
+            qs = qs.filter(division_teams__division__region__code=region_code).distinct()
         if team_id is not None:
             qs = qs.filter(division_teams__team_id=team_id)
         if q:
@@ -153,6 +156,7 @@ class MemberRegistryTeamsAccordionView(APIView):
 
     def get(self, request, *args, **kwargs):
         q = (request.query_params.get("q") or "").strip()
+        region_code = (request.query_params.get("region_code") or "").strip() or None
         division_code = (request.query_params.get("division_code") or "").strip() or None
         team_id_raw = (request.query_params.get("team_id") or "").strip() or None
         meta_only = (request.query_params.get("meta_only") or "").strip() in {"1", "true", "True"}
@@ -164,7 +168,9 @@ class MemberRegistryTeamsAccordionView(APIView):
             except ValueError:
                 team_id = None
 
-        divisions_qs = registry_divisions_for(request.user).order_by("sort_order", "name")
+        divisions_qs = registry_divisions_for(request.user, region=region_code).order_by(
+            "region__sort_order", "sort_order", "name"
+        )
         scope_notice = registry_scope_notice(request.user)
         if division_code:
             div = divisions_qs.filter(code=division_code).first()
@@ -176,8 +182,14 @@ class MemberRegistryTeamsAccordionView(APIView):
         # 폼에서 부서/팀 선택을 위해 "현재 사용자가 접근 가능한 모든 팀"을 반환합니다.
         if meta_only:
             division_options = [
-                {"code": d.code, "id": d.id, "name": d.name}
-                for d in divisions_qs
+                {
+                    "code": d.code,
+                    "id": d.id,
+                    "name": d.name,
+                    "region_code": d.region.code if d.region_id else "",
+                    "region_name": d.region.name if d.region_id else "",
+                }
+                for d in divisions_qs.select_related("region")
             ]
 
             team_options_qs = (

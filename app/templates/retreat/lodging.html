@@ -1,0 +1,240 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ event.name }} · 숙소</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603k" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>숙소 관리</h1>
+            <p class="subtitle">{{ event.name }}</p>
+          </div>
+        </header>
+        <main>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='lodging' %}
+          <nav class="jcc-retreat-subTabs" aria-label="숙소 관리 서브탭">
+            <a class="jcc-retreat-subTab is-active" href="{% url 'retreat_lodging' event.id %}">숙소·호수 관리</a>
+            <a class="jcc-retreat-subTab" href="{% url 'retreat_lodging_assign' event.id %}">방배정</a>
+          </nav>
+          {% if can_manage_lodging %}
+            <div class="jcc-retreat-listTop">
+              <div class="msg" id="retreatStatus" role="status"></div>
+              <button type="button" class="secondary" id="btnAddLodging">+ 숙소 추가</button>
+            </div>
+          {% else %}
+            <div class="msg">읽기 전용입니다. 숙소·호실 추가/수정은 운영진만 가능합니다.</div>
+          {% endif %}
+
+          {% if lodgings %}
+            <div class="jcc-retreat-lodgingList">
+              {% for lodging in lodgings %}
+                <section class="card jcc-retreat-lodgingCard" data-lodging-id="{{ lodging.id }}">
+                  <header class="jcc-retreat-lodgingHeader">
+                    <div>
+                      <h2 class="jcc-retreat-lodgingName" data-lodging-name>{{ lodging.name }}
+                        <span class="jcc-retreat-lodgingRegion" data-lodging-region-id="{% if lodging.region_id %}{{ lodging.region_id }}{% endif %}">
+                          {% if lodging.region %}· {{ lodging.region.name }}{% else %}· <span class="muted">전 지역 공용</span>{% endif %}
+                        </span>
+                      </h2>
+                      {% if lodging.address %}
+                        <p class="jcc-retreat-lodgingMeta" data-lodging-address>{{ lodging.address }}</p>
+                      {% endif %}
+                      {% if lodging.memo %}
+                        <p class="jcc-retreat-lodgingMeta" data-lodging-memo>{{ lodging.memo }}</p>
+                      {% endif %}
+                    </div>
+                    {% if can_manage_lodging %}
+                      <div class="jcc-retreat-lodgingActions">
+                        <button type="button" class="jcc-retreat-rowEdit" data-edit-lodging>수정</button>
+                        <button type="button" class="jcc-retreat-rowDel" data-del-lodging>삭제</button>
+                      </div>
+                    {% endif %}
+                  </header>
+                  <div class="jcc-retreat-tableWrap">
+                    <table class="jcc-retreat-attendeeTable jcc-retreat-roomTable">
+                      <thead>
+                        <tr>
+                          <th>호수</th>
+                          <th>지역 · 부서</th>
+                          <th>정원</th>
+                          <th>성별</th>
+                          <th>현재 인원</th>
+                          <th>배정된 조원</th>
+                          {% if can_manage_lodging %}
+                            <th class="jcc-retreat-attCol-actions"></th>
+                          {% endif %}
+                        </tr>
+                      </thead>
+                      <tbody data-rooms>
+                        {% for room in lodging.rooms.all %}
+                          <tr data-room-id="{{ room.id }}" data-room-region-id="{% if room.region_id %}{{ room.region_id }}{% endif %}" data-room-division-id="{% if room.division_id %}{{ room.division_id }}{% endif %}">
+                            <td data-room-number>{{ room.number }}</td>
+                            <td data-room-scope>
+                              {% if room.region and room.division %}
+                                <span class="jcc-retreat-roomScope">{{ room.region.name }} · {{ room.division.name }}</span>
+                              {% else %}
+                                <span class="muted">미배정</span>
+                              {% endif %}
+                            </td>
+                            <td data-room-capacity>
+                              {% if room.capacity %}{{ room.capacity }}{% else %}무제한{% endif %}
+                            </td>
+                            <td>
+                              <span class="jcc-retreat-roomGenderPill jcc-retreat-roomGenderPill--{{ room.recommended_gender|default:'unknown' }}" data-room-gender>
+                                {{ room.get_recommended_gender_display|default:"미지정" }}
+                              </span>
+                            </td>
+                            <td data-room-count>{{ room.attendees.all|length }}</td>
+                            <td data-room-attendees>
+                              {% for a in room.attendees.all %}<span class="jcc-retreat-roomAssignee">{{ a.name }}<small class="muted">({{ a.group.name }})</small></span>{% empty %}<span class="muted">-</span>{% endfor %}
+                            </td>
+                            {% if can_manage_lodging %}
+                              <td class="jcc-retreat-attCol-actions">
+                                <button type="button" class="jcc-retreat-rowEdit" data-edit-room>수정</button>
+                                <button type="button" class="jcc-retreat-rowDel" data-del-room>삭제</button>
+                              </td>
+                            {% endif %}
+                          </tr>
+                        {% empty %}
+                          <tr><td colspan="{% if can_manage_lodging %}7{% else %}6{% endif %}">
+                            <div class="msg">호실이 없습니다.{% if can_manage_lodging %} 우측 버튼으로 호실을 추가하세요.{% endif %}</div>
+                          </td></tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                  {% if can_manage_lodging %}
+                    <div class="jcc-retreat-lodgingFooter">
+                      <button type="button" class="secondary" data-add-room>+ 호실 추가</button>
+                    </div>
+                  {% endif %}
+                </section>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="card">
+              <div class="msg">아직 등록된 숙소가 없습니다.{% if can_manage_lodging %} 우측 상단에서 추가하세요.{% endif %}</div>
+            </div>
+          {% endif %}
+
+          <div class="jcc-retreat-toast" id="retreatToast" role="alert" aria-live="polite" hidden></div>
+        </main>
+
+        {% if can_manage_lodging %}
+          <div class="jcc-retreat-modalOverlay" id="lodgingModalOverlay" hidden aria-hidden="true">
+            <div class="jcc-retreat-modal card" role="dialog" aria-modal="true" aria-labelledby="lodgingModalTitle">
+              <h2 id="lodgingModalTitle" class="jcc-retreat-modalTitle">숙소 추가</h2>
+              <form id="lodgingForm">
+                <div class="jcc-retreat-modalGrid">
+                  <div class="field jcc-retreat-modalField--full">
+                    <label for="lodgingNameInput">숙소 이름 *</label>
+                    <input type="text" id="lodgingNameInput" name="name" required maxlength="80" autocomplete="off">
+                  </div>
+                  <div class="field jcc-retreat-modalField--full">
+                    <label for="lodgingRegionInput">지역</label>
+                    <select id="lodgingRegionInput" name="region">
+                      <option value="">전 지역 공용</option>
+                      {% for r in region_choices %}
+                        <option value="{{ r.id }}">{{ r.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="field jcc-retreat-modalField--full">
+                    <label for="lodgingAddressInput">주소</label>
+                    <input type="text" id="lodgingAddressInput" name="address" maxlength="200" autocomplete="off">
+                  </div>
+                  <div class="field jcc-retreat-modalField--full">
+                    <label for="lodgingMemoInput">메모</label>
+                    <input type="text" id="lodgingMemoInput" name="memo" maxlength="200" autocomplete="off">
+                  </div>
+                </div>
+                <div class="jcc-retreat-modalFooter">
+                  <button type="button" class="secondary" id="lodgingModalCancel">취소</button>
+                  <button type="submit" id="lodgingModalSubmit">저장</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="jcc-retreat-modalOverlay" id="roomModalOverlay" hidden aria-hidden="true">
+            <div class="jcc-retreat-modal card" role="dialog" aria-modal="true" aria-labelledby="roomModalTitle">
+              <h2 id="roomModalTitle" class="jcc-retreat-modalTitle">호실 추가</h2>
+              <form id="roomForm">
+                <div class="jcc-retreat-modalGrid">
+                  <div class="field">
+                    <label for="roomNumberInput">호수 *</label>
+                    <input type="text" id="roomNumberInput" name="number" required maxlength="30" autocomplete="off">
+                  </div>
+                  <div class="field">
+                    <label for="roomCapacityInput">정원 (0=무제한)</label>
+                    <input type="number" id="roomCapacityInput" name="capacity" min="0" value="0">
+                  </div>
+                  <div class="field">
+                    <label for="roomRegionInput">지역 *</label>
+                    <select id="roomRegionInput" name="region">
+                      <option value="">(미배정)</option>
+                      {% for r in region_choices %}
+                        <option value="{{ r.id }}">{{ r.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="roomDivisionInput">부서 *</label>
+                    <select id="roomDivisionInput" name="division">
+                      <option value="">(미배정)</option>
+                    </select>
+                    <small class="muted">선택한 지역의 부서만 노출됩니다.</small>
+                  </div>
+                  <div class="field">
+                    <label for="roomGenderInput">권장 성별</label>
+                    <select id="roomGenderInput" name="recommended_gender">
+                      <option value="">미지정</option>
+                      <option value="male">남성</option>
+                      <option value="female">여성</option>
+                      <option value="mixed">혼성</option>
+                    </select>
+                  </div>
+                  <div class="field jcc-retreat-modalField--full">
+                    <label for="roomMemoInput">메모</label>
+                    <input type="text" id="roomMemoInput" name="memo" maxlength="200" autocomplete="off">
+                  </div>
+                </div>
+                <div class="jcc-retreat-modalFooter">
+                  <button type="button" class="secondary" id="roomModalCancel">취소</button>
+                  <button type="submit" id="roomModalSubmit">저장</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <script id="retreatDivisionList" type="application/json">[{% for d in division_choices %}{"id":{{ d.id }},"name":"{{ d.name|escapejs }}","region_id":{% if d.region_id %}{{ d.region_id }}{% else %}null{% endif %}}{% if not forloop.last %},{% endif %}{% endfor %}]</script>
+        {% endif %}
+      </div>
+    </div>
+
+    <script>
+      window.RETREAT_LODGING_CTX = {
+        eventId: {{ event.id }},
+        canManage: {{ can_manage_lodging|yesno:"true,false" }},
+        csrfToken: "{{ csrf_token }}",
+        urls: {
+          eventLodgings: "/api/v1/retreat/events/{{ event.id }}/lodgings/",
+          lodgingDetailTemplate: "/api/v1/retreat/lodgings/__id__/",
+          lodgingRoomsTemplate: "/api/v1/retreat/lodgings/__id__/rooms/",
+          roomDetailTemplate: "/api/v1/retreat/lodging-rooms/__id__/",
+        },
+      };
+    </script>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+    <script src="{% static 'retreat/lodging_admin.js' %}?v=20260603k" defer></script>
+  </body>
+</html>

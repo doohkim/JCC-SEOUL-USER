@@ -1,0 +1,42 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>수련회 참여 신청</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603h" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <h1>수련회 참여 신청</h1>
+          <p class="subtitle">{{ event.name }}</p>
+        </header>
+        <main>
+          <div class="card">
+            <form method="post">
+              {% csrf_token %}
+              <div class="field">
+                <label>
+                  {{ form.requested_retreat_participation }}
+                  {{ form.requested_retreat_participation.label }}
+                </label>
+              </div>
+              <div class="field" id="roleField">
+                <label for="{{ form.requested_retreat_role.id_for_label }}">{{ form.requested_retreat_role.label }}</label>
+                {{ form.requested_retreat_role }}
+              </div>
+              <button type="submit">저장</button>
+            </form>
+          </div>
+        </main>
+      </div>
+    </div>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+  </body>
+</html>

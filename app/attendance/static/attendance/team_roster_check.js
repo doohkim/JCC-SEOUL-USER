@@ -740,12 +740,27 @@ async function loadDivisions() {
   const list = Array.isArray(raw) ? raw : [];
   const sel = document.getElementById("divisionCode");
   sel.innerHTML = "";
+  const groups = new Map();
   list.forEach((d) => {
-    const opt = document.createElement("option");
-    opt.value = d.code;
-    opt.textContent = d.name;
-    if (!isDivisionAllowed(d.code)) opt.disabled = true;
-    sel.appendChild(opt);
+    const key = d.region_code || "_none";
+    const label = d.region_name || "(지역 미지정)";
+    if (!groups.has(key)) groups.set(key, { label, items: [] });
+    groups.get(key).items.push(d);
+  });
+  const useGroup = groups.size > 1;
+  groups.forEach((group) => {
+    const container = useGroup ? document.createElement("optgroup") : sel;
+    if (useGroup) {
+      container.label = group.label;
+      sel.appendChild(container);
+    }
+    group.items.forEach((d) => {
+      const opt = document.createElement("option");
+      opt.value = d.code;
+      opt.textContent = d.name;
+      if (!isDivisionAllowed(d.code)) opt.disabled = true;
+      container.appendChild(opt);
+    });
   });
 
   const curAllowed =

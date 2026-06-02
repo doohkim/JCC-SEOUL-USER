@@ -12,7 +12,29 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 
+class Region(models.Model):
+    """지역(서울/인천 …). 같은 이름의 부서가 지역별로 존재할 수 있다."""
+
+    name = models.CharField("이름", max_length=50)
+    code = models.SlugField("코드", max_length=30, unique=True)
+    sort_order = models.PositiveSmallIntegerField("정렬 순서", default=0)
+
+    class Meta:
+        verbose_name = "지역"
+        verbose_name_plural = "지역"
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return self.name
+
+
 class Division(models.Model):
+    region = models.ForeignKey(
+        Region,
+        on_delete=models.PROTECT,
+        related_name="divisions",
+        verbose_name="지역",
+    )
     name = models.CharField("이름", max_length=100)
     code = models.SlugField("코드", max_length=50, unique=True)
     parent = models.ForeignKey(
@@ -28,10 +50,10 @@ class Division(models.Model):
     class Meta:
         verbose_name = "상위 부서"
         verbose_name_plural = "상위 부서"
-        ordering = ["sort_order", "name"]
+        ordering = ["region__sort_order", "sort_order", "name"]
 
     def __str__(self):
-        return self.name
+        return f"{self.region.name} · {self.name}"
 
 
 class Team(models.Model):

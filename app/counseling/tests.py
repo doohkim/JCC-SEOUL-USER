@@ -7,15 +7,20 @@ from rest_framework.test import APIClient
 
 from counseling.models import CounselingRequest, CounselingSlot
 from counseling.services import ensure_slots_for_horizon, get_or_create_schedule_settings
-from users.models import Division, RoleLevel, UserDivisionTeam
+from users.models import Division, Region, RoleLevel, UserDivisionTeam
 
 User = get_user_model()
 
 
 class CounselingApiTests(TestCase):
     def setUp(self):
-        self.div_a = Division.objects.create(name="부서A", code="div-a", sort_order=1)
-        self.div_b = Division.objects.create(name="부서B", code="div-b", sort_order=2)
+        seoul = Region.objects.get(code="seoul")
+        self.div_a = Division.objects.create(
+            region=seoul, name="부서A", code="div-a", sort_order=1
+        )
+        self.div_b = Division.objects.create(
+            region=seoul, name="부서B", code="div-b", sort_order=2
+        )
         self.rl_pastor = RoleLevel.objects.create(name="목사", code="pastor", level=100, sort_order=0)
         self.rl_member = RoleLevel.objects.create(name="일반", code="member", level=0, sort_order=10)
 

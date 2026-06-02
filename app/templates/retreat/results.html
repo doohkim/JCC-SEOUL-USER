@@ -1,0 +1,53 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>수련회 결과 · {{ event.name }}</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603h" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>수련회 총 참석 인원</h1>
+            <p class="subtitle">{{ event.name }}</p>
+          </div>
+        </header>
+        <main>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='results' %}
+          <div class="toolbar card">
+            <div class="field">
+              <label for="sessionId">집계 기준 출석부</label>
+              <select id="sessionId">
+                <option value="">최종(마지막 출석부)</option>
+                {% for s in sessions %}
+                  <option value="{{ s.id }}">{{ s.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="button" class="secondary" id="btnRefresh">새로고침</button>
+          </div>
+          <div id="resultsStatus" class="msg" role="status"></div>
+          <section class="card">
+            <div id="resultsGrid" class="jcc-retreat-tripleGrid"></div>
+            <div class="jcc-retreat-grandTotal" id="resultsGrandTotal"></div>
+          </section>
+        </main>
+      </div>
+    </div>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+    <script>
+      window.RETREAT_RESULTS_CTX = {
+        eventId: {{ event.id }},
+        apiResults: "{% url 'api_retreat_event_results' event.id %}"
+      };
+    </script>
+    <script src="{% static 'retreat/retreat_results.js' %}?v=20260602g" defer></script>
+  </body>
+</html>
