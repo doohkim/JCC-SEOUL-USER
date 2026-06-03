@@ -235,7 +235,6 @@
           {
             남성: "male",
             여성: "female",
-            혼성: "mixed",
           }[genderText] || "";
         const roomRegionId = tr.dataset.roomRegionId
           ? Number(tr.dataset.roomRegionId)

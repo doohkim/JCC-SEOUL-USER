@@ -933,10 +933,6 @@ dialog.jcc-retreat-modal::backdrop {
   color: rgb(244, 114, 182);
   background: rgba(236, 72, 153, 0.12);
 }
-.jcc-retreat-roomGenderPill--mixed {
-  color: rgb(196, 181, 253);
-  background: rgba(167, 139, 250, 0.14);
-}
 .jcc-retreat-roomGenderPill--unknown,
 .jcc-retreat-roomGenderPill--ko-미지정 {
   color: var(--muted);
