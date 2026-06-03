@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.db import models
 
 from .group import RetreatGroup
@@ -24,11 +25,30 @@ class RetreatAttendee(models.Model):
         CHECKED_OUT = "checked_out", "퇴실"
         PENDING = "pending", "입실전"
 
+    class MemberRole(models.TextChoices):
+        MEMBER = "member", "조원"
+        LEADER = "leader", "조장"
+        VICE_LEADER = "vice_leader", "부조장"
+
     group = models.ForeignKey(
         RetreatGroup,
         on_delete=models.CASCADE,
         related_name="attendees",
         verbose_name="조",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="retreat_attendee_rows",
+        verbose_name="연결 계정",
+    )
+    member_role = models.CharField(
+        "조 내 역할",
+        max_length=20,
+        choices=MemberRole.choices,
+        default=MemberRole.MEMBER,
     )
     name = models.CharField("이름", max_length=60)
     phone = models.CharField("연락처", max_length=30, blank=True, default="")

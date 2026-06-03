@@ -138,10 +138,16 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   max-width: 18rem;
   padding: 0.4rem 0.55rem;
   border-radius: 8px;
-  border: 1px solid var(--jcc-border, #2b3344);
-  background: var(--jcc-surface-2, #1c2230);
-  color: inherit;
+  border: 1px solid var(--border, #ced4da);
+  background: var(--card, #fff);
+  color: var(--text, #212529);
   font-size: 0.9rem;
+}
+
+.jcc-retreat-rosterSelect option,
+.jcc-retreat-rosterSelect optgroup {
+  background: var(--card, #fff);
+  color: var(--text, #212529);
 }
 
 .jcc-retreat-rosterDateCell {
@@ -252,6 +258,65 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   align-items: center;
   gap: 0.5rem;
   margin: 0 0 0.5rem 0;
+}
+
+.jcc-retreat-summaryBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem 0;
+}
+
+.jcc-retreat-summaryItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: var(--jcc-surface-2, #f1f3f5);
+  border: 1px solid var(--jcc-border, #dee2e6);
+  font-size: 0.9rem;
+  color: var(--jcc-text-muted, #495057);
+}
+
+.jcc-retreat-summaryItem strong {
+  font-size: 1.05rem;
+  color: var(--jcc-text, #212529);
+}
+
+.jcc-retreat-summaryItem--pending {
+  background: #fff7e6;
+  border-color: #ffe0a3;
+}
+
+.jcc-retreat-summaryItem--in {
+  background: #e9f8ef;
+  border-color: #b7e4c7;
+}
+
+.jcc-retreat-summaryItem--out {
+  background: #eef1f4;
+  border-color: #d4dae0;
+}
+
+.jcc-retreat-summaryItem--total {
+  background: #e7f0ff;
+  border-color: #b9d4ff;
+}
+
+.jcc-retreat-attCol-num {
+  width: 2.6rem;
+  text-align: center;
+  color: var(--jcc-text-muted, #868e96);
+}
+
+@media (max-width: 640px) {
+  .jcc-retreat-summaryItem {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 0.45rem 0.5rem;
+    font-size: 0.85rem;
+  }
 }
 
 .jcc-retreat-eventQuickLinks {
@@ -1181,4 +1246,241 @@ dialog.jcc-retreat-modal::backdrop {
 }
 .jcc-retreat-historyChip--none {
   color: var(--muted);
+}
+
+/* 모달 입력 — tel 등 전역 app.css 미적용 타입 보강 */
+.jcc-retreat-modalGrid .field input[type="tel"],
+.jcc-retreat-modalGrid .field input[type="number"],
+.jcc-retreat-modalGrid .field input[type="email"] {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+
+.jcc-retreat-modal--attendeeEdit {
+  width: min(96vw, 640px);
+  max-width: 640px;
+  padding: 1.5rem 1.6rem 1.4rem;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.jcc-retreat-modal--attendeeEdit .jcc-retreat-modalTitle {
+  margin-bottom: 1.25rem;
+  font-size: 1.2rem;
+}
+.jcc-retreat-modal--attendeeEdit .jcc-retreat-modalGrid {
+  gap: 1.1rem 1.1rem;
+}
+.jcc-retreat-modal--attendeeEdit .jcc-retreat-modalGrid .field label {
+  font-size: 0.82rem;
+  margin-bottom: 0.1rem;
+}
+.jcc-retreat-modal--attendeeEdit .jcc-retreat-modalGrid .field input,
+.jcc-retreat-modal--attendeeEdit .jcc-retreat-modalGrid .field select {
+  padding: 0.65rem 0.75rem;
+  font-size: 0.98rem;
+}
+.jcc-retreat-modal--attendeeEdit .jcc-retreat-modalFooter {
+  margin-top: 1.4rem;
+  gap: 0.6rem;
+}
+.jcc-retreat-modal--attendeeEdit .jcc-retreat-modalFooter button {
+  padding: 0.6rem 1.4rem;
+  font-size: 0.95rem;
+}
+.jcc-retreat-listTopActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.jcc-retreat-rosterCard .jcc-retreat-statusGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+@media (max-width: 640px) {
+  .jcc-retreat-manageTable .jcc-retreat-checkInBtn {
+    min-height: 2.35rem;
+    min-width: 4.2rem;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.82rem;
+  }
+  .jcc-retreat-attCol-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .jcc-retreat-modal--attendeeEdit {
+    width: min(96vw, 100%);
+    margin: 0.5rem;
+  }
+}
+.jcc-retreat-modal--wide {
+  max-width: 520px;
+}
+
+.jcc-retreat-modal--leader {
+  max-width: 480px;
+}
+
+.jcc-retreat-modalSubtitle {
+  margin: -0.35rem 0 0.75rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+/* 황금비율(≈1.618) 푸터 버튼 */
+.jcc-retreat-modalFooter--golden {
+  align-items: center;
+  gap: 0.55rem;
+}
+.jcc-retreat-btnCancel {
+  min-width: 5.5rem;
+  flex: 0 0 auto;
+}
+.jcc-retreat-btnPrimary {
+  min-width: 8.9rem;
+  flex: 0 0 auto;
+}
+
+/* 관리 탭 행 버튼 통일 */
+.jcc-retreat-rowBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.jcc-retreat-rowBtn--link {
+  background: rgba(96, 165, 250, 0.15);
+  border-color: rgba(96, 165, 250, 0.45);
+}
+.jcc-retreat-adminRowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+/* 조 운영진 관리 모달 · 조 상세 */
+.jcc-retreat-leaderAddForm .jcc-retreat-leaderAddGrid {
+  margin-top: 0.5rem;
+}
+#leaderModalOverlay .jcc-retreat-leaderListWrap {
+  margin-bottom: 0.75rem;
+  max-height: 12rem;
+  overflow: auto;
+}
+.jcc-retreat-leadersSection {
+  margin-bottom: 1rem;
+}
+.jcc-retreat-leadersSectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+.jcc-retreat-sectionTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.jcc-retreat-leadersDraft {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+.jcc-retreat-leadersDraftTitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.jcc-retreat-leadersDraftList {
+  margin-bottom: 0.5rem;
+}
+.jcc-retreat-leaderDraftRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 0.88rem;
+}
+.jcc-retreat-leadersDraftAdd {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 0.5rem 0.65rem;
+  align-items: end;
+}
+.jcc-retreat-leadersDraftAdd .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0;
+  min-width: 0;
+}
+.jcc-retreat-leadersDraftAdd .field label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+.jcc-retreat-leadersDraftAdd .field input,
+.jcc-retreat-leadersDraftAdd .field select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+.jcc-retreat-leadersDraftAdd .field input:focus,
+.jcc-retreat-leadersDraftAdd .field select:focus {
+  outline: 2px solid var(--accent, #4a9eff);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+.jcc-retreat-leaderAddBtn {
+  height: calc(0.45rem * 2 + 0.92rem * 1.3 + 2px);
+  white-space: nowrap;
+}
+.jcc-retreat-leadersDraftHint {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+}
+@media (max-width: 520px) {
+  .jcc-retreat-leadersDraftAdd {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .jcc-retreat-leaderAddBtn {
+    height: auto;
+  }
+}
+
+.jcc-onboarding-retreatCell select {
+  display: block;
+  margin-top: 0.25rem;
 }

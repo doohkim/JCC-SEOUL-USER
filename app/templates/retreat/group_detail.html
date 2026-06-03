@@ -13,7 +13,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603h" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603r" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -67,6 +67,7 @@
               <table class="jcc-retreat-attendeeTable">
                 <thead>
                   <tr>
+                    <th class="jcc-retreat-attCol-role">구분</th>
                     <th class="jcc-retreat-attCol-name">이름</th>
                     <th class="jcc-retreat-attCol-gender">성별</th>
                     <th class="jcc-retreat-attCol-phone">연락처</th>
@@ -82,8 +83,10 @@
                       data-attendee-id="{{ a.row_key }}"
                       data-check-in="{{ a.check_in_status }}"
                       data-gender="{{ a.gender }}"
+                      data-member-role="{{ a.member_role|default:'member' }}"
                       {% if a.is_snapshot_only %}data-row-snapshot="1" data-enrollment-id="{{ a.id }}" data-snapshot-session-id="{{ a.session_id }}"{% endif %}
                     >
+                      <td class="jcc-retreat-attCol-role">{{ a.display_member_role }}</td>
                       <td class="jcc-retreat-attCol-name">
                         <div class="jcc-retreat-attName" data-name>
                           {{ a.name }}
@@ -117,7 +120,7 @@
                       {% endif %}
                     </tr>
                   {% empty %}
-                    <tr><td colspan="{% if can_manage_attendees %}5{% else %}4{% endif %}">
+                    <tr><td colspan="{% if can_manage_attendees %}6{% else %}5{% endif %}">
                       <div class="msg">조원이 없습니다. {% if can_manage_attendees %}우측 상단 "조원 추가" 버튼으로 등록하세요.{% endif %}</div>
                     </td></tr>
                   {% endfor %}
@@ -196,6 +199,6 @@
       };
     </script>
     {% include 'includes/retreat_bottom_tabs.html' %}
-    <script src="{% static 'retreat/group_detail.js' %}?v=20260603h" defer></script>
+    <script src="{% static 'retreat/group_detail.js' %}?v=20260603s" defer></script>
   </body>
 </html>

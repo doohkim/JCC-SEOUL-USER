@@ -20,13 +20,16 @@
     .status.approved { border-color:rgba(52,199,89,.45); }
     .status.rejected { border-color:rgba(253,164,175,.45); }
     .field { margin-bottom:.85rem; }
+    .fieldGrid { display:grid; grid-template-columns:1fr 1fr; gap:.65rem .75rem; }
+    @media (max-width:520px) { .fieldGrid { grid-template-columns:1fr; } }
     label { display:block; margin-bottom:.3rem; color:var(--muted); font-size:.85rem; }
-    select { width:100%; background:#101722; border:1px solid var(--border); border-radius:8px; color:var(--text); padding:.6rem .7rem; }
+    select, input[type="text"], input[type="tel"] { width:100%; background:#101722; border:1px solid var(--border); border-radius:8px; color:var(--text); padding:.6rem .7rem; }
     .actions { margin-top:1rem; display:flex; gap:.6rem; }
     button { border:none; border-radius:8px; background:var(--accent); color:#fff; padding:.6rem 1rem; font-weight:600; cursor:pointer; }
     .msg { margin-top:.5rem; color:var(--muted); }
     .readonly-box { border:1px solid var(--border); border-radius:8px; background:#101722; padding:.6rem .7rem; color:var(--text); }
     ul.errorlist { margin:0 0 .5rem 1rem; color:var(--err); }
+    .retreatBlock { margin-top:.5rem; padding-top:.5rem; border-top:1px solid var(--border); }
     @media (max-width:640px) { .card { padding:16px; } .actions { flex-direction:column; } button { width:100%; } }
   </style>
 </head>
@@ -34,7 +37,7 @@
   <div class="wrap">
     <div class="card">
       <h1>소속 신청</h1>
-      <p class="desc">처음 로그인한 계정은 소속 승인 후 출석/교적 화면을 사용할 수 있습니다.</p>
+      <p class="desc">카카오 로그인 후 실명·연락처·소속 정보를 입력해 주세요. 관리자 승인 후 이용할 수 있습니다.</p>
 
       <div class="status {{ onboarding_status }}">
         {% if onboarding_status == "pending" %}
@@ -52,7 +55,7 @@
           {% if onboarding_note %}<div class="msg">사유: {{ onboarding_note }}</div>{% endif %}
         {% else %}
           <strong style="color:var(--ok);">확인 중</strong>
-          <div class="msg">희망 소속을 제출해 주세요.</div>
+          <div class="msg">아래 항목을 모두 입력해 제출해 주세요.</div>
         {% endif %}
       </div>
 
@@ -74,25 +77,51 @@
           </div>
         {% else %}
           <div class="field">
-            <label for="{{ form.requested_division.id_for_label }}">희망 부서</label>
-            {{ form.requested_division }}
-            {{ form.requested_division.errors }}
+            <label for="{{ form.real_name.id_for_label }}">실명 *</label>
+            {{ form.real_name }}
+            {{ form.real_name.errors }}
           </div>
           <div class="field">
-            <label for="{{ form.requested_team.id_for_label }}">희망 팀 (선택)</label>
+            <label for="{{ form.phone.id_for_label }}">휴대폰 *</label>
+            {{ form.phone }}
+            {{ form.phone.errors }}
+          </div>
+          <div class="fieldGrid">
+            <div class="field">
+              <label for="{{ form.requested_region.id_for_label }}">지역 *</label>
+              {{ form.requested_region }}
+              {{ form.requested_region.errors }}
+            </div>
+            <div class="field">
+              <label for="{{ form.requested_division.id_for_label }}">부서 *</label>
+              {{ form.requested_division }}
+              {{ form.requested_division.errors }}
+            </div>
+          </div>
+          <div class="field">
+            <label for="{{ form.requested_team.id_for_label }}">팀 *</label>
             {{ form.requested_team }}
             {{ form.requested_team.errors }}
           </div>
           {% if active_retreat_event %}
-            <div class="field">
-              <label>
-                {{ form.requested_retreat_participation }}
-                {{ active_retreat_event.name }} 수련회 참여
-              </label>
-            </div>
-            <div class="field" id="retreatRoleField">
-              <label for="{{ form.requested_retreat_role.id_for_label }}">수련회 희망 역할</label>
-              {{ form.requested_retreat_role }}
+            <div class="retreatBlock">
+              <div class="field">
+                <label>
+                  {{ form.requested_retreat_participation }}
+                  {{ active_retreat_event.name }} 수련회 참여
+                </label>
+              </div>
+              <div id="retreatFields" hidden>
+                <div class="field">
+                  <label for="{{ form.requested_retreat_group.id_for_label }}">희망 조 *</label>
+                  {{ form.requested_retreat_group }}
+                  {{ form.requested_retreat_group.errors }}
+                </div>
+                <div class="field">
+                  <label for="{{ form.requested_retreat_role.id_for_label }}">희망 역할</label>
+                  {{ form.requested_retreat_role }}
+                </div>
+              </div>
             </div>
           {% endif %}
         {% endif %}
@@ -108,21 +137,52 @@
   </div>
   <script>
     (function() {
+      const region = document.getElementById("id_requested_region");
       const division = document.getElementById("id_requested_division");
       const team = document.getElementById("id_requested_team");
+      const retreatGroup = document.getElementById("id_requested_retreat_group");
+      const participate = document.getElementById("id_requested_retreat_participation");
+      const retreatFields = document.getElementById("retreatFields");
+      const divisionsMap = {{ divisions_map_json|safe }};
       const teamsMap = {{ teams_map_json|safe }};
+      const retreatGroups = {{ retreat_groups_json|safe }};
       const isLocked = {{ is_pending_locked|yesno:"true,false" }};
-      if (!division || !team) return;
       if (isLocked) return;
-      const selectedTeam = team.value;
+
+      const selectedDivision = division ? division.value : "";
+      const selectedTeam = team ? team.value : "";
+      const selectedGroup = retreatGroup ? retreatGroup.value : "";
+
+      function renderDivisions() {
+        if (!region || !division) return;
+        const rid = region.value;
+        const rows = divisionsMap[String(rid)] || [];
+        division.innerHTML = "";
+        const empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = "부서를 선택해 주세요";
+        division.appendChild(empty);
+        rows.forEach((row) => {
+          const opt = document.createElement("option");
+          opt.value = String(row.id);
+          opt.textContent = row.name;
+          division.appendChild(opt);
+        });
+        if (rows.some((r) => String(r.id) === selectedDivision)) {
+          division.value = selectedDivision;
+        }
+        renderTeams();
+        renderRetreatGroups();
+      }
 
       function renderTeams() {
-        const divisionId = division.value;
-        const rows = teamsMap[String(divisionId)] || [];
+        if (!division || !team) return;
+        const did = division.value;
+        const rows = teamsMap[String(did)] || [];
         team.innerHTML = "";
         const empty = document.createElement("option");
         empty.value = "";
-        empty.textContent = "팀을 선택해 주세요 (선택)";
+        empty.textContent = "팀을 선택해 주세요";
         team.appendChild(empty);
         rows.forEach((row) => {
           const opt = document.createElement("option");
@@ -135,8 +195,45 @@
         }
       }
 
-      division.addEventListener("change", renderTeams);
-      renderTeams();
+      function renderRetreatGroups() {
+        if (!retreatGroup) return;
+        const did = division ? division.value : "";
+        const rid = region ? region.value : "";
+        retreatGroup.innerHTML = "";
+        const empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = "조를 선택해 주세요";
+        retreatGroup.appendChild(empty);
+        retreatGroups
+          .filter((g) => String(g.division_id) === String(did) && String(g.region_id) === String(rid))
+          .forEach((g) => {
+            const opt = document.createElement("option");
+            opt.value = String(g.id);
+            opt.textContent = g.label;
+            retreatGroup.appendChild(opt);
+          });
+        if ([...retreatGroup.options].some((o) => o.value === selectedGroup)) {
+          retreatGroup.value = selectedGroup;
+        }
+      }
+
+      function toggleRetreat() {
+        if (!participate || !retreatFields) return;
+        const on = participate.checked;
+        retreatFields.hidden = !on;
+        if (retreatGroup) retreatGroup.required = on;
+      }
+
+      if (region) region.addEventListener("change", renderDivisions);
+      if (division) {
+        division.addEventListener("change", () => {
+          renderTeams();
+          renderRetreatGroups();
+        });
+      }
+      if (participate) participate.addEventListener("change", toggleRetreat);
+      renderDivisions();
+      toggleRetreat();
     })();
   </script>
 </body>

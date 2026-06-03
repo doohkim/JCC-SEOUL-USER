@@ -10,7 +10,8 @@
     { code: "present", label: "참석" },
     { code: "absent", label: "결석" },
   ];
-  const UNAVAILABLE_CHECK_IN_STATUSES = new Set(["checked_out", "pending"]);
+  const NO_ATTENDANCE_CHECK_IN_STATUSES = new Set(["pending"]);
+  const NO_PRESENT_CHECK_IN_STATUSES = new Set(["checked_out"]);
 
   let matrix = {};
   const sessionId = ctx.sessionId;
@@ -56,11 +57,14 @@
       const cell = tr.querySelector(".jcc-retreat-statusCell");
       if (!cell) return;
       cell.innerHTML = "";
-      const isUnavailable = UNAVAILABLE_CHECK_IN_STATUSES.has(tr.dataset.checkIn);
-      // 서버 매트릭스에 키가 없어도 화면은 기본 결석으로 표시한다.
-      const current = isUnavailable
-        ? "absent"
-        : matrix[aid] || matrix[String(aid)] || "absent";
+      const checkIn = tr.dataset.checkIn || "pending";
+      if (NO_ATTENDANCE_CHECK_IN_STATUSES.has(checkIn)) {
+        cell.innerHTML =
+          '<span class="muted" title="입실 후 출석을 기록할 수 있습니다.">입실전</span>';
+        return;
+      }
+      const current = matrix[aid] || matrix[String(aid)] || "absent";
+      const noPresent = NO_PRESENT_CHECK_IN_STATUSES.has(checkIn);
       STATUSES.forEach((st) => {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -70,10 +74,9 @@
         btn.dataset.status = st.code;
         btn.dataset.attendeeId = String(aid);
         if (!ctx.canMutate) btn.disabled = true;
-        // 입실전·퇴실 조원은 '참석'을 누를 수 없음.
-        if (isUnavailable && st.code === "present") {
+        if (noPresent && st.code === "present") {
           btn.disabled = true;
-          btn.title = "입실전·퇴실 상태인 조원은 참석으로 변경할 수 없습니다.";
+          btn.title = "퇴실 상태인 조원은 참석으로 변경할 수 없습니다.";
         }
         cell.appendChild(btn);
       });

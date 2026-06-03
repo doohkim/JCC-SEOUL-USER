@@ -16,6 +16,7 @@ from users.mixins import ensure_user_profile, is_onboarding_complete
 from users.models import (
     Division,
     FunctionalDepartment,
+    Region,
     Role,
     Team,
     User,
@@ -25,10 +26,14 @@ from users.models import (
 )
 from users.permissions import (
     can_access_member_registry,
+    can_access_onboarding_approvals,
     can_manage_division_accounts,
     membership_divisions_for,
+    onboarding_approval_divisions_for,
     pastoral_divisions_for,
 )
+from users.validators import validate_korea_mobile_phone
+from retreat.models import RetreatGroup
 from users.services.user_display import kakao_nickname_map_for_user_ids, user_display_name
 
 
@@ -86,7 +91,18 @@ class _DivisionWithRegionChoiceField(forms.ModelChoiceField):
 
 
 class OnboardingRequestForm(forms.Form):
-    requested_division = _DivisionWithRegionChoiceField(
+    real_name = forms.CharField(label="실명", max_length=50)
+    phone = forms.CharField(
+        label="휴대폰",
+        max_length=30,
+        validators=[validate_korea_mobile_phone],
+    )
+    requested_region = forms.ModelChoiceField(
+        queryset=Region.objects.order_by("sort_order", "name"),
+        label="지역",
+        empty_label="지역을 선택해 주세요",
+    )
+    requested_division = forms.ModelChoiceField(
         queryset=Division.objects.select_related("region").order_by(
             "region__sort_order", "sort_order", "name"
         ),
@@ -94,38 +110,66 @@ class OnboardingRequestForm(forms.Form):
         empty_label="부서를 선택해 주세요",
     )
     requested_team = forms.ModelChoiceField(
-        queryset=Team.objects.select_related("division").all().order_by("division__sort_order", "name"),
+        queryset=Team.objects.select_related("division").all().order_by(
+            "division__sort_order", "sort_order", "name"
+        ),
         label="희망 팀",
-        required=False,
-        empty_label="팀을 선택해 주세요 (선택)",
+        empty_label="팀을 선택해 주세요",
     )
     requested_retreat_participation = forms.BooleanField(
         label="수련회 참여",
         required=False,
     )
+    requested_retreat_group = forms.ModelChoiceField(
+        queryset=RetreatGroup.objects.none(),
+        label="희망 조",
+        required=False,
+        empty_label="조를 선택해 주세요",
+    )
     requested_retreat_role = forms.ChoiceField(
         label="수련회 희망 역할",
         choices=[
-            ("", "참가자(일반)"),
+            ("participant", "참가자"),
             ("leader", "조장"),
             ("vice_leader", "부조장"),
         ],
         required=False,
+        initial="participant",
     )
 
     def __init__(self, *args, active_retreat_event=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.active_retreat_event = active_retreat_event
-        if not active_retreat_event:
+        if active_retreat_event:
+            self.fields["requested_retreat_group"].queryset = RetreatGroup.objects.filter(
+                event=active_retreat_event
+            ).select_related("region", "division").order_by(
+                "region__sort_order", "division__sort_order", "order", "id"
+            )
+        else:
             self.fields.pop("requested_retreat_participation", None)
+            self.fields.pop("requested_retreat_group", None)
             self.fields.pop("requested_retreat_role", None)
 
     def clean(self):
         cleaned = super().clean()
+        region = cleaned.get("requested_region")
         division = cleaned.get("requested_division")
         team = cleaned.get("requested_team")
+        if division and region and division.region_id != region.id:
+            self.add_error("requested_division", "선택한 부서는 해당 지역에 속해야 합니다.")
         if team and division and team.division_id != division.id:
             self.add_error("requested_team", "선택한 팀은 해당 부서에 속하지 않습니다.")
+        participate = cleaned.get("requested_retreat_participation")
+        retreat_group = cleaned.get("requested_retreat_group")
+        if participate and self.active_retreat_event:
+            if not retreat_group:
+                self.add_error("requested_retreat_group", "수련회 참여 시 조를 선택해 주세요.")
+            elif division and retreat_group.division_id != division.id:
+                self.add_error(
+                    "requested_retreat_group",
+                    "선택한 조는 신청 부서·지역과 일치해야 합니다.",
+                )
         return cleaned
 
 
@@ -154,14 +198,24 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
     def get_initial(self):
         profile = ensure_user_profile(self.request.user)
         initial = {
+            "real_name": profile.real_name or "",
+            "phone": profile.phone or "",
             "requested_division": profile.requested_division_id,
             "requested_team": profile.requested_team_id,
         }
+        if profile.requested_division_id:
+            try:
+                initial["requested_region"] = profile.requested_division.region_id
+            except Exception:
+                pass
         from retreat.models import RetreatEvent
 
         if RetreatEvent.objects.filter(is_active=True).exists():
             initial["requested_retreat_participation"] = profile.requested_retreat_participation
-            initial["requested_retreat_role"] = profile.requested_retreat_role or ""
+            initial["requested_retreat_group"] = profile.requested_retreat_group_id
+            initial["requested_retreat_role"] = (
+                profile.requested_retreat_role or "participant"
+            )
         return initial
 
     def get_context_data(self, **kwargs):
@@ -187,16 +241,43 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
             and profile.requested_division_id
         )
         ctx["next_url"] = self.request.GET.get("next", "")
+        divisions_map = {}
+        for d in Division.objects.select_related("region").order_by(
+            "region__sort_order", "sort_order", "name"
+        ):
+            divisions_map.setdefault(str(d.region_id), []).append(
+                {"id": d.id, "name": d.name}
+            )
         teams_map = {}
-        for t in Team.objects.select_related("division").order_by("division__sort_order", "sort_order", "name"):
+        for t in Team.objects.select_related("division").order_by(
+            "division__sort_order", "sort_order", "name"
+        ):
             teams_map.setdefault(str(t.division_id), []).append({"id": t.id, "name": t.name})
+        ctx["divisions_map_json"] = json.dumps(divisions_map, ensure_ascii=False)
         ctx["teams_map_json"] = json.dumps(teams_map, ensure_ascii=False)
-        from retreat.models import RetreatEvent
+        from retreat.models import RetreatEvent, RetreatGroup
 
         active_retreat = (
             RetreatEvent.objects.filter(is_active=True).order_by("-start_date", "-id").first()
         )
         ctx["active_retreat_event"] = active_retreat
+        if active_retreat:
+            ctx["retreat_groups_json"] = json.dumps(
+                [
+                    {
+                        "id": g.id,
+                        "division_id": g.division_id,
+                        "region_id": g.region_id,
+                        "label": f"{g.region.name} {g.division.name} {g.name}",
+                    }
+                    for g in RetreatGroup.objects.filter(event=active_retreat)
+                    .select_related("region", "division")
+                    .order_by("region__sort_order", "division__sort_order", "order", "id")
+                ],
+                ensure_ascii=False,
+            )
+        else:
+            ctx["retreat_groups_json"] = "[]"
         return ctx
 
     def form_valid(self, form):
@@ -211,11 +292,15 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
             messages.info(self.request, "이미 신청이 접수되어 승인 대기 중입니다.")
             return HttpResponseRedirect(self.get_success_url())
 
+        profile.real_name = (form.cleaned_data["real_name"] or "").strip()
+        profile.phone = (form.cleaned_data["phone"] or "").strip()
         profile.requested_division = form.cleaned_data["requested_division"]
         profile.requested_team = form.cleaned_data["requested_team"]
         profile.onboarding_status = UserProfile.OnboardingStatus.PENDING
         profile.onboarding_note = ""
         update_fields = [
+            "real_name",
+            "phone",
             "requested_division",
             "requested_team",
             "onboarding_status",
@@ -227,8 +312,13 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
             participate = form.cleaned_data["requested_retreat_participation"]
             profile.requested_retreat_participation = participate
             profile.requested_retreat_event = active_retreat if participate else None
+            profile.requested_retreat_group = (
+                form.cleaned_data.get("requested_retreat_group")
+                if participate
+                else None
+            )
             profile.requested_retreat_role = (
-                form.cleaned_data.get("requested_retreat_role") or ""
+                form.cleaned_data.get("requested_retreat_role") or "participant"
                 if participate
                 else ""
             )
@@ -236,6 +326,20 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
                 [
                     "requested_retreat_participation",
                     "requested_retreat_event",
+                    "requested_retreat_group",
+                    "requested_retreat_role",
+                ]
+            )
+        else:
+            profile.requested_retreat_participation = False
+            profile.requested_retreat_event = None
+            profile.requested_retreat_group = None
+            profile.requested_retreat_role = ""
+            update_fields.extend(
+                [
+                    "requested_retreat_participation",
+                    "requested_retreat_event",
+                    "requested_retreat_group",
                     "requested_retreat_role",
                 ]
             )
@@ -260,9 +364,9 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
     _list_limit = 500
 
     def dispatch(self, request, *args, **kwargs):
-        if not can_access_member_registry(request.user):
+        if not can_access_onboarding_approvals(request.user):
             raise PermissionDenied("가입 승인 페이지 권한이 없습니다.")
-        if not pastoral_divisions_for(request.user).exists():
+        if not onboarding_approval_divisions_for(request.user).exists():
             raise PermissionDenied("담당 부서가 없어 가입 승인을 이용할 수 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -276,23 +380,43 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
         return f"{base}?{urlencode(q)}" if q else base
 
     def _allowed_division_ids(self) -> set[int]:
-        return set(pastoral_divisions_for(self.request.user).values_list("pk", flat=True))
+        return set(
+            onboarding_approval_divisions_for(self.request.user).values_list("pk", flat=True)
+        )
 
     def _apply_retreat_fields_from_post(self, request, profile: UserProfile) -> None:
-        """승인 화면에서 수련회 역할·배정 조 필드 반영."""
+        """승인 화면에서 수련회 조·역할 필드 반영."""
         retreat_role = (request.POST.get("retreat_role") or "").strip()
-        if retreat_role in ("leader", "vice_leader"):
+        group_id = (request.POST.get("retreat_group_id") or "").strip()
+        update_fields = []
+        if retreat_role in ("leader", "vice_leader", "participant", ""):
             profile.requested_retreat_role = retreat_role
-            profile.save(update_fields=["requested_retreat_role", "updated_at"])
+            update_fields.append("requested_retreat_role")
+        if group_id.isdigit():
+            from retreat.models import RetreatGroup
+
+            g = RetreatGroup.objects.filter(pk=int(group_id)).first()
+            if g and profile.requested_division_id == g.division_id:
+                profile.requested_retreat_group = g
+                update_fields.append("requested_retreat_group")
+        if update_fields:
+            update_fields.append("updated_at")
+            profile.save(update_fields=update_fields)
 
     def _resolve_active_division(self):
-        divisions = pastoral_divisions_for(self.request.user).order_by("sort_order", "name")
+        divisions = onboarding_approval_divisions_for(self.request.user).order_by(
+            "sort_order", "name"
+        )
         if not divisions.exists():
             return None, divisions
 
         role_code = getattr(getattr(self.request.user, "role_level", None), "code", "")
         requested_code = (self.request.GET.get("division_code") or self.request.POST.get("division_code") or "").strip()
-        if role_code in ("pastor", "evangelist") or self.request.user.is_superuser:
+        if (
+            role_code in ("pastor", "evangelist")
+            or self.request.user.is_superuser
+            or divisions.count() > 1
+        ):
             active = divisions.filter(code=requested_code).first() if requested_code else None
             if active is None:
                 active = divisions.first()
@@ -405,13 +529,17 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
         if profile.requested_division_id not in allowed_ids:
             messages.error(request, "담당 부서 신청 건만 수정할 수 있습니다.")
             return HttpResponseRedirect(next_url)
+        if not profile.requested_team_id:
+            messages.error(request, "팀을 지정해 주세요.")
+            return HttpResponseRedirect(next_url)
 
         note = (request.POST.get("note") or "").strip()
 
         if selected_status == UserProfile.OnboardingStatus.APPROVED:
             team = profile.requested_team
-            if team and team.division_id != profile.requested_division_id:
-                team = None
+            if team is None or team.division_id != profile.requested_division_id:
+                messages.error(request, "승인 시 유효한 팀이 필요합니다.")
+                return HttpResponseRedirect(next_url)
             UserDivisionTeam.objects.update_or_create(
                 user=profile.user,
                 division=profile.requested_division,
@@ -451,9 +579,12 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
         start_dt, end_dt, date_from, date_to = self._parse_updated_at_range()
 
         role_code = getattr(getattr(self.request.user, "role_level", None), "code", "")
-        ctx["can_choose_onboarding_division"] = (
-            role_code in ("pastor", "evangelist") or self.request.user.is_superuser
-        )
+        ctx["can_choose_onboarding_division"] = allowed_divisions.count() > 1
+        ctx["retreat_role_choices"] = [
+            ("participant", "참가자"),
+            ("leader", "조장"),
+            ("vice_leader", "부조장"),
+        ]
         ctx["allowed_divisions"] = list(
             allowed_divisions.select_related("region").order_by(
                 "region__sort_order", "sort_order", "name"
@@ -475,20 +606,38 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
         )
         ctx["active_retreat_event"] = active_retreat
         if active_retreat:
-            ctx["retreat_groups"] = list(
+            retreat_groups = list(
                 RetreatGroup.objects.filter(event=active_retreat)
                 .select_related("region", "division")
                 .order_by("region__sort_order", "division__sort_order", "order", "id")
             )
+            ctx["retreat_groups"] = retreat_groups
+            import json as _json
+
+            ctx["retreat_groups_json"] = _json.dumps(
+                [
+                    {
+                        "id": g.id,
+                        "division_id": g.division_id,
+                        "region_id": g.region_id,
+                        "label": f"{g.region.name} {g.division.name} {g.name}",
+                    }
+                    for g in retreat_groups
+                ],
+                ensure_ascii=False,
+            )
         else:
             ctx["retreat_groups"] = []
+            ctx["retreat_groups_json"] = "[]"
 
         scoped = (
             UserProfile.objects.select_related(
                 "user",
                 "requested_division",
+                "requested_division__region",
                 "requested_team",
                 "requested_retreat_event",
+                "requested_retreat_group",
             )
             .exclude(user__is_staff=True)
             .exclude(user__is_superuser=True)
@@ -514,19 +663,30 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
         user_ids.update(approved_profiles.values_list("user_id", flat=True))
         kakao_map = kakao_nickname_map_for_user_ids(user_ids)
         label_map = {}
+        real_name_map = {}
         if user_ids:
             for u in User.objects.filter(pk__in=user_ids).select_related("profile"):
                 label_map[u.id] = user_display_name(u, kakao_map=kakao_map)
+                prof = getattr(u, "profile", None)
+                real_name_map[u.id] = (getattr(prof, "real_name", "") or "").strip()
 
         ctx["pending_profiles"] = pending_profiles
         ctx["rejected_profiles"] = rejected_profiles
         ctx["approved_profiles"] = approved_profiles
         ctx["user_label_map"] = label_map
+        ctx["user_real_name_map"] = real_name_map
         ctx["account_tab"] = "approvals"
         ctx["division_choices"] = list(
             allowed_divisions.select_related("region").order_by(
                 "region__sort_order", "sort_order", "name"
             )
+        )
+        from users.models import Region
+
+        ctx["region_choices"] = list(
+            Region.objects.filter(
+                pk__in=allowed_divisions.values_list("region_id", flat=True).distinct()
+            ).order_by("sort_order", "name")
         )
         team_map = {}
         for t in Team.objects.select_related("division").order_by("division__sort_order", "sort_order", "name"):
@@ -591,6 +751,8 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         manage_attendance = request.POST.get("can_manage_attendance") == "on"
         manage_parking = request.POST.get("can_manage_parking") == "on"
         manage_accounts = request.POST.get("can_manage_accounts") == "on"
+        real_name = (request.POST.get("real_name") or "").strip()
+        phone = (request.POST.get("phone") or "").strip()
         if not user_id.isdigit():
             messages.error(request, "대상 사용자를 선택해 주세요.")
             return HttpResponseRedirect(
@@ -654,8 +816,26 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                 sort_order=0,
             )
 
-        # Admin·가입 승인은 UserProfile.requested_* 를 볼 때가 많아, 실제 소속 팀과 맞춘다.
         profile = ensure_user_profile(target_user)
+        prof_updates = []
+        if real_name:
+            profile.real_name = real_name
+            prof_updates.append("real_name")
+        if phone:
+            try:
+                validate_korea_mobile_phone(phone)
+                profile.phone = phone
+                prof_updates.append("phone")
+            except Exception:
+                messages.error(request, "휴대폰 번호 형식이 올바르지 않습니다.")
+                return HttpResponseRedirect(
+                    f"{reverse_lazy('user_division_account_roles')}?division_code={active_division.code}"
+                )
+        if prof_updates:
+            prof_updates.append("updated_at")
+            profile.save(update_fields=prof_updates)
+
+        # Admin·가입 승인은 UserProfile.requested_* 를 볼 때가 많아, 실제 소속 팀과 맞춘다.
         if profile.requested_division_id is None:
             profile.requested_division = active_division
             profile.requested_team = selected_team
@@ -731,12 +911,19 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                     display_name = ""
                 if not display_name:
                     display_name = kakao_nickname_by_user.get(u.id, "")
+                prof = getattr(u, "profile", None)
+                region_name = ""
+                if active_division and active_division.region_id:
+                    region_name = active_division.region.name
                 users_payload.append(
                     {
                         "id": u.id,
                         "username": u.username,
                         "display_name": display_name,
-                        "phone": getattr(getattr(u, "profile", None), "phone", "") or "",
+                        "real_name": (getattr(prof, "real_name", "") or "").strip(),
+                        "phone": getattr(prof, "phone", "") or "",
+                        "region_name": region_name,
+                        "division_name": active_division.name if active_division else "",
                         "role_level_name": u.role_level.name if u.role_level_id else "-",
                         "team_id": memberships.get(u.id),
                         "assigned_role_codes": sorted(list(role_map.get(u.id, set()))),

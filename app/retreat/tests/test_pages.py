@@ -179,8 +179,9 @@ class RetreatPageAccessTests(_PageFixture):
         )
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'id="retreatEventSwitcher"')
-        self.assertContains(r, "입실 시각")
+        self.assertContains(r, "구분")
         self.assertContains(r, "data-check-in-group")
+        self.assertNotContains(r, "jcc-retreat-stampInput")
         self.assertFalse(r.context["can_edit_timestamps"])
 
     def test_manage_group_detail_staff_can_edit_timestamps(self):
@@ -191,7 +192,9 @@ class RetreatPageAccessTests(_PageFixture):
         )
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.context["can_edit_timestamps"])
-        self.assertContains(r, "jcc-retreat-stampInput")
+        self.assertTrue(r.context["can_edit_attendee"])
+        self.assertContains(r, "구분")
+        self.assertContains(r, "jcc-retreat-modal--attendeeEdit")
 
     def test_group_detail_exposes_can_manage_sessions_and_hint(self):
         self.client.force_login(self.superuser)

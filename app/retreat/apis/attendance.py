@@ -110,19 +110,23 @@ class RetreatAttendanceBulkUpsertView(APIView):
                 )
             # 추가로 변경 권한도 확인 (staff/leader/superuser).
             assert_can_mutate_group(request.user, enrollment.source_group)
-            # 입실전·퇴실 조원은 '참석'으로 기록 불가.
-            if (
-                enrollment.check_in_status
-                in (
-                    RetreatAttendee.CheckInStatus.CHECKED_OUT,
-                    RetreatAttendee.CheckInStatus.PENDING,
+            if enrollment.check_in_status == RetreatAttendee.CheckInStatus.PENDING:
+                return Response(
+                    {
+                        "detail": (
+                            f"enrollment_id={enrollment.id} (입실전)는 출석을 설정할 수 없습니다."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
+            if (
+                enrollment.check_in_status == RetreatAttendee.CheckInStatus.CHECKED_OUT
                 and r["status"] == RetreatAttendance.Status.PRESENT
             ):
                 return Response(
                     {
                         "detail": (
-                            f"enrollment_id={enrollment.id} (입실전/퇴실 상태)는 참석으로 변경할 수 없습니다."
+                            f"enrollment_id={enrollment.id} (퇴실)는 참석으로 변경할 수 없습니다."
                         )
                     },
                     status=status.HTTP_400_BAD_REQUEST,

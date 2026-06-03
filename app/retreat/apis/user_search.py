@@ -22,7 +22,11 @@ _MAX_LIMIT = 30
 
 
 class RetreatUserSearchView(APIView):
-    """GET /api/v1/retreat/users/search/?q=...&limit=20"""
+    """GET /api/v1/retreat/users/search/?q=...&division=..&region=..&limit=20
+
+    ``division``(또는 ``region``)을 주면 해당 소속 계정만 반환한다. ``q`` 가
+    비어 있어도 부서·지역 필터가 있으면 그 소속 전체 목록을 돌려준다.
+    """
 
     permission_classes = [IsAuthenticated]
 
@@ -31,6 +35,8 @@ class RetreatUserSearchView(APIView):
             raise PermissionDenied("수련회 화면 접근 권한이 없습니다.")
 
         q = (request.query_params.get("q") or "").strip()
+        division_id = self._as_int(request.query_params.get("division"))
+        region_id = self._as_int(request.query_params.get("region"))
         try:
             limit = int(request.query_params.get("limit") or _DEFAULT_LIMIT)
         except (TypeError, ValueError):
@@ -38,11 +44,18 @@ class RetreatUserSearchView(APIView):
         limit = max(1, min(limit, _MAX_LIMIT))
 
         qs = User.objects.filter(is_active=True).select_related("profile")
+        if division_id:
+            qs = qs.filter(division_teams__division_id=division_id)
+        elif region_id:
+            qs = qs.filter(division_teams__division__region_id=region_id)
         if q:
             qs = qs.filter(
                 Q(username__icontains=q) | Q(profile__display_name__icontains=q)
             )
-        qs = qs.order_by("username")[:limit]
+        elif not (division_id or region_id):
+            # 필터도 검색어도 없으면 빈 목록(전체 계정 노출 방지).
+            return Response([])
+        qs = qs.distinct().order_by("username")[:limit]
 
         results = []
         for u in qs:
@@ -59,3 +72,10 @@ class RetreatUserSearchView(APIView):
                 }
             )
         return Response(results)
+
+    @staticmethod
+    def _as_int(value):
+        try:
+            return int(value) if value not in (None, "") else None
+        except (TypeError, ValueError):
+            return None

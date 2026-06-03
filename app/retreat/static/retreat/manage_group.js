@@ -27,6 +27,12 @@
   const statusLineEl = document.getElementById("retreatStatus");
   const attBody = document.getElementById("retreatAttBody");
   const addBtn = document.getElementById("btnAddAttendee");
+  const summaryEls = {
+    pending: document.querySelector("[data-summary-pending]"),
+    in: document.querySelector("[data-summary-in]"),
+    out: document.querySelector("[data-summary-out]"),
+    total: document.querySelector("[data-summary-total]"),
+  };
 
   const overlay = document.getElementById("retreatModalOverlay");
   const form = document.getElementById("retreatAttendeeForm");
@@ -34,9 +40,9 @@
   const genderInput = document.getElementById("retreatAttGender");
   const phoneInput = document.getElementById("retreatAttPhone");
   const memoInput = document.getElementById("retreatAttMemo");
-  const checkInInput = document.getElementById("retreatAttCheckIn");
   const expectedInInput = document.getElementById("retreatAttExpectedIn");
   const expectedOutInput = document.getElementById("retreatAttExpectedOut");
+  const roleInput = document.getElementById("retreatAttRole");
   const titleEl = document.getElementById("retreatModalTitle");
   const submitBtn = document.getElementById("retreatModalSubmit");
   const cancelBtn = document.getElementById("retreatModalCancel");
@@ -63,18 +69,40 @@
 
   let modalMode = "create";
   let modalAttendeeId = null;
+  let attendeePicker = null;
+
+  function recomputeSummary() {
+    if (!attBody) return;
+    let pending = 0;
+    let inCount = 0;
+    let outCount = 0;
+    let total = 0;
+    attBody.querySelectorAll("tr[data-attendee-id]").forEach((tr) => {
+      total += 1;
+      const s = tr.dataset.checkIn || "pending";
+      if (s === "checked_in") inCount += 1;
+      else if (s === "checked_out") outCount += 1;
+      else pending += 1;
+    });
+    if (summaryEls.pending) summaryEls.pending.textContent = String(pending);
+    if (summaryEls.in) summaryEls.in.textContent = String(inCount);
+    if (summaryEls.out) summaryEls.out.textContent = String(outCount);
+    if (summaryEls.total) summaryEls.total.textContent = String(total);
+  }
 
   function init() {
     renderCheckInGroups();
-    bindStampInputs();
-    if (ctx.canMutate) {
-      bindCheckInClicks();
-      bindAttendeeMutators();
-      bindModal();
-      bindLodgingSelects();
-    }
+    recomputeSummary();
     bindConfirm();
     bindHistory();
+    if (ctx.canMutate) {
+      bindCheckInClicks();
+      bindLodgingSelects();
+    }
+    if (ctx.canEditAttendee) {
+      bindAttendeeMutators();
+      bindModal();
+    }
   }
 
   function formatStamp(iso) {
@@ -133,6 +161,13 @@
         btn.textContent = opt.label;
         if (current === opt.code) btn.classList.add("is-active");
         if (!ctx.canMutate) btn.disabled = true;
+        if (current === "checked_in" && opt.code === "pending") btn.disabled = true;
+        if (
+          current === "checked_out" &&
+          (opt.code === "pending" || opt.code === "checked_in")
+        ) {
+          btn.disabled = true;
+        }
         groupEl.appendChild(btn);
       });
     });
@@ -149,6 +184,17 @@
     }
     tr.dataset.expectedInAt = data.expected_check_in_at || "";
     tr.dataset.expectedOutAt = data.expected_check_out_at || "";
+
+    if (data.member_role) {
+      tr.dataset.memberRole = data.member_role;
+      const roleCell = tr.querySelector(".jcc-retreat-attCol-role");
+      if (roleCell && data.member_role_display)
+        roleCell.textContent = data.member_role_display;
+    }
+    if ("user" in data) {
+      tr.dataset.userId = data.user ? String(data.user) : "";
+      tr.dataset.userLabel = data.user_label || "";
+    }
 
     const nameEl = tr.querySelector("[data-name]");
     if (nameEl && data.name) nameEl.textContent = data.name;
@@ -182,6 +228,7 @@
     }
 
     renderCheckInGroups();
+    recomputeSummary();
   }
 
   async function patchAttendee(attendeeId, payload) {
@@ -223,19 +270,16 @@
       const prev = tr.dataset.checkIn || "";
       if (prev === newStatus) return;
 
-      if (newStatus === "checked_in" || newStatus === "checked_out") {
-        const name =
-          tr.querySelector("[data-name]")?.textContent?.trim() || "조원";
-        const prevLabel = CHECK_IN_LABELS[prev] || prev || "-";
-        const nextLabel = CHECK_IN_LABELS[newStatus] || newStatus;
-        const ok = await openConfirm({
-          title: `${nextLabel} 처리`,
-          message: `${name} 님을 ${prevLabel} → ${nextLabel} 상태로 변경할까요?\n변경 시각이 자동으로 기록됩니다.`,
-          okLabel: "확인",
-          cancelLabel: "취소",
-        });
-        if (!ok) return;
-      }
+      const name = tr.querySelector("[data-name]")?.textContent?.trim() || "조원";
+      const prevLabel = CHECK_IN_LABELS[prev] || prev || "-";
+      const nextLabel = CHECK_IN_LABELS[newStatus] || newStatus;
+      const ok = await openConfirm({
+        title: `${nextLabel} 처리`,
+        message: `${name} 님\n${prevLabel} → ${nextLabel}\n\n이대로 변경할까요?`,
+        okLabel: "확인",
+        cancelLabel: "취소",
+      });
+      if (!ok) return;
 
       try {
         const data = await patchAttendee(aid, { check_in_status: newStatus });
@@ -271,6 +315,9 @@
 
   function bindModal() {
     if (!overlay) return;
+    attendeePicker = createUserPicker(
+      form ? form.querySelector("[data-user-picker]") : null
+    );
     if (addBtn)
       addBtn.addEventListener("click", () =>
         openModal("create", { checkIn: "pending" })
@@ -307,6 +354,9 @@
           gender: tr.dataset.gender || "",
           expectedIn: tr.dataset.expectedInAt || "",
           expectedOut: tr.dataset.expectedOutAt || "",
+          memberRole: tr.dataset.memberRole || "member",
+          userId: tr.dataset.userId || "",
+          userLabel: tr.dataset.userLabel || "",
         });
       } else if (del) {
         confirmDelete(aid);
@@ -520,11 +570,18 @@
     if (phoneInput) phoneInput.value = payload?.phone === "-" ? "" : payload?.phone || "";
     if (genderInput) genderInput.value = payload?.gender || "";
     if (memoInput) memoInput.value = payload?.memo || "";
-    if (checkInInput) checkInInput.value = payload?.checkIn || "pending";
     if (expectedInInput)
       expectedInInput.value = toDatetimeLocalValue(payload?.expectedIn || "");
     if (expectedOutInput)
       expectedOutInput.value = toDatetimeLocalValue(payload?.expectedOut || "");
+    if (roleInput) roleInput.value = payload?.memberRole || "member";
+    if (attendeePicker) {
+      if (payload?.userId) {
+        attendeePicker.setSelected(payload.userId, payload.userLabel || "");
+      } else {
+        attendeePicker.clear();
+      }
+    }
     overlay.hidden = false;
     overlay.setAttribute("aria-hidden", "false");
     requestAnimationFrame(() => nameInput?.focus());
@@ -541,14 +598,16 @@
     e.preventDefault();
     if (!submitBtn) return;
     submitBtn.disabled = true;
+    const linkedUserId = attendeePicker ? attendeePicker.getId() : "";
     const payload = {
       name: (nameInput?.value || "").trim(),
       gender: genderInput?.value || "",
       phone: (phoneInput?.value || "").trim(),
       memo: (memoInput?.value || "").trim(),
-      check_in_status: checkInInput?.value || "pending",
       expected_check_in_at: isoFromDatetimeLocal(expectedInInput?.value || ""),
       expected_check_out_at: isoFromDatetimeLocal(expectedOutInput?.value || ""),
+      member_role: roleInput?.value || "member",
+      user: linkedUserId ? Number(linkedUserId) : null,
     };
     if (!payload.name) {
       submitBtn.disabled = false;
@@ -637,6 +696,110 @@
         }
       });
     });
+  }
+
+  function createUserPicker(root) {
+    if (!root || !ctx.urls.userSearchUrl) return null;
+    const input = root.querySelector("[data-user-picker-input]");
+    const list = root.querySelector("[data-user-picker-list]");
+    const hidden = root.querySelector("[data-user-picker-id]");
+    if (!input || !list || !hidden) return null;
+
+    let selected = null;
+    let items = [];
+    let activeIdx = -1;
+    let timer = null;
+    let lastQuery = "";
+
+    function filterParams() {
+      const params = new URLSearchParams();
+      if (ctx.groupDivisionId) params.set("division", String(ctx.groupDivisionId));
+      else if (ctx.groupRegionId) params.set("region", String(ctx.groupRegionId));
+      return params;
+    }
+
+    function clear() {
+      selected = null;
+      hidden.value = "";
+      input.value = "";
+      list.hidden = true;
+      list.innerHTML = "";
+    }
+
+    function setSelected(id, label) {
+      selected = { id: Number(id), name: label || "" };
+      hidden.value = String(id);
+      input.value = label || "";
+      list.hidden = true;
+      list.innerHTML = "";
+    }
+
+    function renderList() {
+      if (!items.length) {
+        list.innerHTML =
+          '<li class="muted" role="option" aria-disabled="true">결과 없음</li>';
+        list.hidden = false;
+        return;
+      }
+      list.innerHTML = items
+        .map((u, i) => {
+          const shown = u.name || u.display_name || u.username;
+          return `<li role="option" data-idx="${i}" class="${
+            i === activeIdx ? "is-active" : ""
+          }">${escapeHtml(shown)}</li>`;
+        })
+        .join("");
+      list.hidden = false;
+    }
+
+    async function search(q) {
+      lastQuery = q;
+      const params = filterParams();
+      if (q) params.set("q", q);
+      params.set("limit", "30");
+      const url = `${ctx.urls.userSearchUrl}?${params.toString()}`;
+      const r = await fetch(url, { credentials: "same-origin" });
+      if (!r.ok || q !== lastQuery) return;
+      items = await r.json();
+      activeIdx = items.length ? 0 : -1;
+      renderList();
+    }
+
+    input.addEventListener("input", () => {
+      selected = null;
+      hidden.value = "";
+      const q = input.value.trim();
+      clearTimeout(timer);
+      timer = setTimeout(() => search(q), 180);
+    });
+
+    // 포커스 시 같은 지역·부서 계정 목록을 바로 보여준다(글씨 없이도).
+    input.addEventListener("focus", () => {
+      if (!input.value.trim()) search("");
+    });
+
+    list.addEventListener("mousedown", (e) => {
+      const li = e.target.closest("li[data-idx]");
+      if (!li) return;
+      e.preventDefault();
+      const u = items[Number(li.dataset.idx)];
+      if (!u) return;
+      selected = u;
+      hidden.value = String(u.id);
+      input.value = u.name || u.display_name || u.username;
+      list.hidden = true;
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!root.contains(e.target)) list.hidden = true;
+    });
+
+    return {
+      clear,
+      setSelected,
+      getSelected: () => selected,
+      getId: () => hidden.value || "",
+    };
   }
 
   if (document.readyState === "loading") {

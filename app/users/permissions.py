@@ -304,6 +304,51 @@ def pastoral_divisions_for(user: User, *, region=None):
     return _apply_region_filter(qs, region)
 
 
+def onboarding_approval_divisions_for(user: User, *, region=None):
+    """
+    가입 승인 탭에서 다룰 수 있는 부서.
+
+    - 슈퍼유저: 전체
+    - 목사·전도사: 목회 담당 부서
+    - 활성 수련회 회장단: 본인 ``UserDivisionTeam`` 소속 부서
+    """
+    if not user.is_authenticated:
+        return Division.objects.none()
+    if user.is_superuser:
+        qs = Division.objects.all()
+    else:
+        div_ids: set[int] = set()
+        role_code = getattr(getattr(user, "role_level", None), "code", None)
+        if role_code in ("pastor", "evangelist"):
+            div_ids.update(
+                _pastoral_assigned_divisions(user).values_list("pk", flat=True)
+            )
+        from retreat.models import RetreatCouncilMembership, RetreatEvent
+
+        active_event_ids = list(
+            RetreatEvent.objects.filter(is_active=True).values_list("id", flat=True)
+        )
+        if active_event_ids and RetreatCouncilMembership.objects.filter(
+            user=user, event_id__in=active_event_ids
+        ).exists():
+            div_ids.update(
+                user.division_teams.values_list("division_id", flat=True).distinct()
+            )
+        if not div_ids:
+            return Division.objects.none()
+        qs = Division.objects.filter(pk__in=div_ids)
+    return _apply_region_filter(qs, region)
+
+
+def can_access_onboarding_approvals(user: User) -> bool:
+    """가입 승인 탭 — 슈퍼유저·목사·전도사·활성 수련회 회장단(소속 부서)."""
+    if not user.is_authenticated or not user.is_active:
+        return False
+    if user.is_superuser:
+        return True
+    return onboarding_approval_divisions_for(user).exists()
+
+
 def can_manage_division_accounts(user: User) -> bool:
     if not user.is_authenticated or not user.is_active:
         return False
@@ -584,6 +629,30 @@ def is_retreat_council(user: User, event) -> bool:
     if event is None:
         return False
     return user.retreat_council_memberships.filter(event=event).exists()
+
+
+def can_add_retreat_group(user: User, event) -> bool:
+    """조 생성 권한 — 슈퍼유저·해당 행사 회장단만 (목사·전도사·조장 제외)."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_superuser:
+        return True
+    if event is None:
+        return False
+    return is_retreat_council(user, event)
+
+
+def can_manage_retreat_group_leaders(user: User, group) -> bool:
+    """조 운영진(조장·부조장) 추가·수정·삭제 — 슈퍼유저·회장단·본인 조 운영진."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_superuser:
+        return True
+    if group is None:
+        return False
+    if is_retreat_council(user, group.event):
+        return True
+    return is_retreat_group_leader(user, group)
 
 
 def can_manage_retreat_sessions(user: User, event) -> bool:

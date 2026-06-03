@@ -302,11 +302,27 @@ class RetreatRosterCheckView(_RetreatEventMixin, TemplateView):
             )
         )
 
-        # 입실 → 퇴실 순, 그 안에서 sort_order, name, id 순.
+        from django.db.models import Case, IntegerField, Value, When
+
+        from retreat.models import RetreatAttendee
+
+        role_order = Case(
+            When(member_role=RetreatAttendee.MemberRole.LEADER, then=Value(0)),
+            When(member_role=RetreatAttendee.MemberRole.VICE_LEADER, then=Value(1)),
+            default=Value(2),
+            output_field=IntegerField(),
+        )
+        check_in_order = Case(
+            When(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN, then=Value(0)),
+            When(check_in_status=RetreatAttendee.CheckInStatus.PENDING, then=Value(1)),
+            When(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT, then=Value(2)),
+            default=Value(3),
+            output_field=IntegerField(),
+        )
         attendees = list(
-            session.enrollments.filter(source_group=group).order_by(
-                "check_in_status", "sort_order", "name", "id"
-            )
+            session.enrollments.filter(source_group=group)
+            .select_related("source_attendee")
+            .order_by(role_order, check_in_order, "sort_order", "name", "id")
         )
         att_ids = [a.id for a in attendees]
         records_qs = RetreatAttendance.objects.filter(
@@ -354,6 +370,12 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
     template_name = "retreat/manage_groups.html"
 
     def get_context_data(self, **kwargs):
+        from users.models import Division, Region
+        from users.permissions import can_add_retreat_group
+        from users.services.user_display import user_display_name
+
+        from retreat.models import RetreatAttendee, RetreatGroupMembership
+
         ctx = super().get_context_data(**kwargs)
         event = ctx["event"]
         user = self.request.user
@@ -363,7 +385,37 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
             .annotate(attendee_count=Count("attendees", distinct=True))
             .order_by("region__sort_order", "division__sort_order", "order", "id")
         )
+
+        # 조장 이름 모으기 — 조원 행(member_role=leader) + 미동기 운영진 멤버십.
+        leaders_map: dict[int, list[str]] = {}
+        for gid, name in RetreatAttendee.objects.filter(
+            group__in=groups, member_role=RetreatAttendee.MemberRole.LEADER
+        ).values_list("group_id", "name"):
+            leaders_map.setdefault(gid, [])
+            if name and name not in leaders_map[gid]:
+                leaders_map[gid].append(name)
+        for m in RetreatGroupMembership.objects.filter(
+            group__in=groups, role=RetreatGroupMembership.Role.LEADER
+        ).select_related("user", "user__profile"):
+            profile = getattr(m.user, "profile", None)
+            label = (getattr(profile, "real_name", "") or "").strip() or (
+                user_display_name(m.user) or m.user.username
+            )
+            leaders_map.setdefault(m.group_id, [])
+            if label and label not in leaders_map[m.group_id]:
+                leaders_map[m.group_id].append(label)
+        for g in groups:
+            g.leader_names = ", ".join(leaders_map.get(g.id, []))
+
         ctx["groups"] = groups
+        ctx["can_add_group"] = can_add_retreat_group(user, event)
+        ctx["region_choices"] = list(Region.objects.order_by("sort_order", "name"))
+        ctx["division_choices"] = list(
+            Division.objects.select_related("region").order_by(
+                "region__sort_order", "sort_order", "name"
+            )
+        )
+        ctx["group_role_choices"] = RetreatGroupMembership.Role.choices
         return ctx
 
 
@@ -384,6 +436,10 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         if group.id not in visible_ids:
             raise PermissionDenied("이 조에 접근할 권한이 없습니다.")
 
+        from users.permissions import can_manage_retreat_group_leaders
+
+        from retreat.models import RetreatGroupMembership
+
         can_mutate = bool(
             user.is_superuser
             or is_retreat_group_leader(user, group)
@@ -394,13 +450,63 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
             or is_retreat_council(user, event)
             or is_retreat_staff(user, event)
         )
+        can_manage_leaders = can_manage_retreat_group_leaders(user, group)
+        from django.db.models import Case, IntegerField, Value, When
+
+        from retreat.apis._common import user_can_edit_attendee_details
+        from retreat.models import RetreatAttendee
+        from retreat.services.group_sync import sync_attendee_from_membership
+
+        # 기존 운영진(멤버십)이 조원 명단에 없으면 즉시 동기화(누락 방지·idempotent).
+        synced_user_ids = set(
+            group.attendees.filter(user__isnull=False).values_list("user_id", flat=True)
+        )
+        for m in group.memberships.select_related("user", "user__profile"):
+            if m.user_id not in synced_user_ids:
+                sync_attendee_from_membership(m, changed_by=user)
 
         ctx["group"] = group
-        ctx["attendees"] = list(
-            group.attendees.select_related("lodging_room", "lodging_room__lodging")
-            .order_by("check_in_status", "sort_order", "name", "id")
+        ctx["can_manage_leaders"] = can_manage_leaders
+        ctx["group_role_choices"] = RetreatGroupMembership.Role.choices
+        ctx["attendee_role_choices"] = RetreatAttendee.MemberRole.choices
+        role_order = Case(
+            When(member_role=RetreatAttendee.MemberRole.LEADER, then=Value(0)),
+            When(member_role=RetreatAttendee.MemberRole.VICE_LEADER, then=Value(1)),
+            default=Value(2),
+            output_field=IntegerField(),
+        )
+        # 입실 → 입실전 → 퇴실 순.
+        check_in_order = Case(
+            When(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN, then=Value(0)),
+            When(check_in_status=RetreatAttendee.CheckInStatus.PENDING, then=Value(1)),
+            When(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT, then=Value(2)),
+            default=Value(3),
+            output_field=IntegerField(),
+        )
+
+        attendees = list(
+            group.attendees.select_related("lodging_room", "lodging_room__lodging", "user")
+            .order_by(role_order, check_in_order, "sort_order", "name", "id")
+        )
+        ctx["attendees"] = attendees
+        ctx["count_total"] = len(attendees)
+        ctx["count_pending"] = sum(
+            1
+            for a in attendees
+            if a.check_in_status == RetreatAttendee.CheckInStatus.PENDING
+        )
+        ctx["count_checked_in"] = sum(
+            1
+            for a in attendees
+            if a.check_in_status == RetreatAttendee.CheckInStatus.CHECKED_IN
+        )
+        ctx["count_checked_out"] = sum(
+            1
+            for a in attendees
+            if a.check_in_status == RetreatAttendee.CheckInStatus.CHECKED_OUT
         )
         ctx["can_mutate"] = can_mutate
+        ctx["can_edit_attendee"] = user_can_edit_attendee_details(user, group)
         ctx["can_edit_timestamps"] = can_edit_timestamps
         ctx["back_url"] = reverse("retreat_group_manage_list", args=[event.id])
         ctx["back_label"] = "조 목록"
@@ -682,14 +788,20 @@ class RetreatGroupDetailView(_RetreatAccessMixin, TemplateView):
         can_manage_sessions = bool(can_manage_retreat_sessions(user, event))
         can_manage_attendees = can_mutate or can_manage_sessions
 
+        from retreat.models import RetreatAttendee
+        from retreat.services.enrollment import enroll_attendee_into_active_sessions
+
         sessions = list(
             visible_retreat_sessions_for(user, event).order_by("-created_at", "-id")
         )
         current_attendees = list(
-            group.attendees.select_related("source_member").order_by(
-                "check_in_status", "sort_order", "name", "id"
+            group.attendees.select_related("source_member", "user").order_by(
+                "sort_order", "name", "id"
             )
         )
+        # 조장·부조장 등 나중에 추가된 조원을 진행중 출석부에 자동 합류(idempotent).
+        for attendee in current_attendees:
+            enroll_attendee_into_active_sessions(attendee, actor=user)
         current_att_ids = [a.id for a in current_attendees]
         session_ids = [s.id for s in sessions]
         closed_session_ids = [s.id for s in sessions if s.is_closed]
@@ -720,15 +832,33 @@ class RetreatGroupDetailView(_RetreatAccessMixin, TemplateView):
             enrollment.can_edit = can_manage_sessions
             enrollment.is_snapshot_only = True
 
-        rows = sorted(
-            [*current_attendees, *snapshot_only_enrollments],
-            key=lambda row: (
-                row.check_in_status,
-                row.sort_order,
-                row.name,
-                abs(row.row_key),
-            ),
-        )
+        def _row_member_role(row) -> str:
+            if hasattr(row, "member_role") and row.member_role:
+                return row.member_role
+            src = getattr(row, "source_attendee", None)
+            if src is not None:
+                return src.member_role or RetreatAttendee.MemberRole.MEMBER
+            return RetreatAttendee.MemberRole.MEMBER
+
+        def _row_sort_key(row):
+            role = _row_member_role(row)
+            role_rank = {
+                RetreatAttendee.MemberRole.LEADER: 0,
+                RetreatAttendee.MemberRole.VICE_LEADER: 1,
+            }.get(role, 2)
+            check_in_rank = {
+                RetreatAttendee.CheckInStatus.CHECKED_IN: 0,
+                RetreatAttendee.CheckInStatus.PENDING: 1,
+                RetreatAttendee.CheckInStatus.CHECKED_OUT: 2,
+            }.get(row.check_in_status, 3)
+            return (role_rank, check_in_rank, row.sort_order, row.name, abs(row.row_key))
+
+        rows = sorted([*current_attendees, *snapshot_only_enrollments], key=_row_sort_key)
+        role_labels = dict(RetreatAttendee.MemberRole.choices)
+        for row in rows:
+            row.display_member_role = role_labels.get(
+                _row_member_role(row), "조원"
+            )
         row_keys = [row.row_key for row in rows]
         row_key_by_attendee_id = {attendee.id: attendee.row_key for attendee in current_attendees}
         row_key_by_enrollment_id = {

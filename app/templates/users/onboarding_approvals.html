@@ -73,20 +73,33 @@
                 <thead>
                   <tr>
                     <th>사용자</th>
-                    <th>신청 부서</th>
-                    <th>신청 팀</th>
-                    {% if active_retreat_event %}<th>수련회</th>{% endif %}
-                    <th>상태</th>
-                    <th>메모</th>
+                    <th>지역</th>
+                    <th>부서</th>
+                    <th>팀</th>
+                    <th>직책</th>
+                    <th>승인 상태</th>
                     <th style="width:5rem;">저장</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for p in pending_profiles %}
                     <tr>
-                      <td>{{ user_label_map|lookup_user_label:p.user_id }}</td>
                       <td>
-                        <select name="requested_division_id" form="save-{{ p.id }}" class="pending-division" data-team-select-id="team-{{ p.id }}">
+                        <div>{{ user_label_map|lookup_user_label:p.user_id }}</div>
+                        {% if user_real_name_map|lookup_user_label:p.user_id %}
+                          <div class="msg">실명: {{ user_real_name_map|lookup_user_label:p.user_id }}</div>
+                        {% endif %}
+                      </td>
+                      <td>
+                        <select name="pending_region_{{ p.id }}" form="save-{{ p.id }}" class="pending-region" data-profile-id="{{ p.id }}" data-division-select="pending-div-{{ p.id }}">
+                          <option value="">지역</option>
+                          {% for r in region_choices %}
+                            <option value="{{ r.id }}" {% if p.requested_division and p.requested_division.region_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                      <td>
+                        <select id="pending-div-{{ p.id }}" name="requested_division_id" form="save-{{ p.id }}" class="pending-division" data-team-select-id="team-{{ p.id }}" data-region-id="{% if p.requested_division %}{{ p.requested_division.region_id }}{% endif %}">
                           <option value="">부서 선택</option>
                           {% regroup division_choices by region.name as save_region_groups %}
                           {% for group in save_region_groups %}
@@ -101,34 +114,39 @@
                       <td>
                         <select id="team-{{ p.id }}" name="requested_team_id" form="save-{{ p.id }}" class="pending-team" data-selected="{{ p.requested_team_id|default:'' }}"></select>
                       </td>
-                      {% if active_retreat_event %}
-                      <td>
-                        {% if p.requested_retreat_participation %}
-                          <div class="msg">참여 · {{ p.requested_retreat_role|default:"participant" }}</div>
-                          <select name="retreat_group_id" form="save-{{ p.id }}" style="min-width:8rem;">
+                      <td class="jcc-onboarding-retreatCell">
+                        {% if active_retreat_event and p.requested_retreat_participation %}
+                          <select
+                            name="retreat_group_id"
+                            form="save-{{ p.id }}"
+                            class="retreat-group-select"
+                            data-profile-id="{{ p.id }}"
+                            data-division-id="{{ p.requested_division_id|default:'' }}"
+                            style="min-width:9rem; margin-bottom:0.25rem;"
+                          >
                             <option value="">조 배정</option>
                             {% for g in retreat_groups %}
-                              <option value="{{ g.id }}">{{ g.region.name }} {{ g.division.name }} {{ g.name }}</option>
+                              <option
+                                value="{{ g.id }}"
+                                data-division-id="{{ g.division_id }}"
+                                {% if p.requested_retreat_group_id == g.id %}selected{% endif %}
+                                {% if g.division_id != p.requested_division_id %}hidden{% endif %}
+                              >{{ g.name }}</option>
                             {% endfor %}
                           </select>
-                          <select name="retreat_role" form="save-{{ p.id }}" style="min-width:6rem;">
-                            <option value="leader" {% if p.requested_retreat_role == "leader" %}selected{% endif %}>조장</option>
-                            <option value="vice_leader" {% if p.requested_retreat_role == "vice_leader" %}selected{% endif %}>부조장</option>
-                          </select>
-                        {% else %}
-                          -
                         {% endif %}
+                        <select name="retreat_role" form="save-{{ p.id }}" style="min-width:7rem;">
+                          {% for code, label in retreat_role_choices %}
+                            <option value="{{ code }}" {% if p.requested_retreat_role == code or not p.requested_retreat_role and code == "participant" %}selected{% endif %}>{{ label }}</option>
+                          {% endfor %}
+                        </select>
                       </td>
-                      {% endif %}
                       <td>
                         <select name="onboarding_status" form="save-{{ p.id }}" class="onboarding-status-select" aria-label="상태" style="min-width:9rem;">
                           {% for code, label in onboarding_status_choices %}
                             <option value="{{ code }}" {% if p.onboarding_status == code %}selected{% endif %}>{{ label }}</option>
                           {% endfor %}
                         </select>
-                      </td>
-                      <td>
-                        <input type="text" name="note" form="save-{{ p.id }}" class="onboarding-note-input" value="{{ p.onboarding_note|default:'' }}" style="width:100%; min-width:10rem; max-width:22rem; box-sizing:border-box;">
                       </td>
                       <td style="vertical-align:middle;">
                         <form id="save-{{ p.id }}" method="post" style="display:inline-flex;">
@@ -159,19 +177,33 @@
                 <thead>
                   <tr>
                     <th>사용자</th>
+                    <th>지역</th>
                     <th>부서</th>
                     <th>팀</th>
-                    <th>상태</th>
-                    <th>메모</th>
+                    <th>직책</th>
+                    <th>승인 상태</th>
                     <th style="width:5rem;">저장</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for p in approved_profiles %}
                     <tr>
-                      <td>{{ user_label_map|lookup_user_label:p.user_id }}</td>
                       <td>
-                        <select name="requested_division_id" form="approved-save-{{ p.id }}" class="pending-division" data-team-select-id="approved-team-{{ p.id }}">
+                        {{ user_label_map|lookup_user_label:p.user_id }}
+                        {% if user_real_name_map|lookup_user_label:p.user_id %}
+                          <div class="msg">실명: {{ user_real_name_map|lookup_user_label:p.user_id }}</div>
+                        {% endif %}
+                      </td>
+                      <td>
+                        <select form="approved-save-{{ p.id }}" class="pending-region" data-division-select="approved-div-{{ p.id }}">
+                          <option value="">지역</option>
+                          {% for r in region_choices %}
+                            <option value="{{ r.id }}" {% if p.requested_division and p.requested_division.region_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                      <td>
+                        <select id="approved-div-{{ p.id }}" name="requested_division_id" form="approved-save-{{ p.id }}" class="pending-division" data-team-select-id="approved-team-{{ p.id }}" data-region-id="{% if p.requested_division %}{{ p.requested_division.region_id }}{% endif %}">
                           <option value="">부서 선택</option>
                           {% regroup division_choices by region.name as approved_region_groups %}
                           {% for group in approved_region_groups %}
@@ -187,14 +219,18 @@
                         <select id="approved-team-{{ p.id }}" name="requested_team_id" form="approved-save-{{ p.id }}" class="pending-team" data-selected="{{ p.requested_team_id|default:'' }}"></select>
                       </td>
                       <td>
+                        <select name="retreat_role" form="approved-save-{{ p.id }}">
+                          {% for code, label in retreat_role_choices %}
+                            <option value="{{ code }}" {% if p.requested_retreat_role == code or not p.requested_retreat_role and code == "participant" %}selected{% endif %}>{{ label }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                      <td>
                         <select name="onboarding_status" form="approved-save-{{ p.id }}" class="onboarding-status-select" aria-label="상태" style="min-width:9rem;">
                           {% for code, label in onboarding_status_choices %}
                             <option value="{{ code }}" {% if p.onboarding_status == code %}selected{% endif %}>{{ label }}</option>
                           {% endfor %}
                         </select>
-                      </td>
-                      <td>
-                        <input type="text" name="note" form="approved-save-{{ p.id }}" class="onboarding-note-input" value="{{ p.onboarding_note|default:'' }}" style="width:100%; min-width:10rem; max-width:22rem; box-sizing:border-box;">
                       </td>
                       <td style="vertical-align:middle;">
                         <form id="approved-save-{{ p.id }}" method="post" style="display:inline-flex;">
@@ -225,10 +261,11 @@
                 <thead>
                   <tr>
                     <th>사용자</th>
+                    <th>지역</th>
                     <th>부서</th>
                     <th>팀</th>
-                    <th>상태</th>
-                    <th>메모</th>
+                    <th>직책</th>
+                    <th>승인 상태</th>
                     <th style="width:5rem;">저장</th>
                   </tr>
                 </thead>
@@ -237,7 +274,15 @@
                     <tr>
                       <td>{{ user_label_map|lookup_user_label:p.user_id }}</td>
                       <td>
-                        <select name="requested_division_id" form="rejected-save-{{ p.id }}" class="pending-division" data-team-select-id="rejected-team-{{ p.id }}">
+                        <select form="rejected-save-{{ p.id }}" class="pending-region" data-division-select="rejected-div-{{ p.id }}">
+                          <option value="">지역</option>
+                          {% for r in region_choices %}
+                            <option value="{{ r.id }}" {% if p.requested_division and p.requested_division.region_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                      <td>
+                        <select id="rejected-div-{{ p.id }}" name="requested_division_id" form="rejected-save-{{ p.id }}" class="pending-division" data-team-select-id="rejected-team-{{ p.id }}" data-region-id="{% if p.requested_division %}{{ p.requested_division.region_id }}{% endif %}">
                           <option value="">부서 선택</option>
                           {% regroup division_choices by region.name as rejected_region_groups %}
                           {% for group in rejected_region_groups %}
@@ -253,14 +298,18 @@
                         <select id="rejected-team-{{ p.id }}" name="requested_team_id" form="rejected-save-{{ p.id }}" class="pending-team" data-selected="{{ p.requested_team_id|default:'' }}"></select>
                       </td>
                       <td>
+                        <select name="retreat_role" form="rejected-save-{{ p.id }}">
+                          {% for code, label in retreat_role_choices %}
+                            <option value="{{ code }}" {% if p.requested_retreat_role == code or not p.requested_retreat_role and code == "participant" %}selected{% endif %}>{{ label }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                      <td>
                         <select name="onboarding_status" form="rejected-save-{{ p.id }}" class="onboarding-status-select" aria-label="상태" style="min-width:9rem;">
                           {% for code, label in onboarding_status_choices %}
                             <option value="{{ code }}" {% if p.onboarding_status == code %}selected{% endif %}>{{ label }}</option>
                           {% endfor %}
                         </select>
-                      </td>
-                      <td>
-                        <input type="text" name="note" form="rejected-save-{{ p.id }}" class="onboarding-note-input" value="{{ p.onboarding_note|default:'' }}" style="width:100%; min-width:10rem; max-width:22rem; box-sizing:border-box;">
                       </td>
                       <td style="vertical-align:middle;">
                         <form id="rejected-save-{{ p.id }}" method="post" style="display:inline-flex;">
@@ -293,12 +342,30 @@
         `<option value="${t.id}" ${String(selectedId) === String(t.id) ? "selected" : ""}>${t.name}</option>`
       ).join("");
     }
+    function filterRetreatGroupOptions(groupSelect, divisionId) {
+      if (!groupSelect) return;
+      Array.from(groupSelect.options).forEach((opt) => {
+        if (!opt.value) return;
+        const did = opt.dataset.divisionId || "";
+        opt.hidden = !!(divisionId && did !== String(divisionId));
+      });
+      const sel = groupSelect.selectedOptions[0];
+      if (sel && sel.hidden) groupSelect.value = "";
+    }
+
     document.querySelectorAll(".pending-division").forEach((divisionSelect) => {
       const teamSelect = document.getElementById(divisionSelect.dataset.teamSelectId);
-      if (!teamSelect) return;
-      fillTeamSelect(teamSelect, divisionSelect.value, teamSelect.dataset.selected || "");
+      const row = divisionSelect.closest("tr");
+      const groupSelect = row ? row.querySelector(".retreat-group-select") : null;
+      if (teamSelect) {
+        fillTeamSelect(teamSelect, divisionSelect.value, teamSelect.dataset.selected || "");
+      }
+      if (groupSelect) {
+        filterRetreatGroupOptions(groupSelect, divisionSelect.value);
+      }
       divisionSelect.addEventListener("change", () => {
-        fillTeamSelect(teamSelect, divisionSelect.value, "");
+        if (teamSelect) fillTeamSelect(teamSelect, divisionSelect.value, "");
+        if (groupSelect) filterRetreatGroupOptions(groupSelect, divisionSelect.value);
       });
     });
 

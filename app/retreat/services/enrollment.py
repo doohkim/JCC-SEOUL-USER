@@ -148,6 +148,7 @@ def _enrollment_defaults(attendee: RetreatAttendee) -> dict:
         "gender": attendee.gender,
         "memo": attendee.memo,
         "check_in_status": attendee.check_in_status,
+        "member_role": attendee.member_role,
         "group_name": group.name,
         "region_id_snapshot": group.region_id,
         "region_name": getattr(group.region, "name", "") or "",

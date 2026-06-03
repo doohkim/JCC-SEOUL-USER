@@ -239,8 +239,8 @@ class BulkUpsertTests(TestCase):
         self.assertEqual(r.status_code, 400, r.content)
         self.assertEqual(RetreatAttendance.objects.count(), 0)
 
-    def test_pending_can_be_marked_absent(self):
-        """입실전 조원에게 '결석'은 정상 기록 가능."""
+    def test_pending_cannot_be_marked_absent(self):
+        """입실전 조원에게 '결석'도 설정 불가."""
         r = self.client.post(
             URL,
             self._payload(
@@ -248,8 +248,5 @@ class BulkUpsertTests(TestCase):
             ),
             format="json",
         )
-        self.assertEqual(r.status_code, 200, r.content)
-        self.assertEqual(
-            RetreatAttendance.objects.filter(enrollment=self.enroll_pending).count(),
-            1,
-        )
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertEqual(RetreatAttendance.objects.count(), 0)

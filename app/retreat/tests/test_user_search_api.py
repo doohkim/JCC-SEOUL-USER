@@ -63,11 +63,34 @@ class UserSearchApiTests(APITestCase):
         self.assertIn(self.target_a.username, usernames)
         self.assertNotIn(self.target_b.username, usernames)
 
-    def test_blank_query_returns_some(self):
+    def test_blank_query_returns_empty_without_filter(self):
         self.client.force_authenticate(self.leader)
         r = self.client.get(reverse("api_retreat_user_search"))
         self.assertEqual(r.status_code, 200)
-        self.assertIsInstance(r.json(), list)
+        self.assertEqual(r.json(), [])
+
+    def test_division_filter_lists_members_without_query(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.get(
+            reverse("api_retreat_user_search"), {"division": self.div.id}
+        )
+        self.assertEqual(r.status_code, 200)
+        usernames = [u["username"] for u in r.json()]
+        self.assertIn(self.leader.username, usernames)
+        self.assertNotIn(self.target_a.username, usernames)
+
+    def test_division_filter_with_query_narrows(self):
+        UserDivisionTeam.objects.create(
+            user=self.target_a, division=self.div, is_primary=False
+        )
+        self.client.force_authenticate(self.leader)
+        r = self.client.get(
+            reverse("api_retreat_user_search"),
+            {"division": self.div.id, "q": "4925"},
+        )
+        self.assertEqual(r.status_code, 200)
+        usernames = [u["username"] for u in r.json()]
+        self.assertEqual(usernames, [self.target_a.username])
 
     def test_limit_capped(self):
         self.client.force_authenticate(self.leader)

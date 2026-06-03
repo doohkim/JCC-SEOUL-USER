@@ -188,11 +188,11 @@
               <table class="jcc-division-roles-table">
                 <thead>
                   <tr>
-                    <th>표시명</th>
-                    <th>로그인 ID</th>
+                    <th>실명</th>
                     <th>휴대폰</th>
-                    <th>직급</th>
-                    <th>팀 설정</th>
+                    <th>지역</th>
+                    <th>부서</th>
+                    <th>팀</th>
                     <th>기능권한</th>
                     <th>직책 설정</th>
                   </tr>
@@ -200,10 +200,15 @@
                 <tbody>
                   {% for u in users_payload %}
                     <tr>
-                      <td>{{ u.display_name|default:u.username }}</td>
-                      <td>{{ u.username }}</td>
-                      <td>{{ u.phone|default:"-" }}</td>
-                      <td>{{ u.role_level_name }}</td>
+                      <td>
+                        <input type="text" name="real_name" form="role-form-{{ u.id }}" value="{{ u.real_name }}" maxlength="50" style="min-width:6rem;">
+                        <div class="msg" style="font-size:0.75rem;">표시: {{ u.display_name|default:u.username }}</div>
+                      </td>
+                      <td>
+                        <input type="tel" name="phone" form="role-form-{{ u.id }}" value="{{ u.phone }}" maxlength="30" style="min-width:8rem;">
+                      </td>
+                      <td>{{ u.region_name|default:"-" }}</td>
+                      <td>{{ u.division_name|default:"-" }}</td>
                       <td>
                         <select name="team_id" form="role-form-{{ u.id }}">
                           <option value="">팀 미지정</option>

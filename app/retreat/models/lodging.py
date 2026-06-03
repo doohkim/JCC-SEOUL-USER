@@ -53,7 +53,6 @@ class LodgingRoom(models.Model):
     class Gender(models.TextChoices):
         MALE = "male", "남성"
         FEMALE = "female", "여성"
-        MIXED = "mixed", "혼성"
         UNKNOWN = "", "미지정"
 
     lodging = models.ForeignKey(

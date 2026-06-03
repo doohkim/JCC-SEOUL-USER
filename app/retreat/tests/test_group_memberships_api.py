@@ -9,6 +9,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
 
 from retreat.models import (
+    RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
     RetreatGroupMembership,
@@ -41,11 +42,16 @@ class _Fixture:
             defaults={"name": "회장", "level": 80, "sort_order": 20},
         )
 
-        cls.staff = User.objects.create_user(username="gm_staff", password="x")
-        cls.staff.role_level = cls.rl_president
-        cls.staff.save()
+        cls.council = User.objects.create_user(username="gm_council", password="x")
+        cls.council.role_level = cls.rl_president
+        cls.council.save()
         UserDivisionTeam.objects.create(
-            user=cls.staff, division=cls.div, is_primary=True
+            user=cls.council, division=cls.div, is_primary=True
+        )
+        RetreatCouncilMembership.objects.create(
+            event=cls.event,
+            user=cls.council,
+            role=RetreatCouncilMembership.Role.CHAIRPERSON,
         )
 
         cls.leader = User.objects.create_user(username="gm_leader", password="x")
@@ -77,8 +83,8 @@ class GroupMembershipApiTests(APITestCase, _Fixture):
             "api_retreat_group_membership_detail", args=[membership_id]
         )
 
-    def test_staff_can_add_leader(self):
-        self.client.force_authenticate(self.staff)
+    def test_council_can_add_leader(self):
+        self.client.force_authenticate(self.council)
         r = self.client.post(
             self._list_url(),
             {"username": self.new_member.username, "role": "vice_leader"},
@@ -112,7 +118,7 @@ class GroupMembershipApiTests(APITestCase, _Fixture):
         self.assertIn(r.status_code, (403, 404))
 
     def test_unknown_username_returns_400(self):
-        self.client.force_authenticate(self.staff)
+        self.client.force_authenticate(self.council)
         r = self.client.post(
             self._list_url(),
             {"username": "no_such_user_xyz"},
@@ -121,7 +127,7 @@ class GroupMembershipApiTests(APITestCase, _Fixture):
         self.assertEqual(r.status_code, 400)
 
     def test_role_validated(self):
-        self.client.force_authenticate(self.staff)
+        self.client.force_authenticate(self.council)
         r = self.client.post(
             self._list_url(),
             {"username": self.new_member.username, "role": "boss"},
@@ -130,14 +136,14 @@ class GroupMembershipApiTests(APITestCase, _Fixture):
         self.assertEqual(r.status_code, 400)
 
     def test_list_returns_existing(self):
-        self.client.force_authenticate(self.staff)
+        self.client.force_authenticate(self.council)
         r = self.client.get(self._list_url())
         self.assertEqual(r.status_code, 200)
         usernames = [m["username"] for m in r.json()]
         self.assertIn(self.leader.username, usernames)
 
     def test_patch_role(self):
-        self.client.force_authenticate(self.staff)
+        self.client.force_authenticate(self.council)
         m = RetreatGroupMembership.objects.get(
             group=self.group, user=self.leader
         )
@@ -151,7 +157,7 @@ class GroupMembershipApiTests(APITestCase, _Fixture):
         self.assertEqual(m.role, "vice_leader")
 
     def test_delete(self):
-        self.client.force_authenticate(self.staff)
+        self.client.force_authenticate(self.council)
         m = RetreatGroupMembership.objects.get(
             group=self.group, user=self.leader
         )

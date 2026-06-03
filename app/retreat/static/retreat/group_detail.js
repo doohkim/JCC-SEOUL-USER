@@ -20,7 +20,10 @@
     checked_out: "퇴실",
     pending: "입실전",
   };
-  const UNAVAILABLE_CHECK_IN_STATUSES = new Set(["checked_out", "pending"]);
+  /** 입실전: 출석·결석 모두 불가 */
+  const NO_ATTENDANCE_CHECK_IN_STATUSES = new Set(["pending"]);
+  /** 퇴실: 참석만 불가(결석은 가능) */
+  const NO_PRESENT_CHECK_IN_STATUSES = new Set(["checked_out"]);
 
   /** {sessionId: {attendeeId: status}} */
   let matrix = {};
@@ -201,8 +204,14 @@
       (enrollmentCheckInMatrix[aidKey] && enrollmentCheckInMatrix[aidKey][sidKey]) ||
       tr.dataset.checkIn ||
       "pending";
-    const isUnavailable = UNAVAILABLE_CHECK_IN_STATUSES.has(snapshotCheckIn);
-    if (isUnavailable) currentStatus = "absent";
+    const isPending = NO_ATTENDANCE_CHECK_IN_STATUSES.has(snapshotCheckIn);
+    const noPresent = NO_PRESENT_CHECK_IN_STATUSES.has(snapshotCheckIn);
+
+    if (isPending) {
+      groupEl.innerHTML =
+        '<span class="muted" title="입실 후 출석을 기록할 수 있습니다.">입실전</span>';
+      return;
+    }
 
     groupEl.innerHTML = "";
     STATUSES.forEach((s) => {
@@ -214,10 +223,9 @@
       btn.textContent = s.label;
       if (currentStatus === s.code) btn.classList.add("is-active");
       if (!ctx.canMutate || activeSessionClosed) btn.disabled = true;
-      // 입실전·퇴실 조원은 '참석'을 누를 수 없음.
-      if (isUnavailable && s.code === "present") {
+      if (noPresent && s.code === "present") {
         btn.disabled = true;
-        btn.title = "입실전·퇴실 상태인 조원은 참석으로 변경할 수 없습니다.";
+        btn.title = "퇴실 상태인 조원은 참석으로 변경할 수 없습니다.";
       }
       groupEl.appendChild(btn);
     });

@@ -33,6 +33,13 @@ class UserProfile(models.Model):
         default="",
         help_text="앱·관리자에 보이는 이름",
     )
+    real_name = models.CharField(
+        "실명",
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="본명(관리·승인 화면용)",
+    )
     phone = models.CharField(
         "휴대폰",
         max_length=30,
@@ -100,6 +107,14 @@ class UserProfile(models.Model):
         default="",
         help_text="participant | leader | vice_leader",
     )
+    requested_retreat_group = models.ForeignKey(
+        "retreat.RetreatGroup",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_user_profiles",
+        verbose_name="희망 수련회 조",
+    )
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -117,6 +132,19 @@ class UserProfile(models.Model):
             and self.requested_team.division_id != self.requested_division_id
         ):
             raise ValidationError({"requested_team": "신청 팀은 신청 부서에 속해야 합니다."})
+        if (
+            self.requested_retreat_group_id
+            and self.requested_division_id
+            and self.requested_retreat_group.division_id != self.requested_division_id
+        ):
+            raise ValidationError(
+                {"requested_retreat_group": "희망 조는 신청 부서·지역과 일치해야 합니다."}
+            )
+        if self.requested_retreat_participation and not self.requested_retreat_group_id:
+            if self.requested_retreat_event_id:
+                raise ValidationError(
+                    {"requested_retreat_group": "수련회 참여 시 조를 선택해야 합니다."}
+                )
 
 
 class UserProfileAvatar(models.Model):

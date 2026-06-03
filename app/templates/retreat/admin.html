@@ -13,7 +13,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603h" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603r" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -49,7 +49,7 @@
               </div>
             {% endif %}
             <div class="card">
-              <div class="jcc-table-scroll">
+              <div class="jcc-retreat-tableWrap">
                 <table class="jcc-table" id="rosterTable">
                   <thead>
                     <tr>
@@ -152,9 +152,9 @@
                         </td>
                         <td class="jcc-retreat-adminRowActions">
                           {% if can_manage_sessions %}
-                            <button type="button" class="jcc-retreat-rowEdit" data-leader-edit>운영진</button>
+                            <button type="button" class="jcc-retreat-rowBtn jcc-retreat-rowEdit" data-leader-edit>운영진</button>
                           {% endif %}
-                          <a class="btn-link" href="{% url 'retreat_group_detail' event.id r.group.id %}">조 화면</a>
+                          <a class="jcc-retreat-rowBtn jcc-retreat-rowBtn--link" href="{% url 'retreat_group_detail' event.id r.group.id %}">조 화면</a>
                         </td>
                       </tr>
                     {% empty %}
@@ -168,7 +168,7 @@
             </div>
           {% else %}
             <div class="card">
-              <div class="jcc-table-scroll">
+              <div class="jcc-retreat-tableWrap">
                 <table class="jcc-table">
                   <thead>
                     <tr>
@@ -257,9 +257,9 @@
     {% endif %}
 
     <div class="jcc-retreat-modalOverlay" id="leaderModalOverlay" hidden aria-hidden="true">
-      <div class="jcc-retreat-modal card" role="dialog" aria-modal="true" aria-labelledby="leaderModalTitle">
-        <h2 id="leaderModalTitle" style="margin:0 0 0.5rem 0;">조 운영진 관리</h2>
-        <p class="subtitle" id="leaderModalGroupLabel" style="margin:0 0 0.75rem 0;"></p>
+      <div class="jcc-retreat-modal card jcc-retreat-modal--leader" role="dialog" aria-modal="true" aria-labelledby="leaderModalTitle">
+        <h2 id="leaderModalTitle" class="jcc-retreat-modalTitle">조 운영진 관리</h2>
+        <p class="jcc-retreat-modalSubtitle" id="leaderModalGroupLabel"></p>
         <div class="msg" id="leaderModalStatus" role="status"></div>
 
         <div class="jcc-retreat-leaderListWrap">
@@ -277,36 +277,38 @@
           </table>
         </div>
 
-        <form id="leaderAddForm" class="jcc-retreat-inlineForm" autocomplete="off">
-          <div class="field jcc-retreat-userPickerField">
-            <label for="leaderAddUsername">사용자</label>
-            <div class="jcc-retreat-userPicker" data-user-picker>
-              <input
-                type="text"
-                id="leaderAddUsername"
-                class="jcc-retreat-userPickerInput"
-                placeholder="이름 또는 username 검색"
-                required
-                maxlength="150"
-                autocomplete="off"
-                data-user-picker-input
-              />
-              <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
-              <input type="hidden" data-user-picker-id />
+        <form id="leaderAddForm" class="jcc-retreat-leaderAddForm" autocomplete="off">
+          <div class="jcc-retreat-modalGrid jcc-retreat-leaderAddGrid">
+            <div class="field jcc-retreat-modalField--full jcc-retreat-userPickerField">
+              <label for="leaderAddUsername">사용자</label>
+              <div class="jcc-retreat-userPicker" data-user-picker>
+                <input
+                  type="text"
+                  id="leaderAddUsername"
+                  class="jcc-retreat-userPickerInput"
+                  placeholder="이름 또는 username 검색"
+                  required
+                  maxlength="150"
+                  autocomplete="off"
+                  data-user-picker-input
+                />
+                <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
+                <input type="hidden" data-user-picker-id />
+              </div>
+              <small class="muted" data-user-picker-hint>아래 목록에서 선택해야 등록할 수 있어요.</small>
             </div>
-            <small class="muted" data-user-picker-hint>아래 목록에서 선택해야 등록할 수 있어요.</small>
+            <div class="field">
+              <label for="leaderAddRole">역할</label>
+              <select id="leaderAddRole">
+                {% for code, label in role_choices %}
+                  <option value="{{ code }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
           </div>
-          <div class="field">
-            <label for="leaderAddRole">역할</label>
-            <select id="leaderAddRole">
-              {% for code, label in role_choices %}
-                <option value="{{ code }}">{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="jcc-retreat-modalFooter">
-            <button type="button" class="secondary" id="leaderModalClose">닫기</button>
-            <button type="submit" id="leaderAddSubmit">추가</button>
+          <div class="jcc-retreat-modalFooter jcc-retreat-modalFooter--golden">
+            <button type="button" class="secondary jcc-retreat-btnCancel" id="leaderModalClose">닫기</button>
+            <button type="submit" class="jcc-retreat-btnPrimary" id="leaderAddSubmit">추가</button>
           </div>
         </form>
       </div>

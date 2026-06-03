@@ -59,6 +59,12 @@ class RetreatSessionAttendee(models.Model):
     region_name = models.CharField("지역명", max_length=100, blank=True, default="")
     division_id_snapshot = models.PositiveIntegerField("부서 ID", null=True, blank=True)
     division_name = models.CharField("부서명", max_length=100, blank=True, default="")
+    member_role = models.CharField(
+        "구분",
+        max_length=15,
+        choices=RetreatAttendee.MemberRole.choices,
+        default=RetreatAttendee.MemberRole.MEMBER,
+    )
     sort_order = models.PositiveSmallIntegerField("정렬 순서", default=0)
     enrolled_at = models.DateTimeField("스냅샷 생성 일시", auto_now_add=True)
 
@@ -105,6 +111,7 @@ class RetreatSessionAttendee(models.Model):
             gender=attendee.gender,
             memo=attendee.memo,
             check_in_status=attendee.check_in_status,
+            member_role=attendee.member_role,
             group_name=group.name,
             region_id_snapshot=group.region_id,
             region_name=getattr(group.region, "name", "") or "",

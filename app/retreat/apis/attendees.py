@@ -12,20 +12,30 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from retreat.apis._common import (
+    _PROFILE_PATCH_KEYS,
+    assert_can_edit_attendee_details,
     assert_can_mutate_group,
+    assert_check_in_status_transition,
     get_group_or_403,
+    user_can_edit_attendee_details,
     user_can_edit_attendee_timestamps,
 )
-from retreat.models import RetreatAttendee, RetreatChangeLog
+from retreat.models import RetreatAttendee, RetreatChangeLog, RetreatGroup
 from retreat.serializers import RetreatAttendeeSerializer
 from retreat.services.audit import log_retreat_change, serialize_model_fields
 from retreat.services.check_in_stamps import apply_attendee_stamp_from_payload
 from retreat.services.enrollment import enroll_attendee_into_active_sessions
+from retreat.services.group_sync import (
+    remove_membership_for_attendee,
+    sync_membership_from_attendee,
+)
 from retreat.services.lodging import assert_room_can_accept
 
 _ATTENDEE_FIELDS = [
     "id",
     "group_id",
+    "user_id",
+    "member_role",
     "name",
     "phone",
     "gender",
@@ -72,6 +82,13 @@ class RetreatGroupAttendeesView(APIView):
         payload = _payload_without_timestamps_if_forbidden(
             request.user, group, request.data
         )
+        # 계정 연결·역할(조장/부조장) 부여는 회장단·staff·슈퍼만.
+        role = (payload.get("member_role") or "").strip()
+        if payload.get("user") or role in (
+            RetreatAttendee.MemberRole.LEADER,
+            RetreatAttendee.MemberRole.VICE_LEADER,
+        ):
+            assert_can_edit_attendee_details(request.user, group)
         data = dict(payload)
         data["group"] = group.id
         ser = RetreatAttendeeSerializer(data=data)
@@ -95,6 +112,8 @@ class RetreatGroupAttendeesView(APIView):
             stamp_fields.append("checked_out_at")
         if len(stamp_fields) > 1:
             attendee.save(update_fields=stamp_fields)
+        if attendee.user_id:
+            sync_membership_from_attendee(attendee, changed_by=request.user)
         enroll_attendee_into_active_sessions(attendee, actor=request.user)
         log_retreat_change(
             user=request.user,
@@ -126,12 +145,34 @@ class RetreatAttendeeDetailView(APIView):
     def patch(self, request, attendee_id: int):
         attendee = self._get(request, attendee_id)
         group = attendee.group
-        assert_can_mutate_group(request.user, group)
-        before = serialize_model_fields(attendee, _ATTENDEE_FIELDS)
-        previous_status = attendee.check_in_status
         payload = _payload_without_timestamps_if_forbidden(
             request.user, group, request.data
         )
+        keys = set(payload.keys())
+        profile_keys = keys & _PROFILE_PATCH_KEYS
+        status_keys = keys & {"check_in_status", "checked_in_at", "checked_out_at"}
+        expected_keys = keys & {"expected_check_in_at", "expected_check_out_at"}
+        lodging_only = keys <= {"lodging_room"} and "lodging_room" in keys
+
+        if profile_keys:
+            assert_can_edit_attendee_details(request.user, group)
+        elif status_keys or expected_keys or lodging_only:
+            assert_can_mutate_group(request.user, group)
+        else:
+            assert_can_mutate_group(request.user, group)
+
+        if "check_in_status" in payload:
+            assert_check_in_status_transition(
+                request.user,
+                group,
+                previous=attendee.check_in_status,
+                new=str(payload["check_in_status"]),
+            )
+        elif profile_keys and not user_can_edit_attendee_details(request.user, group):
+            assert_can_edit_attendee_details(request.user, group)
+
+        before = serialize_model_fields(attendee, _ATTENDEE_FIELDS)
+        previous_status = attendee.check_in_status
         ser = RetreatAttendeeSerializer(attendee, data=payload, partial=True)
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -159,6 +200,8 @@ class RetreatAttendeeDetailView(APIView):
                 "updated_at",
             ]
         )
+        if "member_role" in payload or "user" in payload:
+            sync_membership_from_attendee(attendee, changed_by=request.user)
         log_retreat_change(
             user=request.user,
             event=group.event,
@@ -172,10 +215,11 @@ class RetreatAttendeeDetailView(APIView):
 
     def delete(self, request, attendee_id: int):
         attendee = self._get(request, attendee_id)
-        assert_can_mutate_group(request.user, attendee.group)
+        assert_can_edit_attendee_details(request.user, attendee.group)
         before = serialize_model_fields(attendee, _ATTENDEE_FIELDS)
         event = attendee.group.event
         aid = attendee.id
+        remove_membership_for_attendee(attendee, changed_by=request.user)
         attendee.delete()
         log_retreat_change(
             user=request.user,

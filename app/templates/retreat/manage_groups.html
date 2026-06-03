@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>조 관리 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603h" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603n" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -21,6 +21,12 @@
         </header>
         <main>
           {% include 'includes/retreat_event_tabs.html' with retreat_tab='manage_groups' %}
+          {% if can_add_group %}
+            <div class="jcc-retreat-listTop">
+              <div class="msg" id="retreatStatus" role="status"></div>
+              <button type="button" class="secondary" id="btnAddGroup">+ 조 추가</button>
+            </div>
+          {% endif %}
           <div class="jcc-retreat-groupGrid">
             {% for g in groups %}
               <a
@@ -32,17 +38,109 @@
                   <span class="jcc-retreat-pill jcc-retreat-pill--alt">{{ g.division.name }}</span>
                 </div>
                 <div class="jcc-retreat-groupName">{{ g.name }}</div>
+                <div class="jcc-retreat-groupMeta">조장 {{ g.leader_names|default:"-" }}</div>
                 <div class="jcc-retreat-groupMeta">조원 {{ g.attendee_count }}명</div>
               </a>
             {% empty %}
               <div class="card">
-                <div class="msg">표시할 조가 없습니다.</div>
+                <div class="msg">표시할 조가 없습니다.{% if can_add_group %} 우측 상단에서 조를 추가하세요.{% endif %}</div>
               </div>
             {% endfor %}
           </div>
         </main>
+
+        {% if can_add_group %}
+          <div class="jcc-retreat-modalOverlay" id="groupModalOverlay" hidden aria-hidden="true">
+            <div class="jcc-retreat-modal card jcc-retreat-modal--wide" role="dialog" aria-modal="true" aria-labelledby="groupModalTitle">
+              <h2 id="groupModalTitle" class="jcc-retreat-modalTitle">조 추가</h2>
+              <form id="groupForm">
+                <div class="jcc-retreat-modalGrid">
+                  <div class="field jcc-retreat-modalField--full">
+                    <label for="groupEventInput">행사 *</label>
+                    <select id="groupEventInput" name="event" required>
+                      {% for ev in available_events %}
+                        <option value="{{ ev.id }}" {% if ev.id == event.id %}selected{% endif %}>{{ ev.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="groupRegionInput">지역 *</label>
+                    <select id="groupRegionInput" name="region" required>
+                      <option value="">선택</option>
+                      {% for r in region_choices %}
+                        <option value="{{ r.id }}">{{ r.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="groupDivisionInput">부서 *</label>
+                    <select id="groupDivisionInput" name="division" required>
+                      <option value="">선택</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="groupNameInput">조 이름 *</label>
+                    <input type="text" id="groupNameInput" name="name" required maxlength="50" placeholder="예: 1조" autocomplete="off">
+                  </div>
+                  <div class="field">
+                    <label for="groupOrderInput">정렬 순서</label>
+                    <input type="number" id="groupOrderInput" name="order" min="0" value="0">
+                  </div>
+                </div>
+
+                <section class="jcc-retreat-leadersDraft">
+                  <h3 class="jcc-retreat-leadersDraftTitle">조 운영진 <span class="muted">(선택)</span></h3>
+                  <div id="groupLeadersDraftList" class="jcc-retreat-leadersDraftList"></div>
+                  <div class="jcc-retreat-leadersDraftAdd">
+                    <div class="field jcc-retreat-userPickerField">
+                      <label for="groupLeaderUserInput">사용자</label>
+                      <div class="jcc-retreat-userPicker" data-user-picker>
+                        <input type="text" id="groupLeaderUserInput" class="jcc-retreat-userPickerInput" placeholder="이름 검색" maxlength="150" autocomplete="off" data-user-picker-input>
+                        <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
+                        <input type="hidden" data-user-picker-id>
+                      </div>
+                    </div>
+                    <div class="field">
+                      <label for="groupLeaderRoleInput">역할</label>
+                      <select id="groupLeaderRoleInput">
+                        {% for code, label in group_role_choices %}
+                          <option value="{{ code }}">{{ label }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <button type="button" class="secondary jcc-retreat-leaderAddBtn" id="btnAddLeaderDraft">목록에 추가</button>
+                  </div>
+                  <small class="muted jcc-retreat-leadersDraftHint" data-user-picker-hint>부서를 선택하면 소속 계정이 보입니다. 이름을 입력하면 그 안에서 검색합니다.</small>
+                </section>
+
+                <div class="jcc-retreat-modalFooter jcc-retreat-modalFooter--golden">
+                  <button type="button" class="secondary jcc-retreat-btnCancel" id="groupModalCancel">취소</button>
+                  <button type="submit" class="jcc-retreat-btnPrimary" id="groupModalSubmit">저장</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <script id="retreatDivisionList" type="application/json">[{% for d in division_choices %}{"id":{{ d.id }},"name":"{{ d.name|escapejs }}","region_id":{% if d.region_id %}{{ d.region_id }}{% else %}null{% endif %}}{% if not forloop.last %},{% endif %}{% endfor %}]</script>
+          <script>
+            window.RETREAT_GROUPS_CTX = {
+              defaultEventId: {{ event.id }},
+              csrfToken: "{{ csrf_token }}",
+              roleLabels: {
+                {% for code, label in group_role_choices %}"{{ code }}": "{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}
+              },
+              urls: {
+                eventGroupsTemplate: "/api/v1/retreat/events/__eid__/groups/",
+                userSearchUrl: "{% url 'api_retreat_user_search' %}",
+              },
+            };
+          </script>
+        {% endif %}
       </div>
     </div>
     {% include 'includes/retreat_bottom_tabs.html' %}
+    {% if can_add_group %}
+      <script src="{% static 'retreat/manage_groups.js' %}?v=20260603n" defer></script>
+    {% endif %}
   </body>
 </html>

@@ -1,8 +1,9 @@
 """조 운영진(조장·부조장) CRUD API.
 
 권한:
-- 조회/변경: ``assert_can_mutate_group`` (슈퍼유저 / 본인 조장·부조장 / staff(해당 region·division))
-- 회장단·목사·전도사는 visible 가시권 + staff 자격으로 모든 조 접근 가능.
+- 조회: ``get_group_or_403`` (가시 조만)
+- 변경: ``assert_can_manage_group_leaders`` (슈퍼유저 / 회장단 / 본인 조 운영진)
+- 목사·전도사는 읽기 전용.
 """
 
 from __future__ import annotations
@@ -15,10 +16,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from retreat.apis._common import assert_can_mutate_group, get_group_or_403
+from retreat.apis._common import assert_can_manage_group_leaders, get_group_or_403
 from retreat.models import RetreatChangeLog, RetreatGroupMembership
 from retreat.serializers import RetreatGroupMembershipSerializer
 from retreat.services.audit import log_retreat_change
+from retreat.services.group_sync import (
+    clear_leader_role_on_membership_removed,
+    sync_attendee_from_membership,
+)
 
 User = get_user_model()
 
@@ -52,7 +57,7 @@ class RetreatGroupMembershipListCreateView(APIView):
 
     def post(self, request, group_id: int):
         group = get_group_or_403(request.user, group_id)
-        assert_can_mutate_group(request.user, group)
+        assert_can_manage_group_leaders(request.user, group)
 
         target = _resolve_user(request.data)
         if target is None:
@@ -81,6 +86,7 @@ class RetreatGroupMembershipListCreateView(APIView):
                 "role": role,
             },
         )
+        sync_attendee_from_membership(membership, changed_by=request.user)
         return Response(
             RetreatGroupMembershipSerializer(membership).data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
@@ -100,7 +106,7 @@ class RetreatGroupMembershipDetailView(APIView):
 
     def patch(self, request, membership_id: int):
         membership = self._get(membership_id)
-        assert_can_mutate_group(request.user, membership.group)
+        assert_can_manage_group_leaders(request.user, membership.group)
         role = _validate_role(
             (request.data.get("role") or membership.role).strip()
         )
@@ -111,6 +117,7 @@ class RetreatGroupMembershipDetailView(APIView):
         }
         membership.role = role
         membership.save(update_fields=["role"])
+        sync_attendee_from_membership(membership, changed_by=request.user)
         log_retreat_change(
             user=request.user,
             event=membership.group.event,
@@ -129,7 +136,7 @@ class RetreatGroupMembershipDetailView(APIView):
 
     def delete(self, request, membership_id: int):
         membership = self._get(membership_id)
-        assert_can_mutate_group(request.user, membership.group)
+        assert_can_manage_group_leaders(request.user, membership.group)
         before = {
             "group_id": membership.group_id,
             "user_id": membership.user_id,
@@ -138,6 +145,9 @@ class RetreatGroupMembershipDetailView(APIView):
         }
         event = membership.group.event
         mid = membership.id
+        clear_leader_role_on_membership_removed(
+            membership, changed_by=request.user
+        )
         membership.delete()
         log_retreat_change(
             user=request.user,
