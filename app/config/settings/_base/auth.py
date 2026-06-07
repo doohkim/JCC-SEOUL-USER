@@ -14,6 +14,20 @@ DEFAULT_USERS = {
         "is_staff": True,
         "is_superuser": True,
     },
+    "jsh": {
+        "name": "jsh",
+        "email": "jsh@jcc-seoul.com",
+        "password": "pbkdf2_sha256$1200000$U3FKnDPCW86aTXEwTp3iSi$7xRB1MuXGEK7hboBn+nThx5ujuenBwVqCz6wqk35GT0=",
+        "is_staff": True,
+        "is_superuser": True,
+    },
+    "shj": {
+        "name": "shj",
+        "email": "shj@jcc-seoul.com",
+        "password": "pbkdf2_sha256$1200000$Z4VCh9MHvwJ4Kngg4dxFPO$LOj/ha6EKjRfHR8NRfZu/eLvkbknaSwTMqFHqeuIe8U=",
+        "is_staff": True,
+        "is_superuser": True,
+    },
 }
 
 SOCIAL_AUTH_KAKAO_KEY = os.environ.get("KAKAO_REST_API_KEY", "")
