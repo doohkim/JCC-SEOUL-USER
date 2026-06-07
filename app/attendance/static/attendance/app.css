@@ -882,9 +882,8 @@ button.jcc-page-tab {
 
 .jcc-excel-board-viewport {
   border-radius: 12px;
-  border: 1px solid rgba(42, 53, 72, 0.95);
-  background: linear-gradient(180deg, rgba(10, 14, 20, 0.65) 0%, rgba(12, 15, 20, 0.9) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  background: var(--bg);
   overflow: hidden;
 }
 
@@ -918,9 +917,9 @@ button.jcc-page-tab {
   /* 내용이 적어도 카드 높이를 같게 해 두 줄 사이 빈틈을 없앰 */
   height: min(64vh, 520px);
   max-height: min(64vh, 520px);
-  border: 1px solid rgba(42, 53, 72, 0.9);
+  border: 1px solid var(--border);
   border-radius: 11px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--card);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -943,7 +942,8 @@ button.jcc-page-tab {
   padding: 0.48rem 0.5rem;
   text-align: center;
   border-bottom: 1px solid var(--border);
-  background: rgba(15, 23, 34, 0.75);
+  background: var(--surface-2);
+  color: var(--text);
   line-height: 1.25;
 }
 
@@ -966,7 +966,7 @@ button.jcc-page-tab {
   overscroll-behavior-x: none;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: rgba(74, 158, 255, 0.38) rgba(255, 255, 255, 0.05);
+  scrollbar-color: rgba(74, 158, 255, 0.38) var(--surface-2);
 }
 
 .jcc-excel-col-body::-webkit-scrollbar {
@@ -974,7 +974,7 @@ button.jcc-page-tab {
 }
 
 .jcc-excel-col-body::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-2);
   border-radius: 100px;
 }
 
@@ -990,7 +990,7 @@ button.jcc-page-tab {
   gap: 0.35rem;
   padding: 0.42rem 0.45rem;
   font-size: 0.76rem;
-  border-bottom: 1px solid rgba(42, 53, 72, 0.55);
+  border-bottom: 1px solid var(--border);
 }
 
 .jcc-excel-row:last-child {

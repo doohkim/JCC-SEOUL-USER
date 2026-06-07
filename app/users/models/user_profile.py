@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.db import models
 
 from .organization import Division, Team
@@ -128,25 +127,24 @@ class UserProfile(models.Model):
 
     def clean(self):
         super().clean()
+        # 신청 부서가 바뀌면 부서와 어긋난 신청 팀/희망 조는 비워 정합성을 유지한다.
+        # (부서 변경을 막지 않도록 폼에 없는 필드로 에러를 던지지 않는다.)
         if (
             self.requested_team_id
             and self.requested_division_id
             and self.requested_team.division_id != self.requested_division_id
         ):
-            raise ValidationError({"requested_team": "신청 팀은 신청 부서에 속해야 합니다."})
+            self.requested_team = None
         if (
             self.requested_retreat_group_id
             and self.requested_division_id
             and self.requested_retreat_group.division_id != self.requested_division_id
         ):
-            raise ValidationError(
-                {"requested_retreat_group": "희망 조는 신청 부서·지역과 일치해야 합니다."}
-            )
+            self.requested_retreat_group = None
+        # 희망 조가 비워졌는데 수련회 참여로 남아 있으면 참여 신청도 함께 해제.
         if self.requested_retreat_participation and not self.requested_retreat_group_id:
-            if self.requested_retreat_event_id:
-                raise ValidationError(
-                    {"requested_retreat_group": "수련회 참여 시 조를 선택해야 합니다."}
-                )
+            self.requested_retreat_participation = False
+            self.requested_retreat_event = None
 
 
 class UserProfileAvatar(models.Model):

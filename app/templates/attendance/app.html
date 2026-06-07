@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="{% static 'attendance/app.css' %}">
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260607a">
 </head>
 <body>
   <div class="jcc-layout">
@@ -19,7 +19,7 @@
       <header class="app-header">
         <div class="jcc-detail-titleWrap">
           <h1>출석</h1>
-          <p class="subtitle">부서 · 주차(월 N주차) · 주일 / 수요 / 토요 예배별 조회</p>
+          <p class="subtitle">부서 · 예배일(년·월·일) · 주일 / 수요 / 토요별 조회</p>
         </div>
       </header>
 
@@ -29,10 +29,10 @@
           <select id="divisionCode"></select>
         </div>
         <div class="field">
-          <label>주차</label>
+          <label>예배일</label>
           <select id="weekId"></select>
         </div>
-        <div class="field">
+        <div class="field" style="display:none;">
           <label>예배 구분</label>
           <select id="worshipType"></select>
         </div>
@@ -198,7 +198,7 @@
         </div>
       </main>
 
-      <script src="{% static 'attendance/app.js' %}"></script>
+      <script src="{% static 'attendance/app.js' %}?v=20260607a"></script>
     </div>
   </div>
 </body>

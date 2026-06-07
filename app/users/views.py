@@ -114,6 +114,7 @@ class OnboardingRequestForm(forms.Form):
             "division__sort_order", "sort_order", "name"
         ),
         label="희망 팀",
+        required=False,
         empty_label="팀을 선택해 주세요",
     )
     requested_retreat_participation = forms.BooleanField(
@@ -295,7 +296,7 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
         profile.real_name = (form.cleaned_data["real_name"] or "").strip()
         profile.phone = (form.cleaned_data["phone"] or "").strip()
         profile.requested_division = form.cleaned_data["requested_division"]
-        profile.requested_team = form.cleaned_data["requested_team"]
+        profile.requested_team = form.cleaned_data.get("requested_team")
         profile.onboarding_status = UserProfile.OnboardingStatus.PENDING
         profile.onboarding_note = ""
         update_fields = [
@@ -529,16 +530,13 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
         if profile.requested_division_id not in allowed_ids:
             messages.error(request, "담당 부서 신청 건만 수정할 수 있습니다.")
             return HttpResponseRedirect(next_url)
-        if not profile.requested_team_id:
-            messages.error(request, "팀을 지정해 주세요.")
-            return HttpResponseRedirect(next_url)
 
         note = (request.POST.get("note") or "").strip()
 
         if selected_status == UserProfile.OnboardingStatus.APPROVED:
             team = profile.requested_team
-            if team is None or team.division_id != profile.requested_division_id:
-                messages.error(request, "승인 시 유효한 팀이 필요합니다.")
+            if team is not None and team.division_id != profile.requested_division_id:
+                messages.error(request, "신청 팀은 신청 부서에 속해야 합니다.")
                 return HttpResponseRedirect(next_url)
             UserDivisionTeam.objects.update_or_create(
                 user=profile.user,
@@ -720,16 +718,11 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         if not divisions.exists():
             return None, divisions
 
-        role_code = getattr(getattr(self.request.user, "role_level", None), "code", "")
         requested_code = (self.request.GET.get("division_code") or "").strip()
-        if role_code in ("pastor", "evangelist"):
-            active = divisions.filter(code=requested_code).first() if requested_code else None
-            if active is None:
-                active = divisions.first()
-            return active, divisions
-
-        # 그 외(기능권한만 등): 첫 부서 고정
-        return divisions.first(), divisions
+        active = divisions.filter(code=requested_code).first() if requested_code else None
+        if active is None:
+            active = divisions.first()
+        return active, divisions
 
     def _division_functional_department(self, division: Division):
         return FunctionalDepartment.objects.get_or_create(

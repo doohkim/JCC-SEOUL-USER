@@ -12,8 +12,8 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
 from counseling.models import (
-    CounselorDayOverride,
-    CounselorScheduleSettings,
+    PastorDayOverride,
+    PastorScheduleSettings,
     CounselingRequest,
     CounselingSlot,
 )
@@ -49,9 +49,9 @@ def iter_dates_in_horizon() -> list[dt.date]:
     return out
 
 
-def get_or_create_schedule_settings(counselor_id: int) -> CounselorScheduleSettings:
-    obj, _ = CounselorScheduleSettings.objects.get_or_create(
-        user_id=counselor_id,
+def get_or_create_schedule_settings(pastor_id: int) -> PastorScheduleSettings:
+    obj, _ = PastorScheduleSettings.objects.get_or_create(
+        user_id=pastor_id,
         defaults={
             "slot_duration_minutes": 60,
             "default_start_hour": 10,
@@ -61,7 +61,7 @@ def get_or_create_schedule_settings(counselor_id: int) -> CounselorScheduleSetti
     return obj
 
 
-def _hours_for_weekday(settings_obj: CounselorScheduleSettings, weekday: int) -> tuple[int, int]:
+def _hours_for_weekday(settings_obj: PastorScheduleSettings, weekday: int) -> tuple[int, int]:
     raw = settings_obj.weekday_hours_json
     if isinstance(raw, dict) and str(weekday) in raw:
         block = raw[str(weekday)]
@@ -71,13 +71,11 @@ def _hours_for_weekday(settings_obj: CounselorScheduleSettings, weekday: int) ->
 
 
 def _desired_ranges_for_day(
-    counselor_id: int,
+    pastor_id: int,
     day: dt.date,
-    settings_obj: CounselorScheduleSettings,
+    settings_obj: PastorScheduleSettings,
 ) -> list[tuple[dt.time, dt.time]]:
-    override = (
-        CounselorDayOverride.objects.filter(counselor_id=counselor_id, date=day).first()
-    )
+    override = PastorDayOverride.objects.filter(pastor_id=pastor_id, date=day).first()
     if override and override.is_closed:
         return []
 
@@ -129,14 +127,14 @@ def _ranges_from_hours(start_h: int, end_h: int, duration_minutes: int) -> list[
     return out
 
 
-def ensure_slots_for_horizon(counselor_id: int) -> None:
+def ensure_slots_for_horizon(pastor_id: int) -> None:
     """롤링 창 날짜에 맞게 OPEN 슬롯을 idempotent하게 맞춘다."""
-    settings_obj = get_or_create_schedule_settings(counselor_id)
+    settings_obj = get_or_create_schedule_settings(pastor_id)
     for day in iter_dates_in_horizon():
-        desired = _desired_ranges_for_day(counselor_id, day, settings_obj)
+        desired = _desired_ranges_for_day(pastor_id, day, settings_obj)
         desired_pairs = {(a, b) for a, b in desired}
 
-        existing = CounselingSlot.objects.filter(counselor_id=counselor_id, date=day)
+        existing = CounselingSlot.objects.filter(pastor_id=pastor_id, date=day)
         for slot in existing:
             key = (slot.start_time, slot.end_time)
             if slot.state == CounselingSlot.State.OPEN and key not in desired_pairs:
@@ -144,13 +142,13 @@ def ensure_slots_for_horizon(counselor_id: int) -> None:
 
         for st, et in desired:
             if CounselingSlot.objects.filter(
-                counselor_id=counselor_id,
+                pastor_id=pastor_id,
                 date=day,
                 start_time=st,
             ).exists():
                 continue
             CounselingSlot.objects.create(
-                counselor_id=counselor_id,
+                pastor_id=pastor_id,
                 date=day,
                 start_time=st,
                 end_time=et,
@@ -161,14 +159,14 @@ def ensure_slots_for_horizon(counselor_id: int) -> None:
 def create_counseling_request(*, applicant_id: int, slot_id: int, message: str) -> CounselingRequest:
     with transaction.atomic():
         slot = CounselingSlot.objects.select_for_update().get(pk=slot_id)
-        if slot.counselor_id == applicant_id:
+        if slot.pastor_id == applicant_id:
             raise ValueError("본인에게는 상담을 신청할 수 없습니다.")
         if slot.state != CounselingSlot.State.OPEN:
             raise ValueError("이미 신청되었거나 예약할 수 없는 시간입니다.")
 
         req = CounselingRequest.objects.create(
             applicant_id=applicant_id,
-            counselor_id=slot.counselor_id,
+            pastor_id=slot.pastor_id,
             slot=slot,
             status=CounselingRequest.Status.PENDING,
             applicant_message=message or "",
@@ -179,7 +177,7 @@ def create_counseling_request(*, applicant_id: int, slot_id: int, message: str) 
 
 
 def accept_counseling_request(*, user_id: int, req: CounselingRequest) -> CounselingRequest:
-    if req.counselor_id != user_id:
+    if req.pastor_id != user_id:
         raise PermissionError
     with transaction.atomic():
         locked = CounselingRequest.objects.select_for_update().select_related("slot").get(pk=req.pk)
@@ -193,7 +191,7 @@ def accept_counseling_request(*, user_id: int, req: CounselingRequest) -> Counse
 
 
 def reject_counseling_request(*, user_id: int, req: CounselingRequest) -> CounselingRequest:
-    if req.counselor_id != user_id:
+    if req.pastor_id != user_id:
         raise PermissionError
     with transaction.atomic():
         locked = CounselingRequest.objects.select_for_update().select_related("slot").get(pk=req.pk)
@@ -223,8 +221,6 @@ def cancel_counseling_request(*, user_id: int, req: CounselingRequest) -> Counse
 def counseling_request_detail_for_user(*, user, public_id):
     if isinstance(public_id, str):
         public_id = uuid.UUID(public_id)
-    qs = CounselingRequest.objects.select_related("slot", "applicant", "counselor")
-    q_filter = Q(public_id=public_id) & (
-        Q(applicant_id=user.pk) | Q(counselor_id=user.pk)
-    )
+    qs = CounselingRequest.objects.select_related("slot", "applicant", "pastor")
+    q_filter = Q(public_id=public_id) & (Q(applicant_id=user.pk) | Q(pastor_id=user.pk))
     return get_object_or_404(qs.filter(q_filter))

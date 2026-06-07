@@ -21,18 +21,22 @@ class CounselingApiTests(TestCase):
         self.div_b = Division.objects.create(
             region=seoul, name="부서B", code="div-b", sort_order=2
         )
-        self.rl_pastor = RoleLevel.objects.create(name="목사", code="pastor", level=100, sort_order=0)
-        self.rl_member = RoleLevel.objects.create(name="일반", code="member", level=0, sort_order=10)
+        self.rl_pastor, _ = RoleLevel.objects.get_or_create(
+            code="pastor", defaults={"name": "목사", "level": 100, "sort_order": 0}
+        )
+        self.rl_member, _ = RoleLevel.objects.get_or_create(
+            code="member", defaults={"name": "일반", "level": 0, "sort_order": 10}
+        )
 
-        self.counselor = User.objects.create_user(username="pastor_a", password="x")
-        self.counselor.role_level = self.rl_pastor
-        self.counselor.save()
-        UserDivisionTeam.objects.create(user=self.counselor, division=self.div_a, is_primary=True)
+        self.pastor = User.objects.create_user(username="pastor_a", password="x")
+        self.pastor.role_level = self.rl_pastor
+        self.pastor.save()
+        UserDivisionTeam.objects.create(user=self.pastor, division=self.div_a, is_primary=True)
 
-        self.counselor_b = User.objects.create_user(username="pastor_b", password="x")
-        self.counselor_b.role_level = self.rl_pastor
-        self.counselor_b.save()
-        UserDivisionTeam.objects.create(user=self.counselor_b, division=self.div_b, is_primary=True)
+        self.pastor_b = User.objects.create_user(username="pastor_b", password="x")
+        self.pastor_b.role_level = self.rl_pastor
+        self.pastor_b.save()
+        UserDivisionTeam.objects.create(user=self.pastor_b, division=self.div_b, is_primary=True)
 
         self.applicant = User.objects.create_user(username="member_a", password="x")
         self.applicant.role_level = self.rl_member
@@ -44,11 +48,11 @@ class CounselingApiTests(TestCase):
         self.stranger.save()
         UserDivisionTeam.objects.create(user=self.stranger, division=self.div_b, is_primary=True)
 
-        get_or_create_schedule_settings(self.counselor.pk)
-        ensure_slots_for_horizon(self.counselor.pk)
+        get_or_create_schedule_settings(self.pastor.pk)
+        ensure_slots_for_horizon(self.pastor.pk)
         self.slot = (
             CounselingSlot.objects.filter(
-                counselor_id=self.counselor.pk,
+                pastor_id=self.pastor.pk,
                 state=CounselingSlot.State.OPEN,
             )
             .order_by("date", "start_time")
@@ -56,14 +60,14 @@ class CounselingApiTests(TestCase):
         )
         self.assertIsNotNone(self.slot)
 
-    def test_counselor_list_division_scoped(self):
+    def test_pastor_list_division_scoped(self):
         c = APIClient()
         c.force_login(self.applicant)
-        r = c.get("/api/v1/counseling/counselors/")
+        r = c.get("/api/v1/counseling/pastors/")
         self.assertEqual(r.status_code, status.HTTP_200_OK)
         ids = [row["id"] for row in r.json()]
-        self.assertIn(self.counselor.pk, ids)
-        self.assertNotIn(self.counselor_b.pk, ids)
+        self.assertIn(self.pastor.pk, ids)
+        self.assertNotIn(self.pastor_b.pk, ids)
 
     def test_create_request_and_block_double_book(self):
         c = APIClient()
@@ -96,8 +100,8 @@ class CounselingApiTests(TestCase):
         r = c2.get(f"/api/v1/counseling/requests/{public_id}/")
         self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_counselor_settings_forbidden_for_member(self):
+    def test_pastor_settings_forbidden_for_member(self):
         c = APIClient()
         c.force_login(self.applicant)
-        r = c.get("/api/v1/counseling/counselor/settings/")
+        r = c.get("/api/v1/counseling/pastor/settings/")
         self.assertEqual(r.status_code, status.HTTP_403_FORBIDDEN)

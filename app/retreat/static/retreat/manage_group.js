@@ -43,8 +43,6 @@
   const expectedInInput = document.getElementById("retreatAttExpectedIn");
   const expectedOutInput = document.getElementById("retreatAttExpectedOut");
   const lodgingInput = document.getElementById("retreatAttLodging");
-  const actualInOut = document.getElementById("retreatAttActualIn");
-  const actualOutOut = document.getElementById("retreatAttActualOut");
   const roleInput = document.getElementById("retreatAttRole");
   const checkInInput = document.getElementById("retreatAttCheckIn");
   const titleEl = document.getElementById("retreatModalTitle");
@@ -691,9 +689,6 @@
     if (expectedOutInput)
       expectedOutInput.value = toDatetimeLocalValue(payload?.expectedOut || "");
     if (lodgingInput) lodgingInput.value = payload?.lodgingRoom || "";
-    if (actualInOut) actualInOut.textContent = formatStamp(payload?.checkedInAt || "");
-    if (actualOutOut)
-      actualOutOut.textContent = formatStamp(payload?.checkedOutAt || "");
     if (roleInput) roleInput.value = payload?.memberRole || "member";
     if (checkInInput) {
       checkInInput.value = checkIn;
@@ -706,9 +701,17 @@
         attendeePicker.clear();
       }
     }
+    // 조장/부조장(상세 수정 불가)은 '추가'에서만 실명/성별/연락처 입력 가능.
+    const showProfileFields = ctx.canEditAttendee || mode === "create";
+    form
+      ?.querySelectorAll("[data-modal-profile-field]")
+      .forEach((el) => {
+        el.hidden = !showProfileFields;
+      });
     overlay.hidden = false;
     overlay.setAttribute("aria-hidden", "false");
-    const focusEl = ctx.canEditAttendee && mode === "create" ? nameInput : checkInInput || nameInput;
+    const focusEl =
+      showProfileFields && mode === "create" ? nameInput : checkInInput || nameInput;
     requestAnimationFrame(() => focusEl?.focus());
   }
 
@@ -740,10 +743,14 @@
       payload.lodging_room =
         lodgingInput && lodgingInput.value ? Number(lodgingInput.value) : null;
     }
-    if (ctx.canEditAttendee) {
+    const includeProfile =
+      ctx.canEditAttendee || (ctx.canMutate && modalMode === "create");
+    if (includeProfile) {
       payload.name = (nameInput?.value || "").trim();
       payload.gender = genderInput?.value || "";
       payload.phone = (phoneInput?.value || "").trim();
+    }
+    if (ctx.canEditAttendee) {
       payload.memo = (memoInput?.value || "").trim();
       payload.member_role = roleInput?.value || "member";
       payload.user = linkedUserId ? Number(linkedUserId) : null;
@@ -754,10 +761,16 @@
           lodgingInput && lodgingInput.value ? Number(lodgingInput.value) : null;
       }
     }
-    if (ctx.canEditAttendee && !payload.name) {
+    if (includeProfile && !payload.name) {
       submitBtn.disabled = false;
-      showToast("이름은 필수입니다.", true);
+      showToast("실명은 필수입니다.", true);
       nameInput?.focus();
+      return;
+    }
+    if (includeProfile && modalMode === "create" && !payload.gender) {
+      submitBtn.disabled = false;
+      showToast("성별은 필수입니다.", true);
+      genderInput?.focus();
       return;
     }
     if (!Object.keys(payload).length) {

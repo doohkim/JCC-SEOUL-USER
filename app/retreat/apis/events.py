@@ -90,6 +90,11 @@ class RetreatEventGroupListView(APIView):
                 {"division": "선택한 지역에 속한 부서가 아닙니다."}
             )
 
+        if RetreatGroup.objects.filter(event=event, name=name).exists():
+            raise ValidationError(
+                {"name": "이 행사에 이미 같은 이름의 조가 있습니다."}
+            )
+
         group = RetreatGroup.objects.create(
             event=event,
             region_id=int(region_id),

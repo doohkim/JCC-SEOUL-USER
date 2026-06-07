@@ -12,9 +12,11 @@ from retreat.models import RetreatChangeLog, RetreatEvent
 from retreat.serializers import RetreatChangeLogSerializer
 from retreat.services.dashboard import (
     build_event_results,
+    build_group_attendance_board,
     build_realtime_dashboard,
     build_results_analytics,
 )
+from retreat.services.auto_check_in import apply_due_auto_transitions
 from users.permissions import (
     can_access_retreat_tab,
     is_retreat_staff,
@@ -34,8 +36,25 @@ class RetreatEventDashboardView(APIView):
         if not can_access_retreat_tab(request.user):
             raise PermissionDenied
         staff = _staff_view(request.user, event)
+        apply_due_auto_transitions(event_id=event.id)
         return Response(
             build_realtime_dashboard(event, request.user, staff_view=staff)
+        )
+
+
+class RetreatEventGroupBoardView(APIView):
+    """조별 조원 명단 + 실시간 입·퇴실 상태 보드."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, event_id: int):
+        event = get_object_or_404(RetreatEvent, pk=event_id)
+        if not can_access_retreat_tab(request.user):
+            raise PermissionDenied
+        staff = _staff_view(request.user, event)
+        apply_due_auto_transitions(event_id=event.id)
+        return Response(
+            build_group_attendance_board(event, request.user, staff_view=staff)
         )
 
 

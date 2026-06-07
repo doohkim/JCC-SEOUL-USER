@@ -8,17 +8,17 @@ from django.conf import settings
 from django.db import models
 
 
-class CounselorScheduleSettings(models.Model):
+class PastorScheduleSettings(models.Model):
     """
-    상담사별 기본 슬롯 템플릿.
+    목회자별 기본 슬롯 템플릿.
     기본: 매일 start_hour~end_hour(마지막 슬롯 종료 시각), slot_duration_minutes 간격.
     """
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="counselor_schedule_settings",
-        verbose_name="상담사",
+        related_name="pastor_schedule_settings",
+        verbose_name="목회자",
     )
     slot_duration_minutes = models.PositiveSmallIntegerField("슬롯 길이(분)", default=60)
     default_start_hour = models.PositiveSmallIntegerField("기본 시작 시", default=10)
@@ -36,21 +36,21 @@ class CounselorScheduleSettings(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "상담사 일정 템플릿"
-        verbose_name_plural = "상담사 일정 템플릿"
+        verbose_name = "목회자 일정 템플릿"
+        verbose_name_plural = "목회자 일정 템플릿"
 
     def __str__(self):
         return f"{self.user_id} schedule template"
 
 
-class CounselorDayOverride(models.Model):
+class PastorDayOverride(models.Model):
     """오늘 기준 롤링 창 안의 특정 일자만 템플릿과 다르게."""
 
-    counselor = models.ForeignKey(
+    pastor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="counselor_day_overrides",
-        verbose_name="상담사",
+        related_name="pastor_day_overrides",
+        verbose_name="목회자",
     )
     date = models.DateField("날짜")
     is_closed = models.BooleanField("휴무(해당 일 전체)", default=False)
@@ -63,14 +63,14 @@ class CounselorDayOverride(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "상담사 일별 예약 오버라이드"
-        verbose_name_plural = "상담사 일별 예약 오버라이드"
+        verbose_name = "목회자 일별 예약 오버라이드"
+        verbose_name_plural = "목회자 일별 예약 오버라이드"
         constraints = [
-            models.UniqueConstraint(fields=["counselor", "date"], name="unique_counselor_day_override"),
+            models.UniqueConstraint(fields=["pastor", "date"], name="unique_pastor_day_override"),
         ]
 
     def __str__(self):
-        return f"{self.counselor_id} {self.date}"
+        return f"{self.pastor_id} {self.date}"
 
 
 class CounselingSlot(models.Model):
@@ -80,11 +80,11 @@ class CounselingSlot(models.Model):
         BOOKED = "booked", "확정"
         BLOCKED = "blocked", "차단"
 
-    counselor = models.ForeignKey(
+    pastor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="counseling_slots",
-        verbose_name="상담사",
+        verbose_name="목회자",
     )
     date = models.DateField("날짜")
     start_time = models.TimeField("시작")
@@ -104,16 +104,16 @@ class CounselingSlot(models.Model):
         verbose_name_plural = "상담 슬롯"
         constraints = [
             models.UniqueConstraint(
-                fields=["counselor", "date", "start_time"],
-                name="unique_counselor_date_start",
+                fields=["pastor", "date", "start_time"],
+                name="unique_pastor_date_start",
             ),
         ]
         indexes = [
-            models.Index(fields=["counselor", "date", "state"]),
+            models.Index(fields=["pastor", "date", "state"], name="counseling__pastor_211739_idx"),
         ]
 
     def __str__(self):
-        return f"{self.counselor_id} {self.date} {self.start_time}-{self.end_time} {self.state}"
+        return f"{self.pastor_id} {self.date} {self.start_time}-{self.end_time} {self.state}"
 
 
 class CounselingRequest(models.Model):
@@ -130,11 +130,11 @@ class CounselingRequest(models.Model):
         related_name="counseling_requests_sent",
         verbose_name="신청자",
     )
-    counselor = models.ForeignKey(
+    pastor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="counseling_requests_received",
-        verbose_name="상담사",
+        verbose_name="목회자",
     )
     slot = models.OneToOneField(
         CounselingSlot,
@@ -150,7 +150,7 @@ class CounselingRequest(models.Model):
         db_index=True,
     )
     applicant_message = models.TextField("상담 요청 내용", blank=True)
-    counselor_notes_json = models.JSONField(
+    pastor_notes_json = models.JSONField(
         "상담 메모(리치 텍스트/Quill delta 등)",
         default=dict,
         blank=True,
@@ -163,7 +163,7 @@ class CounselingRequest(models.Model):
         verbose_name_plural = "상담 신청"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["counselor", "status"]),
+            models.Index(fields=["pastor", "status"], name="counseling__pastor_21aad3_idx"),
             models.Index(fields=["applicant", "status"]),
         ]
 

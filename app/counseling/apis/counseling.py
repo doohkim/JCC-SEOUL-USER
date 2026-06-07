@@ -11,10 +11,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from counseling.models import CounselorDayOverride, CounselingRequest, CounselingSlot
+from counseling.models import PastorDayOverride, CounselingRequest, CounselingSlot
 from counseling.serializers import (
-    CounselorDayOverrideSerializer,
-    CounselorScheduleSettingsSerializer,
+    PastorDayOverrideSerializer,
+    PastorScheduleSettingsSerializer,
     CounselingRequestCreateSerializer,
     CounselingRequestSerializer,
     CounselingRequestUpdateSerializer,
@@ -31,10 +31,10 @@ from counseling.services import (
 from counseling.services.notifications import notify_new_counseling_request
 from counseling.services.slots import counseling_request_detail_for_user, date_range_horizon
 from users.permissions import (
-    IsCounselingCounselor,
+    IsCounselingPastor,
     IsCounselingParticipant,
     can_access_counseling_manage_tab,
-    counselors_queryset_for_applicant,
+    pastors_queryset_for_applicant,
 )
 
 
@@ -47,26 +47,26 @@ def _parse_date(s: str | None) -> dt.date | None:
         return None
 
 
-class CounselorListApiView(APIView):
+class PastorListApiView(APIView):
     """목사·전도사 목록(부서 격리)."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = counselors_queryset_for_applicant(request.user).select_related("role_level")
+        qs = pastors_queryset_for_applicant(request.user).select_related("role_level")
         from users.services.user_display import user_display_name
 
         data = [{"id": u.pk, "label": user_display_name(u)} for u in qs.order_by("id")]
         return Response(data)
 
 
-class CounselorSlotsApiView(APIView):
-    """특정 상담사의 예약 가능 슬롯(OPEN만)."""
+class PastorSlotsApiView(APIView):
+    """특정 목회자의 예약 가능 슬롯(OPEN만)."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk: int):
-        if not counselors_queryset_for_applicant(request.user).filter(pk=pk).exists():
+        if not pastors_queryset_for_applicant(request.user).filter(pk=pk).exists():
             raise Http404()
         ensure_slots_for_horizon(pk)
         start_d, end_d = date_range_horizon()
@@ -75,7 +75,7 @@ class CounselorSlotsApiView(APIView):
         if from_q > to_q:
             from_q, to_q = to_q, from_q
         qs = CounselingSlot.objects.filter(
-            counselor_id=pk,
+            pastor_id=pk,
             date__gte=from_q,
             date__lte=to_q,
             state=CounselingSlot.State.OPEN,
@@ -83,8 +83,8 @@ class CounselorSlotsApiView(APIView):
         return Response(CounselingSlotSerializer(qs, many=True).data)
 
 
-class CounselorManageSlotsApiView(APIView):
-    """상담사 본인 슬롯 전체 상태(관리 화면)."""
+class PastorManageSlotsApiView(APIView):
+    """목회자 본인 슬롯 전체 상태(관리 화면)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -96,54 +96,54 @@ class CounselorManageSlotsApiView(APIView):
         from_q = _parse_date(request.query_params.get("from")) or start_d
         to_q = _parse_date(request.query_params.get("to")) or end_d
         qs = CounselingSlot.objects.filter(
-            counselor_id=request.user.pk,
+            pastor_id=request.user.pk,
             date__gte=from_q,
             date__lte=to_q,
         ).order_by("date", "start_time")
         return Response(CounselingSlotSerializer(qs, many=True).data)
 
 
-class CounselorSettingsApiView(APIView):
+class PastorSettingsApiView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         if not can_access_counseling_manage_tab(request.user):
             return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
         obj = get_or_create_schedule_settings(request.user.pk)
-        return Response(CounselorScheduleSettingsSerializer(obj).data)
+        return Response(PastorScheduleSettingsSerializer(obj).data)
 
     def patch(self, request):
         if not can_access_counseling_manage_tab(request.user):
             return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
         obj = get_or_create_schedule_settings(request.user.pk)
-        ser = CounselorScheduleSettingsSerializer(obj, data=request.data, partial=True)
+        ser = PastorScheduleSettingsSerializer(obj, data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
         ser.save()
         ensure_slots_for_horizon(request.user.pk)
         return Response(ser.data)
 
 
-class CounselorDayOverrideListApiView(APIView):
+class PastorDayOverrideListApiView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         if not can_access_counseling_manage_tab(request.user):
             return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
         start_d, end_d = date_range_horizon()
-        qs = CounselorDayOverride.objects.filter(
-            counselor_id=request.user.pk,
+        qs = PastorDayOverride.objects.filter(
+            pastor_id=request.user.pk,
             date__gte=start_d,
             date__lte=end_d,
         ).order_by("date")
-        return Response(CounselorDayOverrideSerializer(qs, many=True).data)
+        return Response(PastorDayOverrideSerializer(qs, many=True).data)
 
     def post(self, request):
         if not can_access_counseling_manage_tab(request.user):
             return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
-        ser = CounselorDayOverrideSerializer(data=request.data)
+        ser = PastorDayOverrideSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        obj = CounselorDayOverride.objects.update_or_create(
-            counselor_id=request.user.pk,
+        obj = PastorDayOverride.objects.update_or_create(
+            pastor_id=request.user.pk,
             date=ser.validated_data["date"],
             defaults={
                 "is_closed": ser.validated_data.get("is_closed", False),
@@ -152,12 +152,12 @@ class CounselorDayOverrideListApiView(APIView):
         )[0]
         ensure_slots_for_horizon(request.user.pk)
         return Response(
-            CounselorDayOverrideSerializer(obj).data,
+            PastorDayOverrideSerializer(obj).data,
             status=status.HTTP_201_CREATED,
         )
 
 
-class CounselorDayOverrideDetailApiView(APIView):
+class PastorDayOverrideDetailApiView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, date_str: str):
@@ -167,13 +167,13 @@ class CounselorDayOverrideDetailApiView(APIView):
             day = dt.date.fromisoformat(date_str)
         except ValueError:
             return Response({"detail": "날짜 형식은 YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
-        obj = CounselorDayOverride.objects.filter(
-            counselor_id=request.user.pk,
+        obj = PastorDayOverride.objects.filter(
+            pastor_id=request.user.pk,
             date=day,
         ).first()
         if not obj:
             return Response({"detail": "없음"}, status=status.HTTP_404_NOT_FOUND)
-        ser = CounselorDayOverrideSerializer(obj, data=request.data, partial=True)
+        ser = PastorDayOverrideSerializer(obj, data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
         ser.save()
         ensure_slots_for_horizon(request.user.pk)
@@ -186,8 +186,8 @@ class CounselorDayOverrideDetailApiView(APIView):
             day = dt.date.fromisoformat(date_str)
         except ValueError:
             return Response({"detail": "날짜 형식은 YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
-        deleted, _ = CounselorDayOverride.objects.filter(
-            counselor_id=request.user.pk,
+        deleted, _ = PastorDayOverride.objects.filter(
+            pastor_id=request.user.pk,
             date=day,
         ).delete()
         if not deleted:
@@ -204,12 +204,12 @@ class CounselingRequestListCreateApiView(APIView):
         if box == "incoming":
             if not can_access_counseling_manage_tab(request.user):
                 return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
-            qs = CounselingRequest.objects.filter(counselor_id=request.user.pk).select_related(
-                "slot", "applicant", "counselor"
+            qs = CounselingRequest.objects.filter(pastor_id=request.user.pk).select_related(
+                "slot", "applicant", "pastor"
             )
         else:
             qs = CounselingRequest.objects.filter(applicant_id=request.user.pk).select_related(
-                "slot", "applicant", "counselor"
+                "slot", "applicant", "pastor"
             )
         qs = qs.order_by("-created_at")
         ser = CounselingRequestSerializer(qs, many=True, context={"request": request})
@@ -222,8 +222,8 @@ class CounselingRequestListCreateApiView(APIView):
         slot = CounselingSlot.objects.filter(pk=slot_id).first()
         if not slot:
             return Response({"detail": "슬롯을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
-        if not counselors_queryset_for_applicant(request.user).filter(pk=slot.counselor_id).exists():
-            return Response({"detail": "해당 상담사에게 신청할 수 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+        if not pastors_queryset_for_applicant(request.user).filter(pk=slot.pastor_id).exists():
+            return Response({"detail": "해당 목회자에게 신청할 수 없습니다."}, status=status.HTTP_403_FORBIDDEN)
         try:
             req = create_counseling_request(
                 applicant_id=request.user.pk,
@@ -232,7 +232,7 @@ class CounselingRequestListCreateApiView(APIView):
             )
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        req = CounselingRequest.objects.select_related("slot", "applicant", "counselor").get(pk=req.pk)
+        req = CounselingRequest.objects.select_related("slot", "applicant", "pastor").get(pk=req.pk)
         detail_path = reverse("counseling_request_detail", kwargs={"public_id": str(req.public_id)})
         notify_new_counseling_request(
             req,
@@ -282,7 +282,7 @@ class CounselingRequestDetailApiView(APIView):
 
 
 class CounselingRequestAcceptApiView(APIView):
-    permission_classes = [IsAuthenticated, IsCounselingParticipant, IsCounselingCounselor]
+    permission_classes = [IsAuthenticated, IsCounselingParticipant, IsCounselingPastor]
 
     def post(self, request, public_id):
         req = counseling_request_detail_for_user(user=request.user, public_id=public_id)
@@ -296,7 +296,7 @@ class CounselingRequestAcceptApiView(APIView):
 
 
 class CounselingRequestRejectApiView(APIView):
-    permission_classes = [IsAuthenticated, IsCounselingParticipant, IsCounselingCounselor]
+    permission_classes = [IsAuthenticated, IsCounselingParticipant, IsCounselingPastor]
 
     def post(self, request, public_id):
         req = counseling_request_detail_for_user(user=request.user, public_id=public_id)

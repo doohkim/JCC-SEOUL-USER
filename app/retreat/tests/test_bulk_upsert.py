@@ -66,7 +66,7 @@ class BulkUpsertTests(TestCase):
             event=cls.event,
             region=cls.incheon,
             division=cls.div_incheon,
-            name="1조",
+            name="인천 1조",
         )
 
         cls.leader = User.objects.create_user(username="bk_leader", password="x")

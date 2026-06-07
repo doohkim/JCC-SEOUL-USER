@@ -1,6 +1,6 @@
 from counseling.serializers.counseling import (
-    CounselorDayOverrideSerializer,
-    CounselorScheduleSettingsSerializer,
+    PastorDayOverrideSerializer,
+    PastorScheduleSettingsSerializer,
     CounselingRequestCreateSerializer,
     CounselingRequestSerializer,
     CounselingRequestUpdateSerializer,
@@ -8,8 +8,8 @@ from counseling.serializers.counseling import (
 )
 
 __all__ = [
-    "CounselorDayOverrideSerializer",
-    "CounselorScheduleSettingsSerializer",
+    "PastorDayOverrideSerializer",
+    "PastorScheduleSettingsSerializer",
     "CounselingRequestCreateSerializer",
     "CounselingRequestSerializer",
     "CounselingRequestUpdateSerializer",

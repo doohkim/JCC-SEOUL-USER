@@ -72,7 +72,7 @@ class _BaseFixture(TestCase):
             event=cls.event,
             region=cls.incheon,
             division=cls.div_youth_incheon,
-            name="1조",
+            name="인천 1조",
             order=1,
         )
 

@@ -310,6 +310,44 @@ function addDaysToIsoDate(iso, n) {
   return `${yy}-${mm}-${dd}`;
 }
 
+const SERVICE_TYPE_LABELS = {
+  sunday: "주일",
+  wednesday: "수요",
+  saturday: "토요",
+};
+
+function weekdayKoFromIso(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  const ko = ["일", "월", "화", "수", "목", "금", "토"];
+  return ko[dt.getDay()];
+}
+
+function serviceDateForOption(serviceType, weekSunday) {
+  if (serviceType === "wednesday") return addDaysToIsoDate(weekSunday, -4);
+  if (serviceType === "saturday") return addDaysToIsoDate(weekSunday, -1);
+  return weekSunday;
+}
+
+function presentCountForOption(serviceType, rollup) {
+  if (!rollup) return 0;
+  if (serviceType === "wednesday") return rollup.wednesday_record_count ?? 0;
+  if (serviceType === "saturday") return rollup.saturday_record_count ?? 0;
+  return rollup.sunday_present_count ?? 0;
+}
+
+function formatDayOption(serviceType, weekSunday, rollup) {
+  const serviceDate = serviceDateForOption(serviceType, weekSunday);
+  if (!serviceDate) return "—";
+  const y = parseInt(serviceDate.slice(0, 4), 10);
+  const m = parseInt(serviceDate.slice(5, 7), 10);
+  const day = parseInt(serviceDate.slice(8, 10), 10);
+  const wd = weekdayKoFromIso(serviceDate);
+  const svcLabel = SERVICE_TYPE_LABELS[serviceType] || serviceType;
+  const count = presentCountForOption(serviceType, rollup);
+  return `${y}년 ${m}월 ${day}일 (${wd}) · ${svcLabel} · ${count}명`;
+}
+
 function isoDateTodayLocal() {
   const u = new Date();
   const yy = u.getFullYear();
@@ -791,20 +829,12 @@ async function loadWeeks() {
   const options = [];
   list.forEach((w) => {
     const ws = w.week_sunday;
-    options.push({
-      value: `sunday|${ws}`,
-      label: `${ws} · 주일예배`,
-      service_date: ws,
-    });
-    options.push({
-      value: `wednesday|${ws}`,
-      label: `${addDaysToIsoDate(ws, -4)} · 수요예배`,
-      service_date: addDaysToIsoDate(ws, -4),
-    });
-    options.push({
-      value: `saturday|${ws}`,
-      label: `${addDaysToIsoDate(ws, -1)} · 토요예배`,
-      service_date: addDaysToIsoDate(ws, -1),
+    ["sunday", "wednesday", "saturday"].forEach((serviceType) => {
+      options.push({
+        value: `${serviceType}|${ws}`,
+        label: formatDayOption(serviceType, ws, w),
+        service_date: serviceDateForOption(serviceType, ws),
+      });
     });
   });
 

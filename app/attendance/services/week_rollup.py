@@ -6,7 +6,11 @@ from datetime import date, timedelta
 
 from django.http import Http404
 
-from attendance.choices import MidweekAttendanceStatus, MidweekServiceType
+from attendance.choices import (
+    MidweekAttendanceStatus,
+    MidweekServiceType,
+    WorshipVenue,
+)
 from attendance.importers.member_resolve import week_sunday_on_or_before
 from attendance.models import (
     MidweekAttendanceRecord,
@@ -100,11 +104,22 @@ def rollup_row_for_week(division: Division, week_sunday: date) -> dict:
         service_type=MidweekServiceType.SATURDAY,
         status__in=present_like,
     ).count()
+    # 주일 참석: 불참 마커(서울/인천 + session_part=0) 제외, 멤버 distinct
+    sun_present_c = (
+        sun_qs.exclude(
+            venue__in=[WorshipVenue.SEOUL, WorshipVenue.INCHEON],
+            session_part=0,
+        )
+        .values("member_id")
+        .distinct()
+        .count()
+    )
     return {
         "week_sunday": week_sunday.isoformat(),
         "division_code": division.code,
         "division_name": division.name,
         "sunday_line_count": sun_qs.count(),
+        "sunday_present_count": sun_present_c,
         "midweek_record_count": mw_qs.count(),
         "wednesday_record_count": wed_c,
         "saturday_record_count": sat_c,

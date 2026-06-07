@@ -94,3 +94,35 @@ class AutoCheckInTests(TestCase):
         apply_due_auto_transitions(now=now)
         a.refresh_from_db()
         self.assertEqual(a.check_in_status, RetreatAttendee.CheckInStatus.PENDING)
+
+    def test_event_id_scopes_transitions(self):
+        now = timezone.now()
+        other_event = RetreatEvent.objects.create(
+            name="다른 행사",
+            start_date=date(2026, 8, 1),
+            end_date=date(2026, 8, 2),
+        )
+        other_group = RetreatGroup.objects.create(
+            event=other_event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+        )
+        target = RetreatAttendee.objects.create(
+            group=self.group,
+            name="대상",
+            check_in_status=RetreatAttendee.CheckInStatus.PENDING,
+            expected_check_in_at=now - timedelta(minutes=5),
+        )
+        other = RetreatAttendee.objects.create(
+            group=other_group,
+            name="다른행사",
+            check_in_status=RetreatAttendee.CheckInStatus.PENDING,
+            expected_check_in_at=now - timedelta(minutes=5),
+        )
+        result = apply_due_auto_transitions(now=now, event_id=self.event.id)
+        target.refresh_from_db()
+        other.refresh_from_db()
+        self.assertEqual(target.check_in_status, RetreatAttendee.CheckInStatus.CHECKED_IN)
+        self.assertEqual(other.check_in_status, RetreatAttendee.CheckInStatus.PENDING)
+        self.assertEqual(result["checked_in"], 1)

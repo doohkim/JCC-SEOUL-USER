@@ -10,7 +10,7 @@ SPECTACULAR_SETTINGS = {
     "TAGS": [
         {"name": "attendance", "description": "출석 (부서·팀·주차·명단)"},
         {"name": "registry", "description": "교적·조직 (멤버·가족·방문·이적)"},
-        {"name": "counseling", "description": "상담 (상담사·요청)"},
+        {"name": "counseling", "description": "상담 (목회자·요청)"},
         {"name": "users", "description": "계정·외부 연동 (역할·연동 API)"},
         {"name": "docs", "description": "OpenAPI 스키마·Swagger UI"},
         {"name": "other", "description": "기타 (경로 규칙 미매칭)"},

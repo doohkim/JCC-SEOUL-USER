@@ -36,8 +36,8 @@
             <h2>상담 신청</h2>
             <div class="toolbar" style="padding:0; border:none; background:transparent; flex-wrap:wrap;">
               <div class="field">
-                <label>상담사</label>
-                <select id="counselorSelect"></select>
+                <label>목회자</label>
+                <select id="pastorSelect"></select>
               </div>
               <div class="field" style="min-width:12rem;">
                 <label>가능 시간</label>
@@ -129,9 +129,9 @@
       return data;
     }
 
-    async function loadCounselors() {
-      const list = await api("/api/v1/counseling/counselors/");
-      const sel = document.getElementById("counselorSelect");
+    async function loadPastors() {
+      const list = await api("/api/v1/counseling/pastors/");
+      const sel = document.getElementById("pastorSelect");
       sel.innerHTML = "";
       list.forEach((c) => {
         const o = document.createElement("option");
@@ -144,13 +144,13 @@
     }
 
     async function loadSlots() {
-      const sel = document.getElementById("counselorSelect");
+      const sel = document.getElementById("pastorSelect");
       const slotSel = document.getElementById("slotSelect");
       const id = sel.value;
       if (!id) return;
       slotSel.disabled = true;
       slotSel.innerHTML = "";
-      const slots = await api("/api/v1/counseling/counselors/" + id + "/slots/");
+      const slots = await api("/api/v1/counseling/pastors/" + id + "/slots/");
       slots.forEach((s) => {
         const o = document.createElement("option");
         o.value = s.id;
@@ -168,12 +168,12 @@
           el.textContent = "신청 내역이 없습니다.";
           return;
         }
-        el.innerHTML = "<table><thead><tr><th>일시</th><th>상담사</th><th>상태</th><th></th></tr></thead><tbody></tbody></table>";
+        el.innerHTML = "<table><thead><tr><th>일시</th><th>목회자</th><th>상태</th><th></th></tr></thead><tbody></tbody></table>";
         const tb = el.querySelector("tbody");
         rows.forEach((r) => {
           const tr = document.createElement("tr");
           const when = r.slot ? (r.slot.date + " " + r.slot.start_time) : "";
-          tr.innerHTML = "<td>" + when + "</td><td>" + (r.counselor_label || "") + "</td><td>" + r.status + '</td><td><a href="/counseling/requests/' + r.public_id + '/">상세</a></td>';
+          tr.innerHTML = "<td>" + when + "</td><td>" + (r.pastor_label || "") + "</td><td>" + r.status + '</td><td><a href="/counseling/requests/' + r.public_id + '/">상세</a></td>';
           tb.appendChild(tr);
         });
       } catch (e) {
@@ -183,7 +183,7 @@
 
     async function loadManage() {
       try {
-        const st = await api("/api/v1/counseling/counselor/settings/");
+        const st = await api("/api/v1/counseling/pastor/settings/");
         document.getElementById("setStart").value = st.default_start_hour;
         document.getElementById("setEnd").value = st.default_end_hour;
         document.getElementById("setDur").value = st.slot_duration_minutes;
@@ -191,7 +191,7 @@
         showMsg(e.message || String(e), true);
       }
       try {
-        const slots = await api("/api/v1/counseling/counselor/slots/");
+        const slots = await api("/api/v1/counseling/pastor/slots/");
         const el = document.getElementById("manageSlots");
         if (!slots.length) {
           el.textContent = "슬롯이 없습니다.";
@@ -249,7 +249,7 @@
 
     document.getElementById("btnSaveSettings")?.addEventListener("click", async () => {
       try {
-        await api("/api/v1/counseling/counselor/settings/", {
+        await api("/api/v1/counseling/pastor/settings/", {
           method: "PATCH",
           body: {
             default_start_hour: parseInt(document.getElementById("setStart").value, 10),
@@ -282,7 +282,7 @@
         }
       }
       try {
-        await api("/api/v1/counseling/counselor/day-overrides/", {
+        await api("/api/v1/counseling/pastor/day-overrides/", {
           method: "POST",
           body: { date: d, is_closed: closed, custom_slots_json: custom },
         });
@@ -294,7 +294,7 @@
     });
 
     if (TAB === "apply") {
-      loadCounselors().catch((e) => showMsg(e.message || String(e), true));
+      loadPastors().catch((e) => showMsg(e.message || String(e), true));
       loadOutgoing().catch((e) => showMsg(e.message || String(e), true));
     } else if (TAB === "manage" && CAN_MANAGE) {
       loadManage().catch((e) => showMsg(e.message || String(e), true));

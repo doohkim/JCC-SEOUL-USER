@@ -51,8 +51,8 @@ class RetreatGroup(models.Model):
         ordering = ["event", "region__sort_order", "division__sort_order", "order", "id"]
         constraints = [
             models.UniqueConstraint(
-                fields=["event", "region", "division", "name"],
-                name="uniq_retreat_group_event_region_division_name",
+                fields=["event", "name"],
+                name="uniq_retreat_group_event_name",
             )
         ]
 

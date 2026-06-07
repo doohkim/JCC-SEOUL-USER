@@ -10,6 +10,13 @@
   const hourlyBody = document.querySelector("#hourlyTable tbody");
   const generatedAtEl = document.getElementById("dashGeneratedAt");
   const btnRefresh = document.getElementById("btnRefresh");
+  const innerTabs = document.getElementById("dashboardInnerTabs");
+  const panelStats = document.getElementById("dashboardPanelStats");
+  const panelBoard = document.getElementById("dashboardPanelBoard");
+  const boardHost = document.getElementById("retreatGroupBoard");
+  const boardTotalEl = document.getElementById("groupBoardTotal");
+
+  let activeTab = "stats";
   const totalEls = {
     pending: document.querySelector("[data-total-pending]"),
     in: document.querySelector("[data-total-in]"),
@@ -92,6 +99,97 @@
     if (totalEls.attended) totalEls.attended.textContent = grand.attended ?? 0;
   }
 
+  async function loadBoard() {
+    if (!boardHost) return;
+    if (statusEl) statusEl.textContent = "불러오는 중…";
+    try {
+      const r = await fetch(ctx.apiGroupBoard, { credentials: "same-origin" });
+      if (!r.ok) throw new Error(await r.text());
+      const data = await r.json();
+      renderGroupBoard(data.groups || [], data.grand_total || {});
+      if (generatedAtEl) {
+        generatedAtEl.textContent = data.generated_at
+          ? `· ${formatStamp(data.generated_at)} 기준`
+          : "";
+      }
+      if (statusEl) statusEl.textContent = "";
+    } catch (e) {
+      if (statusEl) statusEl.textContent = "로드 실패";
+      console.error(e);
+    }
+  }
+
+  function renderGroupBoard(groups, grand) {
+    if (!boardHost) return;
+    boardHost.innerHTML = "";
+    if (!groups.length) {
+      const empty = document.createElement("div");
+      empty.className = "muted";
+      empty.textContent = "표시할 조가 없습니다.";
+      boardHost.appendChild(empty);
+    }
+    groups.forEach((g) => {
+      const col = document.createElement("div");
+      col.className = "jcc-excel-col";
+      const head = document.createElement("div");
+      head.className = "jcc-excel-col-head";
+      head.textContent = g.name || "조";
+      const sub = document.createElement("div");
+      sub.className = "jcc-excel-col-sub";
+      sub.textContent = `참석 ${g.attended ?? 0}`;
+      col.appendChild(head);
+      col.appendChild(sub);
+      const body = document.createElement("div");
+      body.className = "jcc-excel-col-body";
+      (g.members || []).forEach((m) => {
+        const row = document.createElement("div");
+        row.className = "jcc-excel-row";
+        const name = document.createElement("span");
+        name.className = "jcc-excel-name";
+        name.textContent = m.name || "—";
+        const mark = document.createElement("span");
+        const muted = m.status === "pending";
+        mark.className = "jcc-excel-mark" + (muted ? " jcc-excel-mark--muted" : "");
+        mark.textContent = m.status_label || "";
+        row.appendChild(name);
+        row.appendChild(mark);
+        body.appendChild(row);
+      });
+      col.appendChild(body);
+      boardHost.appendChild(col);
+    });
+    if (boardTotalEl) {
+      boardTotalEl.innerHTML = "";
+      const strong = document.createElement("strong");
+      strong.textContent = `전체 참석 ${grand.attended ?? 0} · 입실전 ${grand.pending ?? 0}`;
+      boardTotalEl.appendChild(strong);
+    }
+  }
+
+  function applyTab() {
+    if (panelStats) panelStats.style.display = activeTab === "board" ? "none" : "";
+    if (panelBoard) panelBoard.style.display = activeTab === "board" ? "" : "none";
+    if (innerTabs) {
+      innerTabs.querySelectorAll("[data-dashboard-tab]").forEach((btn) => {
+        btn.classList.toggle(
+          "is-active",
+          btn.getAttribute("data-dashboard-tab") === activeTab
+        );
+      });
+    }
+  }
+
+  function refreshActive() {
+    if (activeTab === "board") loadBoard();
+    else load();
+  }
+
+  function setTab(tab) {
+    activeTab = tab === "board" ? "board" : "stats";
+    applyTab();
+    refreshActive();
+  }
+
   function renderHourly(rows) {
     if (!hourlyBody) return;
     hourlyBody.innerHTML = "";
@@ -129,7 +227,15 @@
       .replace(/>/g, "&gt;");
   }
 
-  if (btnRefresh) btnRefresh.addEventListener("click", load);
+  if (btnRefresh) btnRefresh.addEventListener("click", refreshActive);
+  if (innerTabs) {
+    innerTabs.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-dashboard-tab]");
+      if (!btn) return;
+      setTab(btn.getAttribute("data-dashboard-tab"));
+    });
+  }
+  applyTab();
   load();
-  setInterval(load, REFRESH_MS);
+  setInterval(refreshActive, REFRESH_MS);
 })();

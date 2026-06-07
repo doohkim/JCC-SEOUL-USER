@@ -2,6 +2,7 @@
 
 from django.contrib import admin
 from django.contrib import messages
+from django.contrib.admin.views.autocomplete import AutocompleteJsonView
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.urls import path
 
@@ -18,6 +19,24 @@ from .audit import AuditLoggingModelAdminMixin
 from .org_move import user_org_move_dashboard, user_org_move_detail
 
 
+class UserAutocompleteJsonView(AutocompleteJsonView):
+    """사용자 자동완성 드롭다운 라벨을 '핸드폰번호 · 실명'으로 표시(구별용)."""
+
+    def serialize_result(self, obj, to_field_name):
+        data = super().serialize_result(obj, to_field_name)
+        phone = ""
+        name = ""
+        try:
+            p = obj.profile
+            name = (p.real_name or "").strip() or (p.display_name or "").strip()
+            phone = (p.phone or "").strip()
+        except UserProfile.DoesNotExist:
+            pass
+        parts = [part for part in (phone, name) if part]
+        data["text"] = " · ".join(parts) if parts else (obj.username or str(obj.pk))
+        return data
+
+
 class UserProfileInline(admin.StackedInline):
     model = UserProfile
     can_delete = False
@@ -30,6 +49,7 @@ class UserProfileInline(admin.StackedInline):
             {
                 "fields": (
                     "display_name",
+                    "real_name",
                     "phone",
                     "phone_verified",
                     "phone_verified_at",
@@ -103,7 +123,13 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
         "can_manage_parking",
         "profile__onboarding_status",
     ]
-    search_fields = ["username", "email", "profile__display_name", "profile__phone"]
+    search_fields = [
+        "username",
+        "email",
+        "profile__display_name",
+        "profile__real_name",
+        "profile__phone",
+    ]
     ordering = ["username"]
     inlines = [
         UserProfileInline,
@@ -138,6 +164,9 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
             },
         ),
     )
+
+    def autocomplete_view(self, request):
+        return UserAutocompleteJsonView.as_view(admin_site=self.admin_site)(request)
 
     def get_urls(self):
         opts = self.model._meta

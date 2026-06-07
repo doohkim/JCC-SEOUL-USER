@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ group.name }} · 조 관리</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260607b" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260607d" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -35,10 +35,8 @@
           <div class="jcc-retreat-listTop">
             <div class="msg" id="retreatStatus" role="status"></div>
             <div class="jcc-retreat-listTopActions">
-              {% if can_edit_attendee %}
+              {% if can_mutate or can_edit_attendee %}
                 <button type="button" class="secondary" id="btnAddAttendee">+ 조원 추가</button>
-              {% elif can_mutate %}
-                <span class="muted">입퇴실·숙소만 변경 가능합니다.</span>
               {% else %}
                 <span class="muted">읽기 전용</span>
               {% endif %}
@@ -56,8 +54,8 @@
                     <th class="jcc-retreat-attCol-gender jcc-retreat-sortable" data-sort-key="gender" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">성별</span></th>
                     <th class="jcc-retreat-attCol-phone jcc-retreat-sortable" data-sort-key="phone" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">연락처</span></th>
                     <th class="jcc-retreat-attCol-status jcc-retreat-sortable" data-sort-key="status" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">상태</span></th>
-                    <th class="jcc-retreat-attCol-expected jcc-retreat-sortable" data-sort-key="expected_in" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">예상 입실</span></th>
-                    <th class="jcc-retreat-attCol-expected jcc-retreat-sortable" data-sort-key="expected_out" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">예상 퇴실</span></th>
+                    <th class="jcc-retreat-attCol-expected jcc-retreat-sortable" data-sort-key="expected_in" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">입실</span></th>
+                    <th class="jcc-retreat-attCol-expected jcc-retreat-sortable" data-sort-key="expected_out" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">퇴실</span></th>
                     {% if can_mutate or can_edit_attendee %}
                       <th class="jcc-retreat-attCol-actions"></th>
                     {% endif %}
@@ -100,7 +98,7 @@
                       <td class="jcc-retreat-attCol-expected" data-expected-cell>
                         <span class="jcc-retreat-stampInlineLabel" aria-hidden="true">입실</span>
                         {% if can_mutate %}
-                          <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_in_at" value="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 예상 입실 시각">
+                          <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_in_at" value="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 입실 시각">
                         {% else %}
                           <span class="jcc-retreat-stampLabel{% if not a.expected_check_in_at %} muted{% endif %}" data-expected-in-label>{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'m/d H:i' }}{% else %}-{% endif %}</span>
                         {% endif %}
@@ -108,7 +106,7 @@
                       <td class="jcc-retreat-attCol-expected" data-expected-cell>
                         <span class="jcc-retreat-stampInlineLabel" aria-hidden="true">퇴실</span>
                         {% if can_mutate %}
-                          <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_out_at" value="{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 예상 퇴실 시각">
+                          <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_out_at" value="{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 퇴실 시각">
                         {% else %}
                           <span class="jcc-retreat-stampLabel{% if not a.expected_check_out_at %} muted{% endif %}" data-expected-out-label>{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'m/d H:i' }}{% else %}-{% endif %}</span>
                         {% endif %}
@@ -197,45 +195,39 @@
                     <div class="field jcc-retreat-userPickerField" data-modal-edit-only>
                       <label for="retreatAttUserInput">사용자 계정 연결 (선택)</label>
                       <div class="jcc-retreat-userPicker" data-user-picker>
-                        <input type="text" id="retreatAttUserInput" class="jcc-retreat-userPickerInput" placeholder="이름 또는 username 검색" maxlength="150" autocomplete="off" data-user-picker-input>
+                        <input type="text" id="retreatAttUserInput" class="jcc-retreat-userPickerInput" placeholder="이름 또는 username 검색" maxlength="150" autocomplete="off" data-user-picker-input data-bwignore data-1p-ignore data-lpignore="true" data-form-type="other">
                         <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
                         <input type="hidden" data-user-picker-id>
                       </div>
                       <small class="muted" data-user-picker-hint>비워두면 계정 연결 없이 추가됩니다.</small>
                     </div>
-                    <div class="field jcc-retreat-modalField--full" data-modal-edit-only>
-                      <label for="retreatAttName">이름 *</label>
+                  {% endif %}
+                  {% if can_mutate or can_edit_attendee %}
+                    <div class="field jcc-retreat-modalField--full" data-modal-profile-field>
+                      <label for="retreatAttName">실명 *</label>
                       <input type="text" id="retreatAttName" name="name" required maxlength="60" autocomplete="off">
                     </div>
-                    <div class="field" data-modal-edit-only>
-                      <label for="retreatAttGender">성별</label>
+                    <div class="field" data-modal-profile-field>
+                      <label for="retreatAttGender">성별 *</label>
                       <select id="retreatAttGender" name="gender">
                         <option value="">미지정</option>
                         <option value="male">남성</option>
                         <option value="female">여성</option>
                       </select>
                     </div>
-                    <div class="field" data-modal-edit-only>
-                      <label for="retreatAttPhone">연락처</label>
+                    <div class="field" data-modal-profile-field>
+                      <label for="retreatAttPhone">핸드폰 번호</label>
                       <input type="tel" id="retreatAttPhone" name="phone" maxlength="30" autocomplete="off">
                     </div>
                   {% endif %}
                   {% if can_mutate %}
                     <div class="field" data-modal-mutate-only>
-                      <label for="retreatAttExpectedIn">예상 입실 시각</label>
+                      <label for="retreatAttExpectedIn">입실 시각</label>
                       <input type="datetime-local" id="retreatAttExpectedIn" name="expected_check_in_at" autocomplete="off">
                     </div>
                     <div class="field" data-modal-mutate-only>
-                      <label for="retreatAttExpectedOut">예상 퇴실 시각</label>
+                      <label for="retreatAttExpectedOut">퇴실 시각</label>
                       <input type="datetime-local" id="retreatAttExpectedOut" name="expected_check_out_at" autocomplete="off">
-                    </div>
-                    <div class="field" data-modal-mutate-only>
-                      <label>실제 입실 시각</label>
-                      <output class="jcc-retreat-readonlyStamp" id="retreatAttActualIn">-</output>
-                    </div>
-                    <div class="field" data-modal-mutate-only>
-                      <label>실제 퇴실 시각</label>
-                      <output class="jcc-retreat-readonlyStamp" id="retreatAttActualOut">-</output>
                     </div>
                     <div class="field jcc-retreat-modalField--full" data-modal-mutate-only>
                       <label for="retreatAttLodging">숙소 배정</label>
@@ -291,7 +283,7 @@
       };
     </script>
     {% include 'includes/retreat_bottom_tabs.html' %}
-    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260607b" defer></script>
-    <script src="{% static 'retreat/manage_group.js' %}?v=20260607b" defer></script>
+    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260607d" defer></script>
+    <script src="{% static 'retreat/manage_group.js' %}?v=20260607d" defer></script>
   </body>
 </html>

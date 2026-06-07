@@ -30,6 +30,7 @@ class AttendanceWeekRollupSerializer(serializers.Serializer):
     division_code = serializers.CharField()
     division_name = serializers.CharField()
     sunday_line_count = serializers.IntegerField()
+    sunday_present_count = serializers.IntegerField()
     midweek_record_count = serializers.IntegerField()
     wednesday_record_count = serializers.IntegerField()
     saturday_record_count = serializers.IntegerField()

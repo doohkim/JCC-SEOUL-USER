@@ -20,6 +20,7 @@
   const btnAddLeaderDraft = document.getElementById("btnAddLeaderDraft");
   const leaderRoleInput = document.getElementById("groupLeaderRoleInput");
   const statusEl = document.getElementById("retreatStatus");
+  const modalStatusEl = document.getElementById("groupModalStatus");
 
   let allDivisions = [];
   try {
@@ -39,6 +40,15 @@
   );
 
   function showStatus(msg, isError) {
+    // 모달이 열려 있으면 모달 안에, 아니면 상단에 표시한다.
+    const inModal = overlay && !overlay.hidden && modalStatusEl;
+    if (inModal) {
+      if (statusEl) statusEl.textContent = "";
+      modalStatusEl.textContent = msg || "";
+      modalStatusEl.style.color = isError ? "var(--err, #fda4af)" : "";
+      modalStatusEl.style.display = msg ? "block" : "none";
+      return;
+    }
     if (!statusEl) return;
     statusEl.textContent = msg || "";
     statusEl.style.color = isError ? "var(--err, #fda4af)" : "";
@@ -90,6 +100,10 @@
 
   function openModal() {
     if (!overlay) return;
+    if (modalStatusEl) {
+      modalStatusEl.textContent = "";
+      modalStatusEl.style.display = "none";
+    }
     leaderDraft.length = 0;
     renderLeaderDraft();
     if (picker) picker.clear();
@@ -138,7 +152,12 @@
         let detail = "저장 실패";
         try {
           const j = await r.json();
-          detail = j.detail || JSON.stringify(j);
+          if (j.detail) {
+            detail = j.detail;
+          } else if (j && typeof j === "object") {
+            const first = Object.values(j)[0];
+            detail = Array.isArray(first) ? first[0] : first || JSON.stringify(j);
+          }
         } catch (err) {}
         throw new Error(detail);
       }

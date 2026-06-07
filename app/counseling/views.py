@@ -43,6 +43,6 @@ class CounselingRequestDetailView(OnboardingRequiredMixin, LoginRequiredMixin, T
         ctx = super().get_context_data(**kwargs)
         req = counseling_request_detail_for_user(user=self.request.user, public_id=self.kwargs["public_id"])
         ctx["counseling_request"] = req
-        ctx["is_counselor"] = req.counselor_id == self.request.user.pk
+        ctx["is_pastor"] = req.pastor_id == self.request.user.pk
         ctx["public_id"] = str(req.public_id)
         return ctx

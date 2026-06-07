@@ -154,7 +154,7 @@ class OpenAPISchemaTests(TestCase):
             ["registry"],
         )
         self.assertEqual(
-            paths["/api/v1/counseling/counselors/"]["get"]["tags"],
+            paths["/api/v1/counseling/pastors/"]["get"]["tags"],
             ["counseling"],
         )
 

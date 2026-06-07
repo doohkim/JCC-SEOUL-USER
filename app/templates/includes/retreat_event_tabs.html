@@ -7,11 +7,7 @@
       aria-label="행사 선택"
     >
       {% for ev in available_events %}
-        {% if retreat_tab == 'dashboard' %}
-          {% url 'retreat_dashboard' ev.id as ev_url %}
-        {% elif retreat_tab == 'results' %}
-          {% url 'retreat_results' ev.id as ev_url %}
-        {% elif retreat_tab == 'manage_groups' %}
+        {% if retreat_tab == 'manage_groups' %}
           {% url 'retreat_group_manage_list' ev.id as ev_url %}
         {% elif retreat_tab == 'lodging' %}
           {% url 'retreat_lodging' ev.id as ev_url %}
@@ -22,7 +18,7 @@
         {% elif retreat_tab == 'council' %}
           {% url 'retreat_council' ev.id as ev_url %}
         {% else %}
-          {% url 'retreat_rosters' ev.id as ev_url %}
+          {% url 'retreat_dashboard' ev.id as ev_url %}
         {% endif %}
         <option value="{{ ev_url }}"{% if ev.id == event.id %} selected{% endif %}>{{ ev.name }}</option>
       {% endfor %}
@@ -33,14 +29,6 @@
       class="jcc-page-tab{% if retreat_tab == 'dashboard' %} is-active{% endif %}"
       href="{% url 'retreat_dashboard' event.id %}"
     >대시보드</a>
-    <a
-      class="jcc-page-tab{% if retreat_tab == 'rosters' %} is-active{% endif %}"
-      href="{% url 'retreat_rosters' event.id %}"
-    >출석부</a>
-    <a
-      class="jcc-page-tab{% if retreat_tab == 'results' %} is-active{% endif %}"
-      href="{% url 'retreat_results' event.id %}"
-    >결과</a>
     <a
       class="jcc-page-tab{% if retreat_tab == 'manage_groups' %} is-active{% endif %}"
       href="{% url 'retreat_group_manage_list' event.id %}"

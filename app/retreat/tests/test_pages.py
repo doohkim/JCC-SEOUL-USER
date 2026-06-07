@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.template import Context, Template
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from retreat.models import (
     RetreatAttendance,
@@ -170,6 +171,26 @@ class RetreatPageAccessTests(_PageFixture):
         self.client.force_login(self.stranger)
         r = self.client.get(reverse("retreat_group_manage_list", args=[self.event.id]))
         self.assertEqual(r.status_code, 403)
+
+    def test_manage_group_detail_persists_due_transitions(self):
+        """조 관리 상세 진입 시 입실 시각이 지난 입실전 조원을 DB에 입실로 저장한다."""
+        now = timezone.now()
+        attendee = RetreatAttendee.objects.create(
+            group=self.group,
+            name="자동입실",
+            check_in_status=RetreatAttendee.CheckInStatus.PENDING,
+            expected_check_in_at=now - timedelta(hours=1),
+        )
+        self.client.force_login(self.leader)
+        r = self.client.get(
+            reverse("retreat_group_manage", args=[self.event.id, self.group.id])
+        )
+        self.assertEqual(r.status_code, 200)
+        attendee.refresh_from_db()
+        self.assertEqual(
+            attendee.check_in_status, RetreatAttendee.CheckInStatus.CHECKED_IN
+        )
+        self.assertIsNotNone(attendee.checked_in_at)
 
     def test_manage_group_detail_has_check_in_tab_and_stamps(self):
         RetreatAttendee.objects.create(group=self.group, name="입실표시")

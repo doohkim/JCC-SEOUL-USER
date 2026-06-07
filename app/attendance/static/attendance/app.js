@@ -188,6 +188,12 @@ let charts = { sunVenue: null, sunPart: null, sunTeam: null, midweek: null };
 /** @type {Record<string, object>} week_sunday → 주차 rollup API 한 행 */
 let weekRollups = {};
 
+const SERVICE_TYPE_LABELS = {
+  sunday: "주일",
+  wednesday: "수요",
+  saturday: "토요",
+};
+
 /** 기준 일요일(ISO)에서 n일 후 날짜 ISO (UTC 날짜만 사용). */
 function addDaysToIsoDate(iso, n) {
   const [y, mo, d] = iso.split("-").map(Number);
@@ -199,44 +205,104 @@ function addDaysToIsoDate(iso, n) {
   return `${yy}-${mm}-${dd}`;
 }
 
-function formatWeekRollupLine(w, wtype) {
-  if (!w || typeof w.week_sunday !== "string" || !w.week_sunday) {
-    return "—";
-  }
-  const sun = w.sunday_line_count ?? 0;
-  const wed = w.wednesday_record_count ?? 0;
-  const sat = w.saturday_record_count ?? 0;
-  const total = sun + wed + sat;
-  const y = parseInt(w.week_sunday.slice(0, 4), 10);
-  const m = parseInt(w.week_sunday.slice(5, 7), 10);
-  const idx = w.sunday_week_index_in_month ?? 1;
-
-  if (wtype === "sunday") {
-    return `${w.week_sunday} 주일 ${sun}명 · 예배: 주일`;
-  }
-  if (wtype === "wednesday") {
-    const wd = addDaysToIsoDate(w.week_sunday, -4);
-    return `${wd} 수요 ${wed}명 · 예배: 수요일`;
-  }
-  if (wtype === "saturday") {
-    const sd = addDaysToIsoDate(w.week_sunday, -2);
-    return `${sd} 토요 ${sat}명 · 예배: 토요일`;
-  }
-  if (wtype === "midweek") {
-    return `${y}년 ${m}월 ${idx}주차 · 수요 ${wed} · 토요 ${sat} · 수·토 합 ${wed + sat} · 예배: 수·토 전체`;
-  }
-  return `${y}년 ${m}월 ${idx}주차 · 주일 ${sun} · 수요 ${wed} · 토요 ${sat} · 전체 ${total}`;
+function weekdayKoFromIso(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  const ko = ["일", "월", "화", "수", "목", "금", "토"];
+  return ko[dt.getDay()];
 }
 
-function repaintWeekSelectLabels() {
-  const sel = document.getElementById("weekId");
-  const wtype = document.getElementById("worshipType").value;
-  const cur = sel.value;
-  [...sel.options].forEach((opt) => {
-    const w = weekRollups[opt.value];
-    if (w) opt.textContent = formatWeekRollupLine(w, wtype);
+function serviceDateForOption(serviceType, weekSunday) {
+  if (serviceType === "wednesday") return addDaysToIsoDate(weekSunday, -4);
+  if (serviceType === "saturday") return addDaysToIsoDate(weekSunday, -1);
+  return weekSunday;
+}
+
+function presentCountForOption(serviceType, rollup) {
+  if (!rollup) return 0;
+  if (serviceType === "wednesday") return rollup.wednesday_record_count ?? 0;
+  if (serviceType === "saturday") return rollup.saturday_record_count ?? 0;
+  return rollup.sunday_present_count ?? 0;
+}
+
+function formatDayOption(serviceType, weekSunday, rollup) {
+  const serviceDate = serviceDateForOption(serviceType, weekSunday);
+  if (!serviceDate) return "—";
+  const y = parseInt(serviceDate.slice(0, 4), 10);
+  const m = parseInt(serviceDate.slice(5, 7), 10);
+  const day = parseInt(serviceDate.slice(8, 10), 10);
+  const wd = weekdayKoFromIso(serviceDate);
+  const svcLabel = SERVICE_TYPE_LABELS[serviceType] || serviceType;
+  const count = presentCountForOption(serviceType, rollup);
+  return `${y}년 ${m}월 ${day}일 (${wd}) · ${svcLabel} · ${count}명`;
+}
+
+function parseWeekSelectValue(raw) {
+  if (!raw) return { serviceType: "", weekSunday: "" };
+  const pipe = raw.indexOf("|");
+  if (pipe === -1) return { serviceType: "sunday", weekSunday: raw };
+  return { serviceType: raw.slice(0, pipe), weekSunday: raw.slice(pipe + 1) };
+}
+
+function selectedWeekSunday() {
+  return parseWeekSelectValue(document.getElementById("weekId").value).weekSunday;
+}
+
+function selectedServiceType() {
+  return parseWeekSelectValue(document.getElementById("weekId").value).serviceType;
+}
+
+function syncWorshipTypeFromWeekSelect() {
+  const st = selectedServiceType();
+  const sel = document.getElementById("worshipType");
+  if (!sel || !st) return;
+  if ([...sel.options].some((o) => o.value === st)) sel.value = st;
+}
+
+function buildDayOptionsFromRollups(list) {
+  const options = [];
+  list.forEach((w) => {
+    const ws = w.week_sunday;
+    if (!ws) return;
+    ["sunday", "wednesday", "saturday"].forEach((serviceType) => {
+      options.push({
+        value: `${serviceType}|${ws}`,
+        label: formatDayOption(serviceType, ws, w),
+        service_date: serviceDateForOption(serviceType, ws),
+        service_type: serviceType,
+        week_sunday: ws,
+      });
+    });
   });
-  if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+  options.sort((a, b) => (a.service_date < b.service_date ? 1 : -1));
+  return options;
+}
+
+function absDiffDaysIso(aIso, bIso) {
+  const [y1, m1, d1] = aIso.split("-").map(Number);
+  const [y2, m2, d2] = bIso.split("-").map(Number);
+  const a = Date.UTC(y1, m1 - 1, d1);
+  const b = Date.UTC(y2, m2 - 1, d2);
+  return Math.abs(a - b) / 86400000;
+}
+
+function pickNearestDayOption(options) {
+  if (!options.length) return "";
+  const todayIso = isoDateTodayLocal();
+  let best = null;
+  let bestDiff = Infinity;
+  let bestIsFuture = false;
+  for (const o of options) {
+    if (!o.service_date) continue;
+    const diff = absDiffDaysIso(o.service_date, todayIso);
+    const isFuture = o.service_date >= todayIso;
+    if (diff < bestDiff || (diff === bestDiff && isFuture && !bestIsFuture)) {
+      best = o.value;
+      bestDiff = diff;
+      bestIsFuture = isFuture;
+    }
+  }
+  return best || options[0].value;
 }
 
 function pathFromDrfUrl(url) {
@@ -306,12 +372,14 @@ async function loadMeta() {
   const sel = document.getElementById("worshipType");
   sel.innerHTML = "";
   const worshipTypes = Array.isArray(meta.worship_types) ? meta.worship_types : [];
-  worshipTypes.forEach((o) => {
-    const opt = document.createElement("option");
-    opt.value = o.value;
-    opt.textContent = o.label;
-    sel.appendChild(opt);
-  });
+  worshipTypes
+    .filter((o) => ["sunday", "wednesday", "saturday"].includes(o.value))
+    .forEach((o) => {
+      const opt = document.createElement("option");
+      opt.value = o.value;
+      opt.textContent = o.label;
+      sel.appendChild(opt);
+    });
   const fv = document.getElementById("fltVenue");
   while (fv.children.length > 1) fv.removeChild(fv.lastChild);
   const venues = Array.isArray(meta.venues) ? meta.venues : [];
@@ -373,12 +441,12 @@ async function loadDivisions() {
 async function loadWeeks() {
   const code = (document.getElementById("divisionCode").value || "").trim();
   const sel = document.getElementById("weekId");
-  const wtype = document.getElementById("worshipType").value;
+  const prev = sel.value;
   sel.innerHTML = "";
   weekRollups = {};
   if (!code) {
     if (document.getElementById("divisionCode").options.length > 0) {
-      setStatus("부서를 선택한 뒤 주차를 불러옵니다.", true);
+      setStatus("부서를 선택한 뒤 예배일을 불러옵니다.", true);
     }
     return;
   }
@@ -387,34 +455,19 @@ async function loadWeeks() {
   list.forEach((w) => {
     weekRollups[w.week_sunday] = w;
   });
-  list.forEach((w) => {
+  const options = buildDayOptionsFromRollups(list);
+  options.forEach((o) => {
     const opt = document.createElement("option");
-    opt.value = w.week_sunday;
-    opt.textContent = formatWeekRollupLine(w, wtype);
+    opt.value = o.value;
+    opt.textContent = o.label;
     sel.appendChild(opt);
   });
-  // 기본 선택: "현재 날짜 기준"으로 서버의 parse_week_rollup_key 로직과 동일하게 week_sunday-on-or-after를 선택
-  if (list.length) {
-    const opts = [...sel.options].map((o) => o.value);
-    const curWeekSunday = weekSundayOnOrAfterTodayLocal();
-    const wantedPrevWeekSunday = addDaysToIsoDate(curWeekSunday, -7); // -1 주차
-
-    const exact = opts.find((v) => v === wantedPrevWeekSunday);
-    if (exact) {
-      sel.value = exact;
-      return;
-    }
-
-    // 목록에 정확히 없으면, wantedPrevWeekSunday 이전(<=) 중 가장 가까운(=가장 최신) 주차 선택
-    let best = null;
-    for (const v of opts) {
-      if (v <= wantedPrevWeekSunday) {
-        if (!best || v > best) best = v;
-      }
-    }
-    sel.value = best || opts[opts.length - 1]; // 그보다 더 과거에 데이터가 전혀 없으면 가장 오래된 주차
+  if (options.length) {
+    const keep = prev && [...sel.options].some((opt) => opt.value === prev) ? prev : pickNearestDayOption(options);
+    sel.value = keep;
+    syncWorshipTypeFromWeekSelect();
   }
-  if (list.length === 0) setStatus("해당 부서에 집계할 출석 데이터가 없습니다.", true);
+  if (options.length === 0) setStatus("해당 부서에 집계할 출석 데이터가 없습니다.", true);
   else setStatus("");
 }
 
@@ -442,9 +495,8 @@ async function loadTeams() {
 }
 
 function showChartCards(wtype) {
-  const sun = wtype === "all" || wtype === "sunday";
-  const mw =
-    wtype === "all" || wtype === "midweek" || wtype === "wednesday" || wtype === "saturday";
+  const sun = wtype === "sunday";
+  const mw = wtype === "wednesday" || wtype === "saturday";
   document.getElementById("cardSunVenue").style.display = sun ? "block" : "none";
   document.getElementById("cardSunPart").style.display = sun ? "block" : "none";
   document.getElementById("cardSunTeam").style.display = sun ? "block" : "none";
@@ -454,11 +506,12 @@ function showChartCards(wtype) {
 }
 
 async function loadSummary() {
-  const wid = document.getElementById("weekId").value;
+  syncWorshipTypeFromWeekSelect();
+  const wid = selectedWeekSunday();
   const code = (document.getElementById("divisionCode").value || "").trim();
-  const wtype = document.getElementById("worshipType").value;
+  const wtype = selectedServiceType();
   showChartCards(wtype);
-  if (!wid || !code) {
+  if (!wid || !code || !wtype) {
     destroyChart("sunVenue");
     destroyChart("sunPart");
     destroyChart("sunTeam");
@@ -597,7 +650,7 @@ function escapeHtml(s) {
 }
 
 async function loadSunTable(url) {
-  const wid = document.getElementById("weekId").value;
+  const wid = selectedWeekSunday();
   if (!wid) return;
   const code = (document.getElementById("divisionCode").value || "").trim();
   if (!code) return;
@@ -679,10 +732,11 @@ function paintSunTable(payload) {
 }
 
 async function loadMwTable(url) {
-  const wid = document.getElementById("weekId").value;
+  const wid = selectedWeekSunday();
   if (!wid) return;
   const code = (document.getElementById("divisionCode").value || "").trim();
   if (!code) return;
+  const wtype = selectedServiceType();
   let path;
   if (url && (url.startsWith("http") || url.startsWith("/"))) {
     path = pathFromDrfUrl(url);
@@ -694,6 +748,7 @@ async function loadMwTable(url) {
     const tid = document.getElementById("fltTeamMw").value;
     const q = document.getElementById("fltSearchMw").value.trim();
     if (svc) p.set("service_type", svc);
+    else if (wtype === "wednesday" || wtype === "saturday") p.set("service_type", wtype);
     if (st) p.set("status", st);
     if (tid) p.set("team_id", tid);
     if (q) p.set("search", q);
@@ -759,23 +814,22 @@ async function loadMwTable(url) {
 async function refreshAll() {
   try {
     setStatus("불러오는 중…");
+    syncWorshipTypeFromWeekSelect();
     if (getDashboardTab() === "board") {
       await window.loadAttendanceExcelBoard();
       setStatus("");
       return;
     }
     await loadSummary();
-    const wtype = document.getElementById("worshipType").value;
-    if (wtype === "all" || wtype === "sunday") await loadSunTable();
+    const wtype = selectedServiceType();
+    if (wtype === "sunday") await loadSunTable();
     else document.getElementById("tbodySun").innerHTML = "";
-    if (wtype === "all" || wtype === "midweek" || wtype === "wednesday" || wtype === "saturday")
-      await loadMwTable();
+    if (wtype === "wednesday" || wtype === "saturday") await loadMwTable();
     else document.getElementById("tbodyMw").innerHTML = "";
     const divSel = document.getElementById("divisionCode");
     const code = (divSel.value || "").trim();
-    const wid = document.getElementById("weekId").value;
+    const wid = selectedWeekSunday();
     const w = weekRollups[wid];
-    const worshipLabel = document.getElementById("worshipType").selectedOptions[0]?.textContent || "";
     if (divSel.options.length === 0) {
       setStatus(
         "출석을 볼 수 있는 부서가 없습니다. 이 계정에 UserDivisionTeam(소속 부서)이 연결되어 있는지 Admin에서 확인하세요.",
@@ -787,19 +841,18 @@ async function refreshAll() {
       setStatus("부서를 선택하세요.", true);
       return;
     }
-    if (!wid) {
+    if (!wid || !wtype) {
       if (document.getElementById("weekId").options.length === 0) {
         setStatus("해당 부서에 집계할 출석 데이터가 없습니다.", true);
       } else {
-        setStatus("주차를 선택하세요.", true);
+        setStatus("예배일을 선택하세요.", true);
       }
       return;
     }
     if (w) {
-      const line = formatWeekRollupLine(w, wtype);
-      setStatus(wtype === "all" ? line + " · 예배: " + worshipLabel : line);
+      setStatus(formatDayOption(wtype, wid, w));
     } else {
-      setStatus("주차 정보를 불러오지 못했습니다." + (worshipLabel ? " · 예배: " + worshipLabel : ""));
+      setStatus("예배일 정보를 불러오지 못했습니다.");
     }
   } catch (e) {
     console.error(e);
@@ -963,15 +1016,16 @@ window.loadAttendanceExcelBoard = async function loadAttendanceExcelBoard() {
   const totalEl = document.getElementById("excelBoardTotal");
   const metaEl = document.getElementById("excelBoardMeta");
   if (!host) return;
-  const wid = document.getElementById("weekId").value;
+  syncWorshipTypeFromWeekSelect();
+  const wid = selectedWeekSunday();
   const code = (document.getElementById("divisionCode").value || "").trim();
-  const wtype = document.getElementById("worshipType").value;
-  if (!code || !wid) {
+  const wtype = selectedServiceType();
+  if (!code || !wid || !wtype) {
     host.innerHTML = "";
     if (totalEl) totalEl.textContent = "";
     if (metaEl) metaEl.textContent = "";
     if (statusEl) {
-      statusEl.textContent = "부서와 주차를 선택하세요.";
+      statusEl.textContent = "부서와 예배일을 선택하세요.";
       statusEl.className = "msg err";
     }
     return;
@@ -981,17 +1035,6 @@ window.loadAttendanceExcelBoard = async function loadAttendanceExcelBoard() {
     statusEl.className = "msg";
   }
   try {
-    if (wtype === "all" || wtype === "midweek") {
-      host.innerHTML =
-        '<div class="msg">팀 출석판은 예배 구분을 <strong>주일</strong>, <strong>수요일</strong>, <strong>토요일</strong> 중 하나로 선택해 주세요.</div>';
-      if (totalEl) totalEl.textContent = "";
-      if (metaEl) metaEl.textContent = "";
-      if (statusEl) {
-        statusEl.textContent = "";
-        statusEl.className = "msg";
-      }
-      return;
-    }
     if (wtype === "sunday") {
       const path =
         "/attendance/weeks/" +
@@ -1059,10 +1102,9 @@ function bindUi() {
     await loadTeams();
     await refreshAll();
   };
-  document.getElementById("weekId").onchange = refreshAll;
-  document.getElementById("worshipType").onchange = async () => {
-    repaintWeekSelectLabels();
-    await refreshAll();
+  document.getElementById("weekId").onchange = () => {
+    syncWorshipTypeFromWeekSelect();
+    refreshAll();
   };
 }
 

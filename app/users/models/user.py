@@ -39,8 +39,9 @@ class User(AbstractUser):
     def __str__(self):
         try:
             p = self.profile
-            if p.display_name:
-                return f"{self.username} · {p.display_name}"
+            name = (p.real_name or "").strip() or (p.display_name or "").strip()
+            if name:
+                return f"{self.username} · {name}"
         except Exception:
             pass
         return self.username

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def notify_new_counseling_request(request_obj, *, absolute_detail_url: str) -> None:
     """
-    신청 생성 시 상담사에게 알림.
+    신청 생성 시 목회자에게 알림.
     실제 알림톡은 카카오 비즈니스 채널·템플릿 승인 후 REST 연동.
     """
     if not getattr(settings, "COUNSELING_KAKAO_ALIMTALK_ENABLED", False):

@@ -523,7 +523,7 @@ def can_access_counseling_manage_tab(user: User) -> bool:
     return _is_pastoral(user)
 
 
-def counselors_queryset_for_applicant(actor: User):
+def pastors_queryset_for_applicant(actor: User):
     """
     상담 신청 시 선택 가능한 목사·전도사.
     - 운영자: 전체 목사·전도사
@@ -547,14 +547,14 @@ def counselors_queryset_for_applicant(actor: User):
 
 
 def can_access_counseling_request_object(user: User, counseling_request) -> bool:
-    """상담 신청 건: 신청자·상담사만 (관리자도 타인 건 API 조회 불가)."""
+    """상담 신청 건: 신청자·목회자만 (관리자도 타인 건 API 조회 불가)."""
     if not user.is_authenticated:
         return False
-    return user.pk == counseling_request.applicant_id or user.pk == counseling_request.counselor_id
+    return user.pk == counseling_request.applicant_id or user.pk == counseling_request.pastor_id
 
 
 class IsCounselingParticipant(BasePermission):
-    """DRF: 상담 신청 객체의 신청자 또는 상담사."""
+    """DRF: 상담 신청 객체의 신청자 또는 목회자."""
 
     message = "이 상담 신청을 볼 권한이 없습니다."
 
@@ -562,14 +562,14 @@ class IsCounselingParticipant(BasePermission):
         return can_access_counseling_request_object(request.user, obj)
 
 
-class IsCounselingCounselor(BasePermission):
-    """DRF: 해당 상담 신청의 상담사 본인."""
+class IsCounselingPastor(BasePermission):
+    """DRF: 해당 상담 신청의 목회자 본인."""
 
-    message = "상담사만 수행할 수 있습니다."
+    message = "목회자만 수행할 수 있습니다."
 
     def has_object_permission(self, request, view, obj):
         u = request.user
-        return bool(u and u.is_authenticated and u.pk == obj.counselor_id)
+        return bool(u and u.is_authenticated and u.pk == obj.pastor_id)
 
 
 # ---------------------------------------------------------------------------

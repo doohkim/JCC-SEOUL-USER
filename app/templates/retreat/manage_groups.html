@@ -95,7 +95,7 @@
                     <div class="field jcc-retreat-userPickerField">
                       <label for="groupLeaderUserInput">사용자</label>
                       <div class="jcc-retreat-userPicker" data-user-picker>
-                        <input type="text" id="groupLeaderUserInput" class="jcc-retreat-userPickerInput" placeholder="이름 검색" maxlength="150" autocomplete="off" data-user-picker-input>
+                        <input type="text" id="groupLeaderUserInput" class="jcc-retreat-userPickerInput" placeholder="이름 검색" maxlength="150" autocomplete="off" data-user-picker-input data-bwignore data-1p-ignore data-lpignore="true" data-form-type="other">
                         <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
                         <input type="hidden" data-user-picker-id>
                       </div>
@@ -112,6 +112,8 @@
                   </div>
                   <small class="muted jcc-retreat-leadersDraftHint" data-user-picker-hint>부서를 선택하면 소속 계정이 보입니다. 이름을 입력하면 그 안에서 검색합니다.</small>
                 </section>
+
+                <div class="msg" id="groupModalStatus" role="alert" style="display:none; margin-top:0.75rem;"></div>
 
                 <div class="jcc-retreat-modalFooter jcc-retreat-modalFooter--golden">
                   <button type="button" class="secondary jcc-retreat-btnCancel" id="groupModalCancel">취소</button>
@@ -140,7 +142,7 @@
     </div>
     {% include 'includes/retreat_bottom_tabs.html' %}
     {% if can_add_group %}
-      <script src="{% static 'retreat/manage_groups.js' %}?v=20260603n" defer></script>
+      <script src="{% static 'retreat/manage_groups.js' %}?v=20260607b" defer></script>
     {% endif %}
   </body>
 </html>

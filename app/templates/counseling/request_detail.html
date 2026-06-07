@@ -27,7 +27,7 @@
           <div id="summary" class="msg">불러오는 중…</div>
           <div id="actions" style="margin-top:0.75rem;"></div>
         </div>
-        {% if is_counselor %}
+        {% if is_pastor %}
           <div class="card">
             <h2>상담 메모</h2>
             <p class="subtitle">굵게, 목록 등 편집 후 저장하세요.</p>
@@ -42,7 +42,7 @@
   <script>
     const CSRF = "{{ csrf_token }}";
     const PUBLIC_ID = "{{ public_id }}";
-    const IS_COUNSELOR = {{ is_counselor|yesno:"true,false" }};
+    const IS_PASTOR = {{ is_pastor|yesno:"true,false" }};
 
     function showMsg(text, isErr) {
       const el = document.getElementById("detailMsg");
@@ -65,7 +65,7 @@
     }
 
     let quill = null;
-    if (IS_COUNSELOR) {
+    if (IS_PASTOR) {
       quill = new Quill("#editor", { theme: "snow", modules: { toolbar: [["bold", "italic"], [{ list: "ordered" }, { list: "bullet" }]] } });
     }
 
@@ -77,12 +77,12 @@
         "<div><strong>상태</strong> " + r.status + "</div>" +
         "<div><strong>일시</strong> " + when + "</div>" +
         "<div><strong>신청자</strong> " + (r.applicant_label || "") + "</div>" +
-        "<div><strong>상담사</strong> " + (r.counselor_label || "") + "</div>" +
+        "<div><strong>목회자</strong> " + (r.pastor_label || "") + "</div>" +
         "<div style=\"margin-top:0.5rem;\"><strong>요청 내용</strong><br>" + (r.applicant_message || "").replace(/</g, "&lt;") + "</div>";
 
       const act = document.getElementById("actions");
       act.innerHTML = "";
-      if (r.status === "pending" && IS_COUNSELOR) {
+      if (r.status === "pending" && IS_PASTOR) {
         const b1 = document.createElement("button");
         b1.textContent = "수락";
         b1.onclick = async () => {
@@ -110,7 +110,7 @@
         act.appendChild(b1);
         act.appendChild(b2);
       }
-      if (r.status === "pending" && !IS_COUNSELOR) {
+      if (r.status === "pending" && !IS_PASTOR) {
         const b = document.createElement("button");
         b.className = "secondary";
         b.textContent = "신청 취소";
@@ -127,8 +127,8 @@
         act.appendChild(b);
       }
 
-      if (IS_COUNSELOR && quill) {
-        const notes = r.counselor_notes_json || {};
+      if (IS_PASTOR && quill) {
+        const notes = r.pastor_notes_json || {};
         if (notes.delta) {
           quill.setContents(notes.delta);
         } else if (notes.html) {
@@ -142,7 +142,7 @@
       try {
         await api("/api/v1/counseling/requests/" + PUBLIC_ID + "/", {
           method: "PATCH",
-          body: { counselor_notes_json: { delta: quill.getContents(), html: quill.root.innerHTML } },
+          body: { pastor_notes_json: { delta: quill.getContents(), html: quill.root.innerHTML } },
         });
         showMsg("저장했습니다.", false);
       } catch (e) {

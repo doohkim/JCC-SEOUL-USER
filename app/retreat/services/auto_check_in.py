@@ -42,8 +42,16 @@ def _transition(attendee: RetreatAttendee, *, new_status: str, stamp_field: str,
 
 
 @transaction.atomic
-def apply_due_auto_transitions(now: datetime | None = None) -> dict:
-    """예상 시각이 지난 조원을 입실/퇴실로 자동 전환한다. 처리 건수를 반환."""
+def apply_due_auto_transitions(
+    now: datetime | None = None,
+    *,
+    event_id: int | None = None,
+) -> dict:
+    """예상 시각이 지난 조원을 입실/퇴실로 자동 전환한다. 처리 건수를 반환.
+
+    event_id 가 주어지면 해당 행사 조원만 처리한다(대시보드·조 관리 온디맨드).
+    생략하면 전체 행사 대상(Celery 매분 작업).
+    """
     now = now or timezone.now()
     checked_in = 0
     checked_out = 0
@@ -58,6 +66,8 @@ def apply_due_auto_transitions(now: datetime | None = None) -> dict:
             expected_check_in_at__lte=now,
         )
     )
+    if event_id is not None:
+        pending_due = pending_due.filter(group__event_id=event_id)
     for attendee in pending_due:
         _transition(
             attendee,
@@ -77,6 +87,8 @@ def apply_due_auto_transitions(now: datetime | None = None) -> dict:
             expected_check_out_at__lte=now,
         )
     )
+    if event_id is not None:
+        in_due = in_due.filter(group__event_id=event_id)
     for attendee in in_due:
         _transition(
             attendee,

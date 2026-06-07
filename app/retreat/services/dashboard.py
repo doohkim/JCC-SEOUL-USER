@@ -17,7 +17,6 @@ from retreat.models import (
     RetreatSession,
     RetreatSessionAttendee,
 )
-from retreat.services.check_in_stamps import backfill_missing_check_in_stamps
 from users.permissions import visible_retreat_groups_for, visible_retreat_sessions_for
 
 
@@ -164,30 +163,52 @@ def _format_group_range(names: list[str]) -> str:
     return f"{names[0]}~{names[-1]}"
 
 
+def _effective_check_in_status(check_in_at, check_out_at, now) -> str:
+    """입실/퇴실 시각과 현재 시각으로 실시간 입·퇴실 상태를 계산한다.
+
+    - 입실 시각이 없거나 아직 오지 않았으면 → 입실전(pending)
+    - 퇴실 시각이 지났으면 → 퇴실(checked_out)
+    - 그 외(입실 시각 <= now) → 입실(checked_in)
+
+    저장된 check_in_status 가 아니라 시각 필드만으로 판정하므로, 주기 작업 없이도
+    조회 시점 기준으로 항상 실시간 현황을 반영한다.
+    """
+    S = RetreatAttendee.CheckInStatus
+    if check_in_at is None or check_in_at > now:
+        return S.PENDING
+    if check_out_at is not None and check_out_at <= now:
+        return S.CHECKED_OUT
+    return S.CHECKED_IN
+
+
 def build_realtime_dashboard(
     event: RetreatEvent,
     user,
     *,
     staff_view: bool,
+    now=None,
 ) -> dict[str, Any]:
-    """현재 입·퇴실 상태(RetreatAttendee) 기반 실시간 대시보드.
+    """입실/퇴실 시각 기반 실시간 대시보드.
 
-    - 조별 참석 인원(한번이라도 입실 = 입실+퇴실)
-    - 지역·부서별 입실전/입실/퇴실/참석 인원
-    - 1시간 단위 입실·퇴실 추이
+    저장된 입·퇴실 상태가 아니라 조원의 입실/퇴실 시각(`expected_check_in_at`/
+    `expected_check_out_at`)과 현재 시각을 비교해 상태를 실시간으로 계산한다.
+
+    - 조별 참석 인원(현재 입실 상태 = 입실 시각 경과 & 퇴실 전)
+    - 지역·부서별 입실전/입실/퇴실/참석(입실+퇴실) 인원
+    - 1시간 단위 입실·퇴실 추이(입실/퇴실 시각 기준, 현재 시각까지 경과분만)
     """
+    now = now or timezone.now()
     restrict = not staff_view
     groups = list(_group_queryset(event, user, restrict_to_user_groups=restrict))
     group_ids = [g.id for g in groups]
 
-    status_rows = (
-        RetreatAttendee.objects.filter(group_id__in=group_ids)
-        .values("group_id", "check_in_status")
-        .annotate(c=Count("id"))
+    time_rows = RetreatAttendee.objects.filter(group_id__in=group_ids).values_list(
+        "group_id", "expected_check_in_at", "expected_check_out_at"
     )
     status_by_group: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-    for row in status_rows:
-        status_by_group[row["group_id"]][row["check_in_status"]] = row["c"]
+    for gid, check_in_at, check_out_at in time_rows:
+        eff = _effective_check_in_status(check_in_at, check_out_at, now)
+        status_by_group[gid][eff] += 1
 
     S = RetreatAttendee.CheckInStatus
     by_group = []
@@ -214,9 +235,7 @@ def build_realtime_dashboard(
         )
 
     by_division = _rollup_realtime_by_region_division(by_group)
-    # 레거시 데이터: 입실 상태인데 checked_in_at 이 비어 있으면 추이 집계에서 누락됨
-    backfill_missing_check_in_stamps(group_ids)
-    hourly = _hourly_check_in_out(group_ids)
+    hourly = _hourly_check_in_out(group_ids, now)
 
     grand_pending = sum(r["pending"] for r in by_group)
     grand_in = sum(r["checked_in"] for r in by_group)
@@ -224,7 +243,7 @@ def build_realtime_dashboard(
     grand_attended = grand_in + grand_out
 
     return {
-        "generated_at": timezone.localtime().isoformat(),
+        "generated_at": timezone.localtime(now).isoformat(),
         "by_group": by_group,
         "by_division": by_division,
         "hourly": hourly,
@@ -235,6 +254,105 @@ def build_realtime_dashboard(
             "attended": grand_attended,
             "total": grand_pending + grand_in + grand_out,
         },
+    }
+
+
+def build_group_attendance_board(
+    event: RetreatEvent,
+    user,
+    *,
+    staff_view: bool,
+    now=None,
+) -> dict[str, Any]:
+    """조별 조원 명단 + 실시간 입·퇴실 상태 보드.
+
+    전체 조를 열(column)로, 각 조의 조원을 행으로 나열해 한눈에 참석 현황을
+    파악하도록 한다. 상태는 ``build_realtime_dashboard`` 와 동일하게 입실/퇴실
+    시각과 현재 시각을 비교해 실시간으로 계산한다.
+    """
+    now = now or timezone.now()
+    # 전체 현황 파악용 보드이므로 본인 조로 좁히지 않고 행사 전체 조를 보여준다.
+    groups = list(
+        RetreatGroup.objects.filter(event=event)
+        .select_related("region", "division")
+        .order_by("region__sort_order", "division__sort_order", "order", "id")
+    )
+    group_ids = [g.id for g in groups]
+
+    S = RetreatAttendee.CheckInStatus
+    status_labels = dict(S.choices)
+    role_labels = dict(RetreatAttendee.MemberRole.choices)
+    status_order = {S.CHECKED_IN: 0, S.CHECKED_OUT: 1, S.PENDING: 2}
+
+    members_by_group: dict[int, list[dict]] = defaultdict(list)
+    attendee_rows = (
+        RetreatAttendee.objects.filter(group_id__in=group_ids)
+        .values(
+            "group_id",
+            "name",
+            "member_role",
+            "gender",
+            "expected_check_in_at",
+            "expected_check_out_at",
+        )
+        .order_by("name", "id")
+    )
+    for row in attendee_rows:
+        eff = _effective_check_in_status(
+            row["expected_check_in_at"], row["expected_check_out_at"], now
+        )
+        members_by_group[row["group_id"]].append(
+            {
+                "name": row["name"],
+                "status": eff,
+                "status_label": status_labels.get(eff, eff),
+                "member_role": row["member_role"],
+                "member_role_label": role_labels.get(
+                    row["member_role"], row["member_role"]
+                ),
+                "gender": row["gender"],
+            }
+        )
+
+    groups_out: list[dict] = []
+    grand = {
+        "pending": 0,
+        "checked_in": 0,
+        "checked_out": 0,
+        "attended": 0,
+        "total": 0,
+    }
+    for g in groups:
+        members = members_by_group.get(g.id, [])
+        members.sort(key=lambda m: (status_order.get(m["status"], 9), m["name"]))
+        pending = sum(1 for m in members if m["status"] == S.PENDING)
+        checked_in = sum(1 for m in members if m["status"] == S.CHECKED_IN)
+        checked_out = sum(1 for m in members if m["status"] == S.CHECKED_OUT)
+        attended = checked_in + checked_out
+        groups_out.append(
+            {
+                "group_id": g.id,
+                "name": g.name,
+                "region": g.region.name,
+                "division": g.division.name,
+                "pending": pending,
+                "checked_in": checked_in,
+                "checked_out": checked_out,
+                "attended": attended,
+                "total": len(members),
+                "members": members,
+            }
+        )
+        grand["pending"] += pending
+        grand["checked_in"] += checked_in
+        grand["checked_out"] += checked_out
+        grand["attended"] += attended
+        grand["total"] += len(members)
+
+    return {
+        "generated_at": timezone.localtime(now).isoformat(),
+        "groups": groups_out,
+        "grand_total": grand,
     }
 
 
@@ -271,8 +389,11 @@ def _rollup_realtime_by_region_division(by_group: list[dict]) -> list[dict]:
     return sorted(result, key=lambda x: (x["region"], x["division"]))
 
 
-def _hourly_check_in_out(group_ids: list[int]) -> list[dict]:
-    """1시간 단위 입실·퇴실 건수 추이 (활동이 있는 시간대만)."""
+def _hourly_check_in_out(group_ids: list[int], now) -> list[dict]:
+    """1시간 단위 입실·퇴실 건수 추이.
+
+    입실/퇴실 시각 필드 기준으로, 현재 시각까지 경과한 건만 집계한다(미래 예정 제외).
+    """
     buckets: dict[Any, dict[str, int]] = defaultdict(
         lambda: {"checked_in": 0, "checked_out": 0}
     )
@@ -280,13 +401,10 @@ def _hourly_check_in_out(group_ids: list[int]) -> list[dict]:
     in_rows = (
         RetreatAttendee.objects.filter(
             group_id__in=group_ids,
-            checked_in_at__isnull=False,
-            check_in_status__in=(
-                RetreatAttendee.CheckInStatus.CHECKED_IN,
-                RetreatAttendee.CheckInStatus.CHECKED_OUT,
-            ),
+            expected_check_in_at__isnull=False,
+            expected_check_in_at__lte=now,
         )
-        .annotate(h=TruncHour("checked_in_at"))
+        .annotate(h=TruncHour("expected_check_in_at"))
         .values("h")
         .annotate(c=Count("id"))
     )
@@ -296,10 +414,10 @@ def _hourly_check_in_out(group_ids: list[int]) -> list[dict]:
     out_rows = (
         RetreatAttendee.objects.filter(
             group_id__in=group_ids,
-            checked_out_at__isnull=False,
-            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+            expected_check_out_at__isnull=False,
+            expected_check_out_at__lte=now,
         )
-        .annotate(h=TruncHour("checked_out_at"))
+        .annotate(h=TruncHour("expected_check_out_at"))
         .values("h")
         .annotate(c=Count("id"))
     )

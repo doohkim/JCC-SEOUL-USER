@@ -1,13 +1,13 @@
 from counseling.models.counseling_models import (
-    CounselorDayOverride,
-    CounselorScheduleSettings,
+    PastorDayOverride,
+    PastorScheduleSettings,
     CounselingRequest,
     CounselingSlot,
 )
 
 __all__ = [
-    "CounselorDayOverride",
-    "CounselorScheduleSettings",
+    "PastorDayOverride",
+    "PastorScheduleSettings",
     "CounselingRequest",
     "CounselingSlot",
 ]

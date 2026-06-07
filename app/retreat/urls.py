@@ -10,6 +10,7 @@ from retreat.apis import (
     RetreatEventChangelogView,
     RetreatEventCouncilListCreateView,
     RetreatEventDashboardView,
+    RetreatEventGroupBoardView,
     RetreatEventGroupListView,
     RetreatEventListView,
     RetreatEventLodgingsView,
@@ -141,6 +142,11 @@ urlpatterns = [
         "api/v1/retreat/events/<int:event_id>/dashboard/",
         RetreatEventDashboardView.as_view(),
         name="api_retreat_event_dashboard",
+    ),
+    path(
+        "api/v1/retreat/events/<int:event_id>/group-board/",
+        RetreatEventGroupBoardView.as_view(),
+        name="api_retreat_event_group_board",
     ),
     path(
         "api/v1/retreat/events/<int:event_id>/results/",

@@ -378,6 +378,9 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
 
         ctx = super().get_context_data(**kwargs)
         event = ctx["event"]
+        from retreat.services.auto_check_in import apply_due_auto_transitions
+
+        apply_due_auto_transitions(event_id=event.id)
         user = self.request.user
         groups = list(
             visible_retreat_groups_for(user, event)
@@ -428,6 +431,9 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
         event = ctx["event"]
+        from retreat.services.auto_check_in import apply_due_auto_transitions
+
+        apply_due_auto_transitions(event_id=event.id)
         group = get_object_or_404(RetreatGroup, pk=kwargs["group_id"], event=event)
 
         visible_ids = set(
