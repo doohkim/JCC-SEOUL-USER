@@ -176,11 +176,16 @@ class RetreatAttendeeDetailView(APIView):
         ser = RetreatAttendeeSerializer(attendee, data=payload, partial=True)
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
-        if "lodging_room" in ser.validated_data:
-            target_room = ser.validated_data["lodging_room"]
+        if "lodging_room" in ser.validated_data or "gender" in ser.validated_data:
+            target_room = ser.validated_data.get("lodging_room", attendee.lodging_room)
             if target_room is not None:
-                tmp = attendee
-                tmp.lodging_room = target_room
+                target_gender = ser.validated_data.get("gender", attendee.gender)
+                tmp = RetreatAttendee(
+                    id=attendee.id,
+                    group=group,
+                    gender=target_gender,
+                    lodging_room=target_room,
+                )
                 assert_room_can_accept(target_room, tmp)
         attendee = ser.save()
         manual_in = ser.validated_data.get("checked_in_at")

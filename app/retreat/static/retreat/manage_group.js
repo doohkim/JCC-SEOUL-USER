@@ -678,7 +678,10 @@
         titleEl.textContent = "조원 추가";
       }
     }
-    if (submitBtn) submitBtn.textContent = mode === "edit" ? "수정" : "저장";
+    if (submitBtn) {
+      submitBtn.textContent = mode === "edit" ? "수정" : "저장";
+      submitBtn.disabled = false;
+    }
     if (nameInput) nameInput.value = payload?.name || "";
     if (phoneInput) phoneInput.value = payload?.phone === "-" ? "" : payload?.phone || "";
     if (genderInput) genderInput.value = payload?.gender || "";
@@ -709,8 +712,13 @@
     requestAnimationFrame(() => focusEl?.focus());
   }
 
+  function closeDateTimePicker() {
+    window.JccDateTimePicker?.close?.();
+  }
+
   function closeModal() {
     if (!overlay) return;
+    closeDateTimePicker();
     overlay.hidden = true;
     overlay.setAttribute("aria-hidden", "true");
     modalAttendeeId = null;
@@ -718,6 +726,7 @@
 
   async function onSubmit(e) {
     e.preventDefault();
+    closeDateTimePicker();
     if (!submitBtn) return;
     submitBtn.disabled = true;
     const linkedUserId = attendeePicker ? attendeePicker.getId() : "";
@@ -748,6 +757,12 @@
     if (ctx.canEditAttendee && !payload.name) {
       submitBtn.disabled = false;
       showToast("이름은 필수입니다.", true);
+      nameInput?.focus();
+      return;
+    }
+    if (!Object.keys(payload).length) {
+      submitBtn.disabled = false;
+      showToast("저장할 변경 사항이 없습니다.", true);
       return;
     }
     if (
@@ -799,6 +814,7 @@
         window.location.reload();
       }
     } catch (err) {
+      console.error("[retreat] 조원 저장 실패", err);
       showToast(err.message || "저장 실패", true);
     } finally {
       submitBtn.disabled = false;

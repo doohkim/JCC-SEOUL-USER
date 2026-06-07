@@ -830,7 +830,8 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   border-radius: 12px;
   font-size: 0.88rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  z-index: 1600;
+  /* 모달(1700)·확인(1800)·날짜피커(2200) 위에 떠야 제출 실패 알림이 보인다 */
+  z-index: 2400;
 }
 .jcc-retreat-toast.is-error {
   border-color: rgba(239, 68, 68, 0.6);

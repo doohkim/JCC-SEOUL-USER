@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ group.name }} · 조 관리</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260605zz" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260607b" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -173,7 +173,7 @@
           <div class="jcc-retreat-modalOverlay" id="retreatModalOverlay" hidden aria-hidden="true">
             <div class="jcc-retreat-modal jcc-retreat-modal--attendeeEdit card" role="dialog" aria-modal="true" aria-labelledby="retreatModalTitle">
               <h2 id="retreatModalTitle" class="jcc-retreat-modalTitle">조원 추가</h2>
-              <form id="retreatAttendeeForm">
+              <form id="retreatAttendeeForm" novalidate>
                 <div class="jcc-retreat-modalGrid">
                   {% if can_mutate %}
                     <div class="field jcc-retreat-modalField--full" data-modal-mutate-only>
@@ -291,7 +291,7 @@
       };
     </script>
     {% include 'includes/retreat_bottom_tabs.html' %}
-    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260605t4" defer></script>
-    <script src="{% static 'retreat/manage_group.js' %}?v=20260605u" defer></script>
+    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260607b" defer></script>
+    <script src="{% static 'retreat/manage_group.js' %}?v=20260607b" defer></script>
   </body>
 </html>

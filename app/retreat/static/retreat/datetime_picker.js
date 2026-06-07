@@ -575,7 +575,7 @@
 
     const ctrl = {
       close() {
-        document.removeEventListener("mousedown", onDocClick, true);
+        document.removeEventListener("click", onDocClick, true);
         document.removeEventListener("keydown", onKey, true);
         window.removeEventListener("resize", onScrollResize, true);
         window.removeEventListener("scroll", onScrollResize, true);
@@ -586,7 +586,8 @@
     openController = ctrl;
 
     setTimeout(function () {
-      document.addEventListener("mousedown", onDocClick, true);
+      // mousedown 대신 click: 바깥 mousedown 시 DOM 이 바뀌면 submit 클릭이 씹히는 문제 방지
+      document.addEventListener("click", onDocClick, true);
       document.addEventListener("keydown", onKey, true);
       window.addEventListener("resize", onScrollResize, true);
       window.addEventListener("scroll", onScrollResize, true);
@@ -600,7 +601,11 @@
     scope.querySelectorAll(sel).forEach(enhance);
   }
 
-  window.JccDateTimePicker = { enhance: enhance, enhanceAll: enhanceAll };
+  window.JccDateTimePicker = {
+    enhance: enhance,
+    enhanceAll: enhanceAll,
+    close: closeOpen,
+  };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {

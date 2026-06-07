@@ -139,6 +139,14 @@ class LodgingRoomAssignmentTests(_LodgingFixture):
             region=cls.seoul,
             division=cls.div,
         )
+        cls.male_room = LodgingRoom.objects.create(
+            lodging=cls.lodging,
+            number="102",
+            capacity=2,
+            recommended_gender=LodgingRoom.Gender.MALE,
+            region=cls.seoul,
+            division=cls.div,
+        )
         cls.female_room = LodgingRoom.objects.create(
             lodging=cls.lodging,
             number="201",
@@ -224,6 +232,22 @@ class LodgingRoomAssignmentTests(_LodgingFixture):
             format="json",
         )
         self.assertEqual(r.status_code, 400, r.content)
+
+    def test_assign_room_validates_with_patched_gender(self):
+        attendee = RetreatAttendee.objects.create(group=self.group, name="미지정")
+        self.client.force_authenticate(self.staff)
+        r = self.client.patch(
+            self._detail(attendee),
+            {
+                "gender": RetreatAttendee.Gender.MALE,
+                "lodging_room": self.male_room.id,
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        attendee.refresh_from_db()
+        self.assertEqual(attendee.gender, RetreatAttendee.Gender.MALE)
+        self.assertEqual(attendee.lodging_room_id, self.male_room.id)
 
     def test_other_event_room_rejected(self):
         r = self.client.patch(
