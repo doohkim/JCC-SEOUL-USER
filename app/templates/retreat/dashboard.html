@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 대시보드 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603h" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260605zz2" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -22,38 +22,59 @@
         <main>
           {% include 'includes/retreat_event_tabs.html' with retreat_tab='dashboard' %}
           <div class="toolbar card">
-            <div class="field">
-              <label for="sessionId">출석부(시간대)</label>
-              <select id="sessionId">
-                {% for s in sessions %}
-                  <option value="{{ s.id }}">{{ s.name }}{% if s.occurs_at %} · {{ s.occurs_at|date:"m/d H:i" }}{% endif %}</option>
-                {% empty %}
-                  <option value="">출석부 없음</option>
-                {% endfor %}
-              </select>
+            <div class="jcc-retreat-dashMeta">
+              <span class="muted">현재시각 기준 실시간 현황</span>
+              <span class="muted" id="dashGeneratedAt"></span>
             </div>
             <button type="button" class="secondary" id="btnRefresh">새로고침</button>
           </div>
           <div id="dashboardStatus" class="msg" role="status"></div>
           <div class="jcc-retreat-dashGrid">
             <section class="card">
-              <h2 class="jcc-retreat-sectionTitle">시간대별 조 입실 현황</h2>
+              <h2 class="jcc-retreat-sectionTitle">실시간 참석 인원 (현재 입실 상태)</h2>
+              <div class="jcc-retreat-statLine">
+                <span class="jcc-retreat-statLine-label">현재 참석</span>
+                <span><strong id="attendTotal">0</strong>명</span>
+              </div>
               <div id="groupGrid" class="jcc-retreat-tripleGrid"></div>
-              <div class="jcc-retreat-grandTotal" id="groupGrandTotal"></div>
             </section>
             <section class="card">
-              <h2 class="jcc-retreat-sectionTitle">시간대별 인원체크</h2>
-              <div class="jcc-table-scroll">
+              <h2 class="jcc-retreat-sectionTitle">지역·부서별 인원체크</h2>
+              <div class="jcc-retreat-tableWrap">
                 <table class="jcc-table" id="divisionTable">
                   <thead>
                     <tr>
                       <th>지역</th>
                       <th>부서</th>
                       <th>조</th>
-                      <th>총 입실</th>
-                      <th>퇴실(예정)</th>
-                      <th>현재 입실</th>
-                      <th>최종 참석</th>
+                      <th>입실전</th>
+                      <th>입실</th>
+                      <th>퇴실</th>
+                      <th>참석</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                  <tfoot>
+                    <tr id="divisionTotalRow">
+                      <th colspan="3">합계</th>
+                      <th data-total-pending>0</th>
+                      <th data-total-in>0</th>
+                      <th data-total-out>0</th>
+                      <th data-total-attended>0</th>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </section>
+            <section class="card jcc-retreat-dashFull">
+              <h2 class="jcc-retreat-sectionTitle">시간대별 입·퇴실 추이 (1시간 단위)</h2>
+              <div class="jcc-retreat-tableWrap">
+                <table class="jcc-table" id="hourlyTable">
+                  <thead>
+                    <tr>
+                      <th>시간대</th>
+                      <th>입실</th>
+                      <th>퇴실</th>
                     </tr>
                   </thead>
                   <tbody></tbody>
@@ -72,6 +93,6 @@
         isStaff: {{ is_retreat_staff|yesno:"true,false" }}
       };
     </script>
-    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260602g" defer></script>
+    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260605k" defer></script>
   </body>
 </html>

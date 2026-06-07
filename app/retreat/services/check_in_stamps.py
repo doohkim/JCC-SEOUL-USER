@@ -10,6 +10,51 @@ from django.utils import timezone
 from retreat.models import RetreatAttendee
 
 
+def ensure_stamps_for_status(
+    attendee: RetreatAttendee, *, now: datetime | None = None
+) -> None:
+    """상태와 실제 시각 필드가 어긋나면 보정한다 (레거시·직접 DB 수정 대비)."""
+    ts = now or timezone.now()
+    S = RetreatAttendee.CheckInStatus
+    if attendee.check_in_status in (S.CHECKED_IN, S.CHECKED_OUT):
+        if not attendee.checked_in_at:
+            attendee.checked_in_at = attendee.expected_check_in_at or ts
+    if attendee.check_in_status == S.CHECKED_OUT:
+        if not attendee.checked_out_at:
+            attendee.checked_out_at = attendee.expected_check_out_at or ts
+
+
+def backfill_missing_check_in_stamps(
+    group_ids: list[int] | None = None,
+) -> dict[str, int]:
+    """입·퇴실 상태인데 실제 시각이 비어 있는 레코드를 보정한다."""
+    qs = RetreatAttendee.objects.all()
+    if group_ids is not None:
+        qs = qs.filter(group_id__in=group_ids)
+
+    filled_in = 0
+    filled_out = 0
+    S = RetreatAttendee.CheckInStatus
+
+    for attendee in qs.filter(
+        check_in_status__in=(S.CHECKED_IN, S.CHECKED_OUT),
+        checked_in_at__isnull=True,
+    ):
+        ensure_stamps_for_status(attendee)
+        attendee.save(update_fields=["checked_in_at", "updated_at"])
+        filled_in += 1
+
+    for attendee in qs.filter(
+        check_in_status=S.CHECKED_OUT,
+        checked_out_at__isnull=True,
+    ):
+        ensure_stamps_for_status(attendee)
+        attendee.save(update_fields=["checked_out_at", "updated_at"])
+        filled_out += 1
+
+    return {"filled_checked_in_at": filled_in, "filled_checked_out_at": filled_out}
+
+
 def stamp_check_in_status(
     attendee: RetreatAttendee,
     *,
@@ -40,6 +85,8 @@ def stamp_check_in_status(
             attendee.checked_in_at = ts
         elif new_status == RetreatAttendee.CheckInStatus.CHECKED_OUT:
             attendee.checked_out_at = ts
+
+    ensure_stamps_for_status(attendee, now=ts)
 
 
 def apply_attendee_stamp_from_payload(

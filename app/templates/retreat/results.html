@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 결과 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260603h" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260605zz" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -38,6 +38,29 @@
             <div id="resultsGrid" class="jcc-retreat-tripleGrid"></div>
             <div class="jcc-retreat-grandTotal" id="resultsGrandTotal"></div>
           </section>
+
+          <section class="card">
+            <h2 class="jcc-retreat-sectionTitle">실시간 조별 참석</h2>
+            <p class="jcc-retreat-chartHint">입실 기록이 있는 인원(누적 참석) 기준</p>
+            <div id="groupChart" class="jcc-retreat-barBox"></div>
+          </section>
+
+          <section class="jcc-retreat-chartRow">
+            <div class="card">
+              <h2 class="jcc-retreat-sectionTitle">지역별 참석 비중</h2>
+              <p class="jcc-retreat-chartHint">입실 기록 기준 · 지역별 누적 참석</p>
+              <div class="jcc-retreat-donutWrap">
+                <div id="regionChart" class="jcc-retreat-donutBox"></div>
+                <div id="regionLegend" class="jcc-retreat-legend jcc-retreat-legend--col"></div>
+              </div>
+            </div>
+            <div class="card">
+              <h2 class="jcc-retreat-sectionTitle">시간대별 입·퇴실 (1시간 단위)</h2>
+              <p class="jcc-retreat-chartHint">실제 입·퇴실 시각 기록 기준</p>
+              <div id="hourlyChart" class="jcc-retreat-chartBox"></div>
+              <div id="hourlyLegend" class="jcc-retreat-legend"></div>
+            </div>
+          </section>
         </main>
       </div>
     </div>
@@ -45,9 +68,11 @@
     <script>
       window.RETREAT_RESULTS_CTX = {
         eventId: {{ event.id }},
-        apiResults: "{% url 'api_retreat_event_results' event.id %}"
+        apiResults: "{% url 'api_retreat_event_results' event.id %}",
+        apiAnalytics: "{% url 'api_retreat_event_results_analytics' event.id %}",
+        apiDashboard: "{% url 'api_retreat_event_dashboard' event.id %}"
       };
     </script>
-    <script src="{% static 'retreat/retreat_results.js' %}?v=20260602g" defer></script>
+    <script src="{% static 'retreat/retreat_results.js' %}?v=20260605k" defer></script>
   </body>
 </html>

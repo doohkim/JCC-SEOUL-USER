@@ -248,7 +248,26 @@ class UserProfileAvatarAdmin(admin.ModelAdmin):
     class Media:
         css = {"all": ("admin/css/jcc_fieldsets.css",)}
 
-    list_display = ["user_profile", "content_hash", "created_at"]
+    list_display = [
+        "username_snapshot",
+        "user_id_snapshot",
+        "user_profile",
+        "content_hash",
+        "created_at",
+    ]
     list_filter = ["created_at"]
-    search_fields = ["content_hash", "user_profile__user__username", "source_url"]
-    readonly_fields = ["image", "source_url", "content_hash", "created_at", "user_profile"]
+    search_fields = [
+        "content_hash",
+        "username_snapshot",
+        "user_profile__user__username",
+        "source_url",
+    ]
+    readonly_fields = [
+        "image",
+        "source_url",
+        "content_hash",
+        "created_at",
+        "user_profile",
+        "user_id_snapshot",
+        "username_snapshot",
+    ]

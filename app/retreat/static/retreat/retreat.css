@@ -1,5 +1,12 @@
 /* JCC Seoul · 수련회 UI (모바일 우선) */
 
+/* 수련회 페이지: 상단 헤더 고정(스크롤해도 상단에 머무름) */
+body.has-retreat-bottom-tabs header.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
 body.has-retreat-bottom-tabs #jccBottomTabs {
   display: none !important;
 }
@@ -73,10 +80,80 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   border-color: rgba(234, 179, 8, 0.7);
   color: rgb(253, 224, 71);
 }
+.jcc-retreat-manageTable th.jcc-retreat-attCol-num,
+.jcc-retreat-manageTable td.jcc-retreat-attCol-num,
+.jcc-retreat-manageTable th.jcc-retreat-attCol-phone,
+.jcc-retreat-manageTable td.jcc-retreat-attCol-phone,
+.jcc-retreat-manageTable th.jcc-retreat-attCol-gender,
+.jcc-retreat-manageTable td.jcc-retreat-attCol-gender,
+.jcc-retreat-manageTable th.jcc-retreat-attCol-actions,
+.jcc-retreat-manageTable td.jcc-retreat-attCol-actions,
+.jcc-retreat-manageTable .jcc-retreat-rowHistory,
+.jcc-retreat-manageTable .jcc-retreat-rowEdit,
+.jcc-retreat-manageTable .jcc-retreat-rowDel {
+  display: none;
+}
+/* 상태 배지: 셀 왼쪽 끝(헤더 시작점)에 맞춰 좌측 여백 제거 */
+.jcc-retreat-manageTable .jcc-retreat-checkInBadge {
+  margin-left: 0;
+}
+/* 이름·구분 셀 클릭으로 수정 모달 열기 — 클릭 가능 표시 */
+.jcc-retreat-manageTable td.jcc-retreat-attCol-name,
+.jcc-retreat-manageTable td.jcc-retreat-attCol-role {
+  cursor: pointer;
+}
+.jcc-retreat-manageTable td.jcc-retreat-attCol-name:hover,
+.jcc-retreat-manageTable td.jcc-retreat-attCol-role:hover {
+  color: var(--accent, #4a9eff);
+}
+.jcc-retreat-manageTable td.jcc-retreat-attCol-name:hover .jcc-retreat-attName {
+  color: var(--accent, #4a9eff);
+  text-decoration: underline;
+}
+/* 인라인 입·퇴실 라벨: 모바일에서만 노출 */
+.jcc-retreat-stampInlineLabel {
+  display: none;
+}
 @media (max-width: 640px) {
-  .jcc-retreat-manageTable th.jcc-retreat-attCol-phone,
-  .jcc-retreat-manageTable td.jcc-retreat-attCol-phone {
-    display: none;
+  /* 좁은 화면: 각 조원을 한 줄(#/역할/이름/상태/예상 입실/예상 퇴실)로 유지하고
+     넘치면 가로 스크롤 */
+  .jcc-retreat-rosterCard .jcc-retreat-tableWrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .jcc-retreat-manageTable {
+    font-size: 0.78rem;
+  }
+  .jcc-retreat-manageTable th,
+  .jcc-retreat-manageTable td {
+    padding: 0.4rem 0.3rem;
+    white-space: nowrap;
+  }
+  /* 이름 5글자까지만 노출하고 넘치면 말줄임 */
+  .jcc-retreat-manageTable .jcc-retreat-attName {
+    display: inline-block;
+    max-width: 5em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .jcc-retreat-manageTable .jcc-retreat-stampInput {
+    min-width: 0;
+    max-width: none;
+    width: 7.5rem;
+    font-size: 0.72rem;
+    padding: 0.25rem 0.3rem;
+  }
+  .jcc-retreat-manageTable td.jcc-retreat-attCol-expected .jcc-dtp-field {
+    width: 7.5rem;
+  }
+  .jcc-retreat-manageTable .jcc-retreat-stampLabel {
+    font-size: 0.72rem;
+  }
+  .jcc-retreat-manageTable .jcc-retreat-checkInBadge {
+    font-size: 0.68rem;
+    padding: 0.15rem 0.35rem;
   }
 }
 
@@ -89,6 +166,34 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   .jcc-retreat-dashGrid {
     grid-template-columns: 1fr 1fr;
   }
+  .jcc-retreat-dashFull {
+    grid-column: 1 / -1;
+  }
+}
+.jcc-retreat-dashMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.85rem;
+}
+.jcc-retreat-statLine {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0 0 0.85rem;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.jcc-retreat-statLine-label {
+  color: var(--muted);
+}
+.jcc-retreat-statLine strong {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+#divisionTable tfoot th {
+  font-weight: 700;
+  border-top: 2px solid var(--border);
 }
 
 .jcc-retreat-sectionTitle {
@@ -109,6 +214,7 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 
 .jcc-retreat-tripleCol .jcc-retreat-miniTable {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.85rem;
 }
@@ -116,6 +222,15 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 .jcc-retreat-miniTable td {
   border: 1px solid var(--border);
   padding: 0.35rem 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 모든 미니 테이블의 컬럼 폭 통일: 참석 컬럼 고정, 조 컬럼은 나머지 */
+.jcc-retreat-miniTable th:last-child,
+.jcc-retreat-miniTable td:last-child {
+  width: 4.5rem;
+  text-align: right;
 }
 .jcc-retreat-miniTable th {
   background: var(--accent-tint, rgba(99, 102, 241, 0.12));
@@ -486,6 +601,13 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   font-variant-numeric: tabular-nums;
 }
 
+/* 페이지 헤더 상단 고정 — 햄버거(고정)와 함께 고정되고 본문만 스크롤 */
+.jcc-retreat-groupHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  background: var(--bg);
+}
 .jcc-retreat-groupHeaderInner {
   display: flex;
   flex-wrap: wrap;
@@ -494,6 +616,7 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   gap: 0.75rem 1rem;
   width: 100%;
 }
+
 .jcc-retreat-backLink {
   flex-shrink: 0;
   align-self: center;
@@ -519,18 +642,104 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   color: var(--accent, #4a9eff);
 }
 
+.jcc-retreat-attCol-role {
+  width: 4rem;
+  white-space: nowrap;
+}
+.jcc-retreat-attCol-name {
+  width: auto;
+  min-width: 7rem;
+}
 .jcc-retreat-attCol-gender {
   width: 3rem;
   text-align: center;
   white-space: nowrap;
 }
+.jcc-retreat-attCol-phone {
+  width: 8rem;
+  white-space: nowrap;
+}
 .jcc-retreat-attCol-status {
-  min-width: 200px;
+  width: 4.5rem;
+  white-space: nowrap;
 }
 .jcc-retreat-attCol-actions {
   width: 1%;
   white-space: nowrap;
   text-align: right;
+}
+.jcc-retreat-attCol-expected {
+  width: 9.5rem;
+  white-space: nowrap;
+}
+.jcc-retreat-attCol-expectedStack {
+  width: 22rem;
+}
+.jcc-retreat-expectedStack {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 0.35rem 0.5rem;
+  align-items: center;
+}
+.jcc-retreat-expectedItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1 1 0;
+}
+.jcc-retreat-expectedLbl {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.jcc-retreat-expectedItem .jcc-retreat-stampInput,
+.jcc-retreat-expectedItem .jcc-retreat-stampLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+}
+.jcc-retreat-stampLabel {
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+.jcc-retreat-readonlyStamp {
+  display: block;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg, rgba(148, 163, 184, 0.08));
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 클릭 정렬 가능한 컬럼 헤더 */
+.jcc-retreat-sortable {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.jcc-retreat-sortable .jcc-retreat-sortLabel {
+  display: inline;
+}
+.jcc-retreat-sortable .jcc-retreat-sortLabel::after {
+  content: "";
+}
+.jcc-retreat-sortable[data-sort-dir="asc"] .jcc-retreat-sortLabel::after {
+  content: " ▲";
+  font-size: 0.7em;
+  opacity: 0.8;
+}
+.jcc-retreat-sortable[data-sort-dir="desc"] .jcc-retreat-sortLabel::after {
+  content: " ▼";
+  font-size: 0.7em;
+  opacity: 0.8;
+}
+.jcc-retreat-sortable[data-sort-dir] {
+  color: var(--text);
 }
 
 .jcc-retreat-attName {
@@ -1303,16 +1512,11 @@ dialog.jcc-retreat-modal::backdrop {
   gap: 0.35rem;
 }
 @media (max-width: 640px) {
-  .jcc-retreat-manageTable .jcc-retreat-checkInBtn {
-    min-height: 2.35rem;
-    min-width: 4.2rem;
-    padding: 0.4rem 0.55rem;
-    font-size: 0.82rem;
-  }
-  .jcc-retreat-attCol-actions {
+  .jcc-retreat-manageTable .jcc-retreat-attCol-actions {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.25rem;
+    align-items: stretch;
   }
   .jcc-retreat-modal--attendeeEdit {
     width: min(96vw, 100%);
@@ -1479,4 +1683,500 @@ dialog.jcc-retreat-modal::backdrop {
 .jcc-onboarding-retreatCell select {
   display: block;
   margin-top: 0.25rem;
+}
+
+/* ===== 결과 차트 ===== */
+.jcc-retreat-chartHint {
+  margin: -0.4rem 0 0.6rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.jcc-retreat-chartEmpty {
+  margin: 1rem 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.jcc-retreat-chartBox {
+  width: 100%;
+}
+.jcc-retreat-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.jcc-retreat-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+.jcc-retreat-axisLbl {
+  fill: var(--muted);
+  font-size: 11px;
+}
+.jcc-retreat-axisLbl--y {
+  text-anchor: end;
+}
+.jcc-retreat-xlbl {
+  text-anchor: middle;
+}
+.jcc-retreat-totalLine {
+  stroke: var(--text);
+}
+.jcc-retreat-totalDot {
+  fill: var(--text);
+}
+.jcc-retreat-pointLbl {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.jcc-retreat-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  margin-top: 0.7rem;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+.jcc-retreat-legend--col {
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1 1 140px;
+  margin-top: 0;
+}
+.jcc-retreat-legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.jcc-retreat-legendSw {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+.jcc-retreat-legendSw--total {
+  background: var(--text);
+}
+
+.jcc-retreat-chartRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+@media (min-width: 820px) {
+  .jcc-retreat-chartRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.jcc-retreat-donutWrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+.jcc-retreat-donutBox {
+  flex: 0 0 auto;
+  width: 200px;
+  max-width: 50%;
+}
+.jcc-retreat-donutSvg {
+  width: 100%;
+}
+.jcc-retreat-donutHole {
+  fill: var(--card);
+}
+.jcc-retreat-donutCenter {
+  fill: var(--text);
+  font-size: 30px;
+  font-weight: 800;
+  text-anchor: middle;
+  font-variant-numeric: tabular-nums;
+}
+.jcc-retreat-donutCenterSub {
+  fill: var(--muted);
+  font-size: 12px;
+  text-anchor: middle;
+}
+.jcc-retreat-rateList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.jcc-retreat-rateHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  margin-bottom: 0.2rem;
+}
+.jcc-retreat-rateName {
+  color: var(--text);
+  font-weight: 600;
+}
+.jcc-retreat-rateVal {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.jcc-retreat-rateTrack {
+  width: 100%;
+  height: 10px;
+  border-radius: 6px;
+  background: var(--border);
+  overflow: hidden;
+}
+.jcc-retreat-rateFill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+/* 대시보드 차트 */
+.jcc-retreat-chartSubTitle {
+  margin: 0.5rem 0 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.jcc-retreat-barBox {
+  width: 100%;
+}
+.jcc-retreat-vbar {
+  transition: height 0.3s ease;
+}
+.jcc-retreat-barLbl {
+  fill: var(--text);
+  font-size: 10px;
+  font-weight: 600;
+  text-anchor: middle;
+}
+
+/* === 커스텀 날짜·시간 피커 ============================================= */
+.jcc-dtp-field,
+.jcc-dtp-field *,
+.jcc-dtp-pop,
+.jcc-dtp-pop * {
+  box-sizing: border-box;
+}
+.jcc-dtp-native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  border: 0 !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+.jcc-dtp-field {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 9px;
+  border: 1px solid var(--border, #ced4da);
+  border-radius: 8px;
+  background: var(--card, #fff);
+  color: var(--text, #212529);
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.jcc-dtp-field:hover:not(:disabled) {
+  border-color: var(--accent, #4a9eff);
+}
+.jcc-dtp-field:focus-visible {
+  outline: none;
+  border-color: var(--accent, #4a9eff);
+  box-shadow: 0 0 0 3px var(--accent-tint, rgba(74, 158, 255, 0.25));
+}
+.jcc-dtp-field:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.jcc-dtp-val {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.jcc-dtp-val.muted {
+  color: var(--muted, #868e96);
+}
+.jcc-dtp-icon {
+  flex: 0 0 auto;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+/* 예상 입실/퇴실 인라인 입력란은 달력 아이콘 숨겨 공간 확보 */
+.jcc-retreat-attCol-expected .jcc-dtp-icon {
+  display: none;
+}
+
+.jcc-dtp-pop {
+  position: fixed;
+  z-index: 2200;
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  padding: 12px;
+  background: var(--card, #fff);
+  color: var(--text, #212529);
+  border: 1px solid var(--border, #ced4da);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+.jcc-dtp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.jcc-dtp-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.jcc-dtp-nav {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text, #212529);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.jcc-dtp-nav:hover {
+  background: var(--accent-tint, rgba(74, 158, 255, 0.15));
+}
+.jcc-dtp-dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+}
+.jcc-dtp-dow span {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted, #868e96);
+  padding: 2px 0;
+}
+.jcc-dtp-dow .sun {
+  color: #e0506e;
+}
+.jcc-dtp-dow .sat {
+  color: #4a9eff;
+}
+.jcc-dtp-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.jcc-dtp-day {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text, #212529);
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.jcc-dtp-day:hover {
+  background: var(--accent-tint, rgba(74, 158, 255, 0.15));
+}
+.jcc-dtp-day.other {
+  color: var(--muted, #adb5bd);
+  opacity: 0.55;
+}
+.jcc-dtp-day.sun {
+  color: #e0506e;
+}
+.jcc-dtp-day.sat {
+  color: #4a9eff;
+}
+.jcc-dtp-day.today {
+  box-shadow: inset 0 0 0 1px var(--accent, #4a9eff);
+}
+.jcc-dtp-day.selected {
+  background: var(--accent, #4a9eff);
+  color: #fff;
+  font-weight: 700;
+}
+.jcc-dtp-day.selected.sun,
+.jcc-dtp-day.selected.sat {
+  color: #fff;
+}
+.jcc-dtp-time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border, #e9ecef);
+}
+.jcc-dtp-timeLbl {
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted, #868e96);
+  white-space: nowrap;
+  margin-right: 6px;
+}
+/* 시·분 셀렉트 박스 (값 + ▾) — 팝업과 동일 톤 */
+.jcc-dtp-select {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 32px;
+  padding: 0 7px;
+  border: 1px solid var(--border, #ced4da);
+  border-radius: 8px;
+  background: var(--card, #fff);
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.jcc-dtp-select:hover {
+  border-color: var(--accent, #4a9eff);
+}
+.jcc-dtp-select:focus-within {
+  border-color: var(--accent, #4a9eff);
+  box-shadow: 0 0 0 3px var(--accent-tint, rgba(74, 158, 255, 0.25));
+}
+.jcc-dtp-select input.jcc-dtp-num {
+  width: 2.1ch;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: center;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text, #212529);
+  cursor: pointer;
+}
+.jcc-dtp-select input.jcc-dtp-num:focus {
+  outline: none;
+}
+/* 오전·오후 박스: 한글 2글자 폭 */
+.jcc-dtp-select--wide input.jcc-dtp-num {
+  width: 2.6em;
+  font-weight: 600;
+}
+.jcc-dtp-caret {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--muted, #868e96);
+}
+.jcc-dtp-colon {
+  flex: 0 0 auto;
+  font-weight: 700;
+  margin: 0 1px;
+}
+/* 시·분 선택 드롭다운 — 팝업과 동일 톤 */
+.jcc-dtp-dropdown[hidden] {
+  display: none;
+}
+.jcc-dtp-dropdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 168px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #ced4da);
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+  overscroll-behavior: contain;
+}
+.jcc-dtp-opt {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text, #212529);
+  text-align: center;
+  cursor: pointer;
+}
+.jcc-dtp-opt:hover {
+  background: var(--accent-tint, rgba(74, 158, 255, 0.15));
+}
+.jcc-dtp-opt.is-sel {
+  background: var(--accent, #4a9eff);
+  color: #fff;
+}
+.jcc-dtp-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+.jcc-dtp-text {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted, #868e96);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.jcc-dtp-text:hover {
+  background: var(--accent-tint, rgba(74, 158, 255, 0.12));
+  color: var(--text, #212529);
+}
+.jcc-dtp-ok {
+  margin-left: auto;
+  padding: 7px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent, #4a9eff);
+  color: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.jcc-dtp-ok:hover {
+  filter: brightness(1.05);
 }

@@ -13,6 +13,7 @@ from .sessions import (
 from .dashboard_api import (
     RetreatEventChangelogView,
     RetreatEventDashboardView,
+    RetreatEventResultsAnalyticsView,
     RetreatEventResultsView,
 )
 from .council import (
@@ -48,6 +49,7 @@ __all__ = [
     "RetreatSessionReopenView",
     "RetreatEventDashboardView",
     "RetreatEventResultsView",
+    "RetreatEventResultsAnalyticsView",
     "RetreatEventChangelogView",
     "RetreatEventCouncilListCreateView",
     "RetreatCouncilMembershipDetailView",

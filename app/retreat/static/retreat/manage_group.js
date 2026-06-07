@@ -42,7 +42,11 @@
   const memoInput = document.getElementById("retreatAttMemo");
   const expectedInInput = document.getElementById("retreatAttExpectedIn");
   const expectedOutInput = document.getElementById("retreatAttExpectedOut");
+  const lodgingInput = document.getElementById("retreatAttLodging");
+  const actualInOut = document.getElementById("retreatAttActualIn");
+  const actualOutOut = document.getElementById("retreatAttActualOut");
   const roleInput = document.getElementById("retreatAttRole");
+  const checkInInput = document.getElementById("retreatAttCheckIn");
   const titleEl = document.getElementById("retreatModalTitle");
   const submitBtn = document.getElementById("retreatModalSubmit");
   const cancelBtn = document.getElementById("retreatModalCancel");
@@ -69,6 +73,7 @@
 
   let modalMode = "create";
   let modalAttendeeId = null;
+  let modalInitialCheckIn = "pending";
   let attendeePicker = null;
 
   function recomputeSummary() {
@@ -91,15 +96,15 @@
   }
 
   function init() {
-    renderCheckInGroups();
+    renderStatusBadges();
     recomputeSummary();
     bindConfirm();
     bindHistory();
+    bindSorting();
     if (ctx.canMutate) {
-      bindCheckInClicks();
-      bindLodgingSelects();
+      bindExpectedInputs();
     }
-    if (ctx.canEditAttendee) {
+    if (ctx.canMutate || ctx.canEditAttendee) {
       bindAttendeeMutators();
       bindModal();
     }
@@ -146,30 +151,31 @@
     }, 2200);
   }
 
-  function renderCheckInGroups() {
+  function updateStatusBadge(tr) {
+    if (!tr) return;
+    const badge = tr.querySelector("[data-status-badge]");
+    if (!badge) return;
+    const current = tr.dataset.checkIn || "pending";
+    badge.textContent = CHECK_IN_LABELS[current] || current;
+    badge.className = `jcc-retreat-checkInBadge jcc-retreat-checkInBadge--${current}`;
+  }
+
+  function renderStatusBadges() {
     if (!attBody) return;
-    attBody.querySelectorAll("tr[data-attendee-id]").forEach((tr) => {
-      const groupEl = tr.querySelector("[data-check-in-group]");
-      if (!groupEl) return;
-      const current = tr.dataset.checkIn || "pending";
-      groupEl.innerHTML = "";
-      CHECK_IN_OPTIONS.forEach((opt) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "jcc-retreat-statusBtn jcc-retreat-checkInBtn";
-        btn.dataset.checkInStatus = opt.code;
-        btn.textContent = opt.label;
-        if (current === opt.code) btn.classList.add("is-active");
-        if (!ctx.canMutate) btn.disabled = true;
-        if (current === "checked_in" && opt.code === "pending") btn.disabled = true;
-        if (
-          current === "checked_out" &&
-          (opt.code === "pending" || opt.code === "checked_in")
-        ) {
-          btn.disabled = true;
-        }
-        groupEl.appendChild(btn);
-      });
+    attBody.querySelectorAll("tr[data-attendee-id]").forEach(updateStatusBadge);
+  }
+
+  function syncCheckInSelectOptions(current) {
+    if (!checkInInput) return;
+    Array.from(checkInInput.options).forEach((opt) => {
+      opt.disabled = false;
+      if (current === "checked_in" && opt.value === "pending") opt.disabled = true;
+      if (
+        current === "checked_out" &&
+        (opt.value === "pending" || opt.value === "checked_in")
+      ) {
+        opt.disabled = true;
+      }
     });
   }
 
@@ -196,6 +202,11 @@
       tr.dataset.userLabel = data.user_label || "";
     }
 
+    if ("lodging_room" in data) {
+      tr.dataset.lodgingRoom = data.lodging_room ? String(data.lodging_room) : "";
+      tr.dataset.lodgingLabel = data.lodging_room_label || "";
+    }
+
     const nameEl = tr.querySelector("[data-name]");
     if (nameEl && data.name) nameEl.textContent = data.name;
 
@@ -215,19 +226,24 @@
       memoEl.hidden = !data.memo;
     }
 
-    if (ctx.canEditTimestamps) {
-      const inInput = tr.querySelector('[data-stamp-field="checked_in_at"]');
-      const outInput = tr.querySelector('[data-stamp-field="checked_out_at"]');
-      if (inInput) inInput.value = toDatetimeLocalValue(data.checked_in_at);
-      if (outInput) outInput.value = toDatetimeLocalValue(data.checked_out_at);
-    } else {
-      const inDisp = tr.querySelector("[data-stamp-display-in]");
-      const outDisp = tr.querySelector("[data-stamp-display-out]");
-      if (inDisp) inDisp.textContent = formatStamp(data.checked_in_at);
-      if (outDisp) outDisp.textContent = formatStamp(data.checked_out_at);
+    if ("expected_check_in_at" in data || "expected_check_out_at" in data) {
+      const inInput = tr.querySelector('[data-expected-field="expected_check_in_at"]');
+      const outInput = tr.querySelector('[data-expected-field="expected_check_out_at"]');
+      if (inInput) inInput.value = toDatetimeLocalValue(data.expected_check_in_at);
+      if (outInput) outInput.value = toDatetimeLocalValue(data.expected_check_out_at);
+      const inLabel = tr.querySelector("[data-expected-in-label]");
+      const outLabel = tr.querySelector("[data-expected-out-label]");
+      if (inLabel) {
+        inLabel.textContent = formatStamp(data.expected_check_in_at);
+        inLabel.classList.toggle("muted", !data.expected_check_in_at);
+      }
+      if (outLabel) {
+        outLabel.textContent = formatStamp(data.expected_check_out_at);
+        outLabel.classList.toggle("muted", !data.expected_check_out_at);
+      }
     }
 
-    renderCheckInGroups();
+    updateStatusBadge(tr);
     recomputeSummary();
   }
 
@@ -258,58 +274,127 @@
     return res.json();
   }
 
-  function bindCheckInClicks() {
+  function bindExpectedInputs() {
     if (!attBody) return;
-    attBody.addEventListener("click", async (e) => {
-      const btn = e.target.closest(".jcc-retreat-checkInBtn");
-      if (!btn || btn.disabled) return;
-      const tr = btn.closest("tr[data-attendee-id]");
+    attBody.addEventListener("change", async (e) => {
+      const input = e.target.closest("[data-expected-field]");
+      if (!input) return;
+      const tr = input.closest("tr[data-attendee-id]");
       if (!tr) return;
+      const field = input.dataset.expectedField;
+      if (!field) return;
       const aid = Number(tr.dataset.attendeeId);
-      const newStatus = btn.dataset.checkInStatus;
-      const prev = tr.dataset.checkIn || "";
-      if (prev === newStatus) return;
-
-      const name = tr.querySelector("[data-name]")?.textContent?.trim() || "조원";
-      const prevLabel = CHECK_IN_LABELS[prev] || prev || "-";
-      const nextLabel = CHECK_IN_LABELS[newStatus] || newStatus;
-      const ok = await openConfirm({
-        title: `${nextLabel} 처리`,
-        message: `${name} 님\n${prevLabel} → ${nextLabel}\n\n이대로 변경할까요?`,
-        okLabel: "확인",
-        cancelLabel: "취소",
-      });
-      if (!ok) return;
-
+      const iso = isoFromDatetimeLocal(input.value);
+      input.disabled = true;
       try {
-        const data = await patchAttendee(aid, { check_in_status: newStatus });
+        const data = await patchAttendee(aid, { [field]: iso });
         updateRowFromData(tr, data);
-        showToast("저장됨", false);
+        showToast("예상 시각 저장됨", false);
       } catch (err) {
         showToast(err.message || "저장 실패", true);
+      } finally {
+        input.disabled = false;
       }
     });
   }
 
-  function bindStampInputs() {
-    if (!ctx.canEditTimestamps || !attBody) return;
-    attBody.addEventListener("change", async (e) => {
-      const input = e.target.closest(".jcc-retreat-stampInput");
-      if (!input) return;
-      const tr = input.closest("tr[data-attendee-id]");
-      if (!tr) return;
-      const field = input.dataset.stampField;
-      if (!field) return;
-      const aid = Number(tr.dataset.attendeeId);
-      const iso = isoFromDatetimeLocal(input.value);
-      const payload = { [field]: iso };
-      try {
-        const data = await patchAttendee(aid, payload);
-        updateRowFromData(tr, data);
-        showToast("시각 저장됨", false);
-      } catch (err) {
-        showToast(err.message || "저장 실패", true);
+  // --- 컬럼 헤더 클릭 정렬 -------------------------------------------------
+  const ROLE_ORDER = { leader: 0, vice_leader: 1, member: 2 };
+  const STATUS_ORDER = { checked_in: 0, pending: 1, checked_out: 2 };
+  let sortKey = null;
+  let sortDir = "asc";
+
+  function sortValue(tr, key) {
+    switch (key) {
+      case "role":
+        return ROLE_ORDER[tr.dataset.memberRole] ?? 99;
+      case "status":
+        return STATUS_ORDER[tr.dataset.checkIn] ?? 99;
+      case "gender": {
+        const g = tr.dataset.gender || "";
+        return g === "male" ? 0 : g === "female" ? 1 : 2;
       }
+      case "name":
+        return (tr.querySelector("[data-name]")?.textContent || "").trim();
+      case "phone":
+        return (tr.querySelector("[data-phone]")?.textContent || "").trim();
+      case "expected_in":
+      case "expected_out": {
+        const iso =
+          key === "expected_in"
+            ? tr.dataset.expectedInAt
+            : tr.dataset.expectedOutAt;
+        if (!iso) return Number.POSITIVE_INFINITY;
+        const t = new Date(iso).getTime();
+        return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
+      }
+      default:
+        return 0;
+    }
+  }
+
+  function compareRows(a, b, key) {
+    const va = sortValue(a, key);
+    const vb = sortValue(b, key);
+    if (typeof va === "number" && typeof vb === "number") {
+      return va - vb;
+    }
+    return String(va).localeCompare(String(vb), "ko");
+  }
+
+  function renumberRows() {
+    if (!attBody) return;
+    let n = 0;
+    attBody.querySelectorAll("tr[data-attendee-id]").forEach((tr) => {
+      n += 1;
+      const numCell = tr.querySelector("[data-row-num]");
+      if (numCell) numCell.textContent = String(n);
+    });
+  }
+
+  function applySort() {
+    if (!attBody || !sortKey) return;
+    const rows = Array.from(attBody.querySelectorAll("tr[data-attendee-id]"));
+    const factor = sortDir === "desc" ? -1 : 1;
+    rows
+      .sort((a, b) => {
+        const c = compareRows(a, b, sortKey);
+        if (c !== 0) return c * factor;
+        // 동률이면 이름으로 안정 정렬.
+        const na = (a.querySelector("[data-name]")?.textContent || "").trim();
+        const nb = (b.querySelector("[data-name]")?.textContent || "").trim();
+        return na.localeCompare(nb, "ko");
+      })
+      .forEach((tr) => attBody.appendChild(tr));
+    renumberRows();
+  }
+
+  function bindSorting() {
+    const headers = document.querySelectorAll(".jcc-retreat-sortable[data-sort-key]");
+    if (!headers.length) return;
+    headers.forEach((th) => {
+      th.addEventListener("click", () => {
+        const key = th.dataset.sortKey;
+        if (sortKey === key) {
+          sortDir = sortDir === "asc" ? "desc" : "asc";
+        } else {
+          sortKey = key;
+          sortDir = "asc";
+        }
+        headers.forEach((h) => {
+          if (h === th) {
+            h.dataset.sortDir = sortDir;
+            h.setAttribute(
+              "aria-sort",
+              sortDir === "asc" ? "ascending" : "descending"
+            );
+          } else {
+            delete h.dataset.sortDir;
+            h.setAttribute("aria-sort", "none");
+          }
+        });
+        applySort();
+      });
     });
   }
 
@@ -332,35 +417,55 @@
     if (form) form.addEventListener("submit", onSubmit);
   }
 
+  function openEditForRow(tr) {
+    if (!tr) return;
+    const aid = Number(tr.dataset.attendeeId);
+    const name = tr.querySelector("[data-name]")?.textContent?.trim() || "";
+    const phone = tr.querySelector("[data-phone]")?.textContent?.trim() || "";
+    const memoEl = tr.querySelector("[data-memo]");
+    const memo = memoEl && !memoEl.hidden ? memoEl.textContent.trim() : "";
+    openModal("edit", {
+      id: aid,
+      name,
+      phone,
+      memo,
+      checkIn: tr.dataset.checkIn || "pending",
+      gender: tr.dataset.gender || "",
+      expectedIn: tr.dataset.expectedInAt || "",
+      expectedOut: tr.dataset.expectedOutAt || "",
+      memberRole: tr.dataset.memberRole || "member",
+      userId: tr.dataset.userId || "",
+      userLabel: tr.dataset.userLabel || "",
+      lodgingRoom: tr.dataset.lodgingRoom || "",
+      checkedInAt: tr.dataset.checkedInAt || "",
+      checkedOutAt: tr.dataset.checkedOutAt || "",
+    });
+  }
+
   function bindAttendeeMutators() {
     if (!attBody) return;
     attBody.addEventListener("click", (e) => {
-      const edit = e.target.closest("[data-edit]");
-      const del = e.target.closest("[data-del]");
       const tr = e.target.closest("tr[data-attendee-id]");
       if (!tr) return;
       const aid = Number(tr.dataset.attendeeId);
-      if (edit) {
-        const name = tr.querySelector("[data-name]")?.textContent?.trim() || "";
-        const phone = tr.querySelector("[data-phone]")?.textContent?.trim() || "";
-        const memoEl = tr.querySelector("[data-memo]");
-        const memo = memoEl && !memoEl.hidden ? memoEl.textContent.trim() : "";
-        openModal("edit", {
-          id: aid,
-          name,
-          phone,
-          memo,
-          checkIn: tr.dataset.checkIn || "pending",
-          gender: tr.dataset.gender || "",
-          expectedIn: tr.dataset.expectedInAt || "",
-          expectedOut: tr.dataset.expectedOutAt || "",
-          memberRole: tr.dataset.memberRole || "member",
-          userId: tr.dataset.userId || "",
-          userLabel: tr.dataset.userLabel || "",
-        });
-      } else if (del) {
-        confirmDelete(aid);
+
+      const del = e.target.closest("[data-del]");
+      if (del) {
+        if (ctx.canEditAttendee) confirmDelete(aid);
+        return;
       }
+      // 이력 버튼은 별도 핸들러(bindHistory)에서 처리
+      if (e.target.closest("[data-history]")) return;
+
+      if (e.target.closest("[data-edit]")) {
+        openEditForRow(tr);
+        return;
+      }
+      // 이름·구분 셀을 클릭했을 때만 수정 모달 열기 (다른 셀/입력은 제외)
+      const trigger = e.target.closest(
+        "td.jcc-retreat-attCol-name, td.jcc-retreat-attCol-role"
+      );
+      if (trigger) openEditForRow(tr);
     });
   }
 
@@ -564,7 +669,15 @@
     if (!overlay) return;
     modalMode = mode;
     modalAttendeeId = payload?.id || null;
-    if (titleEl) titleEl.textContent = mode === "edit" ? "조원 수정" : "조원 추가";
+    const checkIn = payload?.checkIn || "pending";
+    modalInitialCheckIn = checkIn;
+    if (titleEl) {
+      if (mode === "edit") {
+        titleEl.textContent = ctx.canEditAttendee ? "조원 수정" : "입·퇴실 변경";
+      } else {
+        titleEl.textContent = "조원 추가";
+      }
+    }
     if (submitBtn) submitBtn.textContent = mode === "edit" ? "수정" : "저장";
     if (nameInput) nameInput.value = payload?.name || "";
     if (phoneInput) phoneInput.value = payload?.phone === "-" ? "" : payload?.phone || "";
@@ -574,7 +687,15 @@
       expectedInInput.value = toDatetimeLocalValue(payload?.expectedIn || "");
     if (expectedOutInput)
       expectedOutInput.value = toDatetimeLocalValue(payload?.expectedOut || "");
+    if (lodgingInput) lodgingInput.value = payload?.lodgingRoom || "";
+    if (actualInOut) actualInOut.textContent = formatStamp(payload?.checkedInAt || "");
+    if (actualOutOut)
+      actualOutOut.textContent = formatStamp(payload?.checkedOutAt || "");
     if (roleInput) roleInput.value = payload?.memberRole || "member";
+    if (checkInInput) {
+      checkInInput.value = checkIn;
+      syncCheckInSelectOptions(checkIn);
+    }
     if (attendeePicker) {
       if (payload?.userId) {
         attendeePicker.setSelected(payload.userId, payload.userLabel || "");
@@ -584,7 +705,8 @@
     }
     overlay.hidden = false;
     overlay.setAttribute("aria-hidden", "false");
-    requestAnimationFrame(() => nameInput?.focus());
+    const focusEl = ctx.canEditAttendee && mode === "create" ? nameInput : checkInInput || nameInput;
+    requestAnimationFrame(() => focusEl?.focus());
   }
 
   function closeModal() {
@@ -599,20 +721,58 @@
     if (!submitBtn) return;
     submitBtn.disabled = true;
     const linkedUserId = attendeePicker ? attendeePicker.getId() : "";
-    const payload = {
-      name: (nameInput?.value || "").trim(),
-      gender: genderInput?.value || "",
-      phone: (phoneInput?.value || "").trim(),
-      memo: (memoInput?.value || "").trim(),
-      expected_check_in_at: isoFromDatetimeLocal(expectedInInput?.value || ""),
-      expected_check_out_at: isoFromDatetimeLocal(expectedOutInput?.value || ""),
-      member_role: roleInput?.value || "member",
-      user: linkedUserId ? Number(linkedUserId) : null,
-    };
-    if (!payload.name) {
+    const newCheckIn = checkInInput?.value || modalInitialCheckIn;
+    const payload = {};
+
+    if (ctx.canMutate && checkInInput) {
+      payload.check_in_status = newCheckIn;
+      payload.expected_check_in_at = isoFromDatetimeLocal(expectedInInput?.value || "");
+      payload.expected_check_out_at = isoFromDatetimeLocal(expectedOutInput?.value || "");
+      payload.lodging_room =
+        lodgingInput && lodgingInput.value ? Number(lodgingInput.value) : null;
+    }
+    if (ctx.canEditAttendee) {
+      payload.name = (nameInput?.value || "").trim();
+      payload.gender = genderInput?.value || "";
+      payload.phone = (phoneInput?.value || "").trim();
+      payload.memo = (memoInput?.value || "").trim();
+      payload.member_role = roleInput?.value || "member";
+      payload.user = linkedUserId ? Number(linkedUserId) : null;
+      if (!ctx.canMutate) {
+        payload.expected_check_in_at = isoFromDatetimeLocal(expectedInInput?.value || "");
+        payload.expected_check_out_at = isoFromDatetimeLocal(expectedOutInput?.value || "");
+        payload.lodging_room =
+          lodgingInput && lodgingInput.value ? Number(lodgingInput.value) : null;
+      }
+    }
+    if (ctx.canEditAttendee && !payload.name) {
       submitBtn.disabled = false;
       showToast("이름은 필수입니다.", true);
       return;
+    }
+    if (
+      modalMode === "edit" &&
+      ctx.canMutate &&
+      newCheckIn !== modalInitialCheckIn
+    ) {
+      const name =
+        (nameInput?.value || "").trim() ||
+        attBody
+          ?.querySelector(`tr[data-attendee-id="${modalAttendeeId}"] [data-name]`)
+          ?.textContent?.trim() ||
+        "조원";
+      const prevLabel = CHECK_IN_LABELS[modalInitialCheckIn] || modalInitialCheckIn;
+      const nextLabel = CHECK_IN_LABELS[newCheckIn] || newCheckIn;
+      const ok = await openConfirm({
+        title: `${nextLabel} 처리`,
+        message: `${name} 님\n${prevLabel} → ${nextLabel}\n\n이대로 변경할까요?`,
+        okLabel: "확인",
+        cancelLabel: "취소",
+      });
+      if (!ok) {
+        submitBtn.disabled = false;
+        return;
+      }
     }
     try {
       let data;
@@ -662,40 +822,6 @@
     } catch (err) {
       showToast(err.message || "삭제 실패", true);
     }
-  }
-
-  function bindLodgingSelects() {
-    if (!attBody) return;
-    attBody.querySelectorAll("[data-lodging-select]").forEach((sel) => {
-      sel.dataset.prevValue = sel.value || "";
-      sel.addEventListener("change", async (e) => {
-        const target = e.currentTarget;
-        const tr = target.closest("tr[data-attendee-id]");
-        if (!tr) return;
-        const aid = Number(tr.dataset.attendeeId);
-        const newVal = target.value || null;
-        const prev = target.dataset.prevValue || "";
-        target.disabled = true;
-        try {
-          const data = await patchAttendee(aid, { lodging_room: newVal });
-          target.dataset.prevValue = data.lodging_room
-            ? String(data.lodging_room)
-            : "";
-          const cell = tr.querySelector("[data-lodging-cell]");
-          if (cell) {
-            cell.dataset.lodgingRoom = data.lodging_room
-              ? String(data.lodging_room)
-              : "";
-          }
-          showToast(data.lodging_room ? "숙소 배정됨" : "숙소 해제됨", false);
-        } catch (err) {
-          target.value = prev;
-          showToast(err.message || "배정 실패", true);
-        } finally {
-          target.disabled = false;
-        }
-      });
-    });
   }
 
   function createUserPicker(root) {

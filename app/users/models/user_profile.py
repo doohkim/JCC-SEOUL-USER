@@ -22,7 +22,9 @@ class UserProfile(models.Model):
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="profile",
         verbose_name="계정",
     )
@@ -158,9 +160,24 @@ class UserProfileAvatar(models.Model):
 
     user_profile = models.ForeignKey(
         UserProfile,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="avatar_history",
         verbose_name="프로필",
+    )
+    user_id_snapshot = models.PositiveIntegerField(
+        "계정 ID(스냅샷)",
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="계정 삭제 후에도 이력 조회용으로 보존",
+    )
+    username_snapshot = models.CharField(
+        "username(스냅샷)",
+        max_length=150,
+        blank=True,
+        default="",
     )
     image = models.ImageField(
         "프로필 이미지(히스토리)",
@@ -187,5 +204,22 @@ class UserProfileAvatar(models.Model):
             )
         ]
 
+    def _sync_account_snapshots(self) -> None:
+        profile = self.user_profile
+        if not profile or not profile.user_id:
+            return
+        user = profile.user
+        self.user_id_snapshot = user.id
+        self.username_snapshot = user.username or ""
+
+    def save(self, *args, **kwargs):
+        self._sync_account_snapshots()
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"ProfileAvatar · user={self.user_profile.user_id} · {self.created_at.isoformat()}"
+        uname = self.username_snapshot
+        if not uname and self.user_profile_id:
+            user = getattr(self.user_profile, "user", None)
+            if user is not None:
+                uname = user.username
+        return f"ProfileAvatar · {uname or '?'} · {self.created_at.isoformat()}"

@@ -180,8 +180,17 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'id="retreatEventSwitcher"')
         self.assertContains(r, "구분")
-        self.assertContains(r, "data-check-in-group")
-        self.assertNotContains(r, "jcc-retreat-stampInput")
+        self.assertContains(r, "data-status-badge")
+        self.assertContains(r, "jcc-retreat-checkInBadge")
+        # 조장(can_mutate)은 예상 입·퇴실 시각을 리스트에서 인라인으로 입력할 수 있다.
+        self.assertContains(r, 'data-expected-field="expected_check_in_at"')
+        self.assertContains(r, 'data-expected-field="expected_check_out_at"')
+        # 입·퇴실 상태 변경은 수정 모달에서 처리한다.
+        self.assertContains(r, 'id="retreatAttCheckIn"')
+        self.assertNotContains(r, "data-check-in-group")
+        # 정렬 가능한 컬럼 헤더 노출.
+        self.assertContains(r, 'data-sort-key="role"')
+        # 실제 입·퇴실 시각 수정 권한은 여전히 없다.
         self.assertFalse(r.context["can_edit_timestamps"])
 
     def test_manage_group_detail_staff_can_edit_timestamps(self):

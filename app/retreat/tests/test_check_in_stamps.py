@@ -145,3 +145,37 @@ class CheckInStampApiTests(TestCase):
         )
         self.assertIsNotNone(pending.checked_in_at)
         self.assertGreaterEqual(pending.checked_in_at, before)
+
+
+class CheckInStampBackfillTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.region = Region.objects.get(code="seoul")
+        cls.division = Division.objects.create(
+            region=cls.region, code="backfill_youth", name="청년부"
+        )
+        cls.event = RetreatEvent.objects.create(
+            name="백필 테스트",
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 3),
+        )
+        cls.group = RetreatGroup.objects.create(
+            event=cls.event,
+            region=cls.region,
+            division=cls.division,
+            name="1조",
+        )
+
+    def test_backfill_fills_missing_checked_in_at(self):
+        from retreat.services.check_in_stamps import backfill_missing_check_in_stamps
+
+        attendee = RetreatAttendee.objects.create(
+            group=self.group,
+            name="시각없음",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+        )
+        self.assertIsNone(attendee.checked_in_at)
+        result = backfill_missing_check_in_stamps([self.group.id])
+        attendee.refresh_from_db()
+        self.assertEqual(result["filled_checked_in_at"], 1)
+        self.assertIsNotNone(attendee.checked_in_at)
