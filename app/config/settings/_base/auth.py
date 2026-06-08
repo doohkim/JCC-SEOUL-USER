@@ -3,6 +3,7 @@ import os
 AUTH_USER_MODEL = "users.User"
 AUTHENTICATION_BACKENDS = (
     "social_core.backends.kakao.KakaoOAuth2",
+    "users.backends.SettingsBackend",
     "django.contrib.auth.backends.ModelBackend",
 )
 
@@ -17,14 +18,14 @@ DEFAULT_USERS = {
     "jsh": {
         "name": "jsh",
         "email": "jsh@jcc-seoul.com",
-        "password": "pbkdf2_sha256$1200000$U3FKnDPCW86aTXEwTp3iSi$7xRB1MuXGEK7hboBn+nThx5ujuenBwVqCz6wqk35GT0=",
+        "password": "pbkdf2_sha256$1200000$87Z4XdX3esChiV2jUE1r1e$EMkJRQj5wowxYL0eQwXAJYNDfDWqB+6Z8IiyZnWnGi0=",
         "is_staff": True,
         "is_superuser": True,
     },
     "shj": {
         "name": "shj",
         "email": "shj@jcc-seoul.com",
-        "password": "pbkdf2_sha256$1200000$Z4VCh9MHvwJ4Kngg4dxFPO$LOj/ha6EKjRfHR8NRfZu/eLvkbknaSwTMqFHqeuIe8U=",
+        "password": "pbkdf2_sha256$1200000$eH7hoXQ4IzErBfsmyHaULJ$pPVbGr9vG5kIiwmbx1o2NEX7DEwZt9gFDA1svzR7YAA=",
         "is_staff": True,
         "is_superuser": True,
     },

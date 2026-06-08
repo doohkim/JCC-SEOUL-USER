@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -24,6 +25,111 @@ from users.models import Division
 from users.permissions import visible_retreat_groups_for
 
 User = get_user_model()
+
+
+def _serialize_group(group: RetreatGroup) -> dict:
+    return RetreatGroupSerializer(
+        RetreatGroup.objects.filter(pk=group.pk)
+        .select_related("region", "division")
+        .prefetch_related("memberships__user")
+        .annotate(attendee_count=Count("attendees", distinct=True))
+        .first()
+    ).data
+
+
+def _create_single_group(
+    event: RetreatEvent,
+    user,
+    data: dict,
+    *,
+    reserved_names: set[str] | None = None,
+) -> RetreatGroup:
+    """행사에 조 1개 생성. reserved_names에 같은 요청 배치 내 이름 중복 검사."""
+    region_id = data.get("region")
+    division_id = data.get("division")
+    name = (data.get("name") or "").strip()
+    order = data.get("order", 0)
+    leaders = data.get("leaders") or []
+
+    if not name:
+        raise ValidationError({"name": "조 이름은 필수입니다."})
+    if not region_id or not division_id:
+        raise ValidationError({"region": "지역과 부서를 선택하세요."})
+
+    division = get_object_or_404(
+        Division.objects.select_related("region"), pk=int(division_id)
+    )
+    if int(region_id) != division.region_id:
+        raise ValidationError(
+            {"division": "선택한 지역에 속한 부서가 아닙니다."}
+        )
+
+    if reserved_names is not None and name in reserved_names:
+        raise ValidationError({"name": "같은 요청에 중복된 조 이름이 있습니다."})
+
+    if RetreatGroup.objects.filter(event=event, name=name).exists():
+        raise ValidationError(
+            {"name": "이 행사에 이미 같은 이름의 조가 있습니다."}
+        )
+
+    if reserved_names is not None:
+        reserved_names.add(name)
+
+    group = RetreatGroup.objects.create(
+        event=event,
+        region_id=int(region_id),
+        division=division,
+        name=name,
+        order=int(order or 0),
+    )
+    log_retreat_change(
+        user=user,
+        event=event,
+        action=RetreatChangeLog.Action.CREATE,
+        target_type=RetreatChangeLog.TargetType.GROUP,
+        target_id=group.id,
+        payload_after={
+            "event_id": event.id,
+            "region_id": group.region_id,
+            "division_id": group.division_id,
+            "name": group.name,
+            "order": group.order,
+        },
+    )
+
+    for entry in leaders:
+        if not isinstance(entry, dict):
+            continue
+        user_id = entry.get("user_id")
+        role = (entry.get("role") or RetreatGroupMembership.Role.LEADER).strip()
+        if role not in dict(RetreatGroupMembership.Role.choices):
+            continue
+        if not user_id:
+            continue
+        target = User.objects.filter(pk=user_id, is_active=True).first()
+        if target is None:
+            continue
+        membership, created = RetreatGroupMembership.objects.update_or_create(
+            group=group,
+            user=target,
+            defaults={"role": role},
+        )
+        log_retreat_change(
+            user=user,
+            event=event,
+            action=RetreatChangeLog.Action.CREATE
+            if created
+            else RetreatChangeLog.Action.UPDATE,
+            target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
+            target_id=membership.id,
+            payload_after={
+                "group_id": group.id,
+                "user_id": target.id,
+                "role": role,
+            },
+        )
+
+    return group
 
 
 class RetreatEventListView(APIView):
@@ -67,96 +173,48 @@ class RetreatEventGroupListView(APIView):
         return Response(RetreatGroupSerializer(groups, many=True).data)
 
     def post(self, request, event_id: int):
-        """행사에 조 추가 (회장단·슈퍼유저)."""
+        """행사에 조 추가 (회장단·슈퍼유저). 단건 또는 groups 일괄."""
         event = get_object_or_404(RetreatEvent, pk=event_id)
         assert_can_add_group(request.user, event)
 
-        region_id = request.data.get("region")
-        division_id = request.data.get("division")
-        name = (request.data.get("name") or "").strip()
-        order = request.data.get("order", 0)
-        leaders = request.data.get("leaders") or []
+        bulk = request.data.get("groups")
+        if bulk is not None:
+            if not isinstance(bulk, list) or not bulk:
+                raise ValidationError({"groups": "추가할 조 목록이 비어 있습니다."})
+            created: list[RetreatGroup] = []
+            reserved_names: set[str] = set()
+            try:
+                with transaction.atomic():
+                    for idx, item in enumerate(bulk, start=1):
+                        if not isinstance(item, dict):
+                            raise ValidationError(
+                                {"detail": f"{idx}번째 조: 형식이 올바르지 않습니다."}
+                            )
+                        try:
+                            group = _create_single_group(
+                                event,
+                                request.user,
+                                item,
+                                reserved_names=reserved_names,
+                            )
+                        except ValidationError as exc:
+                            detail = exc.detail
+                            if isinstance(detail, dict):
+                                first = next(iter(detail.values()))
+                                msg = first[0] if isinstance(first, list) else first
+                            else:
+                                msg = str(detail)
+                            raise ValidationError(
+                                {"detail": f"{idx}번째 조: {msg}"}
+                            ) from exc
+                        created.append(group)
+            except ValidationError:
+                raise
+            serialized = [_serialize_group(g) for g in created]
+            return Response(serialized, status=status.HTTP_201_CREATED)
 
-        if not name:
-            raise ValidationError({"name": "조 이름은 필수입니다."})
-        if not region_id or not division_id:
-            raise ValidationError({"region": "지역과 부서를 선택하세요."})
-
-        division = get_object_or_404(
-            Division.objects.select_related("region"), pk=int(division_id)
-        )
-        if int(region_id) != division.region_id:
-            raise ValidationError(
-                {"division": "선택한 지역에 속한 부서가 아닙니다."}
-            )
-
-        if RetreatGroup.objects.filter(event=event, name=name).exists():
-            raise ValidationError(
-                {"name": "이 행사에 이미 같은 이름의 조가 있습니다."}
-            )
-
-        group = RetreatGroup.objects.create(
-            event=event,
-            region_id=int(region_id),
-            division=division,
-            name=name,
-            order=int(order or 0),
-        )
-        log_retreat_change(
-            user=request.user,
-            event=event,
-            action=RetreatChangeLog.Action.CREATE,
-            target_type=RetreatChangeLog.TargetType.GROUP,
-            target_id=group.id,
-            payload_after={
-                "event_id": event.id,
-                "region_id": group.region_id,
-                "division_id": group.division_id,
-                "name": group.name,
-                "order": group.order,
-            },
-        )
-
-        for entry in leaders:
-            if not isinstance(entry, dict):
-                continue
-            user_id = entry.get("user_id")
-            role = (entry.get("role") or RetreatGroupMembership.Role.LEADER).strip()
-            if role not in dict(RetreatGroupMembership.Role.choices):
-                continue
-            if not user_id:
-                continue
-            target = User.objects.filter(pk=user_id, is_active=True).first()
-            if target is None:
-                continue
-            membership, created = RetreatGroupMembership.objects.update_or_create(
-                group=group,
-                user=target,
-                defaults={"role": role},
-            )
-            log_retreat_change(
-                user=request.user,
-                event=event,
-                action=RetreatChangeLog.Action.CREATE
-                if created
-                else RetreatChangeLog.Action.UPDATE,
-                target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
-                target_id=membership.id,
-                payload_after={
-                    "group_id": group.id,
-                    "user_id": target.id,
-                    "role": role,
-                },
-            )
-
-        group = (
-            RetreatGroup.objects.filter(pk=group.pk)
-            .select_related("region", "division")
-            .prefetch_related("memberships__user")
-            .annotate(attendee_count=Count("attendees", distinct=True))
-            .first()
-        )
+        group = _create_single_group(event, request.user, request.data)
         return Response(
-            RetreatGroupSerializer(group).data,
+            _serialize_group(group),
             status=status.HTTP_201_CREATED,
         )

@@ -880,6 +880,24 @@ button.jcc-page-tab {
   font-weight: 700;
 }
 
+.jcc-board-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.jcc-board-toolbar label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.jcc-board-toolbar select {
+  min-width: 10rem;
+}
+
 .jcc-excel-board-viewport {
   border-radius: 12px;
   border: 1px solid var(--border);
@@ -906,6 +924,107 @@ button.jcc-page-tab {
   min-height: 120px;
   padding-bottom: 0.15rem;
   width: 100%;
+}
+
+/* 조 참석현황: 지역별 섹션(세로 스택) + 지역 내 조 열(가로 wrap) */
+.jcc-excel-board.jcc-excel-board--grouped {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 1.25rem;
+  min-height: 0;
+}
+
+.jcc-board-region {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.jcc-board-region-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.jcc-board-region-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.jcc-board-region-meta {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.jcc-board-division {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-left: 0.35rem;
+  padding-left: 0.65rem;
+  border-left: 2px solid var(--border);
+}
+
+.jcc-board-division-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.jcc-board-division-head:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
+}
+
+.jcc-board-division-toggle {
+  font-size: 0.75rem;
+  color: var(--muted);
+  transition: transform 0.18s ease;
+  line-height: 1;
+}
+
+.jcc-board-division.is-collapsed .jcc-board-division-toggle {
+  transform: rotate(-90deg);
+}
+
+.jcc-board-division-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.jcc-board-division-meta {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.jcc-board-division.is-collapsed .jcc-excel-board--cols {
+  display: none;
+}
+
+.jcc-excel-board.jcc-excel-board--cols {
+  min-height: 120px;
 }
 
 .jcc-excel-col {

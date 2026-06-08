@@ -15,8 +15,11 @@
   const panelBoard = document.getElementById("dashboardPanelBoard");
   const boardHost = document.getElementById("retreatGroupBoard");
   const boardTotalEl = document.getElementById("groupBoardTotal");
+  const boardRegionFilter = document.getElementById("boardRegionFilter");
 
   let activeTab = "stats";
+  let lastBoardGroups = [];
+  let lastBoardGrand = {};
   const totalEls = {
     pending: document.querySelector("[data-total-pending]"),
     in: document.querySelector("[data-total-in]"),
@@ -106,7 +109,10 @@
       const r = await fetch(ctx.apiGroupBoard, { credentials: "same-origin" });
       if (!r.ok) throw new Error(await r.text());
       const data = await r.json();
-      renderGroupBoard(data.groups || [], data.grand_total || {});
+      lastBoardGroups = data.groups || [];
+      lastBoardGrand = data.grand_total || {};
+      populateRegionFilter(lastBoardGroups);
+      renderGroupBoard(lastBoardGroups, lastBoardGrand);
       if (generatedAtEl) {
         generatedAtEl.textContent = data.generated_at
           ? `· ${formatStamp(data.generated_at)} 기준`
@@ -119,49 +125,214 @@
     }
   }
 
+  function regionLabel(group) {
+    return (group.region || "").trim() || "(지역 미지정)";
+  }
+
+  function regionOrderFromGroups(groups) {
+    const seen = new Set();
+    const order = [];
+    groups.forEach((g) => {
+      const label = regionLabel(g);
+      if (!seen.has(label)) {
+        seen.add(label);
+        order.push(label);
+      }
+    });
+    return order;
+  }
+
+  function groupsByRegion(groups) {
+    const map = new Map();
+    groups.forEach((g) => {
+      const label = regionLabel(g);
+      if (!map.has(label)) map.set(label, []);
+      map.get(label).push(g);
+    });
+    return map;
+  }
+
+  function divisionLabel(group) {
+    return (group.division || "").trim() || "(부서 미지정)";
+  }
+
+  // 부서 등장 순서(백엔드 division__sort_order)를 유지하며 부서별로 묶는다.
+  function groupsByDivision(regionGroups) {
+    const map = new Map();
+    regionGroups.forEach((g) => {
+      const label = divisionLabel(g);
+      if (!map.has(label)) map.set(label, []);
+      map.get(label).push(g);
+    });
+    return map;
+  }
+
+  // 조 이름에서 앞쪽 숫자를 뽑아 1조부터 오름차순 정렬한다.
+  function groupNumber(name) {
+    const m = String(name == null ? "" : name).match(/\d+/);
+    return m ? parseInt(m[0], 10) : Number.MAX_SAFE_INTEGER;
+  }
+
+  function sortGroupsByNumber(groups) {
+    return groups.slice().sort((a, b) => {
+      const na = groupNumber(a.name);
+      const nb = groupNumber(b.name);
+      if (na !== nb) return na - nb;
+      return String(a.name || "").localeCompare(String(b.name || ""), "ko");
+    });
+  }
+
+  // 부서 접힘 상태 (region + division 키). 재렌더링·새로고침에도 유지.
+  const collapsedDivisions = new Set();
+  function divisionKey(region, division) {
+    return region + "\u0000" + division;
+  }
+
+  function sumRegionTotals(regionGroups) {
+    return regionGroups.reduce(
+      (acc, g) => {
+        acc.attended += g.attended ?? 0;
+        acc.pending += g.pending ?? 0;
+        return acc;
+      },
+      { attended: 0, pending: 0 }
+    );
+  }
+
+  function populateRegionFilter(groups) {
+    if (!boardRegionFilter) return;
+    const prev = boardRegionFilter.value;
+    const regions = regionOrderFromGroups(groups);
+    boardRegionFilter.innerHTML = '<option value="">전체</option>';
+    regions.forEach((name) => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      boardRegionFilter.appendChild(opt);
+    });
+    if (prev && regions.includes(prev)) {
+      boardRegionFilter.value = prev;
+    }
+  }
+
+  function createGroupColumn(g) {
+    const col = document.createElement("div");
+    col.className = "jcc-excel-col";
+    const head = document.createElement("div");
+    head.className = "jcc-excel-col-head";
+    head.textContent = g.name || "조";
+    const sub = document.createElement("div");
+    sub.className = "jcc-excel-col-sub";
+    sub.textContent = `참석 ${g.attended ?? 0}`;
+    col.appendChild(head);
+    col.appendChild(sub);
+    const body = document.createElement("div");
+    body.className = "jcc-excel-col-body";
+    (g.members || []).forEach((m) => {
+      const row = document.createElement("div");
+      row.className = "jcc-excel-row";
+      const name = document.createElement("span");
+      name.className = "jcc-excel-name";
+      name.textContent = m.name || "—";
+      const mark = document.createElement("span");
+      const muted = m.status === "pending";
+      mark.className = "jcc-excel-mark" + (muted ? " jcc-excel-mark--muted" : "");
+      mark.textContent = m.status_label || "";
+      row.appendChild(name);
+      row.appendChild(mark);
+      body.appendChild(row);
+    });
+    col.appendChild(body);
+    return col;
+  }
+
   function renderGroupBoard(groups, grand) {
     if (!boardHost) return;
     boardHost.innerHTML = "";
-    if (!groups.length) {
+    boardHost.classList.toggle("jcc-excel-board--grouped", groups.length > 0);
+
+    const selectedRegion = boardRegionFilter ? boardRegionFilter.value : "";
+    const regionOrder = regionOrderFromGroups(groups);
+    const byRegion = groupsByRegion(groups);
+    const visibleRegions = selectedRegion
+      ? regionOrder.filter((r) => r === selectedRegion)
+      : regionOrder;
+
+    if (!groups.length || !visibleRegions.length) {
       const empty = document.createElement("div");
       empty.className = "muted";
-      empty.textContent = "표시할 조가 없습니다.";
+      empty.textContent = selectedRegion
+        ? "선택한 지역에 표시할 조가 없습니다."
+        : "표시할 조가 없습니다.";
       boardHost.appendChild(empty);
     }
-    groups.forEach((g) => {
-      const col = document.createElement("div");
-      col.className = "jcc-excel-col";
-      const head = document.createElement("div");
-      head.className = "jcc-excel-col-head";
-      head.textContent = g.name || "조";
-      const sub = document.createElement("div");
-      sub.className = "jcc-excel-col-sub";
-      sub.textContent = `참석 ${g.attended ?? 0}`;
-      col.appendChild(head);
-      col.appendChild(sub);
-      const body = document.createElement("div");
-      body.className = "jcc-excel-col-body";
-      (g.members || []).forEach((m) => {
-        const row = document.createElement("div");
-        row.className = "jcc-excel-row";
-        const name = document.createElement("span");
-        name.className = "jcc-excel-name";
-        name.textContent = m.name || "—";
-        const mark = document.createElement("span");
-        const muted = m.status === "pending";
-        mark.className = "jcc-excel-mark" + (muted ? " jcc-excel-mark--muted" : "");
-        mark.textContent = m.status_label || "";
-        row.appendChild(name);
-        row.appendChild(mark);
-        body.appendChild(row);
+
+    visibleRegions.forEach((regionName) => {
+      const regionGroups = byRegion.get(regionName) || [];
+      if (!regionGroups.length) return;
+
+      const section = document.createElement("section");
+      section.className = "jcc-board-region";
+
+      const regionHead = document.createElement("div");
+      regionHead.className = "jcc-board-region-head";
+      const totals = sumRegionTotals(regionGroups);
+      regionHead.innerHTML = `
+        <span class="jcc-board-region-name">${escapeHtml(regionName)}</span>
+        <span class="jcc-board-region-meta">참석 ${totals.attended} · 입실전 ${totals.pending}</span>`;
+      section.appendChild(regionHead);
+
+      const byDivision = groupsByDivision(regionGroups);
+      byDivision.forEach((divisionGroups, divisionName) => {
+        const sorted = sortGroupsByNumber(divisionGroups);
+        const block = document.createElement("div");
+        block.className = "jcc-board-division";
+
+        const key = divisionKey(regionName, divisionName);
+        const collapsed = collapsedDivisions.has(key);
+
+        const head = document.createElement("button");
+        head.type = "button";
+        head.className = "jcc-board-division-head";
+        head.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        const divTotals = sumRegionTotals(sorted);
+        head.innerHTML = `
+          <span class="jcc-board-division-toggle" aria-hidden="true">▾</span>
+          <span class="jcc-board-division-name">${escapeHtml(divisionName)}</span>
+          <span class="jcc-board-division-meta">${sorted.length}개 조 · 참석 ${divTotals.attended} · 입실전 ${divTotals.pending}</span>`;
+        block.appendChild(head);
+
+        const colsWrap = document.createElement("div");
+        colsWrap.className = "jcc-excel-board jcc-excel-board--cols";
+        sorted.forEach((g) => {
+          colsWrap.appendChild(createGroupColumn(g));
+        });
+        block.appendChild(colsWrap);
+
+        if (collapsed) block.classList.add("is-collapsed");
+
+        head.addEventListener("click", () => {
+          const nowCollapsed = block.classList.toggle("is-collapsed");
+          head.setAttribute("aria-expanded", nowCollapsed ? "false" : "true");
+          if (nowCollapsed) collapsedDivisions.add(key);
+          else collapsedDivisions.delete(key);
+        });
+
+        section.appendChild(block);
       });
-      col.appendChild(body);
-      boardHost.appendChild(col);
+      boardHost.appendChild(section);
     });
+
     if (boardTotalEl) {
       boardTotalEl.innerHTML = "";
       const strong = document.createElement("strong");
-      strong.textContent = `전체 참석 ${grand.attended ?? 0} · 입실전 ${grand.pending ?? 0}`;
+      if (selectedRegion && visibleRegions.length) {
+        const filtered = groups.filter((g) => regionLabel(g) === selectedRegion);
+        const filteredTotals = sumRegionTotals(filtered);
+        strong.textContent = `${selectedRegion} · 참석 ${filteredTotals.attended} · 입실전 ${filteredTotals.pending}`;
+      } else {
+        strong.textContent = `전체 참석 ${grand.attended ?? 0} · 입실전 ${grand.pending ?? 0}`;
+      }
       boardTotalEl.appendChild(strong);
     }
   }
@@ -228,6 +399,11 @@
   }
 
   if (btnRefresh) btnRefresh.addEventListener("click", refreshActive);
+  if (boardRegionFilter) {
+    boardRegionFilter.addEventListener("change", () => {
+      renderGroupBoard(lastBoardGroups, lastBoardGrand);
+    });
+  }
   if (innerTabs) {
     innerTabs.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-dashboard-tab]");

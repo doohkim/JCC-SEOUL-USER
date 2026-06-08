@@ -63,55 +63,70 @@
                       {% endfor %}
                     </select>
                   </div>
-                  <div class="field">
-                    <label for="groupRegionInput">지역 *</label>
-                    <select id="groupRegionInput" name="region" required>
-                      <option value="">선택</option>
-                      {% for r in region_choices %}
-                        <option value="{{ r.id }}">{{ r.name }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  <div class="field">
-                    <label for="groupDivisionInput">부서 *</label>
-                    <select id="groupDivisionInput" name="division" required>
-                      <option value="">선택</option>
-                    </select>
-                  </div>
-                  <div class="field">
-                    <label for="groupNameInput">조 이름 *</label>
-                    <input type="text" id="groupNameInput" name="name" required maxlength="50" placeholder="예: 1조" autocomplete="off">
-                  </div>
-                  <div class="field">
-                    <label for="groupOrderInput">정렬 순서</label>
-                    <input type="number" id="groupOrderInput" name="order" min="0" value="0">
-                  </div>
                 </div>
 
-                <section class="jcc-retreat-leadersDraft">
-                  <h3 class="jcc-retreat-leadersDraftTitle">조 운영진 <span class="muted">(선택)</span></h3>
-                  <div id="groupLeadersDraftList" class="jcc-retreat-leadersDraftList"></div>
-                  <div class="jcc-retreat-leadersDraftAdd">
-                    <div class="field jcc-retreat-userPickerField">
-                      <label for="groupLeaderUserInput">사용자</label>
-                      <div class="jcc-retreat-userPicker" data-user-picker>
-                        <input type="text" id="groupLeaderUserInput" class="jcc-retreat-userPickerInput" placeholder="이름 검색" maxlength="150" autocomplete="off" data-user-picker-input data-bwignore data-1p-ignore data-lpignore="true" data-form-type="other">
-                        <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
-                        <input type="hidden" data-user-picker-id>
+                <div id="groupRowsList" class="jcc-retreat-groupRowsList"></div>
+                <div class="jcc-retreat-groupRowsActions">
+                  <button type="button" class="secondary" id="btnAddGroupRow">+ 조 추가(행)</button>
+                </div>
+
+                <template id="groupRowTemplate">
+                  <div class="jcc-retreat-groupRow" data-group-row>
+                    <div class="jcc-retreat-groupRowHead">
+                      <span class="jcc-retreat-groupRowLabel" data-row-label>조 1</span>
+                      <button type="button" class="jcc-retreat-rowDel" data-remove-row>행 제거</button>
+                    </div>
+                    <div class="jcc-retreat-modalGrid">
+                      <div class="field">
+                        <label data-label-region>지역 *</label>
+                        <select data-row-region required>
+                          <option value="">선택</option>
+                          {% for r in region_choices %}
+                            <option value="{{ r.id }}">{{ r.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label data-label-division>부서 *</label>
+                        <select data-row-division required>
+                          <option value="">선택</option>
+                        </select>
+                      </div>
+                      <div class="field">
+                        <label data-label-name>조 이름 *</label>
+                        <input type="text" data-row-name required maxlength="50" placeholder="예: 1조" autocomplete="off">
+                      </div>
+                      <div class="field">
+                        <label data-label-order>정렬 순서</label>
+                        <input type="number" data-row-order min="0" value="0">
                       </div>
                     </div>
-                    <div class="field">
-                      <label for="groupLeaderRoleInput">역할</label>
-                      <select id="groupLeaderRoleInput">
-                        {% for code, label in group_role_choices %}
-                          <option value="{{ code }}">{{ label }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                    <button type="button" class="secondary jcc-retreat-leaderAddBtn" id="btnAddLeaderDraft">목록에 추가</button>
+                    <section class="jcc-retreat-leadersDraft jcc-retreat-leadersDraft--compact">
+                      <h3 class="jcc-retreat-leadersDraftTitle">조 운영진 <span class="muted">(선택)</span></h3>
+                      <div data-row-leaders-list class="jcc-retreat-leadersDraftList"></div>
+                      <div class="jcc-retreat-leadersDraftAdd">
+                        <div class="field jcc-retreat-userPickerField">
+                          <label>사용자</label>
+                          <div class="jcc-retreat-userPicker" data-user-picker>
+                            <input type="text" class="jcc-retreat-userPickerInput" placeholder="이름 검색" maxlength="150" autocomplete="off" data-user-picker-input data-bwignore data-1p-ignore data-lpignore="true" data-form-type="other">
+                            <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
+                            <input type="hidden" data-user-picker-id>
+                          </div>
+                        </div>
+                        <div class="field">
+                          <label>역할</label>
+                          <select data-row-leader-role>
+                            {% for code, label in group_role_choices %}
+                              <option value="{{ code }}">{{ label }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        <button type="button" class="secondary jcc-retreat-leaderAddBtn" data-add-row-leader>목록에 추가</button>
+                      </div>
+                      <small class="muted jcc-retreat-leadersDraftHint">부서를 선택하면 소속 계정이 보입니다. 이름을 입력하면 그 안에서 검색합니다.</small>
+                    </section>
                   </div>
-                  <small class="muted jcc-retreat-leadersDraftHint" data-user-picker-hint>부서를 선택하면 소속 계정이 보입니다. 이름을 입력하면 그 안에서 검색합니다.</small>
-                </section>
+                </template>
 
                 <div class="msg" id="groupModalStatus" role="alert" style="display:none; margin-top:0.75rem;"></div>
 
@@ -142,7 +157,7 @@
     </div>
     {% include 'includes/retreat_bottom_tabs.html' %}
     {% if can_add_group %}
-      <script src="{% static 'retreat/manage_groups.js' %}?v=20260607b" defer></script>
+      <script src="{% static 'retreat/manage_groups.js' %}?v=20260608b" defer></script>
     {% endif %}
   </body>
 </html>

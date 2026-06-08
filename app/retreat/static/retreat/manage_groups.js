@@ -1,5 +1,5 @@
 /**
- * 조 관리 목록 — 조 추가 모달
+ * 조 관리 목록 — 여러 조 일괄 추가 모달
  */
 (function () {
   "use strict";
@@ -10,15 +10,11 @@
   const overlay = document.getElementById("groupModalOverlay");
   const form = document.getElementById("groupForm");
   const btnAdd = document.getElementById("btnAddGroup");
+  const btnAddRow = document.getElementById("btnAddGroupRow");
   const btnCancel = document.getElementById("groupModalCancel");
   const eventInput = document.getElementById("groupEventInput");
-  const regionInput = document.getElementById("groupRegionInput");
-  const divisionInput = document.getElementById("groupDivisionInput");
-  const nameInput = document.getElementById("groupNameInput");
-  const orderInput = document.getElementById("groupOrderInput");
-  const leadersList = document.getElementById("groupLeadersDraftList");
-  const btnAddLeaderDraft = document.getElementById("btnAddLeaderDraft");
-  const leaderRoleInput = document.getElementById("groupLeaderRoleInput");
+  const rowsList = document.getElementById("groupRowsList");
+  const rowTemplate = document.getElementById("groupRowTemplate");
   const statusEl = document.getElementById("retreatStatus");
   const modalStatusEl = document.getElementById("groupModalStatus");
 
@@ -30,17 +26,10 @@
     allDivisions = [];
   }
 
-  const leaderDraft = [];
-  const picker = createUserPicker(
-    document.querySelector("#groupForm [data-user-picker]"),
-    () => ({
-      division: divisionInput?.value || "",
-      region: regionInput?.value || "",
-    })
-  );
+  /** @type {Array<{el: HTMLElement, leaders: Array, picker: object|null}>} */
+  const rowStates = [];
 
   function showStatus(msg, isError) {
-    // 모달이 열려 있으면 모달 안에, 아니면 상단에 표시한다.
     const inModal = overlay && !overlay.hidden && modalStatusEl;
     if (inModal) {
       if (statusEl) statusEl.textContent = "";
@@ -62,7 +51,9 @@
       .replace(/"/g, "&quot;");
   }
 
-  function refreshDivisions(selectedId) {
+  function refreshRowDivisions(rowEl, selectedId) {
+    const regionInput = rowEl.querySelector("[data-row-region]");
+    const divisionInput = rowEl.querySelector("[data-row-division]");
     if (!divisionInput) return;
     const rid = regionInput?.value || "";
     divisionInput.innerHTML = '<option value="">선택</option>';
@@ -81,13 +72,14 @@
       });
   }
 
-  function renderLeaderDraft() {
-    if (!leadersList) return;
-    if (!leaderDraft.length) {
-      leadersList.innerHTML = '<p class="muted">등록할 운영진이 없습니다.</p>';
+  function renderRowLeaders(state) {
+    const list = state.el.querySelector("[data-row-leaders-list]");
+    if (!list) return;
+    if (!state.leaders.length) {
+      list.innerHTML = '<p class="muted">등록할 운영진이 없습니다.</p>';
       return;
     }
-    leadersList.innerHTML = leaderDraft
+    list.innerHTML = state.leaders
       .map(
         (e, i) =>
           `<div class="jcc-retreat-leaderDraftRow">
@@ -98,23 +90,122 @@
       .join("");
   }
 
+  function updateRowLabels() {
+    rowStates.forEach((state, idx) => {
+      const label = state.el.querySelector("[data-row-label]");
+      if (label) label.textContent = `조 ${idx + 1}`;
+    });
+  }
+
+  function bindRowEvents(state) {
+    const rowEl = state.el;
+    const regionInput = rowEl.querySelector("[data-row-region]");
+    const divisionInput = rowEl.querySelector("[data-row-division]");
+    const btnRemove = rowEl.querySelector("[data-remove-row]");
+    const btnAddLeader = rowEl.querySelector("[data-add-row-leader]");
+    const leaderRoleInput = rowEl.querySelector("[data-row-leader-role]");
+    const leadersList = rowEl.querySelector("[data-row-leaders-list]");
+
+    state.picker = createUserPicker(
+      rowEl.querySelector("[data-user-picker]"),
+      () => ({
+        division: divisionInput?.value || "",
+        region: regionInput?.value || "",
+      })
+    );
+
+    if (regionInput) {
+      regionInput.addEventListener("change", () => {
+        refreshRowDivisions(rowEl);
+        if (state.picker) state.picker.clear();
+      });
+    }
+    if (divisionInput) {
+      divisionInput.addEventListener("change", () => {
+        if (state.picker) state.picker.clear();
+      });
+    }
+    if (btnRemove) {
+      btnRemove.addEventListener("click", () => {
+        if (rowStates.length <= 1) {
+          showStatus("최소 1개 행은 유지해야 합니다.", true);
+          return;
+        }
+        const idx = rowStates.indexOf(state);
+        if (idx >= 0) rowStates.splice(idx, 1);
+        rowEl.remove();
+        updateRowLabels();
+        showStatus("");
+      });
+    }
+    if (btnAddLeader) {
+      btnAddLeader.addEventListener("click", () => {
+        const selected = state.picker && state.picker.getSelected();
+        if (!selected || !selected.id) {
+          showStatus("운영진으로 등록할 사용자를 검색에서 선택하세요.", true);
+          return;
+        }
+        const role = leaderRoleInput?.value || "leader";
+        if (state.leaders.some((e) => e.user_id === selected.id)) {
+          showStatus("이미 목록에 있는 사용자입니다.", true);
+          return;
+        }
+        state.leaders.push({
+          user_id: selected.id,
+          role,
+          label: selected.name || selected.display_name || selected.username,
+        });
+        renderRowLeaders(state);
+        if (state.picker) state.picker.clear();
+        showStatus("");
+      });
+    }
+    if (leadersList) {
+      leadersList.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-remove-leader]");
+        if (!btn) return;
+        const idx = Number(btn.dataset.removeLeader);
+        state.leaders.splice(idx, 1);
+        renderRowLeaders(state);
+      });
+    }
+
+    renderRowLeaders(state);
+  }
+
+  function addRow() {
+    if (!rowTemplate || !rowsList) return null;
+    const frag = rowTemplate.content.cloneNode(true);
+    const rowEl = frag.querySelector("[data-group-row]");
+    if (!rowEl) return null;
+    rowsList.appendChild(rowEl);
+    const state = { el: rowEl, leaders: [], picker: null };
+    rowStates.push(state);
+    bindRowEvents(state);
+    updateRowLabels();
+    return state;
+  }
+
+  function resetRows() {
+    rowStates.length = 0;
+    if (rowsList) rowsList.innerHTML = "";
+    addRow();
+  }
+
   function openModal() {
     if (!overlay) return;
     if (modalStatusEl) {
       modalStatusEl.textContent = "";
       modalStatusEl.style.display = "none";
     }
-    leaderDraft.length = 0;
-    renderLeaderDraft();
-    if (picker) picker.clear();
-    if (nameInput) nameInput.value = "";
-    if (orderInput) orderInput.value = "0";
     if (eventInput) eventInput.value = String(ctx.defaultEventId);
-    if (regionInput) regionInput.value = "";
-    refreshDivisions();
+    resetRows();
     overlay.hidden = false;
     overlay.setAttribute("aria-hidden", "false");
-    requestAnimationFrame(() => nameInput?.focus());
+    requestAnimationFrame(() => {
+      const firstName = rowsList?.querySelector("[data-row-name]");
+      firstName?.focus();
+    });
   }
 
   function closeModal() {
@@ -123,18 +214,39 @@
     overlay.setAttribute("aria-hidden", "true");
   }
 
+  function collectGroupsPayload() {
+    const groups = [];
+    for (let i = 0; i < rowStates.length; i += 1) {
+      const state = rowStates[i];
+      const rowEl = state.el;
+      const region = rowEl.querySelector("[data-row-region]")?.value;
+      const division = rowEl.querySelector("[data-row-division]")?.value;
+      const name = (rowEl.querySelector("[data-row-name]")?.value || "").trim();
+      const order = Number(rowEl.querySelector("[data-row-order]")?.value || 0) || 0;
+      if (!name && !region && !division) continue;
+      if (!name || !region || !division) {
+        return { error: `${i + 1}번째 행: 지역·부서·조 이름을 모두 입력하세요.` };
+      }
+      groups.push({
+        region: Number(region),
+        division: Number(division),
+        name,
+        order,
+        leaders: state.leaders.map((e) => ({ user_id: e.user_id, role: e.role })),
+      });
+    }
+    if (!groups.length) {
+      return { error: "추가할 조가 없습니다." };
+    }
+    return { groups };
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
     const eventId = eventInput?.value;
-    const payload = {
-      region: regionInput?.value ? Number(regionInput.value) : null,
-      division: divisionInput?.value ? Number(divisionInput.value) : null,
-      name: (nameInput?.value || "").trim(),
-      order: Number(orderInput?.value || 0) || 0,
-      leaders: leaderDraft.map((e) => ({ user_id: e.user_id, role: e.role })),
-    };
-    if (!payload.name || !payload.region || !payload.division) {
-      showStatus("행사·지역·부서·조 이름을 확인하세요.", true);
+    const collected = collectGroupsPayload();
+    if (collected.error) {
+      showStatus(collected.error, true);
       return;
     }
     const url = ctx.urls.eventGroupsTemplate.replace("__eid__", String(eventId));
@@ -146,7 +258,7 @@
           "X-CSRFToken": ctx.csrfToken,
         },
         credentials: "same-origin",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ groups: collected.groups }),
       });
       if (!r.ok) {
         let detail = "저장 실패";
@@ -161,7 +273,7 @@
         } catch (err) {}
         throw new Error(detail);
       }
-      showStatus("조가 추가되었습니다.");
+      showStatus(`${collected.groups.length}개 조가 추가되었습니다.`);
       window.location.reload();
     } catch (err) {
       showStatus(err.message || "저장 실패", true);
@@ -169,55 +281,14 @@
   }
 
   if (btnAdd) btnAdd.addEventListener("click", openModal);
+  if (btnAddRow) btnAddRow.addEventListener("click", () => addRow());
   if (btnCancel) btnCancel.addEventListener("click", closeModal);
   if (overlay) {
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) closeModal();
     });
   }
-  if (regionInput) {
-    regionInput.addEventListener("change", () => {
-      refreshDivisions();
-      if (picker) picker.clear();
-    });
-  }
-  if (divisionInput) {
-    divisionInput.addEventListener("change", () => {
-      if (picker) picker.clear();
-    });
-  }
   if (form) form.addEventListener("submit", onSubmit);
-  if (btnAddLeaderDraft) {
-    btnAddLeaderDraft.addEventListener("click", () => {
-      const selected = picker && picker.getSelected();
-      if (!selected || !selected.id) {
-        showStatus("운영진으로 등록할 사용자를 검색에서 선택하세요.", true);
-        return;
-      }
-      const role = leaderRoleInput?.value || "leader";
-      if (leaderDraft.some((e) => e.user_id === selected.id)) {
-        showStatus("이미 목록에 있는 사용자입니다.", true);
-        return;
-      }
-      leaderDraft.push({
-        user_id: selected.id,
-        role,
-        label: selected.name || selected.display_name || selected.username,
-      });
-      renderLeaderDraft();
-      if (picker) picker.clear();
-      showStatus("");
-    });
-  }
-  if (leadersList) {
-    leadersList.addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-remove-leader]");
-      if (!btn) return;
-      const idx = Number(btn.dataset.removeLeader);
-      leaderDraft.splice(idx, 1);
-      renderLeaderDraft();
-    });
-  }
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && overlay && !overlay.hidden) closeModal();
@@ -270,7 +341,6 @@
 
     async function search(q) {
       const { division, region } = filters() || {};
-      // 검색어도 부서·지역 필터도 없으면 호출하지 않는다.
       if (!q && !division && !region) {
         closeList();
         return;
@@ -313,7 +383,6 @@
       hidden.value = "";
       const q = input.value.trim();
       clearTimeout(timer);
-      // 검색어가 비어도 부서·지역이 선택돼 있으면 소속 전체를 보여준다.
       if (!q && !hasFilter()) {
         closeList();
         return;

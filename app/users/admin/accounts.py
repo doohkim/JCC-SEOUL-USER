@@ -103,9 +103,8 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
         css = {"all": ("admin/css/jcc_fieldsets.css",)}
 
     list_display = [
-        "display_name",
-        "username",
-        "email",
+        "real_name",
+        "phone_number",
         "role_level",
         "can_manage_accounts",
         "can_manage_attendance",
@@ -185,10 +184,17 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
         ]
         return extra + super().get_urls()
 
-    @admin.display(description="이름", ordering="profile__display_name")
-    def display_name(self, obj):
+    @admin.display(description="실명", ordering="profile__real_name")
+    def real_name(self, obj):
         try:
-            return obj.profile.display_name or "-"
+            return obj.profile.real_name or obj.profile.display_name or "-"
+        except UserProfile.DoesNotExist:
+            return "-"
+
+    @admin.display(description="휴대폰 번호", ordering="profile__phone")
+    def phone_number(self, obj):
+        try:
+            return obj.profile.phone or "-"
         except UserProfile.DoesNotExist:
             return "-"
 

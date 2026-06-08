@@ -131,6 +131,71 @@ class GroupCreateApiTests(_GroupManageFixture):
         )
         self.assertEqual(r.status_code, 403)
 
+    def test_council_can_bulk_create_groups_with_leaders(self):
+        self.client.force_authenticate(self.council_user)
+        leader_a = User.objects.create_user(username="gm_bulk_a", password="x")
+        leader_b = User.objects.create_user(username="gm_bulk_b", password="x")
+        r = self.client.post(
+            self._url(),
+            {
+                "groups": [
+                    {
+                        "region": self.seoul.id,
+                        "division": self.div.id,
+                        "name": "88조",
+                        "order": 88,
+                        "leaders": [{"user_id": leader_a.id, "role": "leader"}],
+                    },
+                    {
+                        "region": self.seoul.id,
+                        "division": self.div.id,
+                        "name": "89조",
+                        "order": 89,
+                        "leaders": [{"user_id": leader_b.id, "role": "vice_leader"}],
+                    },
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(len(r.json()), 2)
+        g88 = RetreatGroup.objects.get(event=self.event, name="88조")
+        g89 = RetreatGroup.objects.get(event=self.event, name="89조")
+        self.assertTrue(
+            RetreatGroupMembership.objects.filter(
+                group=g88, user=leader_a, role="leader"
+            ).exists()
+        )
+        self.assertTrue(
+            RetreatGroupMembership.objects.filter(
+                group=g89, user=leader_b, role="vice_leader"
+            ).exists()
+        )
+
+    def test_bulk_create_rolls_back_on_duplicate_name_in_batch(self):
+        self.client.force_authenticate(self.council_user)
+        before = RetreatGroup.objects.filter(event=self.event).count()
+        r = self.client.post(
+            self._url(),
+            {
+                "groups": [
+                    {
+                        "region": self.seoul.id,
+                        "division": self.div.id,
+                        "name": "중복조",
+                    },
+                    {
+                        "region": self.seoul.id,
+                        "division": self.div.id,
+                        "name": "중복조",
+                    },
+                ]
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertEqual(RetreatGroup.objects.filter(event=self.event).count(), before)
+
 
 class GroupMembershipWritePermissionTests(_GroupManageFixture):
     def setUp(self):

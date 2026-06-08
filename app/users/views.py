@@ -673,6 +673,66 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
         ctx["approved_profiles"] = approved_profiles
         ctx["user_label_map"] = label_map
         ctx["user_real_name_map"] = real_name_map
+
+        status_label = {code: label for code, label in ctx["onboarding_status_choices"]}
+        role_label = {code: label for code, label in ctx["retreat_role_choices"]}
+
+        def _fmt_dt(value):
+            if not value:
+                return ""
+            return timezone.localtime(value).strftime("%Y-%m-%d %H:%M")
+
+        def _profile_label(p):
+            # 연결 계정이 있으면 계정 표시명, 없으면 프로필 자체 필드로 폴백.
+            if p.user_id and label_map.get(p.user_id):
+                return label_map[p.user_id]
+            return (
+                (p.display_name or "").strip()
+                or (p.real_name or "").strip()
+                or "(계정 미연결)"
+            )
+
+        profile_label_map = {}
+        profile_real_name_map = {}
+        detail_map = {}
+        for p in list(pending_profiles) + list(approved_profiles) + list(rejected_profiles):
+            label = _profile_label(p)
+            real_name = (p.real_name or "").strip()
+            # 셀에는 실명을 우선 표시하고, 없으면 표시명/계정명으로 폴백한다.
+            profile_label_map[p.id] = real_name or label
+            profile_real_name_map[p.id] = real_name
+            div = p.requested_division
+            region_name = ""
+            if div and div.region_id:
+                try:
+                    region_name = div.region.name
+                except Exception:
+                    region_name = ""
+            detail_map[p.id] = {
+                "label": label,
+                "real_name": real_name,
+                "phone": (p.phone or "").strip(),
+                "kakao_account": (getattr(p.user, "username", "") or "").strip(),
+                "kakao_nickname": kakao_map.get(p.user_id, ""),
+                "linked_account": bool(p.user_id),
+                "region": region_name,
+                "division": div.name if div else "",
+                "team": p.requested_team.name if p.requested_team_id else "",
+                "status": status_label.get(p.onboarding_status, p.onboarding_status),
+                "note": (p.onboarding_note or "").strip(),
+                "retreat_participation": bool(p.requested_retreat_participation),
+                "retreat_event": p.requested_retreat_event.name if p.requested_retreat_event_id else "",
+                "retreat_group": p.requested_retreat_group.name if p.requested_retreat_group_id else "",
+                "retreat_role": role_label.get(
+                    p.requested_retreat_role, p.requested_retreat_role or ""
+                ),
+                "date_joined": _fmt_dt(getattr(p.user, "date_joined", None)),
+                "updated_at": _fmt_dt(p.updated_at),
+            }
+        ctx["user_detail_json"] = json.dumps(detail_map, ensure_ascii=False)
+        ctx["profile_label_map"] = profile_label_map
+        ctx["profile_real_name_map"] = profile_real_name_map
+
         ctx["account_tab"] = "approvals"
         ctx["division_choices"] = list(
             allowed_divisions.select_related("region").order_by(

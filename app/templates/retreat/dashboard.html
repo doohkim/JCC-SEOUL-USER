@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 대시보드 · {{ event.name }}</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260608c" />
     <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260605zz2" />
   </head>
   <body class="has-retreat-bottom-tabs">
@@ -96,9 +96,15 @@
           </div>
           <div id="dashboardPanelBoard" style="display: none;">
             <div class="card jcc-excel-board-panel">
+              <div class="jcc-board-toolbar">
+                <label for="boardRegionFilter">지역</label>
+                <select id="boardRegionFilter" aria-label="지역 필터">
+                  <option value="">전체</option>
+                </select>
+              </div>
               <div id="groupBoardTotal" class="jcc-excel-board-total"></div>
               <p class="jcc-excel-board-hint">
-                조 열은 <strong>가로로 줄바꿈</strong>되어 두 줄 이상으로 보입니다. 각 열 안 이름은 <strong>위아래</strong>로 스크롤됩니다.
+                지역별로 구분되어 표시됩니다. 조 열은 <strong>가로로 줄바꿈</strong>되며, 각 열 안 이름은 <strong>위아래</strong>로 스크롤됩니다.
               </p>
               <div class="jcc-excel-board-viewport">
                 <div
@@ -123,6 +129,6 @@
         isStaff: {{ is_retreat_staff|yesno:"true,false" }}
       };
     </script>
-    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260607a" defer></script>
+    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260608c" defer></script>
   </body>
 </html>
