@@ -10,11 +10,15 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from retreat.models import (
+    Lodging,
+    LodgingRoom,
     RetreatAttendee,
     RetreatEvent,
     RetreatGroup,
     RetreatGroupMembership,
+    RetreatGroupScope,
 )
+from retreat.services.lodging import assert_room_can_accept, rooms_for_group
 from users.models import Division, Region, RoleLevel, UserDivisionTeam, UserProfile
 from users.permissions import can_add_retreat_group, can_manage_retreat_group_leaders
 
@@ -195,6 +199,184 @@ class GroupCreateApiTests(_GroupManageFixture):
         )
         self.assertEqual(r.status_code, 400, r.content)
         self.assertEqual(RetreatGroup.objects.filter(event=self.event).count(), before)
+
+    def test_council_can_create_group_with_extra_scopes(self):
+        incheon, _ = Region.objects.get_or_create(
+            code="incheon", defaults={"name": "인천", "sort_order": 20}
+        )
+        incheon_div = Division.objects.create(
+            region=incheon, code="gm_incheon_youth", name="청년부"
+        )
+        self.client.force_authenticate(self.council_user)
+        r = self.client.post(
+            self._url(),
+            {
+                "region": self.seoul.id,
+                "division": self.div.id,
+                "name": "20조",
+                "order": 20,
+                "scopes": [
+                    {"region": incheon.id, "division": incheon_div.id},
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        group = RetreatGroup.objects.get(event=self.event, name="20조")
+        self.assertEqual(group.extra_scopes.count(), 1)
+        scope = group.extra_scopes.get()
+        self.assertEqual(scope.region_id, incheon.id)
+        self.assertEqual(scope.division_id, incheon_div.id)
+        payload = r.json()
+        self.assertEqual(len(payload.get("extra_scopes") or []), 1)
+
+    def test_create_rejects_duplicate_primary_in_scopes(self):
+        self.client.force_authenticate(self.council_user)
+        r = self.client.post(
+            self._url(),
+            {
+                "region": self.seoul.id,
+                "division": self.div.id,
+                "name": "dup_scope",
+                "scopes": [
+                    {"region": self.seoul.id, "division": self.div.id},
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+
+
+class GroupDetailApiTests(_GroupManageFixture):
+    def setUp(self):
+        self.client = APIClient()
+
+    def _url(self, group_id=None):
+        return reverse(
+            "api_retreat_group_detail",
+            args=[group_id or self.group.id],
+        )
+
+    def test_council_can_patch_group_name_primary_and_scopes(self):
+        incheon, _ = Region.objects.get_or_create(
+            code="incheon", defaults={"name": "인천", "sort_order": 20}
+        )
+        incheon_div = Division.objects.create(
+            region=incheon, code="gm_patch_youth", name="청년부"
+        )
+        self.client.force_authenticate(self.council_user)
+        r = self.client.patch(
+            self._url(),
+            {
+                "name": "1조-수정",
+                "region": self.seoul.id,
+                "division": self.div.id,
+                "order": 5,
+                "scopes": [
+                    {"region": incheon.id, "division": incheon_div.id},
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.group.refresh_from_db()
+        self.assertEqual(self.group.name, "1조-수정")
+        self.assertEqual(self.group.order, 5)
+        self.assertEqual(self.group.extra_scopes.count(), 1)
+        scope = self.group.extra_scopes.get()
+        self.assertEqual(scope.region_id, incheon.id)
+        self.assertEqual(scope.division_id, incheon_div.id)
+        payload = r.json()
+        self.assertEqual(payload["name"], "1조-수정")
+        self.assertEqual(len(payload.get("extra_scopes") or []), 1)
+
+    def test_pastor_cannot_patch_group(self):
+        self.client.force_authenticate(self.pastor)
+        r = self.client.patch(
+            self._url(),
+            {"name": "변경불가"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 403)
+
+    def test_patch_rejects_duplicate_name_excluding_self(self):
+        RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+            order=2,
+        )
+        self.client.force_authenticate(self.council_user)
+        r = self.client.patch(
+            self._url(),
+            {"name": "2조"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+
+
+class GroupExtraScopeBehaviorTests(_GroupManageFixture):
+    def test_rooms_for_group_includes_extra_scope_rooms(self):
+        incheon, _ = Region.objects.get_or_create(
+            code="incheon", defaults={"name": "인천", "sort_order": 20}
+        )
+        incheon_div = Division.objects.create(
+            region=incheon, code="gm_scope_youth", name="청년부"
+        )
+        group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="scope_group",
+            order=30,
+        )
+        RetreatGroupScope.objects.create(
+            group=group, region=incheon, division=incheon_div
+        )
+        lodging_seoul = Lodging.objects.create(event=self.event, name="서울숙소")
+        lodging_incheon = Lodging.objects.create(event=self.event, name="인천숙소")
+        room_seoul = LodgingRoom.objects.create(
+            lodging=lodging_seoul,
+            number="101",
+            region=self.seoul,
+            division=self.div,
+        )
+        room_incheon = LodgingRoom.objects.create(
+            lodging=lodging_incheon,
+            number="201",
+            region=incheon,
+            division=incheon_div,
+        )
+        room_ids = set(rooms_for_group(group).values_list("id", flat=True))
+        self.assertEqual(room_ids, {room_seoul.id, room_incheon.id})
+
+    def test_assert_room_can_accept_allows_extra_scope_room(self):
+        incheon, _ = Region.objects.get_or_create(
+            code="incheon", defaults={"name": "인천", "sort_order": 20}
+        )
+        incheon_div = Division.objects.create(
+            region=incheon, code="gm_scope_youth2", name="청년부"
+        )
+        group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="scope_group2",
+            order=31,
+        )
+        RetreatGroupScope.objects.create(
+            group=group, region=incheon, division=incheon_div
+        )
+        lodging = Lodging.objects.create(event=self.event, name="인천숙소2")
+        room = LodgingRoom.objects.create(
+            lodging=lodging,
+            number="301",
+            region=incheon,
+            division=incheon_div,
+        )
+        attendee = RetreatAttendee.objects.create(group=group, name="테스트")
+        assert_room_can_accept(room, attendee)
 
 
 class GroupMembershipWritePermissionTests(_GroupManageFixture):

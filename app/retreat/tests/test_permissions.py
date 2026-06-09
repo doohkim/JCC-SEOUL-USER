@@ -13,6 +13,7 @@ from retreat.models import (
     RetreatEvent,
     RetreatGroup,
     RetreatGroupMembership,
+    RetreatGroupScope,
 )
 from users.models import (
     Division,
@@ -188,6 +189,28 @@ class RetreatPermissionsTests(_BaseFixture):
             self.group_incheon_1.id,
             set(groups.values_list("id", flat=True)),
         )
+
+    def test_staff_sees_group_when_extra_scope_matches(self):
+        multi = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div_youth_seoul,
+            name="20조",
+            order=20,
+        )
+        RetreatGroupScope.objects.create(
+            group=multi,
+            region=self.incheon,
+            division=self.div_youth_incheon,
+        )
+        staff_incheon = User.objects.create_user(username="staff_incheon", password="x")
+        staff_incheon.role_level = self.rl_president
+        staff_incheon.save()
+        UserDivisionTeam.objects.create(
+            user=staff_incheon, division=self.div_youth_incheon, is_primary=True
+        )
+        groups = visible_retreat_groups_for(staff_incheon, self.event)
+        self.assertIn(multi.id, set(groups.values_list("id", flat=True)))
 
     def test_staff_other_division_does_not_see_youth_groups(self):
         # 서울 대학부 부장: 청년부 그룹은 안 보여야 함 (division 다름)

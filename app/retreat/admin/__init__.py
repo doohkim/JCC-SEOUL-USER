@@ -5,3 +5,4 @@ from . import group  # noqa: F401
 from . import attendee  # noqa: F401
 from . import attendance  # noqa: F401
 from . import council  # noqa: F401
+from . import pickup  # noqa: F401

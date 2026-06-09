@@ -23,16 +23,20 @@ from retreat.models import (
     RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
+    RetreatPickup,
     RetreatSession,
     RetreatSessionAttendee,
 )
 from retreat.services.changelog_format import humanize_change_logs
 from users.permissions import (
     can_access_retreat_tab,
+    can_manage_retreat_pickup,
     can_manage_retreat_sessions,
+    can_select_pickup_group,
     is_retreat_council,
     is_retreat_group_leader,
     is_retreat_staff,
+    retreat_pickup_group_ids_for,
     visible_retreat_groups_for,
     visible_retreat_sessions_for,
 )
@@ -152,7 +156,7 @@ class RetreatHomeView(_RetreatAccessMixin, TemplateView):
                 visible_retreat_groups_for(user, ev)
                 .select_related("region", "division")
                 .annotate(attendee_count=Count("attendees", distinct=True))
-                .order_by("region__sort_order", "division__sort_order", "order", "id")
+                .order_by("order", "id")
             )
             groups = list(groups_qs)
             is_staff_or_council = bool(
@@ -226,7 +230,7 @@ class RetreatRostersView(_RetreatEventMixin, TemplateView):
         visible_groups = list(
             visible_retreat_groups_for(user, event)
             .select_related("region", "division")
-            .order_by("region__sort_order", "division__sort_order", "order", "id")
+            .order_by("order", "id")
         )
         ctx["visible_groups"] = visible_groups
 
@@ -239,6 +243,23 @@ class RetreatRostersView(_RetreatEventMixin, TemplateView):
 
         ctx["can_manage_sessions"] = ctx["is_retreat_council"]
         return ctx
+
+
+def _retreat_session_summary(user, event):
+    """관리 영역 공통 헤더 부제목용 (총 세션 수, 전체 출석률)."""
+    session_ids = list(
+        visible_retreat_sessions_for(user, event).values_list("id", flat=True)
+    )
+    total = len(session_ids)
+    possible = RetreatSessionAttendee.objects.filter(
+        session_id__in=session_ids
+    ).count()
+    present = RetreatAttendance.objects.filter(
+        enrollment__session_id__in=session_ids,
+        status=RetreatAttendance.Status.PRESENT,
+    ).count()
+    rate = round((present / possible) * 100, 1) if possible else None
+    return total, rate
 
 
 class RetreatCouncilView(_RetreatEventMixin, TemplateView):
@@ -268,6 +289,55 @@ class RetreatCouncilView(_RetreatEventMixin, TemplateView):
         )
         ctx["memberships"] = memberships
         ctx["role_choices"] = RetreatCouncilMembership.Role.choices
+        ctx["total_sessions"], ctx["overall_rate"] = _retreat_session_summary(
+            self.request.user, event
+        )
+        return ctx
+
+
+class RetreatPickupView(_RetreatEventMixin, TemplateView):
+    """수련회 픽업(입회/출회) 정보 수집 페이지."""
+
+    template_name = "retreat/pickup.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        event = ctx["event"]
+        user = self.request.user
+        tab = (self.request.GET.get("tab") or "arrival").strip()
+        if tab not in (
+            RetreatPickup.Direction.ARRIVAL,
+            RetreatPickup.Direction.DEPARTURE,
+        ):
+            tab = RetreatPickup.Direction.ARRIVAL
+        ctx["active_pickup_tab"] = tab
+
+        pickups_qs = (
+            event.pickups.filter(direction=tab)
+            .select_related("group", "region", "division")
+            .order_by("number", "id")
+        )
+        can_select_group = can_select_pickup_group(user, event)
+        # 조장/부조장은 본인 조의 픽업만 조회
+        if not can_select_group:
+            group_ids = retreat_pickup_group_ids_for(user, event)
+            pickups_qs = pickups_qs.filter(group_id__in=group_ids)
+        ctx["pickups"] = list(pickups_qs)
+
+        ctx["can_manage_pickup"] = can_manage_retreat_pickup(user, event)
+        ctx["can_select_pickup_group"] = can_select_group
+        # 회장단·슈퍼유저만 조를 직접 선택 (그 외에는 본인 조 자동 지정)
+        ctx["group_choices"] = (
+            list(event.groups.order_by("order", "name")) if can_select_group else []
+        )
+        from users.models import Division, Region
+
+        ctx["region_choices"] = list(Region.objects.order_by("sort_order", "name"))
+        ctx["division_choices"] = list(
+            Division.objects.select_related("region").order_by(
+                "region__sort_order", "sort_order", "name"
+            )
+        )
         return ctx
 
 
@@ -382,11 +452,23 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
 
         apply_due_auto_transitions(event_id=event.id)
         user = self.request.user
+        from django.db.models import Prefetch
+
+        from retreat.models import RetreatGroupScope
+
         groups = list(
             visible_retreat_groups_for(user, event)
             .select_related("region", "division")
+            .prefetch_related(
+                Prefetch(
+                    "extra_scopes",
+                    queryset=RetreatGroupScope.objects.select_related(
+                        "region", "division"
+                    ),
+                )
+            )
             .annotate(attendee_count=Count("attendees", distinct=True))
-            .order_by("region__sort_order", "division__sort_order", "order", "id")
+            .order_by("order", "id")
         )
 
         # 조장 이름 모으기 — 조원 행(member_role=leader) + 미동기 운영진 멤버십.
@@ -434,7 +516,22 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         from retreat.services.auto_check_in import apply_due_auto_transitions
 
         apply_due_auto_transitions(event_id=event.id)
-        group = get_object_or_404(RetreatGroup, pk=kwargs["group_id"], event=event)
+        from django.db.models import Prefetch
+
+        from retreat.models import RetreatGroupScope
+
+        group = get_object_or_404(
+            RetreatGroup.objects.prefetch_related(
+                Prefetch(
+                    "extra_scopes",
+                    queryset=RetreatGroupScope.objects.select_related(
+                        "region", "division"
+                    ),
+                )
+            ),
+            pk=kwargs["group_id"],
+            event=event,
+        )
 
         visible_ids = set(
             visible_retreat_groups_for(user, event).values_list("id", flat=True)
@@ -442,7 +539,8 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         if group.id not in visible_ids:
             raise PermissionDenied("이 조에 접근할 권한이 없습니다.")
 
-        from users.permissions import can_manage_retreat_group_leaders
+        from users.permissions import can_manage_retreat_group_leaders, can_add_retreat_group
+        from users.models import Division, Region
 
         from retreat.models import RetreatGroupMembership
 
@@ -472,8 +570,15 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
                 sync_attendee_from_membership(m, changed_by=user)
 
         ctx["group"] = group
+        ctx["can_add_group"] = can_add_retreat_group(user, event)
         ctx["can_manage_leaders"] = can_manage_leaders
         ctx["group_role_choices"] = RetreatGroupMembership.Role.choices
+        ctx["region_choices"] = list(Region.objects.order_by("sort_order", "name"))
+        ctx["division_choices"] = list(
+            Division.objects.select_related("region").order_by(
+                "region__sort_order", "sort_order", "name"
+            )
+        )
         ctx["attendee_role_choices"] = RetreatAttendee.MemberRole.choices
         role_order = Case(
             When(member_role=RetreatAttendee.MemberRole.LEADER, then=Value(0)),
@@ -517,13 +622,9 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         ctx["back_url"] = reverse("retreat_group_manage_list", args=[event.id])
         ctx["back_label"] = "조 목록"
         # 숙소 배정 드롭다운 옵션 — 조의 region+division 과 모두 일치하는 호실만.
-        from retreat.services.lodging import rooms_for_event_region_division
+        from retreat.services.lodging import rooms_for_group
 
-        event_rooms = list(
-            rooms_for_event_region_division(
-                event, group.region_id, group.division_id
-            )
-        )
+        event_rooms = list(rooms_for_group(group))
         ctx["event_rooms"] = event_rooms
         return ctx
 
@@ -538,13 +639,11 @@ class RetreatLodgingView(_RetreatEventMixin, TemplateView):
         user = self.request.user
         event = ctx["event"]
 
-        # 조회 권한: visible_retreat_groups_for 또는 staff/council/superuser.
-        visible_groups = visible_retreat_groups_for(user, event)
+        # 조회 권한: 회장단·운영진·슈퍼유저만 (조장/부조장 제외).
         if not (
             user.is_superuser
             or is_retreat_council(user, event)
             or is_retreat_staff(user, event)
-            or visible_groups.exists()
         ):
             raise PermissionDenied("이 행사의 숙소를 볼 권한이 없습니다.")
 
@@ -620,7 +719,7 @@ class RetreatLodgingAssignView(_RetreatEventMixin, TemplateView):
         visible_groups_qs = visible_retreat_groups_for(user, event).select_related(
             "region", "division"
         )
-        if not (is_staff_like or visible_groups_qs.exists()):
+        if not is_staff_like:
             raise PermissionDenied("이 행사의 방배정 페이지 권한이 없습니다.")
 
         all_rooms = list(
@@ -1000,9 +1099,7 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
                 .select_related("region", "division")
                 .prefetch_related("memberships__user", "attendees")
                 .annotate(attendee_count=Count("attendees", distinct=True))
-                .order_by(
-                    "region__sort_order", "division__sort_order", "order", "id"
-                )
+                .order_by("order", "id")
             )
             rows = []
             for g in groups_qs:
@@ -1039,9 +1136,7 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
             visible_groups = list(
                 visible_retreat_groups_for(user, event)
                 .select_related("region", "division")
-                .order_by(
-                    "region__sort_order", "division__sort_order", "order", "id"
-                )
+                .order_by("order", "id")
             )
             ctx["sessions"] = visible_sessions
             ctx["visible_groups"] = visible_groups

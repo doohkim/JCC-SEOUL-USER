@@ -642,6 +642,47 @@ def can_add_retreat_group(user: User, event) -> bool:
     return is_retreat_council(user, event)
 
 
+def can_manage_retreat_pickup(user: User, event) -> bool:
+    """픽업 정보 추가·삭제 — 슈퍼유저·회장단·해당 행사 조장/부조장."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_superuser:
+        return True
+    if event is None:
+        return False
+    if is_retreat_council(user, event):
+        return True
+    return user.retreat_group_memberships.filter(group__event=event).exists()
+
+
+def can_select_pickup_group(user: User, event) -> bool:
+    """픽업 등록 시 '조'를 직접 선택할 수 있는지 — 슈퍼유저·해당 행사 회장단만.
+
+    조장/부조장은 조를 선택하지 못하고 본인 조로 자동 지정된다.
+    """
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_superuser:
+        return True
+    if event is None:
+        return False
+    return is_retreat_council(user, event)
+
+
+def retreat_pickup_group_ids_for(user: User, event) -> set[int]:
+    """조장/부조장으로서 본인이 속한(=관리하는) 조 id 집합.
+
+    픽업 목록 필터·본인 조 자동 지정·삭제 권한 판단에 사용.
+    """
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
+        return set()
+    return set(
+        user.retreat_group_memberships.filter(group__event=event).values_list(
+            "group_id", flat=True
+        )
+    )
+
+
 def can_manage_retreat_group_leaders(user: User, group) -> bool:
     """조 운영진(조장·부조장) 추가·수정·삭제 — 슈퍼유저·회장단·본인 조 운영진."""
     if not user or not getattr(user, "is_authenticated", False):
@@ -782,12 +823,17 @@ def visible_retreat_groups_for(user: User, event):
     )
 
     if _user_has_retreat_staff_role(user):
+        from django.db.models import Q
+
         region_ids = _user_region_ids_via_divisions(user)
         # 목사·전도사는 division 단위 담당 → division 도 함께 화이트리스트
         division_ids = _user_division_ids(user) | _user_pastoral_division_ids(user)
-        staff_qs = base.filter(region_id__in=region_ids)
+        primary_q = Q(region_id__in=region_ids)
+        extra_q = Q(extra_scopes__region_id__in=region_ids)
         if division_ids:
-            staff_qs = staff_qs.filter(division_id__in=division_ids)
+            primary_q &= Q(division_id__in=division_ids)
+            extra_q &= Q(extra_scopes__division_id__in=division_ids)
+        staff_qs = base.filter(primary_q | extra_q).distinct()
         if leader_group_ids:
             return (staff_qs | base.filter(pk__in=leader_group_ids)).distinct()
         return staff_qs
@@ -816,10 +862,13 @@ class IsRetreatGroupLeaderOrStaff(BasePermission):
         if is_retreat_group_leader(user, group):
             return True
         if is_retreat_staff(user, group.event):
-            # staff 는 본인 region/division 한정.
+            # staff 는 대표·보조 범위 중 하나라도 본인 region/division 과 일치하면 허용.
+            region_ids = _user_region_ids_via_divisions(user)
             div_ids = _user_division_ids(user) | _user_pastoral_division_ids(user)
-            return (
-                group.region_id in _user_region_ids_via_divisions(user)
-                and (not div_ids or group.division_id in div_ids)
-            )
+            for region_id, division_id in group.scope_pairs():
+                if region_id in region_ids and (
+                    not div_ids or division_id in div_ids
+                ):
+                    return True
+            return False
         return False

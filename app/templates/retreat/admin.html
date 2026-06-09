@@ -13,33 +13,18 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260605zz" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260609h" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
         <header class="app-header">
-          <div class="jcc-detail-titleWrap">
-            <h1>{{ event.name }} · 관리자</h1>
-            <p class="subtitle">
-              {{ event.start_date|date:"Y.m.d" }} ~ {{ event.end_date|date:"Y.m.d" }} ·
-              세션 {{ total_sessions }}개 ·
-              {% if overall_rate is not None %}
-                전체 출석률 <strong>{{ overall_rate }}%</strong>
-              {% else %}
-                출석 데이터 없음
-              {% endif %}
-            </p>
-          </div>
+          {% include 'includes/retreat_admin_header.html' %}
         </header>
         <main>
           {% include 'includes/retreat_event_tabs.html' with retreat_tab='admin' %}
-          <nav class="jcc-page-tabs" aria-label="관리 하위 메뉴">
-            <a class="jcc-page-tab{% if active_tab == 'sessions' %} is-active{% endif %}" href="{% url 'retreat_admin' event.id %}?tab=sessions">출석부</a>
-            <a class="jcc-page-tab{% if active_tab == 'groups' %} is-active{% endif %}" href="{% url 'retreat_admin' event.id %}?tab=groups">조</a>
-            <a class="jcc-page-tab{% if active_tab == 'changelog' %} is-active{% endif %}" href="{% url 'retreat_admin' event.id %}?tab=changelog">변경 이력</a>
-          </nav>
+          {% include 'includes/retreat_admin_subtabs.html' with admin_subtab=active_tab %}
 
           {% if active_tab == 'sessions' %}
             {% if can_manage_sessions %}
@@ -48,7 +33,7 @@
                 <button type="button" class="secondary" id="btnNewRoster">+ 출석부 만들기</button>
               </div>
             {% endif %}
-            <div class="card">
+            <div class="card jcc-retreat-adminCard">
               <div class="jcc-retreat-tableWrap">
                 <table class="jcc-table" id="rosterTable">
                   <thead>
@@ -111,7 +96,8 @@
               </div>
             </div>
           {% elif active_tab == 'groups' %}
-            <div class="card">
+            <div class="jcc-retreat-listTop jcc-retreat-listTop--placeholder" aria-hidden="true"></div>
+            <div class="card jcc-retreat-adminCard">
               <div class="jcc-retreat-tableWrap">
                 <table class="jcc-retreat-adminTable">
                   <thead>
@@ -167,7 +153,8 @@
               </div>
             </div>
           {% else %}
-            <div class="card">
+            <div class="jcc-retreat-listTop jcc-retreat-listTop--placeholder" aria-hidden="true"></div>
+            <div class="card jcc-retreat-adminCard">
               <div class="jcc-retreat-tableWrap">
                 <table class="jcc-table">
                   <thead>

@@ -9,6 +9,7 @@ from .attendance import (
 )
 from .changelog import RetreatChangeLogSerializer
 from .council import RetreatCouncilMembershipSerializer
+from .pickup import RetreatPickupSerializer
 from .lodging import LodgingSerializer, LodgingRoomSerializer
 from .snapshot_attendee import RetreatSessionAttendeeAdminSerializer
 
@@ -22,6 +23,7 @@ __all__ = [
     "RetreatAttendanceBulkUpsertSerializer",
     "RetreatChangeLogSerializer",
     "RetreatCouncilMembershipSerializer",
+    "RetreatPickupSerializer",
     "LodgingSerializer",
     "LodgingRoomSerializer",
     "RetreatSessionAttendeeAdminSerializer",

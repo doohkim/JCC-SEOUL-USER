@@ -1,6 +1,6 @@
 """retreat DRF API."""
 
-from .events import RetreatEventListView, RetreatEventGroupListView
+from .events import RetreatEventListView, RetreatEventGroupListView, RetreatGroupDetailView
 from .attendees import RetreatGroupAttendeesView, RetreatAttendeeDetailView
 from .attendee_history import RetreatAttendeeHistoryView
 from .attendance import RetreatAttendanceBulkUpsertView
@@ -36,10 +36,12 @@ from .lodging import (
     RetreatLodgingRoomDetailView,
     RetreatLodgingRoomsView,
 )
+from .pickup import RetreatEventPickupListCreateView, RetreatPickupDetailView
 
 __all__ = [
     "RetreatEventListView",
     "RetreatEventGroupListView",
+    "RetreatGroupDetailView",
     "RetreatGroupAttendeesView",
     "RetreatAttendeeDetailView",
     "RetreatAttendeeHistoryView",
@@ -64,4 +66,6 @@ __all__ = [
     "RetreatLodgingDetailView",
     "RetreatLodgingRoomDetailView",
     "RetreatLodgingRoomsView",
+    "RetreatEventPickupListCreateView",
+    "RetreatPickupDetailView",
 ]

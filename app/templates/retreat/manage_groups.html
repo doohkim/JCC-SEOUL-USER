@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>조 관리 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260605zz" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260609d" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -26,21 +26,35 @@
               <div class="msg" id="retreatStatus" role="status"></div>
               <button type="button" class="secondary" id="btnAddGroup">+ 조 추가</button>
             </div>
+          {% else %}
+            <div class="msg" id="retreatStatus" role="status" style="margin-bottom:0.75rem;"></div>
           {% endif %}
-          <div class="jcc-retreat-groupGrid">
+          <div class="jcc-retreat-groupGrid" id="retreatGroupGrid">
             {% for g in groups %}
-              <a
-                class="jcc-retreat-groupCard"
-                href="{% url 'retreat_group_manage' event.id g.id %}"
-              >
-                <div class="jcc-retreat-groupRegion">
-                  <span class="jcc-retreat-pill">{{ g.region.name }}</span>
-                  <span class="jcc-retreat-pill jcc-retreat-pill--alt">{{ g.division.name }}</span>
-                </div>
-                <div class="jcc-retreat-groupName">{{ g.name }}</div>
-                <div class="jcc-retreat-groupMeta">조장 {{ g.leader_names|default:"-" }}</div>
-                <div class="jcc-retreat-groupMeta">조원 {{ g.attendee_count }}명</div>
-              </a>
+              <div class="jcc-retreat-groupCardWrap">
+                <a
+                  class="jcc-retreat-groupCard"
+                  href="{% url 'retreat_group_manage' event.id g.id %}"
+                >
+                  <div class="jcc-retreat-groupRegion">
+                    <span class="jcc-retreat-pill">{{ g.region.name }}</span>
+                    <span class="jcc-retreat-pill jcc-retreat-pill--alt">{{ g.division.name }}</span>
+                  </div>
+                  <div class="jcc-retreat-groupName">{{ g.name }}</div>
+                  <div class="jcc-retreat-groupMeta">조장 {{ g.leader_names|default:"-" }}</div>
+                  <div class="jcc-retreat-groupMeta">조원 {{ g.attendee_count }}명</div>
+                </a>
+                {% if can_add_group %}
+                  <button
+                    type="button"
+                    class="jcc-retreat-groupCardEdit"
+                    data-group-edit-trigger
+                    data-group-id="{{ g.id }}"
+                    aria-label="{{ g.name }} 조 정보 수정"
+                    title="조 정보 수정"
+                  >수정</button>
+                {% endif %}
+              </div>
             {% empty %}
               <div class="card">
                 <div class="msg">표시할 조가 없습니다.{% if can_add_group %} 우측 상단에서 조를 추가하세요.{% endif %}</div>
@@ -78,29 +92,42 @@
                     </div>
                     <div class="jcc-retreat-modalGrid">
                       <div class="field">
-                        <label data-label-region>지역 *</label>
-                        <select data-row-region required>
-                          <option value="">선택</option>
-                          {% for r in region_choices %}
-                            <option value="{{ r.id }}">{{ r.name }}</option>
-                          {% endfor %}
-                        </select>
-                      </div>
-                      <div class="field">
-                        <label data-label-division>부서 *</label>
-                        <select data-row-division required>
-                          <option value="">선택</option>
-                        </select>
-                      </div>
-                      <div class="field">
                         <label data-label-name>조 이름 *</label>
-                        <input type="text" data-row-name required maxlength="50" placeholder="예: 1조" autocomplete="off">
+                        <input type="text" data-row-name required maxlength="50" placeholder="예: 20조" autocomplete="off">
                       </div>
                       <div class="field">
                         <label data-label-order>정렬 순서</label>
                         <input type="number" data-row-order min="0" value="0">
                       </div>
                     </div>
+                    <section class="jcc-retreat-groupScopeSection">
+                      <h3 class="jcc-retreat-groupScopeTitle">대표 지역·부서 *</h3>
+                      <div class="jcc-retreat-modalGrid">
+                        <div class="field">
+                          <label data-label-region>지역</label>
+                          <select data-row-region required>
+                            <option value="">선택</option>
+                            {% for r in region_choices %}
+                              <option value="{{ r.id }}">{{ r.name }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                        <div class="field">
+                          <label data-label-division>부서</label>
+                          <select data-row-division required>
+                            <option value="">선택</option>
+                          </select>
+                        </div>
+                      </div>
+                    </section>
+                    <section class="jcc-retreat-groupScopeSection">
+                      <div class="jcc-retreat-groupScopeHead">
+                        <h3 class="jcc-retreat-groupScopeTitle">추가 지역·부서 <span class="muted">(선택)</span></h3>
+                        <button type="button" class="secondary jcc-retreat-scopeAddBtn" data-add-extra-scope>+ 지역·부서</button>
+                      </div>
+                      <div data-extra-scopes-list class="jcc-retreat-extraScopesList"></div>
+                      <small class="muted">예: 20조에 대구·대전·전주 청년부를 함께 묶을 때 추가합니다.</small>
+                    </section>
                     <section class="jcc-retreat-leadersDraft jcc-retreat-leadersDraft--compact">
                       <h3 class="jcc-retreat-leadersDraftTitle">조 운영진 <span class="muted">(선택)</span></h3>
                       <div data-row-leaders-list class="jcc-retreat-leadersDraftList"></div>
@@ -138,7 +165,8 @@
             </div>
           </div>
 
-          <script id="retreatDivisionList" type="application/json">[{% for d in division_choices %}{"id":{{ d.id }},"name":"{{ d.name|escapejs }}","region_id":{% if d.region_id %}{{ d.region_id }}{% else %}null{% endif %}}{% if not forloop.last %},{% endif %}{% endfor %}]</script>
+          {% include 'includes/retreat_group_edit_modal.html' %}
+
           <script>
             window.RETREAT_GROUPS_CTX = {
               defaultEventId: {{ event.id }},
@@ -148,7 +176,6 @@
               },
               urls: {
                 eventGroupsTemplate: "/api/v1/retreat/events/__eid__/groups/",
-                userSearchUrl: "{% url 'api_retreat_user_search' %}",
               },
             };
           </script>
@@ -157,7 +184,8 @@
     </div>
     {% include 'includes/retreat_bottom_tabs.html' %}
     {% if can_add_group %}
-      <script src="{% static 'retreat/manage_groups.js' %}?v=20260608b" defer></script>
+      <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260609d" defer></script>
+      <script src="{% static 'retreat/manage_groups.js' %}?v=20260609d" defer></script>
     {% endif %}
   </body>
 </html>

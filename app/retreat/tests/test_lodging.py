@@ -429,12 +429,11 @@ class LodgingAssignPageTests(_LodgingFixture):
         self.assertTrue(r.context["is_staff_like"])
         self.assertTrue(r.context["can_manage_lodging"])
 
-    def test_leader_sees_assign_page_readonly(self):
+    def test_leader_blocked_from_assign_page(self):
+        # 숙소(방배정)는 회장단·운영진·슈퍼유저 전용. 조장/부조장은 접근 불가.
         self.client.force_login(self.leader)
         r = self.client.get(self._url())
-        self.assertEqual(r.status_code, 200)
-        self.assertFalse(r.context["is_staff_like"])
-        self.assertFalse(r.context["can_manage_lodging"])
+        self.assertEqual(r.status_code, 403)
 
     def test_outsider_blocked(self):
         self.client.force_login(self.outsider)
@@ -521,11 +520,11 @@ class LodgingCrudPageRedirectTests(_LodgingFixture):
         # 서브탭 링크 노출 — 방배정.
         self.assertContains(r, reverse("retreat_lodging_assign", args=[self.event.id]))
 
-    def test_leader_readonly_ok(self):
+    def test_leader_blocked(self):
+        # 숙소 탭은 회장단·운영진·슈퍼유저 전용. 조장/부조장은 접근 불가.
         self.client.force_login(self.leader)
         r = self.client.get(self._url())
-        self.assertEqual(r.status_code, 200)
-        self.assertFalse(r.context["can_manage_lodging"])
+        self.assertEqual(r.status_code, 403)
 
     def test_outsider_blocked(self):
         self.client.force_login(self.outsider)

@@ -48,7 +48,7 @@ class RetreatGroup(models.Model):
     class Meta:
         verbose_name = "수련회 조"
         verbose_name_plural = "수련회 조"
-        ordering = ["event", "region__sort_order", "division__sort_order", "order", "id"]
+        ordering = ["event", "order", "id"]
         constraints = [
             models.UniqueConstraint(
                 fields=["event", "name"],
@@ -63,6 +63,51 @@ class RetreatGroup(models.Model):
         if not self.order:
             self.order = _derive_order_from_name(self.name)
         super().save(*args, **kwargs)
+
+    def scope_pairs(self) -> set[tuple[int, int]]:
+        """대표 + 보조 (지역, 부서) 쌍 집합."""
+        pairs = {(self.region_id, self.division_id)}
+        for scope in self.extra_scopes.all():
+            pairs.add((scope.region_id, scope.division_id))
+        return pairs
+
+
+class RetreatGroupScope(models.Model):
+    """조의 보조 지역·부서 (대표 region/division 외 추가 범위)."""
+
+    group = models.ForeignKey(
+        RetreatGroup,
+        on_delete=models.CASCADE,
+        related_name="extra_scopes",
+        verbose_name="조",
+    )
+    region = models.ForeignKey(
+        "users.Region",
+        on_delete=models.PROTECT,
+        related_name="retreat_group_extra_scopes",
+        verbose_name="지역",
+    )
+    division = models.ForeignKey(
+        "users.Division",
+        on_delete=models.PROTECT,
+        related_name="retreat_group_extra_scopes",
+        verbose_name="부서",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "수련회 조 보조 범위"
+        verbose_name_plural = "수련회 조 보조 범위"
+        ordering = ["group", "region__sort_order", "division__sort_order", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group", "region", "division"],
+                name="uniq_retreat_group_scope_group_region_division",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.group.name} · {self.region.name} {self.division.name}"
 
 
 class RetreatGroupMembership(models.Model):

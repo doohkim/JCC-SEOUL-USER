@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ group.name }} · 조 관리</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260607d" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260609d" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -35,6 +35,9 @@
           <div class="jcc-retreat-listTop">
             <div class="msg" id="retreatStatus" role="status"></div>
             <div class="jcc-retreat-listTopActions">
+              {% if can_add_group %}
+                <button type="button" class="secondary" data-group-edit-trigger data-group-id="{{ group.id }}">조 정보 수정</button>
+              {% endif %}
               {% if can_mutate or can_edit_attendee %}
                 <button type="button" class="secondary" id="btnAddAttendee">+ 조원 추가</button>
               {% else %}
@@ -255,6 +258,10 @@
           </div>
         {% endif %}
 
+        {% if can_add_group %}
+          {% include 'includes/retreat_group_edit_modal.html' %}
+        {% endif %}
+
       </div>
     </div>
 
@@ -283,6 +290,9 @@
       };
     </script>
     {% include 'includes/retreat_bottom_tabs.html' %}
+    {% if can_add_group %}
+      <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260609d" defer></script>
+    {% endif %}
     <script src="{% static 'retreat/datetime_picker.js' %}?v=20260607d" defer></script>
     <script src="{% static 'retreat/manage_group.js' %}?v=20260607d" defer></script>
   </body>

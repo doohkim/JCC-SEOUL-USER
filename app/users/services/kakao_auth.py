@@ -280,6 +280,7 @@ def create_or_update_kakao_user(
         email=email,
         first_name=first_name or fullname,
         last_name=last_name,
+        signup_source=UserModel.SignupSource.KAKAO,
     )
     profile, _ = UserProfile.objects.get_or_create(
         user=created,

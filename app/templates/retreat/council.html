@@ -7,28 +7,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 회장단 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260605zz" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260609g" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
         <header class="app-header">
-          <div class="jcc-detail-titleWrap">
-            <h1>수련회 회장단</h1>
-            <p class="subtitle">{{ event.name }} · 출석부 생성·관리 권한 보유</p>
-          </div>
+          {% include 'includes/retreat_admin_header.html' %}
         </header>
         <main>
           {% include 'includes/retreat_event_tabs.html' with retreat_tab='council' %}
+          {% include 'includes/retreat_admin_subtabs.html' with admin_subtab='council' %}
+          <div class="jcc-retreat-listTop jcc-retreat-listTop--placeholder" aria-hidden="true"></div>
 
           {% if is_retreat_council %}
-            <div class="card">
+            <div class="card jcc-retreat-adminCard">
               <h2 class="jcc-retreat-sectionTitle">회장단 추가</h2>
               <form id="councilAddForm" class="jcc-retreat-inlineForm">
-                <div class="field">
-                  <label for="newUsername">사용자 ID</label>
-                  <input type="text" id="newUsername" required placeholder="username" />
+                <div class="field jcc-retreat-userPickerField">
+                  <label for="newUsername">사용자</label>
+                  <div class="jcc-retreat-userPicker" id="councilUserPicker">
+                    <input type="text" id="newUsername" class="jcc-retreat-userPickerInput" placeholder="이름 또는 ID 검색" autocomplete="off" data-user-picker-input data-bwignore data-1p-ignore data-lpignore="true" data-form-type="other" />
+                    <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
+                    <input type="hidden" data-user-picker-id />
+                  </div>
                 </div>
                 <div class="field">
                   <label for="newRole">역할</label>
@@ -48,9 +51,9 @@
             </div>
           {% endif %}
 
-          <div class="card">
+          <div class="card jcc-retreat-adminCard">
             <h2 class="jcc-retreat-sectionTitle">명단</h2>
-            <div class="jcc-table-scroll">
+            <div class="jcc-retreat-tableWrap">
               <table class="jcc-table">
                 <thead>
                   <tr>
@@ -98,9 +101,10 @@
         eventId: {{ event.id }},
         canManage: {{ is_retreat_council|yesno:"true,false" }},
         apiList: "{% url 'api_retreat_event_council' event.id %}",
-        apiDetailBase: "/api/v1/retreat/events/{{ event.id }}/council/"
+        apiDetailBase: "/api/v1/retreat/events/{{ event.id }}/council/",
+        userSearchUrl: "{% url 'api_retreat_user_search' %}"
       };
     </script>
-    <script src="{% static 'retreat/retreat_council.js' %}?v=20260602g" defer></script>
+    <script src="{% static 'retreat/retreat_council.js' %}?v=20260609f" defer></script>
   </body>
 </html>

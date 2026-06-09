@@ -19,6 +19,7 @@ User = get_user_model()
 
 _DEFAULT_LIMIT = 10
 _MAX_LIMIT = 30
+_ALL_MAX_LIMIT = 1000
 
 
 class RetreatUserSearchView(APIView):
@@ -37,13 +38,23 @@ class RetreatUserSearchView(APIView):
         q = (request.query_params.get("q") or "").strip()
         division_id = self._as_int(request.query_params.get("division"))
         region_id = self._as_int(request.query_params.get("region"))
+        signup_source = (request.query_params.get("signup_source") or "").strip()
+        all_users = (request.query_params.get("all") or "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        max_limit = _ALL_MAX_LIMIT if all_users else _MAX_LIMIT
         try:
             limit = int(request.query_params.get("limit") or _DEFAULT_LIMIT)
         except (TypeError, ValueError):
             limit = _DEFAULT_LIMIT
-        limit = max(1, min(limit, _MAX_LIMIT))
+        limit = max(1, min(limit, max_limit))
 
         qs = User.objects.filter(is_active=True).select_related("profile")
+        valid_sources = {c[0] for c in User.SignupSource.choices}
+        if signup_source in valid_sources:
+            qs = qs.filter(signup_source=signup_source)
         if division_id:
             qs = qs.filter(division_teams__division_id=division_id)
         elif region_id:
@@ -52,8 +63,8 @@ class RetreatUserSearchView(APIView):
             qs = qs.filter(
                 Q(username__icontains=q) | Q(profile__display_name__icontains=q)
             )
-        elif not (division_id or region_id):
-            # 필터도 검색어도 없으면 빈 목록(전체 계정 노출 방지).
+        elif not (division_id or region_id or all_users):
+            # 필터도 검색어도 없고 all 플래그도 없으면 빈 목록(전체 계정 노출 방지).
             return Response([])
         qs = qs.distinct().order_by("username")[:limit]
 

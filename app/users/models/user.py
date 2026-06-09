@@ -7,6 +7,11 @@ from django.db import models
 class User(AbstractUser):
     """회원가입으로 생성. 조직 소속은 ``UserDivisionTeam`` 등으로 ``User`` 에 연결."""
 
+    class SignupSource(models.TextChoices):
+        KAKAO = "kakao", "카카오 가입"
+        SEED = "seed", "시드 계정"
+        ADMIN = "admin", "관리자 생성"
+
     role_level = models.ForeignKey(
         "RoleLevel",
         on_delete=models.SET_NULL,
@@ -31,10 +36,21 @@ class User(AbstractUser):
         default=False,
         help_text="부서 계정 직책 관리 화면 접근 권한",
     )
+    signup_source = models.CharField(
+        "가입 경로",
+        max_length=16,
+        choices=SignupSource.choices,
+        default=SignupSource.ADMIN,
+        db_index=True,
+    )
 
     class Meta:
         verbose_name = "사용자(계정)"
         verbose_name_plural = "사용자(계정)"
+
+    @property
+    def is_kakao_signup(self) -> bool:
+        return self.signup_source == self.SignupSource.KAKAO
 
     def __str__(self):
         try:

@@ -1,0 +1,7 @@
+{% comment %}관리 하위 탭 — event, admin_subtab('groups'|'sessions'|'changelog'|'council') 필요{% endcomment %}
+<nav class="jcc-page-tabs" aria-label="관리 하위 메뉴">
+  <a class="jcc-page-tab{% if admin_subtab == 'groups' %} is-active{% endif %}" href="{% url 'retreat_admin' event.id %}?tab=groups">조</a>
+  <a class="jcc-page-tab{% if admin_subtab == 'council' %} is-active{% endif %}" href="{% url 'retreat_council' event.id %}">회장단</a>
+  <a class="jcc-page-tab{% if admin_subtab == 'sessions' %} is-active{% endif %}" href="{% url 'retreat_admin' event.id %}?tab=sessions">출석부</a>
+  <a class="jcc-page-tab{% if admin_subtab == 'changelog' %} is-active{% endif %}" href="{% url 'retreat_admin' event.id %}?tab=changelog">변경 이력</a>
+</nav>

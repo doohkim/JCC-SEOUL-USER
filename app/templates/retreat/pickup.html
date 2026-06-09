@@ -1,0 +1,200 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>픽업 · {{ event.name }}</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260609k" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>픽업</h1>
+            <p class="subtitle">{{ event.name }}</p>
+          </div>
+        </header>
+        <main>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='pickup' %}
+
+          <nav class="jcc-page-tabs" aria-label="픽업 하위 메뉴">
+            <a
+              class="jcc-page-tab{% if active_pickup_tab == 'arrival' %} is-active{% endif %}"
+              href="{% url 'retreat_pickup' event.id %}?tab=arrival"
+            >입회</a>
+            <a
+              class="jcc-page-tab{% if active_pickup_tab == 'departure' %} is-active{% endif %}"
+              href="{% url 'retreat_pickup' event.id %}?tab=departure"
+            >출회</a>
+          </nav>
+
+          {% if can_manage_pickup %}
+            <div class="jcc-retreat-listTop">
+              <button type="button" class="secondary" id="btnPickupAdd">+ 추가</button>
+            </div>
+          {% else %}
+            <div class="jcc-retreat-listTop jcc-retreat-listTop--placeholder" aria-hidden="true"></div>
+          {% endif %}
+
+          <div class="card">
+            <div class="jcc-retreat-tableWrap">
+              <table class="jcc-table" id="pickupTable">
+                <thead>
+                  <tr>
+                    <th class="num">번호</th>
+                    <th>이름</th>
+                    <th>조</th>
+                    <th>지역</th>
+                    <th>부서</th>
+                    <th>{% if active_pickup_tab == 'arrival' %}열차 하차시각{% else %}열차 타는 시각{% endif %}</th>
+                    <th>탑승장소</th>
+                    <th>연락처</th>
+                    <th>신청자</th>
+                    <th>기타 참고사항</th>
+                    {% if can_manage_pickup %}<th></th>{% endif %}
+                  </tr>
+                </thead>
+                <tbody id="pickupTbody">
+                  {% for p in pickups %}
+                    <tr
+                      data-pickup-id="{{ p.id }}"
+                      data-name="{{ p.name }}"
+                      data-group="{{ p.group_id|default:'' }}"
+                      data-region="{{ p.region_id|default:'' }}"
+                      data-division="{{ p.division_id|default:'' }}"
+                      data-train-time="{{ p.train_time|date:'Y-m-d\TH:i' }}"
+                      data-boarding-place="{{ p.boarding_place }}"
+                      data-contact="{{ p.contact }}"
+                      data-note="{{ p.note }}"
+                    >
+                      <td class="num">{{ p.number }}</td>
+                      <td>
+                        {% if can_manage_pickup %}
+                          <button type="button" class="jcc-retreat-pickupNameBtn" data-pickup-edit>{{ p.name }}</button>
+                        {% else %}{{ p.name }}{% endif %}
+                      </td>
+                      <td>{{ p.group.name|default:"-" }}</td>
+                      <td>{{ p.region.name|default:"-" }}</td>
+                      <td>{{ p.division.name|default:"-" }}</td>
+                      <td>{{ p.train_time|date:'Y-m-d H:i' }}</td>
+                      <td>{{ p.boarding_place }}</td>
+                      <td>{{ p.contact }}</td>
+                      <td>{{ p.applicant_name|default:"-" }}</td>
+                      <td>{{ p.note|default:"-" }}</td>
+                      {% if can_manage_pickup %}
+                        <td>
+                          <button type="button" class="secondary jcc-retreat-pickupDelete" data-pickup-delete>제거</button>
+                        </td>
+                      {% endif %}
+                    </tr>
+                  {% empty %}
+                    <tr id="pickupEmptyRow">
+                      <td colspan="{% if can_manage_pickup %}11{% else %}10{% endif %}">등록된 픽업 정보가 없습니다.</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="pickupStatus" class="msg" role="status"></div>
+        </main>
+      </div>
+    </div>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+
+    {% if can_manage_pickup %}
+      <div class="jcc-retreat-modalOverlay" id="pickupModalOverlay" hidden aria-hidden="true">
+        <div class="jcc-retreat-modal card" role="dialog" aria-modal="true" aria-labelledby="pickupModalTitle">
+          <h2 id="pickupModalTitle" class="jcc-retreat-modalTitle">픽업 정보 추가</h2>
+          <form id="pickupForm" novalidate>
+            <div class="jcc-retreat-modalGrid">
+              <div class="field">
+                <label for="pickupName">이름 *</label>
+                <input type="text" id="pickupName" name="name" required maxlength="60" autocomplete="off" />
+              </div>
+              {% if can_select_pickup_group %}
+              <div class="field">
+                <label for="pickupGroup">조</label>
+                <select id="pickupGroup" name="group" autocomplete="off">
+                  <option value="">선택</option>
+                  {% for g in group_choices %}
+                    <option value="{{ g.id }}">{{ g.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              {% endif %}
+              {% if can_select_pickup_group %}
+              <div class="field">
+                <label for="pickupRegion">지역</label>
+                <select id="pickupRegion" name="region" autocomplete="off">
+                  <option value="">선택</option>
+                  {% for r in region_choices %}
+                    <option value="{{ r.id }}">{{ r.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="pickupDivision">부서</label>
+                <select id="pickupDivision" name="division" autocomplete="off">
+                  <option value="">선택</option>
+                </select>
+              </div>
+              {% endif %}
+              <div class="field">
+                <label for="pickupTrainTime">{% if active_pickup_tab == 'arrival' %}열차 하차시각{% else %}열차 타는 시각{% endif %} *</label>
+                <input type="datetime-local" id="pickupTrainTime" name="train_time" required autocomplete="off" data-dtp aria-label="{% if active_pickup_tab == 'arrival' %}열차 하차시각{% else %}열차 타는 시각{% endif %}" />
+              </div>
+              <div class="field jcc-retreat-modalField--full">
+                <label for="pickupBoardingPlace">탑승장소 *</label>
+                <input type="text" id="pickupBoardingPlace" name="boarding_place" required maxlength="120" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="pickupContact">연락처 *</label>
+                <input type="tel" id="pickupContact" name="contact" required maxlength="30" autocomplete="off" inputmode="numeric" placeholder="010-1234-5678" pattern="01[016789][0-9-]{7,12}" />
+              </div>
+              <div class="field jcc-retreat-modalField--full">
+                <label for="pickupNote">기타 참고사항</label>
+                <input type="text" id="pickupNote" name="note" maxlength="200" autocomplete="off" />
+              </div>
+            </div>
+            <div class="jcc-retreat-modalFooter">
+              <button type="button" class="secondary" id="pickupModalCancel">취소</button>
+              <button type="submit" id="pickupModalSubmit">등록</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="jcc-retreat-modalOverlay jcc-retreat-confirmOverlay" id="retreatConfirmOverlay" hidden aria-hidden="true">
+        <div class="jcc-retreat-modal jcc-retreat-confirmModal card" role="alertdialog" aria-modal="true" aria-labelledby="retreatConfirmTitle" aria-describedby="retreatConfirmMsg">
+          <h2 id="retreatConfirmTitle" class="jcc-retreat-modalTitle">확인</h2>
+          <p id="retreatConfirmMsg" class="jcc-retreat-confirmMsg"></p>
+          <div class="jcc-retreat-modalFooter">
+            <button type="button" class="secondary" id="retreatConfirmCancel">취소</button>
+            <button type="button" id="retreatConfirmOk">확인</button>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    <script id="retreatDivisionList" type="application/json">[{% for d in division_choices %}{"id":{{ d.id }},"name":"{{ d.name|escapejs }}","region_id":{% if d.region_id %}{{ d.region_id }}{% else %}null{% endif %}}{% if not forloop.last %},{% endif %}{% endfor %}]</script>
+    <script>
+      window.RETREAT_PICKUP_CTX = {
+        eventId: {{ event.id }},
+        direction: "{{ active_pickup_tab }}",
+        canManage: {{ can_manage_pickup|yesno:"true,false" }},
+        apiList: "{% url 'api_retreat_event_pickups' event.id %}",
+        apiDetailBase: "/api/v1/retreat/pickups/",
+        csrfToken: "{{ csrf_token }}"
+      };
+    </script>
+    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260609k" defer></script>
+    <script src="{% static 'retreat/pickup.js' %}?v=20260609k" defer></script>
+  </body>
+</html>

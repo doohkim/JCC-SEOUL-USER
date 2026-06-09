@@ -6,10 +6,10 @@
 
 from __future__ import annotations
 
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from rest_framework.exceptions import ValidationError
 
-from retreat.models import LodgingRoom, RetreatAttendee, RetreatEvent
+from retreat.models import LodgingRoom, RetreatAttendee, RetreatEvent, RetreatGroup
 
 
 def assert_room_can_accept(room: LodgingRoom, attendee: RetreatAttendee) -> None:
@@ -38,20 +38,12 @@ def assert_room_can_accept(room: LodgingRoom, attendee: RetreatAttendee) -> None
             }
         )
 
-    if room.region_id != attendee.group.region_id:
+    room_pair = (room.region_id, room.division_id)
+    if room_pair not in attendee.group.scope_pairs():
         raise ValidationError(
             {
                 "lodging_room": (
-                    "이 호실은 조원의 지역과 다른 지역으로 지정되어 있습니다."
-                )
-            }
-        )
-
-    if room.division_id != attendee.group.division_id:
-        raise ValidationError(
-            {
-                "lodging_room": (
-                    "이 호실은 조원의 부서와 다른 부서로 지정되어 있습니다."
+                    "이 호실은 조원이 속한 조의 지역·부서 범위에 포함되지 않습니다."
                 )
             }
         )
@@ -86,6 +78,20 @@ def _base_rooms_qs(event: RetreatEvent) -> QuerySet[LodgingRoom]:
         "lodging__region",
         "region",
         "division",
+    )
+
+
+def rooms_for_group(group: RetreatGroup) -> QuerySet[LodgingRoom]:
+    """조의 대표·보조 (지역, 부서) 범위에 해당하는 호실 queryset."""
+
+    pairs = group.scope_pairs()
+    if not pairs:
+        return LodgingRoom.objects.none()
+    scope_q = Q()
+    for region_id, division_id in pairs:
+        scope_q |= Q(region_id=region_id, division_id=division_id)
+    return _base_rooms_qs(group.event).filter(scope_q).order_by(
+        "lodging__sort_order", "lodging__name", "sort_order", "number", "id"
     )
 
 

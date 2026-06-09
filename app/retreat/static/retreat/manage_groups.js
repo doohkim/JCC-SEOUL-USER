@@ -1,5 +1,5 @@
 /**
- * 조 관리 목록 — 여러 조 일괄 추가 모달
+ * 조 관리 목록 — 조 추가 모달
  */
 (function () {
   "use strict";
@@ -7,30 +7,21 @@
   const ctx = window.RETREAT_GROUPS_CTX;
   if (!ctx) return;
 
-  const overlay = document.getElementById("groupModalOverlay");
-  const form = document.getElementById("groupForm");
-  const btnAdd = document.getElementById("btnAddGroup");
-  const btnAddRow = document.getElementById("btnAddGroupRow");
-  const btnCancel = document.getElementById("groupModalCancel");
-  const eventInput = document.getElementById("groupEventInput");
-  const rowsList = document.getElementById("groupRowsList");
-  const rowTemplate = document.getElementById("groupRowTemplate");
+  const modal = window.RetreatGroupModal;
+  if (!modal) return;
+
+  const {
+    fillDivisionSelect,
+    appendExtraScopeRow,
+    collectExtraScopesFromList,
+    createUserPicker,
+    escapeHtml,
+  } = modal;
+
   const statusEl = document.getElementById("retreatStatus");
-  const modalStatusEl = document.getElementById("groupModalStatus");
 
-  let allDivisions = [];
-  try {
-    const raw = document.getElementById("retreatDivisionList")?.textContent || "[]";
-    allDivisions = JSON.parse(raw);
-  } catch (e) {
-    allDivisions = [];
-  }
-
-  /** @type {Array<{el: HTMLElement, leaders: Array, picker: object|null}>} */
-  const rowStates = [];
-
-  function showStatus(msg, isError) {
-    const inModal = overlay && !overlay.hidden && modalStatusEl;
+  function showStatus(msg, isError, modalStatusEl) {
+    const inModal = modalStatusEl && modalStatusEl.offsetParent !== null;
     if (inModal) {
       if (statusEl) statusEl.textContent = "";
       modalStatusEl.textContent = msg || "";
@@ -43,33 +34,26 @@
     statusEl.style.color = isError ? "var(--err, #fda4af)" : "";
   }
 
-  function escapeHtml(s) {
-    return String(s == null ? "" : s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
+  const overlay = document.getElementById("groupModalOverlay");
+  const form = document.getElementById("groupForm");
+  const btnAdd = document.getElementById("btnAddGroup");
+  const btnAddRow = document.getElementById("btnAddGroupRow");
+  const btnCancel = document.getElementById("groupModalCancel");
+  const eventInput = document.getElementById("groupEventInput");
+  const rowsList = document.getElementById("groupRowsList");
+  const rowTemplate = document.getElementById("groupRowTemplate");
+  const modalStatusEl = document.getElementById("groupModalStatus");
+  const rowStates = [];
 
   function refreshRowDivisions(rowEl, selectedId) {
     const regionInput = rowEl.querySelector("[data-row-region]");
     const divisionInput = rowEl.querySelector("[data-row-division]");
-    if (!divisionInput) return;
-    const rid = regionInput?.value || "";
-    divisionInput.innerHTML = '<option value="">선택</option>';
-    if (!rid) return;
-    const regionId = Number(rid);
-    allDivisions
-      .filter((d) => d.region_id === regionId)
-      .forEach((d) => {
-        const opt = document.createElement("option");
-        opt.value = String(d.id);
-        opt.textContent = d.name;
-        if (selectedId != null && String(d.id) === String(selectedId)) {
-          opt.selected = true;
-        }
-        divisionInput.appendChild(opt);
-      });
+    fillDivisionSelect(divisionInput, regionInput?.value || "", selectedId);
+  }
+
+  function addExtraScopeToRow(rowEl) {
+    const list = rowEl.querySelector("[data-extra-scopes-list]");
+    appendExtraScopeRow(list);
   }
 
   function renderRowLeaders(state) {
@@ -102,17 +86,15 @@
     const regionInput = rowEl.querySelector("[data-row-region]");
     const divisionInput = rowEl.querySelector("[data-row-division]");
     const btnRemove = rowEl.querySelector("[data-remove-row]");
+    const btnAddScope = rowEl.querySelector("[data-add-extra-scope]");
     const btnAddLeader = rowEl.querySelector("[data-add-row-leader]");
     const leaderRoleInput = rowEl.querySelector("[data-row-leader-role]");
     const leadersList = rowEl.querySelector("[data-row-leaders-list]");
 
-    state.picker = createUserPicker(
-      rowEl.querySelector("[data-user-picker]"),
-      () => ({
-        division: divisionInput?.value || "",
-        region: regionInput?.value || "",
-      })
-    );
+    state.picker = createUserPicker(rowEl.querySelector("[data-user-picker]"), () => ({
+      division: divisionInput?.value || "",
+      region: regionInput?.value || "",
+    }));
 
     if (regionInput) {
       regionInput.addEventListener("change", () => {
@@ -125,29 +107,32 @@
         if (state.picker) state.picker.clear();
       });
     }
+    if (btnAddScope) {
+      btnAddScope.addEventListener("click", () => addExtraScopeToRow(rowEl));
+    }
     if (btnRemove) {
       btnRemove.addEventListener("click", () => {
         if (rowStates.length <= 1) {
-          showStatus("최소 1개 행은 유지해야 합니다.", true);
+          showStatus("최소 1개 행은 유지해야 합니다.", true, modalStatusEl);
           return;
         }
         const idx = rowStates.indexOf(state);
         if (idx >= 0) rowStates.splice(idx, 1);
         rowEl.remove();
         updateRowLabels();
-        showStatus("");
+        showStatus("", false, modalStatusEl);
       });
     }
     if (btnAddLeader) {
       btnAddLeader.addEventListener("click", () => {
         const selected = state.picker && state.picker.getSelected();
         if (!selected || !selected.id) {
-          showStatus("운영진으로 등록할 사용자를 검색에서 선택하세요.", true);
+          showStatus("운영진으로 등록할 사용자를 검색에서 선택하세요.", true, modalStatusEl);
           return;
         }
         const role = leaderRoleInput?.value || "leader";
         if (state.leaders.some((e) => e.user_id === selected.id)) {
-          showStatus("이미 목록에 있는 사용자입니다.", true);
+          showStatus("이미 목록에 있는 사용자입니다.", true, modalStatusEl);
           return;
         }
         state.leaders.push({
@@ -157,7 +142,7 @@
         });
         renderRowLeaders(state);
         if (state.picker) state.picker.clear();
-        showStatus("");
+        showStatus("", false, modalStatusEl);
       });
     }
     if (leadersList) {
@@ -169,7 +154,6 @@
         renderRowLeaders(state);
       });
     }
-
     renderRowLeaders(state);
   }
 
@@ -192,7 +176,7 @@
     addRow();
   }
 
-  function openModal() {
+  function openCreateModal() {
     if (!overlay) return;
     if (modalStatusEl) {
       modalStatusEl.textContent = "";
@@ -208,7 +192,7 @@
     });
   }
 
-  function closeModal() {
+  function closeCreateModal() {
     if (!overlay) return;
     overlay.hidden = true;
     overlay.setAttribute("aria-hidden", "true");
@@ -225,13 +209,19 @@
       const order = Number(rowEl.querySelector("[data-row-order]")?.value || 0) || 0;
       if (!name && !region && !division) continue;
       if (!name || !region || !division) {
-        return { error: `${i + 1}번째 행: 지역·부서·조 이름을 모두 입력하세요.` };
+        return { error: `${i + 1}번째 조: 대표 지역·부서·조 이름을 모두 입력하세요.` };
       }
+      const extra = collectExtraScopesFromList(
+        rowEl.querySelector("[data-extra-scopes-list]"),
+        `${i + 1}번째 조`
+      );
+      if (extra.error) return { error: extra.error };
       groups.push({
         region: Number(region),
         division: Number(division),
         name,
         order,
+        scopes: extra.scopes || [],
         leaders: state.leaders.map((e) => ({ user_id: e.user_id, role: e.role })),
       });
     }
@@ -241,12 +231,12 @@
     return { groups };
   }
 
-  async function onSubmit(e) {
+  async function onCreateSubmit(e) {
     e.preventDefault();
     const eventId = eventInput?.value;
     const collected = collectGroupsPayload();
     if (collected.error) {
-      showStatus(collected.error, true);
+      showStatus(collected.error, true, modalStatusEl);
       return;
     }
     const url = ctx.urls.eventGroupsTemplate.replace("__eid__", String(eventId));
@@ -264,147 +254,33 @@
         let detail = "저장 실패";
         try {
           const j = await r.json();
-          if (j.detail) {
-            detail = j.detail;
-          } else if (j && typeof j === "object") {
+          if (j.detail) detail = j.detail;
+          else if (j && typeof j === "object") {
             const first = Object.values(j)[0];
             detail = Array.isArray(first) ? first[0] : first || JSON.stringify(j);
           }
         } catch (err) {}
         throw new Error(detail);
       }
-      showStatus(`${collected.groups.length}개 조가 추가되었습니다.`);
+      showStatus(`${collected.groups.length}개 조가 추가되었습니다.`, false, null);
       window.location.reload();
     } catch (err) {
-      showStatus(err.message || "저장 실패", true);
+      showStatus(err.message || "저장 실패", true, modalStatusEl);
     }
   }
 
-  if (btnAdd) btnAdd.addEventListener("click", openModal);
+  if (btnAdd) btnAdd.addEventListener("click", openCreateModal);
   if (btnAddRow) btnAddRow.addEventListener("click", () => addRow());
-  if (btnCancel) btnCancel.addEventListener("click", closeModal);
+  if (btnCancel) btnCancel.addEventListener("click", closeCreateModal);
   if (overlay) {
     overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) closeModal();
+      if (e.target === overlay) closeCreateModal();
     });
   }
-  if (form) form.addEventListener("submit", onSubmit);
+  if (form) form.addEventListener("submit", onCreateSubmit);
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && overlay && !overlay.hidden) closeModal();
+    if (e.key !== "Escape") return;
+    if (overlay && !overlay.hidden) closeCreateModal();
   });
-
-  function createUserPicker(root, getFilters) {
-    if (!root) return null;
-    const input = root.querySelector("[data-user-picker-input]");
-    const list = root.querySelector("[data-user-picker-list]");
-    const hidden = root.querySelector("[data-user-picker-id]");
-    if (!input || !list || !hidden) return null;
-    const filters = typeof getFilters === "function" ? getFilters : () => ({});
-
-    let selected = null;
-    let items = [];
-    let activeIdx = -1;
-    let timer = null;
-    let lastQuery = "";
-
-    function clear() {
-      selected = null;
-      hidden.value = "";
-      input.value = "";
-      closeList();
-    }
-
-    function closeList() {
-      list.hidden = true;
-      list.innerHTML = "";
-      activeIdx = -1;
-    }
-
-    function renderList() {
-      if (!items.length) {
-        list.innerHTML =
-          '<li class="muted" role="option" aria-disabled="true">결과 없음</li>';
-        list.hidden = false;
-        return;
-      }
-      list.innerHTML = items
-        .map((u, i) => {
-          const shown = u.name || u.display_name || u.username;
-          return `<li role="option" data-idx="${i}" class="${
-            i === activeIdx ? "is-active" : ""
-          }">${escapeHtml(shown)}</li>`;
-        })
-        .join("");
-      list.hidden = false;
-    }
-
-    async function search(q) {
-      const { division, region } = filters() || {};
-      if (!q && !division && !region) {
-        closeList();
-        return;
-      }
-      lastQuery = q;
-      try {
-        const params = new URLSearchParams();
-        if (q) params.set("q", q);
-        if (division) params.set("division", division);
-        else if (region) params.set("region", region);
-        params.set("limit", "30");
-        const url = `${ctx.urls.userSearchUrl}?${params.toString()}`;
-        const r = await fetch(url, { credentials: "same-origin" });
-        if (!r.ok) throw new Error(await r.text());
-        if (q !== lastQuery) return;
-        items = await r.json();
-        activeIdx = items.length ? 0 : -1;
-        renderList();
-      } catch (err) {
-        console.error(err);
-      }
-    }
-
-    function pick(idx) {
-      const u = items[idx];
-      if (!u) return;
-      selected = u;
-      hidden.value = String(u.id);
-      input.value = u.name || u.display_name || u.username;
-      closeList();
-    }
-
-    function hasFilter() {
-      const { division, region } = filters() || {};
-      return Boolean(division || region);
-    }
-
-    input.addEventListener("input", () => {
-      selected = null;
-      hidden.value = "";
-      const q = input.value.trim();
-      clearTimeout(timer);
-      if (!q && !hasFilter()) {
-        closeList();
-        return;
-      }
-      timer = setTimeout(() => search(q), 180);
-    });
-
-    input.addEventListener("focus", () => {
-      if (!input.value.trim() && hasFilter()) search("");
-    });
-
-    list.addEventListener("mousedown", (e) => {
-      const li = e.target.closest("li[data-idx]");
-      if (!li) return;
-      e.preventDefault();
-      pick(Number(li.dataset.idx));
-    });
-
-    document.addEventListener("click", (e) => {
-      if (!root.contains(e.target)) closeList();
-    });
-
-    return { clear, getSelected: () => selected };
-  }
 })();

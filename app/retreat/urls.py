@@ -12,6 +12,7 @@ from retreat.apis import (
     RetreatEventDashboardView,
     RetreatEventGroupBoardView,
     RetreatEventGroupListView,
+    RetreatGroupDetailView as RetreatGroupDetailApiView,
     RetreatEventListView,
     RetreatEventLodgingsView,
     RetreatEventResultsAnalyticsView,
@@ -28,6 +29,8 @@ from retreat.apis import (
     RetreatSessionReopenView,
     RetreatSessionGroupSnapshotAttendeesView,
     RetreatSnapshotAttendeeDetailView,
+    RetreatEventPickupListCreateView,
+    RetreatPickupDetailView,
     RetreatUserSearchView,
 )
 from retreat.views import (
@@ -41,6 +44,7 @@ from retreat.views import (
     RetreatHomeView,
     RetreatLodgingAssignView,
     RetreatLodgingView,
+    RetreatPickupView,
     RetreatResultsView,
     RetreatRosterCheckView,
     RetreatRostersView,
@@ -104,6 +108,11 @@ urlpatterns = [
         name="retreat_admin",
     ),
     path(
+        "retreat/<int:event_id>/pickup/",
+        RetreatPickupView.as_view(),
+        name="retreat_pickup",
+    ),
+    path(
         "retreat/<int:event_id>/council/",
         RetreatCouncilView.as_view(),
         name="retreat_council",
@@ -164,6 +173,11 @@ urlpatterns = [
         name="api_retreat_event_changelog",
     ),
     path(
+        "api/v1/retreat/groups/<int:group_id>/",
+        RetreatGroupDetailApiView.as_view(),
+        name="api_retreat_group_detail",
+    ),
+    path(
         "api/v1/retreat/groups/<int:group_id>/attendees/",
         RetreatGroupAttendeesView.as_view(),
         name="api_retreat_group_attendees",
@@ -217,6 +231,16 @@ urlpatterns = [
         "api/v1/retreat/users/search/",
         RetreatUserSearchView.as_view(),
         name="api_retreat_user_search",
+    ),
+    path(
+        "api/v1/retreat/pickups/<int:pickup_id>/",
+        RetreatPickupDetailView.as_view(),
+        name="api_retreat_pickup_detail",
+    ),
+    path(
+        "api/v1/retreat/events/<int:event_id>/pickups/",
+        RetreatEventPickupListCreateView.as_view(),
+        name="api_retreat_event_pickups",
     ),
     path(
         "api/v1/retreat/events/<int:event_id>/lodgings/",

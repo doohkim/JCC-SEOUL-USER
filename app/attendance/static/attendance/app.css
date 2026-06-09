@@ -318,12 +318,12 @@ header.app-header a:hover {
   color: #fbbf24;
 }
 
-.jcc-theme-toggle .jcc-theme-icon--sun-dark {
-  color: #1e293b;
+.jcc-theme-toggle .jcc-theme-icon--moon {
+  color: #475569;
 }
 
-html[data-theme="light"] .jcc-theme-toggle .jcc-theme-icon--sun-dark {
-  color: #334155;
+html[data-theme="light"] .jcc-theme-toggle .jcc-theme-icon--moon {
+  color: #475569;
 }
 
 .jcc-leftNav-user {

@@ -275,7 +275,7 @@ def build_group_attendance_board(
     groups = list(
         RetreatGroup.objects.filter(event=event)
         .select_related("region", "division")
-        .order_by("region__sort_order", "division__sort_order", "order", "id")
+        .order_by("order", "id")
     )
     group_ids = [g.id for g in groups]
 

@@ -17,10 +17,11 @@
     btn.setAttribute("aria-label", isDark ? "밝은 모드로 전환" : "어두운 모드로 전환");
     btn.title = isDark ? "밝은 모드" : "어두운 모드";
 
+    // 다크 모드 → 태양(밝게 전환), 라이트 모드 → 초승달(어둡게 전환)
     var sun = btn.querySelector(".jcc-theme-icon--sun");
-    var sunDark = btn.querySelector(".jcc-theme-icon--sun-dark");
+    var moon = btn.querySelector(".jcc-theme-icon--moon");
     if (sun) sun.hidden = !isDark;
-    if (sunDark) sunDark.hidden = isDark;
+    if (moon) moon.hidden = isDark;
   }
 
   document.addEventListener("DOMContentLoaded", function () {

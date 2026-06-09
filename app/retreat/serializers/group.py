@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from retreat.models import RetreatGroup, RetreatGroupMembership
+from retreat.models import RetreatGroup, RetreatGroupMembership, RetreatGroupScope
 
 
 class RetreatGroupMembershipSerializer(serializers.ModelSerializer):
@@ -34,6 +34,15 @@ class RetreatGroupMembershipSerializer(serializers.ModelSerializer):
         return self._display_name(obj) or obj.user.username
 
 
+class RetreatGroupScopeSerializer(serializers.ModelSerializer):
+    region_name = serializers.CharField(source="region.name", read_only=True)
+    division_name = serializers.CharField(source="division.name", read_only=True)
+
+    class Meta:
+        model = RetreatGroupScope
+        fields = ["id", "region", "region_name", "division", "division_name"]
+
+
 class RetreatGroupSerializer(serializers.ModelSerializer):
     region_code = serializers.CharField(source="region.code", read_only=True)
     region_name = serializers.CharField(source="region.name", read_only=True)
@@ -41,6 +50,7 @@ class RetreatGroupSerializer(serializers.ModelSerializer):
     division_name = serializers.CharField(source="division.name", read_only=True)
     attendee_count = serializers.IntegerField(read_only=True, default=0)
     memberships = RetreatGroupMembershipSerializer(many=True, read_only=True)
+    extra_scopes = RetreatGroupScopeSerializer(many=True, read_only=True)
 
     class Meta:
         model = RetreatGroup
@@ -57,4 +67,5 @@ class RetreatGroupSerializer(serializers.ModelSerializer):
             "order",
             "attendee_count",
             "memberships",
+            "extra_scopes",
         ]

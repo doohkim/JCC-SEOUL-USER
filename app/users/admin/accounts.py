@@ -105,6 +105,7 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
     list_display = [
         "real_name",
         "phone_number",
+        "signup_source",
         "role_level",
         "can_manage_accounts",
         "can_manage_attendance",
@@ -114,6 +115,7 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
         "is_active",
     ]
     list_filter = [
+        "signup_source",
         "is_staff",
         "is_active",
         "role_level",
@@ -137,32 +139,25 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
         UserFunctionalDeptRoleInline,
     ]
     actions = ["approve_onboarding", "reject_onboarding"]
-    fieldsets = BaseUserAdmin.fieldsets + (
-        (
-            "조직/권한",
-            {
-                "fields": (
-                    "role_level",
-                    "can_manage_accounts",
-                    "can_manage_attendance",
-                    "can_manage_parking",
-                )
-            },
-        ),
+    _org_permissions_fieldset = (
+        "조직/권한",
+        {
+            "fields": (
+                "signup_source",
+                "role_level",
+                "can_manage_accounts",
+                "can_manage_attendance",
+                "can_manage_parking",
+            )
+        },
     )
-    add_fieldsets = BaseUserAdmin.add_fieldsets + (
-        (
-            "조직/권한",
-            {
-                "fields": (
-                    "role_level",
-                    "can_manage_accounts",
-                    "can_manage_attendance",
-                    "can_manage_parking",
-                )
-            },
-        ),
+    fieldsets = (
+        BaseUserAdmin.fieldsets[0],
+        BaseUserAdmin.fieldsets[1],
+        _org_permissions_fieldset,
+        *BaseUserAdmin.fieldsets[2:],
     )
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (_org_permissions_fieldset,)
 
     def autocomplete_view(self, request):
         return UserAutocompleteJsonView.as_view(admin_site=self.admin_site)(request)

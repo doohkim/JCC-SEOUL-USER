@@ -45,7 +45,11 @@ class SettingsBackend:
 
         user, created = User.objects.get_or_create(
             username=username,
-            defaults={**defaults, "password": stored_password},
+            defaults={
+                **defaults,
+                "password": stored_password,
+                "signup_source": User.SignupSource.SEED,
+            },
         )
 
         # 기존 계정이면 권한/비밀번호 해시를 설정값과 동기화한다.

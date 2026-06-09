@@ -1,0 +1,113 @@
+{# 조 수정 팝업 + 생성/수정 공용 extra scope 템플릿·부서 JSON·edit CTX #}
+<div class="jcc-retreat-modalOverlay" id="groupEditModalOverlay" hidden aria-hidden="true">
+  <div class="jcc-retreat-modal card jcc-retreat-modal--wide" role="dialog" aria-modal="true" aria-labelledby="groupEditModalTitle">
+    <h2 id="groupEditModalTitle" class="jcc-retreat-modalTitle">조 정보 수정</h2>
+    <form id="groupEditForm">
+      <div class="jcc-retreat-modalGrid">
+        <div class="field">
+          <label for="groupEditName">조 이름 *</label>
+          <input type="text" id="groupEditName" required maxlength="50" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="groupEditOrder">정렬 순서</label>
+          <input type="number" id="groupEditOrder" min="0" value="0">
+        </div>
+      </div>
+      <section class="jcc-retreat-groupScopeSection">
+        <h3 class="jcc-retreat-groupScopeTitle">대표 지역·부서 *</h3>
+        <div class="jcc-retreat-modalGrid">
+          <div class="field">
+            <label for="groupEditRegion">지역</label>
+            <select id="groupEditRegion" required>
+              <option value="">선택</option>
+              {% for r in region_choices %}
+                <option value="{{ r.id }}">{{ r.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="groupEditDivision">부서</label>
+            <select id="groupEditDivision" required>
+              <option value="">선택</option>
+            </select>
+          </div>
+        </div>
+      </section>
+      <section class="jcc-retreat-groupScopeSection">
+        <div class="jcc-retreat-groupScopeHead">
+          <h3 class="jcc-retreat-groupScopeTitle">추가 지역·부서 <span class="muted">(선택)</span></h3>
+          <button type="button" class="secondary jcc-retreat-scopeAddBtn" id="btnEditAddScope">+ 지역·부서</button>
+        </div>
+        <div id="groupEditExtraScopes" class="jcc-retreat-extraScopesList"></div>
+      </section>
+      <section class="jcc-retreat-leadersDraft jcc-retreat-leadersDraft--compact" id="groupEditLeadersSection">
+        <h3 class="jcc-retreat-leadersDraftTitle">조 운영진</h3>
+        <div id="groupEditLeadersList" class="jcc-retreat-leadersDraftList"></div>
+        <div class="jcc-retreat-leadersDraftAdd" id="groupEditLeadersAdd">
+          <div class="field jcc-retreat-userPickerField">
+            <label for="groupEditLeaderInput">사용자</label>
+            <div class="jcc-retreat-userPicker" id="groupEditUserPicker">
+              <input type="text" id="groupEditLeaderInput" class="jcc-retreat-userPickerInput" placeholder="이름 검색" maxlength="150" autocomplete="off" data-user-picker-input data-bwignore data-1p-ignore data-lpignore="true" data-form-type="other">
+              <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
+              <input type="hidden" data-user-picker-id>
+            </div>
+          </div>
+          <div class="field">
+            <label for="groupEditLeaderRole">역할</label>
+            <select id="groupEditLeaderRole">
+              {% for code, label in group_role_choices %}
+                <option value="{{ code }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="button" class="secondary jcc-retreat-leaderAddBtn" id="btnEditAddLeader">목록에 추가</button>
+        </div>
+      </section>
+      <div class="msg" id="groupEditModalStatus" role="alert" style="display:none; margin-top:0.75rem;"></div>
+      <div class="jcc-retreat-modalFooter jcc-retreat-modalFooter--golden">
+        <button type="button" class="secondary jcc-retreat-btnCancel" id="groupEditModalCancel">닫기</button>
+        <button type="submit" class="jcc-retreat-btnPrimary" id="groupEditModalSubmit">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<template id="extraScopeRowTemplate">
+  <div class="jcc-retreat-extraScopeRow" data-extra-scope-row>
+    <div class="jcc-retreat-modalGrid jcc-retreat-extraScopeGrid">
+      <div class="field">
+        <label>지역</label>
+        <select data-extra-region>
+          <option value="">선택</option>
+          {% for r in region_choices %}
+            <option value="{{ r.id }}">{{ r.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>부서</label>
+        <select data-extra-division>
+          <option value="">선택</option>
+        </select>
+      </div>
+    </div>
+    <button type="button" class="jcc-retreat-rowDel" data-remove-extra-scope>제거</button>
+  </div>
+</template>
+
+<script id="retreatDivisionList" type="application/json">[{% for d in division_choices %}{"id":{{ d.id }},"name":"{{ d.name|escapejs }}","region_id":{% if d.region_id %}{{ d.region_id }}{% else %}null{% endif %}}{% if not forloop.last %},{% endif %}{% endfor %}]</script>
+<script>
+  window.RETREAT_GROUP_EDIT_CTX = {
+    canAddGroup: {{ can_add_group|yesno:"true,false" }},
+    csrfToken: "{{ csrf_token }}",
+    roleLabels: {
+      {% for code, label in group_role_choices %}"{{ code }}": "{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}
+    },
+    urls: {
+      groupDetailTemplate: "/api/v1/retreat/groups/__gid__/",
+      membershipsTemplate: "/api/v1/retreat/groups/__gid__/memberships/",
+      membershipDetailTemplate: "/api/v1/retreat/group-memberships/__mid__/",
+      userSearchUrl: "{% url 'api_retreat_user_search' %}",
+    },
+  };
+</script>
