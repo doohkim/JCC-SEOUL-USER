@@ -108,11 +108,32 @@ class RetreatPageAccessTests(_PageFixture):
         r = self.client.get(reverse("retreat_home"))
         self.assertEqual(r.status_code, 403)
 
-    def test_home_redirects_to_dashboard_when_single_event(self):
+    def test_home_redirects_to_dashboard_when_accessible_event(self):
         self.client.force_login(self.leader)
         r = self.client.get(reverse("retreat_home"))
         self.assertEqual(r.status_code, 302)
-        self.assertIn("/dashboard/", r.url)
+        self.assertIn(f"/retreat/{self.event.id}/dashboard/", r.url)
+
+    def test_home_redirects_to_most_recently_created_event(self):
+        older = self.event
+        newer = RetreatEvent.objects.create(
+            name="2026 여름 수련회",
+            start_date=date(2026, 7, 1),
+            end_date=date(2026, 7, 3),
+        )
+        newer_group = RetreatGroup.objects.create(
+            event=newer,
+            region=self.seoul,
+            division=self.div_youth,
+            name="2조",
+        )
+        RetreatGroupMembership.objects.create(user=self.leader, group=newer_group)
+
+        self.client.force_login(self.leader)
+        r = self.client.get(reverse("retreat_home"))
+        self.assertEqual(r.status_code, 302)
+        self.assertIn(f"/retreat/{newer.id}/dashboard/", r.url)
+        self.assertNotIn(f"/retreat/{older.id}/dashboard/", r.url)
 
     def test_dashboard_ok_for_leader(self):
         self.client.force_login(self.leader)

@@ -556,6 +556,87 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   color: var(--muted);
 }
 
+/* 조 목록 지역·부서 필터 (Notion식 다중선택 칩) */
+.jcc-retreat-filterBar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.jcc-retreat-filterBar[hidden] {
+  display: none;
+}
+.jcc-retreat-filterRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+.jcc-retreat-filterRow[hidden] {
+  display: none;
+}
+.jcc-retreat-filterLabel {
+  flex: 0 0 auto;
+  min-width: 2.4rem;
+  padding-top: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.jcc-retreat-filterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.jcc-retreat-filterChip {
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease;
+}
+.jcc-retreat-filterChip:hover {
+  border-color: var(--accent);
+}
+.jcc-retreat-filterChip.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.jcc-retreat-filterReset {
+  align-self: flex-start;
+  padding: 0.25rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.jcc-retreat-filterReset[hidden] {
+  display: none;
+}
+.jcc-retreat-filterReset:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.jcc-retreat-filterEmpty[hidden] {
+  display: none;
+}
+.jcc-retreat-groupCardWrap[hidden] {
+  display: none;
+}
+
 /* 세션 탭 */
 .jcc-retreat-sessionBar {
   display: flex;
@@ -1619,8 +1700,43 @@ dialog.jcc-retreat-modal::backdrop {
     margin: 0.5rem;
   }
 }
+/* 본문만 스크롤하고 푸터(취소·저장)는 분리해 항상 바닥에 고정.
+   푸터는 스크롤 영역 밖이라 뒤로 내용이 비치지 않는다. */
 .jcc-retreat-modal--wide {
   max-width: 520px;
+  max-height: 90vh;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.jcc-retreat-modal--wide .jcc-retreat-modalTitle {
+  flex: 0 0 auto;
+  padding: 1rem 1.1rem 0;
+  margin-bottom: 0.85rem;
+}
+.jcc-retreat-modal--wide > form {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.jcc-retreat-modalBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 1.1rem;
+  /* 바닥 여유: 마지막 버튼(+ 조 추가(행))이 푸터에 가리지 않게 */
+  padding-bottom: 1rem;
+}
+.jcc-retreat-modal--wide .jcc-retreat-modalFooter {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.85rem 1.1rem;
+  background: var(--card);
+  border-top: 1px solid var(--border);
 }
 
 .jcc-retreat-modal--leader {

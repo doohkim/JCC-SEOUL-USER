@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>조 관리 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260609d" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260609k" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -29,9 +29,26 @@
           {% else %}
             <div class="msg" id="retreatStatus" role="status" style="margin-bottom:0.75rem;"></div>
           {% endif %}
+
+          <div class="jcc-retreat-filterBar" id="groupFilterBar" hidden>
+            <div class="jcc-retreat-filterRow" data-filter-row="region">
+              <span class="jcc-retreat-filterLabel">지역</span>
+              <div class="jcc-retreat-filterChips" id="groupFilterRegions"></div>
+            </div>
+            <div class="jcc-retreat-filterRow" data-filter-row="division">
+              <span class="jcc-retreat-filterLabel">부서</span>
+              <div class="jcc-retreat-filterChips" id="groupFilterDivisions"></div>
+            </div>
+            <button type="button" class="jcc-retreat-filterReset" id="groupFilterReset" hidden>초기화</button>
+          </div>
+
           <div class="jcc-retreat-groupGrid" id="retreatGroupGrid">
             {% for g in groups %}
-              <div class="jcc-retreat-groupCardWrap">
+              <div
+                class="jcc-retreat-groupCardWrap"
+                data-region-name="{{ g.region.name }}"
+                data-division-name="{{ g.division.name }}"
+              >
                 <a
                   class="jcc-retreat-groupCard"
                   href="{% url 'retreat_group_manage' event.id g.id %}"
@@ -61,6 +78,7 @@
               </div>
             {% endfor %}
           </div>
+          <p class="msg jcc-retreat-filterEmpty" id="groupFilterEmpty" hidden>선택한 조건에 맞는 조가 없습니다.</p>
         </main>
 
         {% if can_add_group %}
@@ -68,6 +86,7 @@
             <div class="jcc-retreat-modal card jcc-retreat-modal--wide" role="dialog" aria-modal="true" aria-labelledby="groupModalTitle">
               <h2 id="groupModalTitle" class="jcc-retreat-modalTitle">조 추가</h2>
               <form id="groupForm">
+                <div class="jcc-retreat-modalBody">
                 <div class="jcc-retreat-modalGrid">
                   <div class="field jcc-retreat-modalField--full">
                     <label for="groupEventInput">행사 *</label>
@@ -156,6 +175,7 @@
                 </template>
 
                 <div class="msg" id="groupModalStatus" role="alert" style="display:none; margin-top:0.75rem;"></div>
+                </div>
 
                 <div class="jcc-retreat-modalFooter jcc-retreat-modalFooter--golden">
                   <button type="button" class="secondary jcc-retreat-btnCancel" id="groupModalCancel">취소</button>
@@ -183,6 +203,7 @@
       </div>
     </div>
     {% include 'includes/retreat_bottom_tabs.html' %}
+    <script src="{% static 'retreat/manage_groups_filter.js' %}?v=20260609a" defer></script>
     {% if can_add_group %}
       <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260609d" defer></script>
       <script src="{% static 'retreat/manage_groups.js' %}?v=20260609d" defer></script>

@@ -90,7 +90,7 @@ def _retreat_dropdown_events(user) -> list[RetreatEvent]:
     소속 조가 보이는 행사만 포함한다.
     """
     candidates = list(
-        RetreatEvent.objects.filter(is_active=True).order_by("-start_date", "-id")
+        RetreatEvent.objects.filter(is_active=True).order_by("-created_at", "-id")
     )
     result: list[RetreatEvent] = []
     for ev in candidates:
@@ -134,23 +134,21 @@ class _RetreatEventMixin(_RetreatAccessMixin):
 
 
 class RetreatHomeView(_RetreatAccessMixin, TemplateView):
-    """`/retreat/` — 활성 행사 1개면 대시보드로, 아니면 행사 카드."""
+    """`/retreat/` — 접근 가능한 최신 생성 행사 대시보드로, 없으면 빈 홈."""
 
     template_name = "retreat/home.html"
 
     def get(self, request, *args, **kwargs):
-        active = list(
-            RetreatEvent.objects.filter(is_active=True).order_by("-start_date", "-id")
-        )
-        if len(active) == 1:
-            return redirect("retreat_dashboard", event_id=active[0].id)
+        events = _retreat_dropdown_events(request.user)
+        if events:
+            return redirect("retreat_dashboard", event_id=events[0].id)
         return super().get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
         events = RetreatEvent.objects.filter(is_active=True).order_by(
-            "-start_date", "-id"
+            "-created_at", "-id"
         )
 
         cards = []
