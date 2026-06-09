@@ -25,16 +25,28 @@
     .role-options {
       min-width: 0;
     }
-    /* 실명·휴대폰 입력을 팀 셀렉트 등 다른 컬럼과 같은 톤·크기·스타일로 통일 */
+    /* 실명·휴대폰·지역·부서·팀 입력 통일 */
     .jcc-division-roles-table tbody td input[type="text"],
     .jcc-division-roles-table tbody td input[type="tel"],
-    .jcc-division-roles-table tbody td select {
+    .jcc-division-roles-table tbody td select.jcc-account-field {
       width: 100%;
       min-width: 0;
+      min-height: 2.3rem;
+      padding: 0.45rem 0.65rem;
       font-size: 0.8125rem;
+      line-height: 1.2;
+      border-radius: 6px;
       background: var(--input-elev-0);
       color: var(--text);
       border: 1px solid var(--border);
+      box-sizing: border-box;
+    }
+    .jcc-division-roles-table tbody td select.jcc-account-field:disabled {
+      opacity: 0.85;
+      cursor: not-allowed;
+    }
+    .jcc-division-roles-table .jcc-account-col-narrow {
+      min-width: 7rem;
     }
     .jcc-role-panel {
       border-radius: 10px;
@@ -200,33 +212,67 @@
                   <tr>
                     <th>실명</th>
                     <th>휴대폰</th>
-                    <th>지역</th>
-                    <th>부서</th>
-                    <th>팀</th>
+                    <th class="jcc-account-col-narrow">지역</th>
+                    <th class="jcc-account-col-narrow">부서</th>
+                    <th class="jcc-account-col-narrow">팀</th>
+                    {% if active_retreat_event %}
+                    <th class="jcc-account-col-narrow">수련회 조</th>
+                    <th class="jcc-account-col-narrow">수련회 역할</th>
+                    {% endif %}
                     <th>기능권한</th>
                     <th>직책 설정</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for u in users_payload %}
-                    <tr>
+                    <tr
+                      data-account-row
+                      data-region-id="{{ u.region_id|default:'' }}"
+                      data-division-id="{{ u.division_id|default:'' }}"
+                      data-team-id="{{ u.team_id|default:'' }}"
+                      data-retreat-group-id="{{ u.retreat_group_id|default:'' }}"
+                    >
                       <td>
-                        <input type="text" name="real_name" form="role-form-{{ u.id }}" value="{{ u.real_name }}" maxlength="50">
-                        <div class="msg" style="font-size:0.75rem;">표시: {{ u.display_name|default:u.username }}</div>
+                        <input type="text" class="jcc-account-field" name="real_name" form="role-form-{{ u.id }}" value="{{ u.real_name }}" maxlength="50" autocomplete="off">
                       </td>
                       <td>
-                        <input type="tel" name="phone" form="role-form-{{ u.id }}" value="{{ u.phone }}" maxlength="30">
+                        <input type="tel" class="jcc-account-field" name="phone" form="role-form-{{ u.id }}" value="{{ u.phone }}" maxlength="30" autocomplete="off">
                       </td>
-                      <td>{{ u.region_name|default:"-" }}</td>
-                      <td>{{ u.division_name|default:"-" }}</td>
                       <td>
-                        <select name="team_id" form="role-form-{{ u.id }}">
-                          <option value="">팀 미지정</option>
-                          {% for tm in division_team_choices %}
-                            <option value="{{ tm.id }}" {% if u.team_id == tm.id %}selected{% endif %}>{{ tm.name }}</option>
+                        <select class="jcc-account-field jcc-row-region" aria-label="지역" {% if not can_move_division %}disabled{% endif %}>
+                          <option value="">지역 선택</option>
+                          {% for region in region_choices %}
+                            <option value="{{ region.id }}" {% if u.region_id == region.id %}selected{% endif %}>{{ region.name }}</option>
                           {% endfor %}
                         </select>
                       </td>
+                      <td>
+                        <select class="jcc-account-field jcc-row-division" name="division_id" form="role-form-{{ u.id }}" aria-label="부서" {% if not can_move_division %}disabled{% endif %}>
+                          <option value="">부서 선택</option>
+                        </select>
+                        {% if not can_move_division %}
+                          <input type="hidden" name="division_id" form="role-form-{{ u.id }}" value="{{ u.division_id }}">
+                        {% endif %}
+                      </td>
+                      <td>
+                        <select class="jcc-account-field jcc-row-team" name="team_id" form="role-form-{{ u.id }}" aria-label="팀">
+                          <option value="">팀 미지정</option>
+                        </select>
+                      </td>
+                      {% if active_retreat_event %}
+                      <td>
+                        <select class="jcc-account-field jcc-row-retreat-group" name="retreat_group_id" form="role-form-{{ u.id }}" aria-label="수련회 조">
+                          <option value="">조 미지정</option>
+                        </select>
+                      </td>
+                      <td>
+                        <select class="jcc-account-field jcc-row-retreat-role" name="retreat_role" form="role-form-{{ u.id }}" aria-label="수련회 역할">
+                          {% for code, label in retreat_role_choices %}
+                            <option value="{{ code }}" {% if u.retreat_role == code %}selected{% endif %}>{{ label }}</option>
+                          {% endfor %}
+                        </select>
+                      </td>
+                      {% endif %}
                       <td>
                         <label style="display:flex; gap:0.35rem; align-items:center; margin-bottom:0.3rem;">
                           <input type="checkbox" name="can_manage_attendance" form="role-form-{{ u.id }}" {% if u.can_manage_attendance %}checked{% endif %}>
@@ -264,6 +310,91 @@
       </main>
     </div>
   </div>
+  <script id="jccAccountDivisionsJson" type="application/json">{{ divisions_json|safe }}</script>
+  <script id="jccAccountTeamsMapJson" type="application/json">{{ teams_map_json|safe }}</script>
+  {% if active_retreat_event %}<script id="jccAccountRetreatGroupsJson" type="application/json">{{ retreat_groups_json|safe }}</script>{% endif %}
+  <script>
+    (function () {
+      const divisions = JSON.parse(document.getElementById("jccAccountDivisionsJson").textContent);
+      const teamsMap = JSON.parse(document.getElementById("jccAccountTeamsMapJson").textContent);
+      const retreatEl = document.getElementById("jccAccountRetreatGroupsJson");
+      const retreatGroups = retreatEl ? JSON.parse(retreatEl.textContent) : [];
+      const canMoveDivision = {{ can_move_division|yesno:"true,false" }};
+
+      function fillDivisionSelect(select, regionId, selectedId) {
+        const current = String(selectedId || "");
+        select.innerHTML = '<option value="">부서 선택</option>';
+        divisions
+          .filter((d) => !regionId || String(d.region_id) === String(regionId))
+          .forEach((d) => {
+            const opt = document.createElement("option");
+            opt.value = d.id;
+            opt.textContent = d.region_name ? d.region_name + " · " + d.name : d.name;
+            if (String(d.id) === current) opt.selected = true;
+            select.appendChild(opt);
+          });
+      }
+
+      function fillTeamSelect(select, divisionId, selectedId) {
+        const current = String(selectedId || "");
+        select.innerHTML = '<option value="">팀 미지정</option>';
+        (teamsMap[String(divisionId)] || []).forEach((t) => {
+          const opt = document.createElement("option");
+          opt.value = t.id;
+          opt.textContent = t.name;
+          if (String(t.id) === current) opt.selected = true;
+          select.appendChild(opt);
+        });
+      }
+
+      function fillRetreatSelect(select, divisionId, selectedId) {
+        if (!select) return;
+        const current = String(selectedId || "");
+        select.innerHTML = '<option value="">조 미지정</option>';
+        retreatGroups
+          .filter((g) => String(g.division_id) === String(divisionId))
+          .forEach((g) => {
+            const opt = document.createElement("option");
+            opt.value = g.id;
+            opt.textContent = g.label;
+            if (String(g.id) === current) opt.selected = true;
+            select.appendChild(opt);
+          });
+      }
+
+      document.querySelectorAll("[data-account-row]").forEach((row) => {
+        const regionSel = row.querySelector(".jcc-row-region");
+        const divisionSel = row.querySelector(".jcc-row-division");
+        const teamSel = row.querySelector(".jcc-row-team");
+        const retreatSel = row.querySelector(".jcc-row-retreat-group");
+        const initRegion = row.dataset.regionId;
+        const initDivision = row.dataset.divisionId;
+        const initTeam = row.dataset.teamId;
+        const initRetreat = row.dataset.retreatGroupId;
+
+        function syncFromRegion() {
+          const regionId = regionSel ? regionSel.value || initRegion : initRegion;
+          fillDivisionSelect(divisionSel, regionId, divisionSel.value || initDivision);
+          syncFromDivision();
+        }
+
+        function syncFromDivision() {
+          const divisionId = divisionSel.value || initDivision;
+          fillTeamSelect(teamSel, divisionId, teamSel.value || initTeam);
+          fillRetreatSelect(retreatSel, divisionId, retreatSel ? retreatSel.value || initRetreat : "");
+        }
+
+        if (regionSel && canMoveDivision) {
+          regionSel.addEventListener("change", syncFromRegion);
+        }
+        if (divisionSel && canMoveDivision) {
+          divisionSel.addEventListener("change", syncFromDivision);
+        }
+
+        syncFromRegion();
+      });
+    })();
+  </script>
   <script>
     const roleContainers = document.querySelectorAll(".role-options");
     function escAttr(s) {

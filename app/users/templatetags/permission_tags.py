@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from django import template
 
-from users.mixins import has_submitted_signup
 from users.permissions import (
     can_access_counseling_manage_tab,
     can_access_counseling_tab,
@@ -108,8 +107,8 @@ def is_retreat_council_any_filter(user):
 
 @register.filter(name="can_access_notices_tab")
 def can_access_notices_tab(user):
-    """좌측 '공지사항'·'타임테이블' — 가입신청 제출(승인대기·승인완료) 사용자."""
-    return bool(user and has_submitted_signup(user))
+    """좌측 '공지사항'(하위 타임테이블 포함) — 개발 단계: superuser 전용."""
+    return bool(user and user.is_authenticated and user.is_superuser)
 
 
 @register.filter(name="lookup_user_label")

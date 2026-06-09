@@ -350,13 +350,12 @@ def can_access_onboarding_approvals(user: User) -> bool:
 
 
 def can_manage_division_accounts(user: User) -> bool:
+    """부서 계정(통합 편집) 탭: 슈퍼유저 또는 can_manage_accounts 기능권한만."""
     if not user.is_authenticated or not user.is_active:
         return False
     if user.is_superuser:
         return True
-    if getattr(user, "can_manage_accounts", False):
-        return True
-    return pastoral_divisions_for(user).exists()
+    return bool(getattr(user, "can_manage_accounts", False))
 
 
 def can_access_parking_tab(user: User) -> bool:

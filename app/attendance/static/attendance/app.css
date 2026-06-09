@@ -322,8 +322,22 @@ header.app-header a:hover {
   color: #475569;
 }
 
+/* 테마에 따라 아이콘 하나만 노출:
+   다크 모드 → 해(밝게 전환), 라이트 모드 → 달(어둡게 전환) */
+.jcc-theme-toggle .jcc-theme-icon--sun {
+  display: inline-block;
+}
+
+.jcc-theme-toggle .jcc-theme-icon--moon {
+  display: none;
+}
+
+html[data-theme="light"] .jcc-theme-toggle .jcc-theme-icon--sun {
+  display: none;
+}
+
 html[data-theme="light"] .jcc-theme-toggle .jcc-theme-icon--moon {
-  color: #475569;
+  display: inline-block;
 }
 
 .jcc-leftNav-user {
@@ -624,6 +638,27 @@ input[type="file"] {
   border-radius: 6px;
   min-width: 10rem;
   padding: 0.35rem 0.5rem;
+}
+
+/* 지역·부서 선택 등 인라인 입력 묶음 */
+.jcc-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.jcc-radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.jcc-radio-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 /* date picker: 테마에 맞춤 */

@@ -40,6 +40,10 @@ FIELD_LABELS = {
     "location": "장소",
     "sequence": "순서",
     "occurs_at": "진행 일시",
+    "title": "프로그램명",
+    "day": "일자",
+    "start_time": "시작 시각",
+    "end_time": "종료 시각",
 }
 
 

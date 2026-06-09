@@ -1,0 +1,102 @@
+{% comment %}공통 에러 페이지 본문 — code / title / desc 변수를 받는다. 500에서도 안전하도록 request 컨텍스트에 의존하지 않는다.{% endcomment %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ code }} · {{ title }}</title>
+    <style>
+      :root {
+        --err-bg: #0b0f19;
+        --err-card: #131826;
+        --err-border: #232a3b;
+        --err-text: #e6e9f0;
+        --err-muted: #95a0b5;
+        --err-accent: #4a9eff;
+        --err-code: #2f6fd0;
+      }
+      html[data-theme="light"] {
+        --err-bg: #f5f7fb;
+        --err-card: #ffffff;
+        --err-border: #e2e6ee;
+        --err-text: #1a2030;
+        --err-muted: #5b6577;
+        --err-accent: #2f6fd0;
+        --err-code: #c5d4ee;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+        background: var(--err-bg);
+        color: var(--err-text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .err-card {
+        width: 100%;
+        max-width: 460px;
+        background: var(--err-card);
+        border: 1px solid var(--err-border);
+        border-radius: 16px;
+        padding: 40px 32px;
+        text-align: center;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+      }
+      .err-code {
+        font-size: 72px;
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -2px;
+        color: var(--err-code);
+        margin: 0 0 8px;
+      }
+      .err-title {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 0 0 10px;
+      }
+      .err-desc {
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--err-muted);
+        margin: 0 0 28px;
+        white-space: pre-line;
+      }
+      .err-home {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--err-accent);
+        color: #fff;
+        text-decoration: none;
+        font-size: 15px;
+        font-weight: 600;
+        padding: 11px 22px;
+        border-radius: 10px;
+        transition: filter 0.15s ease;
+      }
+      .err-home:hover { filter: brightness(1.08); }
+      .err-home svg { width: 18px; height: 18px; }
+    </style>
+  </head>
+  <body>
+    <div class="err-card">
+      <p class="err-code">{{ code }}</p>
+      <h1 class="err-title">{{ title }}</h1>
+      <p class="err-desc">{{ desc }}</p>
+      <a class="err-home" href="{% url 'attendance_dashboard' %}">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M3 11l9-8 9 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M5 10v10h14V10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M10 20v-6h4v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        홈으로 이동
+      </a>
+    </div>
+  </body>
+</html>

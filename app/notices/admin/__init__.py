@@ -5,11 +5,18 @@ from notices.models import Notice, TimetableEntry
 
 @admin.register(Notice)
 class NoticeAdmin(admin.ModelAdmin):
-    list_display = ("title", "is_pinned", "created_by", "created_at", "updated_at")
-    list_filter = ("is_pinned", "created_at")
+    list_display = (
+        "title",
+        "scope",
+        "division",
+        "is_pinned",
+        "created_by",
+        "created_at",
+    )
+    list_filter = ("scope", "is_pinned", "division__region", "created_at")
     search_fields = ("title", "body")
     readonly_fields = ("created_at", "updated_at")
-    raw_id_fields = ("created_by",)
+    raw_id_fields = ("created_by", "division")
 
 
 @admin.register(TimetableEntry)

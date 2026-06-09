@@ -1,0 +1,145 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>수련회 타임테이블 · {{ event.name }}</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260609h" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          {% include 'includes/retreat_admin_header.html' %}
+        </header>
+        <main>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='timetable' %}
+          {% include 'includes/retreat_admin_subtabs.html' with admin_subtab='timetable' %}
+
+          <div class="jcc-retreat-listTop">
+            <div class="msg" id="timetableStatus" role="status"></div>
+            <div class="jcc-retreat-listTopActions">
+              {% if is_retreat_council %}
+                <button type="button" class="secondary" id="ttAddBtn">+ 일정 추가</button>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="card jcc-retreat-adminCard">
+            <h2 class="jcc-retreat-sectionTitle">일정표</h2>
+            <div id="timetableList" class="jcc-retreat-ttList">
+              {% for block in entries_by_day %}
+                <section class="jcc-retreat-ttDay" data-day="{{ block.day|date:'Y-m-d' }}">
+                  <h3 class="jcc-retreat-ttDayTitle">{{ block.day|date:'n월 j일 (D)' }}</h3>
+                  <div class="jcc-retreat-tableWrap">
+                    <table class="jcc-table jcc-retreat-ttTable">
+                      <thead>
+                        <tr>
+                          <th class="jcc-retreat-ttCol-time">시간</th>
+                          <th>프로그램</th>
+                          <th class="jcc-retreat-ttCol-loc">장소</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for e in block.items %}
+                          <tr data-entry-id="{{ e.id }}">
+                            <td class="jcc-retreat-ttCol-time">
+                              {{ e.start_time|time:'H:i' }}{% if e.end_time %} ~ {{ e.end_time|time:'H:i' }}{% endif %}
+                            </td>
+                            <td>
+                              {% if is_retreat_council %}
+                                <button
+                                  type="button"
+                                  class="jcc-retreat-ttTitleBtn"
+                                  data-tt-edit
+                                  data-id="{{ e.id }}"
+                                  data-day="{{ e.day|date:'Y-m-d' }}"
+                                  data-start="{{ e.start_time|time:'H:i' }}"
+                                  data-end="{% if e.end_time %}{{ e.end_time|time:'H:i' }}{% endif %}"
+                                  data-title="{{ e.title }}"
+                                  data-location="{{ e.location }}"
+                                  data-description="{{ e.description }}"
+                                >{{ e.title }}</button>
+                              {% else %}
+                                <span class="jcc-retreat-ttTitle">{{ e.title }}</span>
+                              {% endif %}
+                              {% if e.description %}<div class="jcc-retreat-ttDesc">{{ e.description }}</div>{% endif %}
+                            </td>
+                            <td class="jcc-retreat-ttCol-loc">{{ e.location|default:"-" }}</td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              {% empty %}
+                <p class="msg" id="timetableEmpty">등록된 일정이 없습니다.{% if is_retreat_council %} 우측 상단에서 추가하세요.{% endif %}</p>
+              {% endfor %}
+            </div>
+          </div>
+        </main>
+
+        {% if is_retreat_council %}
+          <div class="jcc-retreat-modalOverlay" id="ttModalOverlay" hidden aria-hidden="true">
+            <div class="jcc-retreat-modal jcc-retreat-modal--attendeeEdit card" role="dialog" aria-modal="true" aria-labelledby="ttModalTitle">
+              <h2 id="ttModalTitle" class="jcc-retreat-modalTitle">일정 추가</h2>
+              <form id="ttForm" novalidate>
+                <input type="hidden" id="ttId" />
+                <div class="jcc-retreat-modalGrid">
+                  <div class="field jcc-retreat-modalField--full">
+                    <label for="ttDay">날짜 *</label>
+                    <select id="ttDay" required>
+                      {% for d in event_days %}
+                        <option value="{{ d|date:'Y-m-d' }}">{{ d|date:'n/j (D)' }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="ttStart">시작 *</label>
+                    <input type="time" id="ttStart" data-tp data-placeholder="시작 시각" required />
+                  </div>
+                  <div class="field">
+                    <label for="ttEnd">종료</label>
+                    <input type="time" id="ttEnd" data-tp data-placeholder="종료 시각" />
+                  </div>
+                  <div class="field jcc-retreat-modalField--full">
+                    <label for="ttTitle">프로그램명 *</label>
+                    <input type="text" id="ttTitle" maxlength="120" required autocomplete="off" />
+                  </div>
+                  <div class="field jcc-retreat-modalField--full">
+                    <label for="ttLocation">장소</label>
+                    <input type="text" id="ttLocation" maxlength="200" autocomplete="off" />
+                  </div>
+                  <div class="field jcc-retreat-modalField--full">
+                    <label for="ttDesc">설명</label>
+                    <textarea id="ttDesc" rows="3" maxlength="500"></textarea>
+                  </div>
+                </div>
+                <div class="jcc-retreat-modalFooter">
+                  <button type="button" class="jcc-retreat-modalDelete" id="ttDeleteBtn" hidden>삭제</button>
+                  <button type="button" class="secondary" id="ttCancelBtn">취소</button>
+                  <button type="submit" id="ttSubmitBtn">저장</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+    <script>
+      window.RETREAT_TIMETABLE_CTX = {
+        eventId: {{ event.id }},
+        canManage: {{ is_retreat_council|yesno:"true,false" }},
+        apiList: "{% url 'api_retreat_event_timetable' event.id %}",
+        apiDetailBase: "/api/v1/retreat/events/{{ event.id }}/timetable/"
+      };
+    </script>
+    <script src="{% static 'retreat/time_picker.js' %}?v=20260609b" defer></script>
+    <script src="{% static 'retreat/retreat_timetable.js' %}?v=20260609b" defer></script>
+  </body>
+</html>

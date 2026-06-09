@@ -1,0 +1,6 @@
+{% comment %}공지사항 하위 탭 — notices_tab('notices'|'create'|'timetable') 필요{% endcomment %}
+<nav class="jcc-page-tabs" aria-label="공지사항 하위 메뉴" style="margin-bottom: 0.75rem;">
+  <a class="jcc-page-tab{% if notices_tab == 'notices' %} is-active{% endif %}" href="{% url 'notice_list' %}">공지사항</a>
+  <a class="jcc-page-tab{% if notices_tab == 'create' %} is-active{% endif %}" href="{% url 'notice_create' %}">공지 작성</a>
+  <a class="jcc-page-tab{% if notices_tab == 'timetable' %} is-active{% endif %}" href="{% url 'timetable' %}">타임테이블</a>
+</nav>

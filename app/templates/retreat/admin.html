@@ -140,7 +140,7 @@
                           {% if can_manage_sessions %}
                             <button type="button" class="jcc-retreat-rowBtn jcc-retreat-rowEdit" data-leader-edit>운영진</button>
                           {% endif %}
-                          <a class="jcc-retreat-rowBtn jcc-retreat-rowBtn--link" href="{% url 'retreat_group_detail' event.id r.group.id %}">조 화면</a>
+                          <a class="jcc-retreat-rowBtn jcc-retreat-rowBtn--link" href="{% url 'retreat_group_manage' event.id r.group.id %}">조 화면</a>
                         </td>
                       </tr>
                     {% empty %}

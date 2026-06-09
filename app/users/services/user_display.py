@@ -50,7 +50,11 @@ def user_display_name(user, *, kakao_map: dict[int, str] | None = None) -> str:
     if not getattr(user, "is_authenticated", False):
         return ""
     try:
-        dn = (user.profile.display_name or "").strip()
+        profile = user.profile
+        real = (profile.real_name or "").strip()
+        if real:
+            return real
+        dn = (profile.display_name or "").strip()
         if dn:
             return dn
     except Exception:

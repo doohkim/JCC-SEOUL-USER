@@ -55,7 +55,7 @@
                   {% for g in c.groups %}
                     <a
                       class="jcc-retreat-groupCard"
-                      href="{% url 'retreat_group_detail' c.event.id g.id %}"
+                      href="{% url 'retreat_group_manage' c.event.id g.id %}"
                     >
                       <div class="jcc-retreat-groupRegion">
                         <span class="jcc-retreat-pill">{{ g.region.name }}</span>

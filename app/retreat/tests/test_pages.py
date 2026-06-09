@@ -19,7 +19,7 @@ from retreat.models import (
     RetreatGroupMembership,
     RetreatSession,
 )
-from retreat.services.enrollment import close_session, snapshot_session_enrollments
+from retreat.services.enrollment import snapshot_session_enrollments
 from users.models import Division, Region, RoleLevel, UserDivisionTeam
 
 User = get_user_model()
@@ -146,19 +146,13 @@ class RetreatPageAccessTests(_PageFixture):
         r = self.client.get(reverse("retreat_results", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
 
-    def test_group_detail_forbidden_for_stranger(self):
-        self.client.force_login(self.stranger)
-        r = self.client.get(
-            reverse("retreat_group_detail", args=[self.event.id, self.group.id])
-        )
-        self.assertEqual(r.status_code, 403)
-
-    def test_group_detail_ok_for_leader(self):
+    def test_group_detail_page_deprecated_returns_404(self):
+        # 과거 출석부 탭 화면은 조 관리(retreat_group_manage)로 대체되어 404 를 반환한다.
         self.client.force_login(self.leader)
         r = self.client.get(
             reverse("retreat_group_detail", args=[self.event.id, self.group.id])
         )
-        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.status_code, 404)
 
     def test_manage_groups_list_ok_for_leader(self):
         self.client.force_login(self.leader)
@@ -200,7 +194,7 @@ class RetreatPageAccessTests(_PageFixture):
         )
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'id="retreatEventSwitcher"')
-        self.assertContains(r, "구분")
+        self.assertContains(r, "역할")
         self.assertContains(r, "data-status-badge")
         self.assertContains(r, "jcc-retreat-checkInBadge")
         # 조장(can_mutate)은 예상 입·퇴실 시각을 리스트에서 인라인으로 입력할 수 있다.
@@ -226,78 +220,8 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertContains(r, "구분")
         self.assertContains(r, "jcc-retreat-modal--attendeeEdit")
 
-    def test_group_detail_exposes_can_manage_sessions_and_hint(self):
-        self.client.force_login(self.superuser)
-        r = self.client.get(
-            reverse("retreat_group_detail", args=[self.event.id, self.group.id])
-        )
-        self.assertEqual(r.status_code, 200)
-        self.assertContains(r, 'id="retreatAddHint"')
-        self.assertContains(r, "canManageSessions: true")
-        self.assertTrue(r.context["can_manage_sessions"])
-
-    def test_group_detail_exposes_back_url_referer(self):
-        self.client.force_login(self.leader)
-        referer_path = reverse(
-            "retreat_roster_check",
-            args=[self.event.id, self.session.id, self.group.id],
-        )
-        referer = f"http://testserver{referer_path}"
-        r = self.client.get(
-            reverse("retreat_group_detail", args=[self.event.id, self.group.id]),
-            HTTP_REFERER=referer,
-        )
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.context["back_url"], referer_path)
-        self.assertContains(r, "관리 완료")
-        self.assertContains(r, f'href="{referer_path}"')
-
-    def test_group_detail_exposes_back_url_default(self):
-        self.client.force_login(self.leader)
-        default_url = reverse("retreat_rosters", args=[self.event.id])
-        r = self.client.get(
-            reverse("retreat_group_detail", args=[self.event.id, self.group.id]),
-        )
-        self.assertEqual(r.context["back_url"], default_url)
-
-        r2 = self.client.get(
-            reverse("retreat_group_detail", args=[self.event.id, self.group.id]),
-            HTTP_REFERER="https://evil.example/retreat/1/rosters/",
-        )
-        self.assertEqual(r2.context["back_url"], default_url)
-
-    def test_group_detail_has_gender_column_and_modal_field(self):
-        RetreatAttendee.objects.create(
-            group=self.group, name="성별표시", gender=RetreatAttendee.Gender.FEMALE
-        )
-        self.client.force_login(self.leader)
-        r = self.client.get(
-            reverse("retreat_group_detail", args=[self.event.id, self.group.id])
-        )
-        self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "jcc-retreat-attCol-gender")
-        self.assertContains(r, 'id="retreatAttGender"')
-        self.assertContains(r, "여성")
-
-    def test_group_detail_honors_session_id_query_for_active_tab(self):
-        other_session = RetreatSession.objects.create(
-            event=self.event, name="다른 출석부", sequence=2
-        )
-        self.client.force_login(self.leader)
-        r = self.client.get(
-            reverse("retreat_group_detail", args=[self.event.id, self.group.id])
-            + f"?session_id={self.session.id}"
-        )
-        self.assertEqual(r.status_code, 200)
-        html = r.content.decode()
-        selected_idx = html.index(f'data-session-id="{self.session.id}"')
-        other_idx = html.index(f'data-session-id="{other_session.id}"')
-        selected_button = html.rfind("<button", 0, selected_idx)
-        other_button = html.rfind("<button", 0, other_idx)
-        self.assertIn("is-active", html[selected_button:selected_idx])
-        self.assertNotIn("is-active", html[other_button:other_idx])
-
-    def test_roster_check_manage_link_keeps_current_session(self):
+    def test_roster_check_links_to_group_manage(self):
+        # 출석체크 화면의 '조원 관리' 링크는 조 관리(retreat_group_manage)로 이동한다.
         self.client.force_login(self.leader)
         r = self.client.get(
             reverse(
@@ -307,9 +231,9 @@ class RetreatPageAccessTests(_PageFixture):
         )
         self.assertEqual(r.status_code, 200)
         manage_url = reverse(
-            "retreat_group_detail", args=[self.event.id, self.group.id]
+            "retreat_group_manage", args=[self.event.id, self.group.id]
         )
-        self.assertContains(r, f'{manage_url}?session_id={self.session.id}')
+        self.assertContains(r, manage_url)
 
     def test_event_switcher_dropdown_lists_accessible_events(self):
         other_event = RetreatEvent.objects.create(
@@ -386,59 +310,6 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertEqual(
             r.context["matrix"][enrollment.id], RetreatAttendance.Status.ABSENT
         )
-
-    def test_group_detail_marks_post_closure_attendee_missing_in_closed_session(self):
-        # 마감 이후에 추가된 라이브 조원은 마감 출석부에서 missing 으로 표시되어
-        # JS 가 해당 마감 탭에서 행 자체를 숨길 수 있어야 한다.
-        snapshot_session_enrollments(self.session, actor=self.council)
-        close_session(self.session, actor=self.council)
-
-        late_attendee = RetreatAttendee.objects.create(
-            group=self.group, name="마감후추가"
-        )
-
-        self.client.force_login(self.superuser)
-        response = self.client.get(
-            reverse("retreat_group_detail", args=[self.event.id, self.group.id])
-        )
-        self.assertEqual(response.status_code, 200)
-        missing = response.context["missing_matrix"]
-        self.assertTrue(missing[late_attendee.id][self.session.id])
-
-    def test_group_detail_preserves_deleted_attendee_in_closed_session(self):
-        attendee = RetreatAttendee.objects.create(
-            group=self.group,
-            name="삭제보존",
-            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
-        )
-        snapshot_session_enrollments(self.session, actor=self.council)
-        enrollment = self.session.enrollments.get(source_attendee=attendee)
-        RetreatAttendance.objects.create(
-            enrollment=enrollment,
-            status=RetreatAttendance.Status.PRESENT,
-        )
-        close_session(self.session, actor=self.council)
-
-        attendee.delete()
-
-        self.client.force_login(self.superuser)
-        response = self.client.get(
-            reverse("retreat_group_detail", args=[self.event.id, self.group.id])
-        )
-
-        self.assertEqual(response.status_code, 200)
-        rows = list(response.context["attendees"])
-        self.assertEqual(len(rows), 1)
-        row = rows[0]
-        self.assertTrue(row.is_snapshot_only)
-        self.assertEqual(row.name, "삭제보존")
-        self.assertEqual(
-            response.context["matrix"][row.row_key][self.session.id],
-            RetreatAttendance.Status.PRESENT,
-        )
-        self.assertContains(response, "삭제보존")
-        self.assertContains(response, 'data-row-snapshot="1"')
-        self.assertContains(response, "data-edit")
 
     def test_admin_forbidden_for_leader_only(self):
         # 조장 자격만 있는 사용자는 admin 페이지 접근 불가.

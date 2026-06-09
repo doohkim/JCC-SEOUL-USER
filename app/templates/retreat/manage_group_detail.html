@@ -118,7 +118,7 @@
                         <td class="jcc-retreat-attCol-actions">
                           <button type="button" class="jcc-retreat-rowHistory" data-history aria-label="{{ a.name }} 이력">이력</button>
                           <button type="button" class="jcc-retreat-rowEdit" data-edit aria-label="{{ a.name }} 수정">수정</button>
-                          {% if can_edit_attendee %}
+                          {% if can_delete_attendee %}
                             <button type="button" class="jcc-retreat-rowDel" data-del aria-label="{{ a.name }} 삭제">삭제</button>
                           {% endif %}
                         </td>
@@ -273,6 +273,7 @@
         groupDivisionId: {{ group.division_id|default:"null" }},
         canMutate: {{ can_mutate|yesno:"true,false" }},
         canEditAttendee: {{ can_edit_attendee|yesno:"true,false" }},
+        canDeleteAttendee: {{ can_delete_attendee|yesno:"true,false" }},
         canManageLeaders: {{ can_manage_leaders|yesno:"true,false" }},
         canEditTimestamps: {{ can_edit_timestamps|yesno:"true,false" }},
         csrfToken: "{{ csrf_token }}",
@@ -294,6 +295,6 @@
       <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260609d" defer></script>
     {% endif %}
     <script src="{% static 'retreat/datetime_picker.js' %}?v=20260607d" defer></script>
-    <script src="{% static 'retreat/manage_group.js' %}?v=20260607d" defer></script>
+    <script src="{% static 'retreat/manage_group.js' %}?v=20260609e" defer></script>
   </body>
 </html>

@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 
 from retreat.apis._common import (
     _PROFILE_PATCH_KEYS,
+    assert_can_delete_attendee,
     assert_can_edit_attendee_details,
     assert_can_mutate_group,
     assert_check_in_status_transition,
@@ -220,7 +221,7 @@ class RetreatAttendeeDetailView(APIView):
 
     def delete(self, request, attendee_id: int):
         attendee = self._get(request, attendee_id)
-        assert_can_edit_attendee_details(request.user, attendee.group)
+        assert_can_delete_attendee(request.user, attendee.group)
         before = serialize_model_fields(attendee, _ATTENDEE_FIELDS)
         event = attendee.group.event
         aid = attendee.id

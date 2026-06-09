@@ -10,6 +10,7 @@ from rest_framework.test import APIClient
 
 from retreat.models import (
     RetreatAttendee,
+    RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
     RetreatGroupMembership,
@@ -311,3 +312,49 @@ class RetreatGroupAttendeesApiTests(_BaseFixture):
         self.assertEqual(r.status_code, 200)
         ids = [e["id"] for e in r.json()]
         self.assertNotIn(self.event.id, ids)
+
+
+class RetreatAttendeeDeletePermissionTests(_BaseFixture):
+    """조원 삭제는 관리자(슈퍼유저·회장단)만 가능."""
+
+    def setUp(self):
+        super().setUp()
+        self.client = APIClient()
+        self.attendee = RetreatAttendee.objects.create(
+            group=self.group_seoul_1, name="삭제대상"
+        )
+        self.url = f"/api/v1/retreat/attendees/{self.attendee.id}/"
+
+    def test_staff_cannot_delete_attendee(self):
+        # 서울 청년부 회장(staff)이지만 회장단(council)은 아님 → 삭제 불가
+        self.client.force_authenticate(self.staff_seoul)
+        r = self.client.delete(self.url)
+        self.assertEqual(r.status_code, 403, r.content)
+        self.assertTrue(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())
+
+    def test_leader_cannot_delete_attendee(self):
+        self.client.force_authenticate(self.leader_seoul_1)
+        r = self.client.delete(self.url)
+        self.assertEqual(r.status_code, 403, r.content)
+        self.assertTrue(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())
+
+    def test_council_can_delete_attendee(self):
+        council = User.objects.create_user(username="council_seoul", password="x")
+        UserDivisionTeam.objects.create(
+            user=council, division=self.div_youth_seoul, is_primary=True
+        )
+        RetreatCouncilMembership.objects.create(
+            event=self.event,
+            user=council,
+            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+        )
+        self.client.force_authenticate(council)
+        r = self.client.delete(self.url)
+        self.assertEqual(r.status_code, 204, r.content)
+        self.assertFalse(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())
+
+    def test_superuser_can_delete_attendee(self):
+        self.client.force_authenticate(self.superuser)
+        r = self.client.delete(self.url)
+        self.assertEqual(r.status_code, 204, r.content)
+        self.assertFalse(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())

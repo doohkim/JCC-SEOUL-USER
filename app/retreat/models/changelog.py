@@ -24,6 +24,7 @@ class RetreatChangeLog(models.Model):
         GROUP_MEMBERSHIP = "group_membership", "조 운영진"
         GROUP = "group", "조"
         PICKUP = "pickup", "픽업"
+        TIMETABLE = "timetable", "타임테이블"
 
     event = models.ForeignKey(
         RetreatEvent,

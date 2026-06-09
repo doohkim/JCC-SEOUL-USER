@@ -198,7 +198,7 @@ def create_or_update_kakao_user(
 
     UserModel = get_user_model()
     username = _build_username(str(uid))
-    existing = UserModel.objects.filter(username=username).first()
+    existing = UserModel.objects.filter(username=username, is_active=True).first()
 
     email = details.get("email", "")
     first_name = details.get("first_name", "")

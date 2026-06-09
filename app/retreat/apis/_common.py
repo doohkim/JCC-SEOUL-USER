@@ -111,6 +111,20 @@ def assert_can_edit_attendee_details(user, group: RetreatGroup) -> None:
         raise PermissionDenied("조원 정보를 수정할 권한이 없습니다.")
 
 
+def user_can_delete_attendee(user, group: RetreatGroup) -> bool:
+    """조원 삭제 — 관리자(슈퍼유저·회장단)만. 운영진 staff·조장 제외."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_superuser:
+        return True
+    return is_retreat_council(user, group.event)
+
+
+def assert_can_delete_attendee(user, group: RetreatGroup) -> None:
+    if not user_can_delete_attendee(user, group):
+        raise PermissionDenied("조원을 삭제할 권한이 없습니다.")
+
+
 _PROFILE_PATCH_KEYS = frozenset(
     {"name", "phone", "gender", "memo", "member_role", "user"}
 )

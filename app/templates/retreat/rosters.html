@@ -81,7 +81,7 @@
               <h2 class="jcc-retreat-sectionTitle">내 조 바로가기</h2>
               <div class="jcc-retreat-groupGrid">
                 {% for g in my_groups %}
-                  <a class="jcc-retreat-groupCard" href="{% url 'retreat_group_detail' event.id g.id %}">
+                  <a class="jcc-retreat-groupCard" href="{% url 'retreat_group_manage' event.id g.id %}">
                     <div class="jcc-retreat-groupName">{{ g.name }}</div>
                     <div class="jcc-retreat-groupMeta">{{ g.region.name }} {{ g.division.name }}</div>
                   </a>

@@ -31,6 +31,8 @@ from retreat.apis import (
     RetreatSnapshotAttendeeDetailView,
     RetreatEventPickupListCreateView,
     RetreatPickupDetailView,
+    RetreatEventTimetableListCreateView,
+    RetreatTimetableEntryDetailView,
     RetreatUserSearchView,
 )
 from retreat.views import (
@@ -48,6 +50,7 @@ from retreat.views import (
     RetreatResultsView,
     RetreatRosterCheckView,
     RetreatRostersView,
+    RetreatTimetableView,
 )
 
 urlpatterns = [
@@ -116,6 +119,11 @@ urlpatterns = [
         "retreat/<int:event_id>/council/",
         RetreatCouncilView.as_view(),
         name="retreat_council",
+    ),
+    path(
+        "retreat/<int:event_id>/timetable/",
+        RetreatTimetableView.as_view(),
+        name="retreat_timetable",
     ),
     path(
         "api/v1/retreat/events/",
@@ -261,5 +269,15 @@ urlpatterns = [
         "api/v1/retreat/lodging-rooms/<int:room_id>/",
         RetreatLodgingRoomDetailView.as_view(),
         name="api_retreat_lodging_room_detail",
+    ),
+    path(
+        "api/v1/retreat/events/<int:event_id>/timetable/",
+        RetreatEventTimetableListCreateView.as_view(),
+        name="api_retreat_event_timetable",
+    ),
+    path(
+        "api/v1/retreat/events/<int:event_id>/timetable/<int:entry_id>/",
+        RetreatTimetableEntryDetailView.as_view(),
+        name="api_retreat_event_timetable_detail",
     ),
 ]

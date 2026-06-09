@@ -43,6 +43,12 @@ class User(AbstractUser):
         default=SignupSource.ADMIN,
         db_index=True,
     )
+    retired_at = models.DateTimeField(
+        "탈퇴 일시",
+        null=True,
+        blank=True,
+        help_text="탈퇴 처리된 계정. 물리 삭제 대신 신원 분리·비활성화.",
+    )
 
     class Meta:
         verbose_name = "사용자(계정)"
@@ -51,6 +57,10 @@ class User(AbstractUser):
     @property
     def is_kakao_signup(self) -> bool:
         return self.signup_source == self.SignupSource.KAKAO
+
+    @property
+    def is_retired(self) -> bool:
+        return self.retired_at is not None
 
     def __str__(self):
         try:

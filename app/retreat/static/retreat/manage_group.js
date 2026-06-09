@@ -449,7 +449,7 @@
 
       const del = e.target.closest("[data-del]");
       if (del) {
-        if (ctx.canEditAttendee) confirmDelete(aid);
+        if (ctx.canDeleteAttendee) confirmDelete(aid);
         return;
       }
       // 이력 버튼은 별도 핸들러(bindHistory)에서 처리

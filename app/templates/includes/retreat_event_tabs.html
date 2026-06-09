@@ -17,8 +17,14 @@
           {% url 'retreat_admin' ev.id as ev_url %}
         {% elif retreat_tab == 'council' %}
           {% url 'retreat_council' ev.id as ev_url %}
+        {% elif retreat_tab == 'timetable' %}
+          {% url 'retreat_timetable' ev.id as ev_url %}
         {% elif retreat_tab == 'pickup' %}
           {% url 'retreat_pickup' ev.id as ev_url %}
+        {% elif retreat_tab == 'results' %}
+          {% url 'retreat_results' ev.id as ev_url %}
+        {% elif retreat_tab == 'rosters' %}
+          {% url 'retreat_rosters' ev.id as ev_url %}
         {% else %}
           {% url 'retreat_dashboard' ev.id as ev_url %}
         {% endif %}
@@ -45,7 +51,7 @@
         href="{% url 'retreat_lodging' event.id %}"
       >숙소</a>
       <a
-        class="jcc-page-tab{% if retreat_tab == 'admin' or retreat_tab == 'council' %} is-active{% endif %}"
+        class="jcc-page-tab{% if retreat_tab == 'admin' or retreat_tab == 'council' or retreat_tab == 'timetable' %} is-active{% endif %}"
         href="{% url 'retreat_admin' event.id %}"
       >관리</a>
     {% endif %}

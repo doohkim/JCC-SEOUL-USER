@@ -30,9 +30,10 @@
             {% endif %}
           </div>
           <div class="card">
-            {% if notice.is_pinned %}
-              <p><span class="jcc-retreat-pill">상단 고정</span></p>
-            {% endif %}
+            <p>
+              {% if notice.is_pinned %}<span class="jcc-retreat-pill">상단 고정</span> {% endif %}
+              <span class="jcc-retreat-pill">{{ notice.target_label }}</span>
+            </p>
             <div class="jcc-notice-body">{{ notice.body|linebreaksbr }}</div>
           </div>
         </main>

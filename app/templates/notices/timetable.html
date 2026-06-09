@@ -19,6 +19,27 @@
           </div>
         </header>
         <main>
+          {% include 'notices/_subtabs.html' with notices_tab='timetable' %}
+
+          {% if events %}
+            <div class="card" style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+              <label for="ttEventSelect" style="font-weight: 600;">행사</label>
+              <select id="ttEventSelect" style="min-width: 220px;">
+                {% for ev in events %}
+                  <option value="{% url 'timetable' %}?event={{ ev.id }}"{% if selected_event and ev.id == selected_event.id %} selected{% endif %}>{{ ev.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <script>
+              (function () {
+                var sel = document.getElementById("ttEventSelect");
+                if (sel) sel.addEventListener("change", function () {
+                  if (sel.value) window.location.href = sel.value;
+                });
+              })();
+            </script>
+          {% endif %}
+
           {% if entries_by_day %}
             {% for day, day_entries in entries_by_day.items %}
               <section class="card" style="margin-bottom: 1rem;">
@@ -52,7 +73,11 @@
             {% endfor %}
           {% else %}
             <div class="card">
-              <p class="msg">등록된 일정이 없습니다.</p>
+              {% if not events %}
+                <p class="msg">등록된 수련회 행사가 없습니다.</p>
+              {% else %}
+                <p class="msg">선택한 행사에 등록된 일정이 없습니다. 수련회 &gt; 관리 &gt; 타임테이블에서 추가하세요.</p>
+              {% endif %}
             </div>
           {% endif %}
         </main>

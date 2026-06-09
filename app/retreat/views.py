@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 from urllib.parse import urlparse
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.views.generic import FormView, TemplateView
@@ -26,6 +28,7 @@ from retreat.models import (
     RetreatPickup,
     RetreatSession,
     RetreatSessionAttendee,
+    RetreatTimetableEntry,
 )
 from retreat.services.changelog_format import humanize_change_logs
 from users.permissions import (
@@ -295,6 +298,53 @@ class RetreatCouncilView(_RetreatEventMixin, TemplateView):
         return ctx
 
 
+class RetreatTimetableView(_RetreatEventMixin, TemplateView):
+    """수련회 타임테이블(일정표) 조회·관리 페이지."""
+
+    template_name = "retreat/timetable.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"])
+            user = request.user
+            if not (
+                user.is_superuser
+                or is_retreat_council(user, event)
+                or is_retreat_staff(user, event)
+            ):
+                raise PermissionDenied("타임테이블 페이지 접근 권한이 없습니다.")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        event = ctx["event"]
+        entries = list(
+            event.timetable_entries.all().order_by(
+                "day", "start_time", "sort_order", "id"
+            )
+        )
+        # 일자별로 묶어서 노출.
+        from itertools import groupby
+
+        ctx["entries"] = entries
+        ctx["entries_by_day"] = [
+            {"day": day, "items": list(items)}
+            for day, items in groupby(entries, key=lambda e: e.day)
+        ]
+
+        # 작성 폼 일자 옵션: 행사 시작~종료일.
+        days = []
+        cursor = event.start_date
+        while cursor <= event.end_date:
+            days.append(cursor)
+            cursor += timedelta(days=1)
+        ctx["event_days"] = days
+        ctx["total_sessions"], ctx["overall_rate"] = _retreat_session_summary(
+            self.request.user, event
+        )
+        return ctx
+
+
 class RetreatPickupView(_RetreatEventMixin, TemplateView):
     """수련회 픽업(입회/출회) 정보 수집 페이지."""
 
@@ -557,7 +607,10 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         can_manage_leaders = can_manage_retreat_group_leaders(user, group)
         from django.db.models import Case, IntegerField, Value, When
 
-        from retreat.apis._common import user_can_edit_attendee_details
+        from retreat.apis._common import (
+            user_can_delete_attendee,
+            user_can_edit_attendee_details,
+        )
         from retreat.models import RetreatAttendee
         from retreat.services.group_sync import sync_attendee_from_membership
 
@@ -618,6 +671,7 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         )
         ctx["can_mutate"] = can_mutate
         ctx["can_edit_attendee"] = user_can_edit_attendee_details(user, group)
+        ctx["can_delete_attendee"] = user_can_delete_attendee(user, group)
         ctx["can_edit_timestamps"] = can_edit_timestamps
         ctx["back_url"] = reverse("retreat_group_manage_list", args=[event.id])
         ctx["back_label"] = "조 목록"
@@ -869,10 +923,22 @@ class RetreatApplyView(_RetreatEventMixin, FormView):
 
 
 class RetreatGroupDetailView(_RetreatAccessMixin, TemplateView):
-    """조원 명단 관리 (기존)."""
+    """[사용 중단] 조원 명단 관리 (기존 출석부 탭 화면).
+
+    조 관리(retreat_group_manage) 화면으로 대체되어 더 이상 제공하지 않는다.
+    URL 로 직접 접근하면 404(Not Found)를 반환한다.
+    """
 
     template_name = "retreat/group_detail.html"
 
+    def dispatch(self, request, *args, **kwargs):
+        # 과거 출석부 탭 페이지는 사용 중단됨 → 조 관리 화면 사용.
+        raise Http404("페이지를 찾을 수 없습니다.")
+
+    # ------------------------------------------------------------------
+    # [LEGACY · 비활성화] 아래 원본 로직은 참고용으로 주석(문자열) 처리한다.
+    # ------------------------------------------------------------------
+    _LEGACY_GET_CONTEXT_DATA = '''
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
@@ -1038,6 +1104,7 @@ class RetreatGroupDetailView(_RetreatAccessMixin, TemplateView):
         elif sessions:
             ctx["selected_session_id"] = sessions[0].id
         return ctx
+    '''
 
 
 class RetreatAdminView(_RetreatEventMixin, TemplateView):

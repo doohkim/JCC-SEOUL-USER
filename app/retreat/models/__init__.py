@@ -9,6 +9,7 @@ from .attendance import RetreatAttendance
 from .changelog import RetreatChangeLog
 from .council import RetreatCouncilMembership
 from .pickup import RetreatPickup
+from .timetable import RetreatTimetableEntry
 
 __all__ = [
     "RetreatEvent",
@@ -24,4 +25,5 @@ __all__ = [
     "RetreatChangeLog",
     "RetreatCouncilMembership",
     "RetreatPickup",
+    "RetreatTimetableEntry",
 ]

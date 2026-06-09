@@ -2383,3 +2383,94 @@ dialog.jcc-retreat-modal::backdrop {
 .jcc-dtp-ok:hover {
   filter: brightness(1.05);
 }
+
+/* 타임테이블 */
+.jcc-retreat-inlineForm .jcc-retreat-ttField--title,
+.jcc-retreat-inlineForm .jcc-retreat-ttField--desc {
+  flex: 1 1 220px;
+}
+.jcc-retreat-ttList {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.jcc-retreat-ttDayTitle {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent, #4a9eff);
+}
+.jcc-retreat-ttTable .jcc-retreat-ttCol-time {
+  width: 110px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.jcc-retreat-ttTable .jcc-retreat-ttCol-loc {
+  width: 140px;
+}
+.jcc-retreat-ttTable .jcc-retreat-ttCol-act {
+  width: 64px;
+  text-align: right;
+}
+.jcc-retreat-ttTitle {
+  font-weight: 600;
+}
+.jcc-retreat-ttDesc {
+  margin-top: 2px;
+  font-size: 0.82rem;
+  color: var(--muted, #9aa4b2);
+  white-space: pre-wrap;
+}
+/* 시간 전용 피커(달력 없음) */
+.jcc-tp-pop {
+  width: auto;
+  min-width: 244px;
+}
+.jcc-tp-pop .jcc-dtp-time {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.jcc-retreat-inlineForm .jcc-tp-field {
+  font-size: 0.9rem;
+  padding: 7px 10px;
+}
+/* 일정표 제목: 클릭하면 수정 모달을 여는 버튼 */
+.jcc-retreat-ttTitleBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent, #4a9eff);
+  cursor: pointer;
+  text-align: left;
+}
+.jcc-retreat-ttTitleBtn:hover {
+  text-decoration: underline;
+}
+/* 모달 삭제 버튼(좌측 정렬) */
+.jcc-retreat-modalFooter .jcc-retreat-modalDelete {
+  margin-right: auto;
+  background: transparent;
+  border: 1px solid var(--err, #fda4af);
+  color: var(--err, #fda4af);
+}
+.jcc-retreat-modalFooter .jcc-retreat-modalDelete:hover {
+  background: var(--err, #fda4af);
+  color: #1a1a1a;
+}
+.jcc-retreat-modal--attendeeEdit textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.7rem;
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  border-radius: 6px;
+  border: 1px solid var(--border, #ced4da);
+  background: var(--input-bg, var(--card, #fff));
+  color: var(--text, #212529);
+  resize: vertical;
+}

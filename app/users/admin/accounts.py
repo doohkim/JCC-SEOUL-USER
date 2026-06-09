@@ -15,6 +15,7 @@ from ..models import (
     UserProfileAvatar,
     RoleLevel,
 )
+from ..services.account_lifecycle import retire_user
 from .audit import AuditLoggingModelAdminMixin
 from .org_move import user_org_move_dashboard, user_org_move_detail
 
@@ -113,11 +114,13 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
         "onboarding_status",
         "is_staff",
         "is_active",
+        "retired_at",
     ]
     list_filter = [
         "signup_source",
         "is_staff",
         "is_active",
+        "retired_at",
         "role_level",
         "can_manage_accounts",
         "can_manage_attendance",
@@ -138,7 +141,7 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
         UserClubInline,
         UserFunctionalDeptRoleInline,
     ]
-    actions = ["approve_onboarding", "reject_onboarding"]
+    actions = ["approve_onboarding", "reject_onboarding", "retire_accounts"]
     _org_permissions_fieldset = (
         "조직/권한",
         {
@@ -158,6 +161,39 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
         *BaseUserAdmin.fieldsets[2:],
     )
     add_fieldsets = BaseUserAdmin.add_fieldsets + (_org_permissions_fieldset,)
+
+    def delete_model(self, request, obj):
+        try:
+            retire_user(obj, changed_by=request.user)
+            self.message_user(
+                request,
+                f"{obj} 계정을 탈퇴 처리했습니다(데이터 보존).",
+                level=messages.SUCCESS,
+            )
+        except ValueError as exc:
+            self.message_user(request, str(exc), level=messages.ERROR)
+
+    def delete_queryset(self, request, queryset):
+        retired = 0
+        skipped = 0
+        for obj in queryset:
+            try:
+                retire_user(obj, changed_by=request.user)
+                retired += 1
+            except ValueError:
+                skipped += 1
+        if retired:
+            self.message_user(
+                request,
+                f"{retired}명을 탈퇴 처리했습니다(데이터 보존).",
+                level=messages.SUCCESS,
+            )
+        if skipped:
+            self.message_user(
+                request,
+                f"{skipped}명은 탈퇴 처리할 수 없습니다(슈퍼유저 등).",
+                level=messages.WARNING,
+            )
 
     def autocomplete_view(self, request):
         return UserAutocompleteJsonView.as_view(admin_site=self.admin_site)(request)
@@ -257,6 +293,29 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
             f"{updated}명을 반려 상태로 변경했습니다.",
             level=messages.INFO,
         )
+
+    @admin.action(description="선택 사용자 탈퇴 처리(데이터 보존)")
+    def retire_accounts(self, request, queryset):
+        retired = 0
+        skipped = 0
+        for user_obj in queryset:
+            try:
+                retire_user(user_obj, changed_by=request.user)
+                retired += 1
+            except ValueError:
+                skipped += 1
+        if retired:
+            self.message_user(
+                request,
+                f"{retired}명을 탈퇴 처리했습니다(데이터 보존).",
+                level=messages.SUCCESS,
+            )
+        if skipped:
+            self.message_user(
+                request,
+                f"{skipped}명은 탈퇴 처리할 수 없습니다.",
+                level=messages.WARNING,
+            )
 
 
 @admin.register(RoleLevel)

@@ -16,12 +16,7 @@
     btn.setAttribute("aria-pressed", isDark ? "true" : "false");
     btn.setAttribute("aria-label", isDark ? "밝은 모드로 전환" : "어두운 모드로 전환");
     btn.title = isDark ? "밝은 모드" : "어두운 모드";
-
-    // 다크 모드 → 태양(밝게 전환), 라이트 모드 → 초승달(어둡게 전환)
-    var sun = btn.querySelector(".jcc-theme-icon--sun");
-    var moon = btn.querySelector(".jcc-theme-icon--moon");
-    if (sun) sun.hidden = !isDark;
-    if (moon) moon.hidden = isDark;
+    // 아이콘 노출(해/달)은 html[data-theme] 기준 CSS가 처리한다.
   }
 
   document.addEventListener("DOMContentLoaded", function () {
