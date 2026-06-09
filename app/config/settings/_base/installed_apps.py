@@ -22,6 +22,7 @@ LOCAL_APPS = [
     "attendance",
     "counseling",
     "retreat",
+    "notices",
     "utils",
 ]
 

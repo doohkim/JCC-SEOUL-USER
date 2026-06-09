@@ -1,0 +1,42 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ notice.title }} · 공지사항</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+  </head>
+  <body>
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>{{ notice.title }}</h1>
+            <p class="subtitle">
+              {{ notice.created_at|date:"Y-m-d H:i" }}
+              {% if notice.created_by %} · {{ notice.created_by.username }}{% endif %}
+            </p>
+          </div>
+        </header>
+        <main>
+          <div class="jcc-retreat-listTop">
+            <a class="secondary" href="{% url 'notice_list' %}">목록</a>
+            {% if can_manage_notices %}
+              <a class="secondary" href="{% url 'notice_edit' notice.pk %}">수정</a>
+              <a class="secondary" href="{% url 'notice_delete' notice.pk %}">삭제</a>
+            {% endif %}
+          </div>
+          <div class="card">
+            {% if notice.is_pinned %}
+              <p><span class="jcc-retreat-pill">상단 고정</span></p>
+            {% endif %}
+            <div class="jcc-notice-body">{{ notice.body|linebreaksbr }}</div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

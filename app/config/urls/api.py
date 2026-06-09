@@ -33,6 +33,7 @@ api_urlpatterns = [
     path("", include("users.urls")),
     path("", include("counseling.urls")),
     path("", include("retreat.urls")),
+    path("", include("notices.urls")),
 
 ]
 urlpatterns = base_urlpatterns + api_urlpatterns

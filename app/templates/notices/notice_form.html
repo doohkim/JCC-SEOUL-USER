@@ -1,0 +1,51 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% if object %}공지 수정{% else %}공지 작성{% endif %}</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+  </head>
+  <body>
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>{% if object %}공지 수정{% else %}공지 작성{% endif %}</h1>
+          </div>
+        </header>
+        <main>
+          <div class="card">
+            <form method="post">
+              {% csrf_token %}
+              {% if form.non_field_errors %}
+                <div class="msg error">{{ form.non_field_errors }}</div>
+              {% endif %}
+              <div class="field">
+                <label for="{{ form.title.id_for_label }}">제목</label>
+                {{ form.title }}
+                {{ form.title.errors }}
+              </div>
+              <div class="field">
+                <label for="{{ form.body.id_for_label }}">내용</label>
+                {{ form.body }}
+                {{ form.body.errors }}
+              </div>
+              <div class="field">
+                <label>{{ form.is_pinned }} 상단 고정</label>
+                {{ form.is_pinned.errors }}
+              </div>
+              <div class="toolbar" style="padding:0; border:none; background:transparent;">
+                <button type="submit">저장</button>
+                <a class="secondary" href="{% url 'notice_list' %}">취소</a>
+              </div>
+            </form>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

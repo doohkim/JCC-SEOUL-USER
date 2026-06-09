@@ -1,0 +1,62 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>타임테이블</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+  </head>
+  <body>
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>타임테이블</h1>
+            <p class="subtitle">수련회 일정표입니다.</p>
+          </div>
+        </header>
+        <main>
+          {% if entries_by_day %}
+            {% for day, day_entries in entries_by_day.items %}
+              <section class="card" style="margin-bottom: 1rem;">
+                <h2 class="jcc-retreat-sectionTitle">{{ day|date:"Y년 n월 j일 (D)" }}</h2>
+                <div class="jcc-retreat-tableWrap">
+                  <table class="jcc-table">
+                    <thead>
+                      <tr>
+                        <th>시간</th>
+                        <th>제목</th>
+                        <th>장소</th>
+                        <th>설명</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for entry in day_entries %}
+                        <tr>
+                          <td>
+                            {{ entry.start_time|time:"H:i" }}
+                            {% if entry.end_time %}– {{ entry.end_time|time:"H:i" }}{% endif %}
+                          </td>
+                          <td>{{ entry.title }}</td>
+                          <td>{{ entry.location|default:"-" }}</td>
+                          <td>{{ entry.description|default:"-" }}</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            {% endfor %}
+          {% else %}
+            <div class="card">
+              <p class="msg">등록된 일정이 없습니다.</p>
+            </div>
+          {% endif %}
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

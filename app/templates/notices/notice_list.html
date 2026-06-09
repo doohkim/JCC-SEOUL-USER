@@ -1,0 +1,68 @@
+{% load static permission_tags %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>공지사항</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+  </head>
+  <body>
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        <header class="app-header">
+          <div class="jcc-detail-titleWrap">
+            <h1>공지사항</h1>
+            <p class="subtitle">수련회 및 교회 소식을 확인합니다.</p>
+          </div>
+        </header>
+        <main>
+          <div class="jcc-retreat-listTop">
+            {% if can_manage_notices %}
+              <a class="secondary" href="{% url 'notice_create' %}">+ 공지 작성</a>
+            {% else %}
+              <span aria-hidden="true"></span>
+            {% endif %}
+          </div>
+          <div class="card">
+            <div class="jcc-retreat-tableWrap">
+              <table class="jcc-table">
+                <thead>
+                  <tr>
+                    <th>제목</th>
+                    <th>작성일</th>
+                    {% if can_manage_notices %}<th></th>{% endif %}
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for notice in notices %}
+                    <tr>
+                      <td>
+                        {% if notice.is_pinned %}<span class="jcc-retreat-pill">고정</span> {% endif %}
+                        <a href="{% url 'notice_detail' notice.pk %}">{{ notice.title }}</a>
+                      </td>
+                      <td>{{ notice.created_at|date:"Y-m-d H:i" }}</td>
+                      {% if can_manage_notices %}
+                        <td>
+                          <a class="btn-link" href="{% url 'notice_edit' notice.pk %}">수정</a>
+                          <a class="btn-link" href="{% url 'notice_delete' notice.pk %}">삭제</a>
+                        </td>
+                      {% endif %}
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="{% if can_manage_notices %}3{% else %}2{% endif %}">등록된 공지가 없습니다.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% if is_paginated %}
+              <p class="muted" style="margin-top:0.75rem;">페이지 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</p>
+            {% endif %}
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
