@@ -33,9 +33,11 @@ from retreat.models import (
 from retreat.services.changelog_format import humanize_change_logs
 from users.permissions import (
     can_access_retreat_tab,
+    can_change_retreat_check_in,
     can_manage_retreat_pickup,
     can_manage_retreat_sessions,
     can_select_pickup_group,
+    can_view_retreat_all,
     is_retreat_council,
     is_retreat_group_leader,
     is_retreat_staff,
@@ -94,11 +96,7 @@ def _retreat_dropdown_events(user) -> list[RetreatEvent]:
     )
     result: list[RetreatEvent] = []
     for ev in candidates:
-        if (
-            user.is_superuser
-            or is_retreat_council(user, ev)
-            or is_retreat_staff(user, ev)
-        ):
+        if can_view_retreat_all(user, ev):
             result.append(ev)
             continue
         if visible_retreat_groups_for(user, ev).exists():
@@ -120,11 +118,8 @@ class _RetreatEventMixin(_RetreatAccessMixin):
         ctx["is_retreat_council"] = bool(
             user.is_superuser or is_retreat_council(user, event)
         )
-        ctx["is_retreat_staff"] = bool(
-            user.is_superuser
-            or ctx["is_retreat_council"]
-            or is_retreat_staff(user, event)
-        )
+        ctx["is_retreat_staff"] = is_retreat_staff(user, event)
+        ctx["can_view_retreat_all"] = can_view_retreat_all(user, event)
         ctx["retreat_event_id"] = event.id
         available = _retreat_dropdown_events(user)
         if event not in available:
@@ -160,11 +155,7 @@ class RetreatHomeView(_RetreatAccessMixin, TemplateView):
                 .order_by("order", "id")
             )
             groups = list(groups_qs)
-            is_staff_or_council = bool(
-                user.is_superuser
-                or is_retreat_council(user, ev)
-                or is_retreat_staff(user, ev)
-            )
+            is_staff_or_council = can_view_retreat_all(user, ev)
             # 조가 없어도 staff/회장단/슈퍼유저면 행사 카드 노출.
             if not groups and not is_staff_or_council:
                 continue
@@ -272,11 +263,7 @@ class RetreatCouncilView(_RetreatEventMixin, TemplateView):
         if request.user.is_authenticated:
             event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"])
             user = request.user
-            if not (
-                user.is_superuser
-                or is_retreat_council(user, event)
-                or is_retreat_staff(user, event)
-            ):
+            if not is_retreat_staff(user, event):
                 raise PermissionDenied("회장단 페이지 접근 권한이 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -305,11 +292,7 @@ class RetreatTimetableView(_RetreatEventMixin, TemplateView):
         if request.user.is_authenticated:
             event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"])
             user = request.user
-            if not (
-                user.is_superuser
-                or is_retreat_council(user, event)
-                or is_retreat_staff(user, event)
-            ):
+            if not is_retreat_staff(user, event):
                 raise PermissionDenied("타임테이블 페이지 접근 권한이 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -416,7 +399,7 @@ class RetreatRosterCheckView(_RetreatEventMixin, TemplateView):
             and (
                 user.is_superuser
                 or is_retreat_group_leader(user, group)
-                or is_retreat_staff(user, event)
+                or is_retreat_council(user, event)
             )
         )
 
@@ -592,16 +575,6 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
 
         from retreat.models import RetreatGroupMembership
 
-        can_mutate = bool(
-            user.is_superuser
-            or is_retreat_group_leader(user, group)
-            or is_retreat_staff(user, event)
-        )
-        can_edit_timestamps = bool(
-            user.is_superuser
-            or is_retreat_council(user, event)
-            or is_retreat_staff(user, event)
-        )
         can_manage_leaders = can_manage_retreat_group_leaders(user, group)
         from django.db.models import Case, IntegerField, Value, When
 
@@ -667,10 +640,9 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
             for a in attendees
             if a.check_in_status == RetreatAttendee.CheckInStatus.CHECKED_OUT
         )
-        ctx["can_mutate"] = can_mutate
         ctx["can_edit_attendee"] = user_can_edit_attendee_details(user, group)
+        ctx["can_change_status"] = can_change_retreat_check_in(user, event)
         ctx["can_delete_attendee"] = user_can_delete_attendee(user, group)
-        ctx["can_edit_timestamps"] = can_edit_timestamps
         ctx["back_url"] = reverse("retreat_group_manage_list", args=[event.id])
         ctx["back_label"] = "조 목록"
         # 숙소 배정 드롭다운 옵션 — 조의 region+division 과 모두 일치하는 호실만.
@@ -691,15 +663,12 @@ class RetreatLodgingView(_RetreatEventMixin, TemplateView):
         user = self.request.user
         event = ctx["event"]
 
-        # 조회 권한: 회장단·운영진·슈퍼유저만 (조장/부조장 제외).
-        if not (
-            user.is_superuser
-            or is_retreat_council(user, event)
-            or is_retreat_staff(user, event)
-        ):
+        if not can_view_retreat_all(user, event):
             raise PermissionDenied("이 행사의 숙소를 볼 권한이 없습니다.")
 
         from django.db.models import Prefetch
+
+        from users.models import Division, Region
 
         rooms_qs = (
             LodgingRoom.objects.select_related("region", "division")
@@ -720,16 +689,8 @@ class RetreatLodgingView(_RetreatEventMixin, TemplateView):
             .order_by("sort_order", "name", "id")
         )
 
-        can_manage = bool(
-            user.is_superuser
-            or is_retreat_council(user, event)
-            or is_retreat_staff(user, event)
-        )
-
-        from users.models import Division, Region
-
         ctx["lodgings"] = lodgings
-        ctx["can_manage_lodging"] = can_manage
+        ctx["can_manage_lodging"] = is_retreat_staff(user, event)
         ctx["room_gender_choices"] = LodgingRoom.Gender.choices
         ctx["region_choices"] = list(Region.objects.order_by("sort_order", "name"))
         ctx["division_choices"] = list(
@@ -763,16 +724,12 @@ class RetreatLodgingAssignView(_RetreatEventMixin, TemplateView):
         user = self.request.user
         event = ctx["event"]
 
-        is_staff_like = bool(
-            user.is_superuser
-            or is_retreat_council(user, event)
-            or is_retreat_staff(user, event)
-        )
+        if not can_view_retreat_all(user, event):
+            raise PermissionDenied("이 행사의 방배정 페이지 권한이 없습니다.")
+        can_manage_assign = is_retreat_staff(user, event)
         visible_groups_qs = visible_retreat_groups_for(user, event).select_related(
             "region", "division"
         )
-        if not is_staff_like:
-            raise PermissionDenied("이 행사의 방배정 페이지 권한이 없습니다.")
 
         all_rooms = list(
             LodgingRoom.objects.filter(lodging__event=event)
@@ -871,8 +828,8 @@ class RetreatLodgingAssignView(_RetreatEventMixin, TemplateView):
         ctx["unassigned_rooms"] = unassigned_rooms
         ctx["all_regions"] = all_regions
         ctx["all_divisions"] = all_divisions
-        ctx["is_staff_like"] = is_staff_like
-        ctx["can_manage_lodging"] = is_staff_like
+        ctx["is_staff_like"] = can_manage_assign
+        ctx["can_manage_lodging"] = can_manage_assign
         return ctx
 
 

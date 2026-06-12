@@ -99,10 +99,8 @@
     bindConfirm();
     bindHistory();
     bindSorting();
-    if (ctx.canMutate) {
+    if (ctx.canEditAttendee) {
       bindExpectedInputs();
-    }
-    if (ctx.canMutate || ctx.canEditAttendee) {
       bindAttendeeMutators();
       bindModal();
     }
@@ -701,8 +699,7 @@
         attendeePicker.clear();
       }
     }
-    // 조장/부조장(상세 수정 불가)은 '추가'에서만 실명/성별/연락처 입력 가능.
-    const showProfileFields = ctx.canEditAttendee || mode === "create";
+    const showProfileFields = ctx.canEditAttendee;
     form
       ?.querySelectorAll("[data-modal-profile-field]")
       .forEach((el) => {
@@ -736,15 +733,10 @@
     const newCheckIn = checkInInput?.value || modalInitialCheckIn;
     const payload = {};
 
-    if (ctx.canMutate && checkInInput) {
+    if (ctx.canChangeStatus && checkInInput) {
       payload.check_in_status = newCheckIn;
-      payload.expected_check_in_at = isoFromDatetimeLocal(expectedInInput?.value || "");
-      payload.expected_check_out_at = isoFromDatetimeLocal(expectedOutInput?.value || "");
-      payload.lodging_room =
-        lodgingInput && lodgingInput.value ? Number(lodgingInput.value) : null;
     }
-    const includeProfile =
-      ctx.canEditAttendee || (ctx.canMutate && modalMode === "create");
+    const includeProfile = ctx.canEditAttendee;
     if (includeProfile) {
       payload.name = (nameInput?.value || "").trim();
       payload.gender = genderInput?.value || "";
@@ -754,12 +746,10 @@
       payload.memo = (memoInput?.value || "").trim();
       payload.member_role = roleInput?.value || "member";
       payload.user = linkedUserId ? Number(linkedUserId) : null;
-      if (!ctx.canMutate) {
-        payload.expected_check_in_at = isoFromDatetimeLocal(expectedInInput?.value || "");
-        payload.expected_check_out_at = isoFromDatetimeLocal(expectedOutInput?.value || "");
-        payload.lodging_room =
-          lodgingInput && lodgingInput.value ? Number(lodgingInput.value) : null;
-      }
+      payload.expected_check_in_at = isoFromDatetimeLocal(expectedInInput?.value || "");
+      payload.expected_check_out_at = isoFromDatetimeLocal(expectedOutInput?.value || "");
+      payload.lodging_room =
+        lodgingInput && lodgingInput.value ? Number(lodgingInput.value) : null;
     }
     if (includeProfile && !payload.name) {
       submitBtn.disabled = false;
@@ -780,7 +770,7 @@
     }
     if (
       modalMode === "edit" &&
-      ctx.canMutate &&
+      ctx.canChangeStatus &&
       newCheckIn !== modalInitialCheckIn
     ) {
       const name =

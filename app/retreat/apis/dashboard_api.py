@@ -19,13 +19,14 @@ from retreat.services.dashboard import (
 from retreat.services.auto_check_in import apply_due_auto_transitions
 from users.permissions import (
     can_access_retreat_tab,
+    can_view_retreat_all,
     is_retreat_staff,
     visible_retreat_sessions_for,
 )
 
 
 def _staff_view(user, event: RetreatEvent) -> bool:
-    return bool(user.is_superuser or is_retreat_staff(user, event))
+    return can_view_retreat_all(user, event)
 
 
 class RetreatEventDashboardView(APIView):
@@ -98,7 +99,7 @@ class RetreatEventChangelogView(APIView):
 
     def get(self, request, event_id: int):
         event = get_object_or_404(RetreatEvent, pk=event_id)
-        if not (request.user.is_superuser or is_retreat_staff(request.user, event)):
+        if not is_retreat_staff(request.user, event):
             raise PermissionDenied("변경 이력 조회 권한이 없습니다.")
         limit = min(int(request.query_params.get("limit", 100)), 500)
         qs = (

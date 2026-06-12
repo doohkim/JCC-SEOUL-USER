@@ -379,6 +379,59 @@ class GroupExtraScopeBehaviorTests(_GroupManageFixture):
         assert_room_can_accept(room, attendee)
 
 
+class AttendeeEditPermissionTests(_GroupManageFixture):
+    def setUp(self):
+        self.client = APIClient()
+        self.attendee = RetreatAttendee.objects.create(
+            group=self.group, name="편집대상", gender="male"
+        )
+        self.url = reverse(
+            "api_retreat_attendee_detail",
+            args=[self.attendee.id],
+        )
+
+    def test_leader_can_patch_profile_fields(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.patch(
+            self.url,
+            {
+                "name": "이름변경",
+                "phone": "010-9999-8888",
+                "member_role": "member",
+                "memo": "조장메모",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.name, "이름변경")
+        self.assertEqual(self.attendee.memo, "조장메모")
+
+    def test_leader_cannot_patch_check_in_status(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.patch(
+            self.url,
+            {"check_in_status": "checked_in"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 403, r.content)
+
+    def test_leader_cannot_delete_attendee(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.delete(self.url)
+        self.assertEqual(r.status_code, 403, r.content)
+
+    def test_pastor_cannot_patch_attendee(self):
+        self.client.force_authenticate(self.pastor)
+        r = self.client.patch(self.url, {"name": "목사변경"}, format="json")
+        self.assertEqual(r.status_code, 403, r.content)
+
+    def test_pastor_cannot_delete_attendee(self):
+        self.client.force_authenticate(self.pastor)
+        r = self.client.delete(self.url)
+        self.assertEqual(r.status_code, 403, r.content)
+
+
 class GroupMembershipWritePermissionTests(_GroupManageFixture):
     def setUp(self):
         self.client = APIClient()

@@ -600,7 +600,6 @@ def can_access_retreat_tab(user: User) -> bool:
     - 수련회 회장단(어떤 행사의 회장단이든 1개 이상)
     - 목사·전도사 (RoleLevel)
     - 조장/부조장(어떤 그룹이든 멤버십 1개 이상)
-    - 그 외 staff(회장·부회장·총무 직급, 부장·차장·간사 직책) + region 연결
     """
 
     if not user or not getattr(user, "is_authenticated", False):
@@ -613,8 +612,6 @@ def can_access_retreat_tab(user: User) -> bool:
     if role_code in _RETREAT_PASTORAL_ROLE_LEVEL_CODES:
         return True
     if user.retreat_group_memberships.exists():
-        return True
-    if _user_has_retreat_staff_role(user) and _user_region_ids_via_divisions(user):
         return True
     return False
 
@@ -765,23 +762,40 @@ def _user_region_ids_via_divisions(user: User) -> set[int]:
 
 
 def is_retreat_staff(user: User, event) -> bool:
-    """수련회 운영진 판정 (관리자 페이지 접근).
+    """수련회 관리(회장단·슈퍼유저) 판정 — 관리 탭·변경 이력 등.
 
-    - 슈퍼유저 / 회장단 / 목사·전도사: 무조건 staff (전체 보기 권한자).
-    - (회장·부회장·총무 직급) / (부장·차장·간사 직책): 본인 region 연결 시.
+  ``RetreatCouncilMembership`` 명단(또는 슈퍼유저)만 True. 직급/기능직책 자동 부여 없음.
     """
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if user.is_superuser:
         return True
-    if event is not None and user.retreat_council_memberships.filter(event=event).exists():
+    if event is None:
+        return False
+    return is_retreat_council(user, event)
+
+
+def can_view_retreat_all(user: User, event) -> bool:
+    """행사 전체 데이터 조회(대시보드·숙소 탭 등) — 회장단·목사·전도사·슈퍼유저."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_superuser:
+        return True
+    if event is not None and is_retreat_council(user, event):
         return True
     role_code = getattr(getattr(user, "role_level", None), "code", "")
-    if role_code in _RETREAT_PASTORAL_ROLE_LEVEL_CODES:
-        return True
-    if not _user_has_retreat_staff_role(user):
+    return role_code in _RETREAT_PASTORAL_ROLE_LEVEL_CODES
+
+
+def can_change_retreat_check_in(user: User, event) -> bool:
+    """입·퇴실 상태 변경 — 회장단·슈퍼유저만."""
+    if not user or not getattr(user, "is_authenticated", False):
         return False
-    return bool(_user_region_ids_via_divisions(user))
+    if user.is_superuser:
+        return True
+    if event is None:
+        return False
+    return is_retreat_council(user, event)
 
 
 def visible_retreat_groups_for(user: User, event):
@@ -793,8 +807,6 @@ def visible_retreat_groups_for(user: User, event):
       - 목사·전도사 (RoleLevel)
 
     본인 소속만:
-      - 그 외 staff(회장·부회장·총무 직급, 부장·차장·간사 직책):
-        본인 region/division 의 그룹
       - 조장/부조장: 자신이 멤버십을 가진 그룹만
       - 그 외: 빈 쿼리셋
     """
@@ -821,22 +833,6 @@ def visible_retreat_groups_for(user: User, event):
         )
     )
 
-    if _user_has_retreat_staff_role(user):
-        from django.db.models import Q
-
-        region_ids = _user_region_ids_via_divisions(user)
-        # 목사·전도사는 division 단위 담당 → division 도 함께 화이트리스트
-        division_ids = _user_division_ids(user) | _user_pastoral_division_ids(user)
-        primary_q = Q(region_id__in=region_ids)
-        extra_q = Q(extra_scopes__region_id__in=region_ids)
-        if division_ids:
-            primary_q &= Q(division_id__in=division_ids)
-            extra_q &= Q(extra_scopes__division_id__in=division_ids)
-        staff_qs = base.filter(primary_q | extra_q).distinct()
-        if leader_group_ids:
-            return (staff_qs | base.filter(pk__in=leader_group_ids)).distinct()
-        return staff_qs
-
     if leader_group_ids:
         return base.filter(pk__in=leader_group_ids)
     return base.none()
@@ -860,14 +856,7 @@ class IsRetreatGroupLeaderOrStaff(BasePermission):
             return True
         if is_retreat_group_leader(user, group):
             return True
-        if is_retreat_staff(user, group.event):
-            # staff 는 대표·보조 범위 중 하나라도 본인 region/division 과 일치하면 허용.
-            region_ids = _user_region_ids_via_divisions(user)
-            div_ids = _user_division_ids(user) | _user_pastoral_division_ids(user)
-            for region_id, division_id in group.scope_pairs():
-                if region_id in region_ids and (
-                    not div_ids or division_id in div_ids
-                ):
-                    return True
-            return False
-        return False
+        visible_ids = set(
+            visible_retreat_groups_for(user, group.event).values_list("id", flat=True)
+        )
+        return group.id in visible_ids

@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ group.name }} · 조 관리</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260609d" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260612b" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -38,7 +38,7 @@
               {% if can_add_group %}
                 <button type="button" class="secondary" data-group-edit-trigger data-group-id="{{ group.id }}">조 정보 수정</button>
               {% endif %}
-              {% if can_mutate or can_edit_attendee %}
+              {% if can_edit_attendee %}
                 <button type="button" class="secondary" id="btnAddAttendee">+ 조원 추가</button>
               {% else %}
                 <span class="muted">읽기 전용</span>
@@ -59,7 +59,7 @@
                     <th class="jcc-retreat-attCol-status jcc-retreat-sortable" data-sort-key="status" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">상태</span></th>
                     <th class="jcc-retreat-attCol-expected jcc-retreat-sortable" data-sort-key="expected_in" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">입실</span></th>
                     <th class="jcc-retreat-attCol-expected jcc-retreat-sortable" data-sort-key="expected_out" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">퇴실</span></th>
-                    {% if can_mutate or can_edit_attendee %}
+                    {% if can_edit_attendee %}
                       <th class="jcc-retreat-attCol-actions"></th>
                     {% endif %}
                   </tr>
@@ -100,7 +100,7 @@
                       </td>
                       <td class="jcc-retreat-attCol-expected" data-expected-cell>
                         <span class="jcc-retreat-stampInlineLabel" aria-hidden="true">입실</span>
-                        {% if can_mutate %}
+                        {% if can_edit_attendee %}
                           <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_in_at" value="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 입실 시각">
                         {% else %}
                           <span class="jcc-retreat-stampLabel{% if not a.expected_check_in_at %} muted{% endif %}" data-expected-in-label>{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'m/d H:i' }}{% else %}-{% endif %}</span>
@@ -108,13 +108,13 @@
                       </td>
                       <td class="jcc-retreat-attCol-expected" data-expected-cell>
                         <span class="jcc-retreat-stampInlineLabel" aria-hidden="true">퇴실</span>
-                        {% if can_mutate %}
+                        {% if can_edit_attendee %}
                           <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_out_at" value="{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 퇴실 시각">
                         {% else %}
                           <span class="jcc-retreat-stampLabel{% if not a.expected_check_out_at %} muted{% endif %}" data-expected-out-label>{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'m/d H:i' }}{% else %}-{% endif %}</span>
                         {% endif %}
                       </td>
-                      {% if can_mutate or can_edit_attendee %}
+                      {% if can_edit_attendee %}
                         <td class="jcc-retreat-attCol-actions">
                           <button type="button" class="jcc-retreat-rowHistory" data-history aria-label="{{ a.name }} 이력">이력</button>
                           <button type="button" class="jcc-retreat-rowEdit" data-edit aria-label="{{ a.name }} 수정">수정</button>
@@ -126,8 +126,8 @@
                     </tr>
                   {% empty %}
                     <tr>
-                      <td colspan="{% if can_mutate or can_edit_attendee %}9{% else %}8{% endif %}">
-                        <div class="msg">조원이 없습니다.{% if can_mutate %} 우측 상단에서 추가하세요.{% endif %}</div>
+                      <td colspan="{% if can_edit_attendee %}9{% else %}8{% endif %}">
+                        <div class="msg">조원이 없습니다.{% if can_edit_attendee %} 우측 상단에서 추가하세요.{% endif %}</div>
                       </td>
                     </tr>
                   {% endfor %}
@@ -170,14 +170,14 @@
           </div>
         </div>
 
-        {% if can_mutate or can_edit_attendee %}
+        {% if can_edit_attendee %}
           <div class="jcc-retreat-modalOverlay" id="retreatModalOverlay" hidden aria-hidden="true">
             <div class="jcc-retreat-modal jcc-retreat-modal--attendeeEdit card" role="dialog" aria-modal="true" aria-labelledby="retreatModalTitle">
               <h2 id="retreatModalTitle" class="jcc-retreat-modalTitle">조원 추가</h2>
               <form id="retreatAttendeeForm" novalidate>
                 <div class="jcc-retreat-modalGrid">
-                  {% if can_mutate %}
-                    <div class="field jcc-retreat-modalField--full" data-modal-mutate-only>
+                  {% if can_change_status %}
+                    <div class="field jcc-retreat-modalField--full" data-modal-status-only>
                       <label for="retreatAttCheckIn">입·퇴실 상태</label>
                       <select id="retreatAttCheckIn" name="check_in_status">
                         <option value="pending">입실전</option>
@@ -205,7 +205,7 @@
                       <small class="muted" data-user-picker-hint>비워두면 계정 연결 없이 추가됩니다.</small>
                     </div>
                   {% endif %}
-                  {% if can_mutate or can_edit_attendee %}
+                  {% if can_edit_attendee %}
                     <div class="field jcc-retreat-modalField--full" data-modal-profile-field>
                       <label for="retreatAttName">실명 *</label>
                       <input type="text" id="retreatAttName" name="name" required maxlength="60" autocomplete="off">
@@ -223,16 +223,16 @@
                       <input type="tel" id="retreatAttPhone" name="phone" maxlength="30" autocomplete="off">
                     </div>
                   {% endif %}
-                  {% if can_mutate %}
-                    <div class="field" data-modal-mutate-only>
+                  {% if can_edit_attendee %}
+                    <div class="field" data-modal-edit-only>
                       <label for="retreatAttExpectedIn">입실 시각</label>
                       <input type="datetime-local" id="retreatAttExpectedIn" name="expected_check_in_at" autocomplete="off">
                     </div>
-                    <div class="field" data-modal-mutate-only>
+                    <div class="field" data-modal-edit-only>
                       <label for="retreatAttExpectedOut">퇴실 시각</label>
                       <input type="datetime-local" id="retreatAttExpectedOut" name="expected_check_out_at" autocomplete="off">
                     </div>
-                    <div class="field jcc-retreat-modalField--full" data-modal-mutate-only>
+                    <div class="field jcc-retreat-modalField--full" data-modal-edit-only>
                       <label for="retreatAttLodging">숙소 배정</label>
                       <select id="retreatAttLodging" name="lodging_room">
                         <option value="">(미배정)</option>
@@ -271,11 +271,10 @@
         groupId: {{ group.id }},
         groupRegionId: {{ group.region_id|default:"null" }},
         groupDivisionId: {{ group.division_id|default:"null" }},
-        canMutate: {{ can_mutate|yesno:"true,false" }},
+        canChangeStatus: {{ can_change_status|yesno:"true,false" }},
         canEditAttendee: {{ can_edit_attendee|yesno:"true,false" }},
         canDeleteAttendee: {{ can_delete_attendee|yesno:"true,false" }},
         canManageLeaders: {{ can_manage_leaders|yesno:"true,false" }},
-        canEditTimestamps: {{ can_edit_timestamps|yesno:"true,false" }},
         csrfToken: "{{ csrf_token }}",
         roleLabels: {
           {% for code, label in group_role_choices %}"{{ code }}": "{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}
@@ -294,7 +293,7 @@
     {% if can_add_group %}
       <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260609d" defer></script>
     {% endif %}
-    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260607d" defer></script>
+    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260612a" defer></script>
     <script src="{% static 'retreat/manage_group.js' %}?v=20260609e" defer></script>
   </body>
 </html>

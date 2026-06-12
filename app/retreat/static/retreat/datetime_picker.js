@@ -68,6 +68,20 @@
     if (openController) openController.close();
   }
 
+  function getViewportHeight() {
+    if (window.visualViewport && window.visualViewport.height) {
+      return window.visualViewport.height;
+    }
+    return window.innerHeight;
+  }
+
+  function shouldUseSheet(field) {
+    if (window.matchMedia("(max-width: 640px)").matches) return true;
+    return !!field.closest(
+      ".jcc-retreat-modal--attendeeEdit, .jcc-retreat-modalOverlay:not([hidden])"
+    );
+  }
+
   function enhance(input) {
     if (!input || input.__dtpDone) return;
     input.__dtpDone = true;
@@ -174,9 +188,14 @@
     let viewY = draft.y;
     let viewMo = draft.mo;
 
+    const useSheet = shouldUseSheet(field);
+    let backdrop = null;
+
     const pop = document.createElement("div");
     pop.className = "jcc-dtp-pop";
+    if (useSheet) pop.classList.add("jcc-dtp-pop--sheet");
     pop.setAttribute("role", "dialog");
+    pop.setAttribute("aria-modal", "true");
 
     // 헤더 (월 이동)
     const head = document.createElement("div");
@@ -331,6 +350,13 @@
     foot.appendChild(okBtn);
     pop.appendChild(foot);
 
+    if (useSheet) {
+      backdrop = document.createElement("div");
+      backdrop.className = "jcc-dtp-backdrop";
+      backdrop.setAttribute("aria-hidden", "true");
+      document.body.appendChild(backdrop);
+      document.body.classList.add("jcc-dtp-open");
+    }
     document.body.appendChild(pop);
 
     let openDd = null;
@@ -540,15 +566,17 @@
     renderGrid();
 
     function position() {
+      if (useSheet) return;
       const r = field.getBoundingClientRect();
       const pw = pop.offsetWidth || 280;
       const ph = pop.offsetHeight || 320;
+      const vh = getViewportHeight();
       let left = r.left;
       if (left + pw > window.innerWidth - 8) {
         left = Math.max(8, window.innerWidth - pw - 8);
       }
       let top = r.bottom + 6;
-      if (top + ph > window.innerHeight - 8 && r.top - ph - 6 > 8) {
+      if (top + ph > vh - 8 && r.top - ph - 6 > 8) {
         top = r.top - ph - 6;
       }
       pop.style.left = `${Math.max(8, left)}px`;
@@ -557,6 +585,10 @@
     position();
 
     function onDocClick(e) {
+      if (backdrop && e.target === backdrop) {
+        ctrl.close();
+        return;
+      }
       if (pop.contains(e.target) || field.contains(e.target)) return;
       ctrl.close();
     }
@@ -579,18 +611,28 @@
         document.removeEventListener("keydown", onKey, true);
         window.removeEventListener("resize", onScrollResize, true);
         window.removeEventListener("scroll", onScrollResize, true);
+        if (window.visualViewport) {
+          window.visualViewport.removeEventListener("resize", onScrollResize);
+        }
+        if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
         if (pop.parentNode) pop.parentNode.removeChild(pop);
+        document.body.classList.remove("jcc-dtp-open");
         if (openController === ctrl) openController = null;
       },
     };
     openController = ctrl;
 
     setTimeout(function () {
-      // mousedown 대신 click: 바깥 mousedown 시 DOM 이 바뀌면 submit 클릭이 씹히는 문제 방지
       document.addEventListener("click", onDocClick, true);
       document.addEventListener("keydown", onKey, true);
       window.addEventListener("resize", onScrollResize, true);
       window.addEventListener("scroll", onScrollResize, true);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", onScrollResize);
+      }
+      if (useSheet) {
+        okBtn.focus();
+      }
     }, 0);
   }
 

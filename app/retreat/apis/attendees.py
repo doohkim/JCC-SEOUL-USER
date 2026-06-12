@@ -12,15 +12,18 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from retreat.apis._common import (
+    _ATTENDEE_DETAIL_PATCH_KEYS,
+    _CHECK_IN_STATUS_KEYS,
     _PROFILE_PATCH_KEYS,
+    assert_can_change_check_in_status,
     assert_can_delete_attendee,
     assert_can_edit_attendee_details,
     assert_can_mutate_group,
     assert_check_in_status_transition,
     get_group_or_403,
-    user_can_edit_attendee_details,
     user_can_edit_attendee_timestamps,
 )
+from users.permissions import can_change_retreat_check_in
 from retreat.models import RetreatAttendee, RetreatChangeLog, RetreatGroup
 from retreat.serializers import RetreatAttendeeSerializer
 from retreat.services.audit import log_retreat_change, serialize_model_fields
@@ -51,9 +54,14 @@ _ATTENDEE_FIELDS = [
 ]
 
 
-def _payload_without_timestamps_if_forbidden(user, group: RetreatGroup, data):
+def _sanitize_attendee_payload(user, group: RetreatGroup, data):
+    """권한 없는 입·퇴실 관련 키는 제거한다."""
     payload = deepcopy(dict(data))
-    if not user_can_edit_attendee_timestamps(user, group):
+    if not can_change_retreat_check_in(user, group.event):
+        payload.pop("check_in_status", None)
+        payload.pop("checked_in_at", None)
+        payload.pop("checked_out_at", None)
+    elif not user_can_edit_attendee_timestamps(user, group):
         payload.pop("checked_in_at", None)
         payload.pop("checked_out_at", None)
     return payload
@@ -80,10 +88,10 @@ class RetreatGroupAttendeesView(APIView):
     def post(self, request, group_id: int):
         group = get_group_or_403(request.user, group_id)
         assert_can_mutate_group(request.user, group)
-        payload = _payload_without_timestamps_if_forbidden(
-            request.user, group, request.data
-        )
-        # 계정 연결·역할(조장/부조장) 부여는 회장단·staff·슈퍼만.
+        raw_status = request.data.get("check_in_status") or RetreatAttendee.CheckInStatus.PENDING
+        if raw_status != RetreatAttendee.CheckInStatus.PENDING:
+            assert_can_change_check_in_status(request.user, group)
+        payload = _sanitize_attendee_payload(request.user, group, request.data)
         role = (payload.get("member_role") or "").strip()
         if payload.get("user") or role in (
             RetreatAttendee.MemberRole.LEADER,
@@ -146,21 +154,16 @@ class RetreatAttendeeDetailView(APIView):
     def patch(self, request, attendee_id: int):
         attendee = self._get(request, attendee_id)
         group = attendee.group
-        payload = _payload_without_timestamps_if_forbidden(
-            request.user, group, request.data
-        )
+        raw_keys = set(request.data.keys())
+        if raw_keys & _CHECK_IN_STATUS_KEYS:
+            assert_can_change_check_in_status(request.user, group)
+        payload = _sanitize_attendee_payload(request.user, group, request.data)
         keys = set(payload.keys())
-        profile_keys = keys & _PROFILE_PATCH_KEYS
-        status_keys = keys & {"check_in_status", "checked_in_at", "checked_out_at"}
-        expected_keys = keys & {"expected_check_in_at", "expected_check_out_at"}
-        lodging_only = keys <= {"lodging_room"} and "lodging_room" in keys
-
-        if profile_keys:
+        detail_keys = keys & _ATTENDEE_DETAIL_PATCH_KEYS
+        if detail_keys:
             assert_can_edit_attendee_details(request.user, group)
-        elif status_keys or expected_keys or lodging_only:
-            assert_can_mutate_group(request.user, group)
-        else:
-            assert_can_mutate_group(request.user, group)
+        elif keys:
+            assert_can_edit_attendee_details(request.user, group)
 
         if "check_in_status" in payload:
             assert_check_in_status_transition(
@@ -169,8 +172,6 @@ class RetreatAttendeeDetailView(APIView):
                 previous=attendee.check_in_status,
                 new=str(payload["check_in_status"]),
             )
-        elif profile_keys and not user_can_edit_attendee_details(request.user, group):
-            assert_can_edit_attendee_details(request.user, group)
 
         before = serialize_model_fields(attendee, _ATTENDEE_FIELDS)
         previous_status = attendee.check_in_status

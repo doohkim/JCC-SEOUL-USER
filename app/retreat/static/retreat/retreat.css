@@ -976,6 +976,9 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   justify-content: center;
   z-index: 1700;
   padding: 0.75rem;
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .jcc-retreat-modalOverlay[hidden] {
   display: none !important;
@@ -1430,6 +1433,57 @@ dialog.jcc-retreat-modal::backdrop {
   line-height: 1.5;
 }
 
+.jcc-retreat-alertBody {
+  margin: 0 0 0.85rem 0;
+}
+
+.jcc-retreat-alertLead {
+  margin: 0 0 0.55rem 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.jcc-retreat-alertList {
+  margin: 0;
+  padding: 0.65rem 0.85rem 0.65rem 1.35rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--danger, #e5484d) 35%, var(--border));
+  background: color-mix(in srgb, var(--danger, #e5484d) 8%, var(--card));
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.jcc-retreat-alertList li + li {
+  margin-top: 0.2rem;
+}
+
+.jcc-retreat-modalGrid .field input.is-invalid,
+.jcc-retreat-modalGrid .field select.is-invalid,
+.jcc-retreat-modalGrid .field .jcc-dtp-field.is-invalid {
+  border-color: var(--danger, #e5484d);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger, #e5484d) 18%, transparent);
+}
+/* 포커스 시에도 파란 outline 대신 빨간 표시 유지 */
+.jcc-retreat-modalGrid .field input.is-invalid:focus,
+.jcc-retreat-modalGrid .field select.is-invalid:focus {
+  outline-color: var(--danger, #e5484d);
+}
+.jcc-retreat-modalGrid .field .jcc-dtp-field.is-invalid:focus-visible,
+.jcc-retreat-modalGrid .field .jcc-dtp-field.is-invalid:hover:not(:disabled) {
+  border-color: var(--danger, #e5484d);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger, #e5484d) 22%, transparent);
+}
+/* 필드별 안내문구 */
+.jcc-retreat-modalGrid .field .jcc-field-error {
+  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--danger, #e5484d);
+}
+
 /* 이력 모달 */
 .jcc-retreat-historyOverlay {
   z-index: 1750;
@@ -1641,8 +1695,10 @@ dialog.jcc-retreat-modal::backdrop {
   width: min(96vw, 640px);
   max-width: 640px;
   padding: 1.5rem 1.6rem 1.4rem;
-  max-height: 90vh;
+  max-height: min(90dvh, 90vh);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalTitle {
   margin-bottom: 1.25rem;
@@ -1704,7 +1760,7 @@ dialog.jcc-retreat-modal::backdrop {
    푸터는 스크롤 영역 밖이라 뒤로 내용이 비치지 않는다. */
 .jcc-retreat-modal--wide {
   max-width: 520px;
-  max-height: 90vh;
+  max-height: min(90dvh, 90vh);
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -2350,7 +2406,7 @@ dialog.jcc-retreat-modal::backdrop {
   align-items: center;
   justify-content: center;
   flex-wrap: nowrap;
-  gap: 4px;
+  gap: 6px;
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--border, #e9ecef);
@@ -2370,9 +2426,10 @@ dialog.jcc-retreat-modal::backdrop {
   min-width: 0;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  height: 32px;
-  padding: 0 7px;
+  justify-content: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 11px;
   border: 1px solid var(--border, #ced4da);
   border-radius: 8px;
   background: var(--card, #fff);
@@ -2387,7 +2444,7 @@ dialog.jcc-retreat-modal::backdrop {
   box-shadow: 0 0 0 3px var(--accent-tint, rgba(74, 158, 255, 0.25));
 }
 .jcc-dtp-select input.jcc-dtp-num {
-  width: 2.1ch;
+  width: 2.6ch;
   min-width: 0;
   height: 100%;
   margin: 0;
@@ -2396,7 +2453,7 @@ dialog.jcc-retreat-modal::backdrop {
   background: transparent;
   text-align: center;
   font: inherit;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text, #212529);
@@ -2407,7 +2464,7 @@ dialog.jcc-retreat-modal::backdrop {
 }
 /* 오전·오후 박스: 한글 2글자 폭 */
 .jcc-dtp-select--wide input.jcc-dtp-num {
-  width: 2.6em;
+  width: 3.2em;
   font-weight: 600;
 }
 .jcc-dtp-caret {
@@ -2498,6 +2555,98 @@ dialog.jcc-retreat-modal::backdrop {
 }
 .jcc-dtp-ok:hover {
   filter: brightness(1.05);
+}
+
+/* 모바일·카카오 인앱: 하단 시트 (토스 스타일) */
+.jcc-dtp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2199;
+  background: rgba(0, 0, 0, 0.45);
+  animation: jcc-dtp-fade-in 0.2s ease;
+}
+body.jcc-dtp-open {
+  overflow: hidden;
+  touch-action: none;
+}
+.jcc-dtp-pop--sheet {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  top: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: min(88dvh, 88vh);
+  margin: 0;
+  padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+  border-radius: 16px 16px 0 0;
+  border-bottom: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  animation: jcc-dtp-slide-up 0.28s ease;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.22);
+}
+.jcc-dtp-pop--sheet .jcc-dtp-head {
+  margin-bottom: 10px;
+}
+.jcc-dtp-pop--sheet .jcc-dtp-title {
+  font-size: 1.05rem;
+}
+.jcc-dtp-pop--sheet .jcc-dtp-day {
+  height: 30px;
+  font-size: 0.78rem;
+  border-radius: 999px;
+}
+.jcc-dtp-pop--sheet .jcc-dtp-day.selected {
+  border-radius: 999px;
+}
+.jcc-dtp-pop--sheet .jcc-dtp-time {
+  margin-top: 12px;
+  padding-top: 12px;
+  gap: 8px;
+}
+.jcc-dtp-pop--sheet .jcc-dtp-select {
+  height: 40px;
+  padding: 0 14px;
+}
+.jcc-dtp-pop--sheet .jcc-dtp-select input.jcc-dtp-num {
+  font-size: 1rem;
+}
+.jcc-dtp-pop--sheet .jcc-dtp-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin-top: 12px;
+  padding-top: 12px;
+  padding-bottom: 2px;
+  background: var(--card, #fff);
+  border-top: 1px solid var(--border, #e9ecef);
+  box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.06);
+}
+.jcc-dtp-pop--sheet .jcc-dtp-ok {
+  min-width: 88px;
+  min-height: 40px;
+  font-size: 0.92rem;
+}
+@keyframes jcc-dtp-slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes jcc-dtp-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* 타임테이블 */

@@ -124,7 +124,7 @@
         eventId: {{ event.id }},
         apiDashboard: "{% url 'api_retreat_event_dashboard' event.id %}",
         apiGroupBoard: "{% url 'api_retreat_event_group_board' event.id %}",
-        isStaff: {{ is_retreat_staff|yesno:"true,false" }}
+        isStaff: {{ can_view_retreat_all|yesno:"true,false" }}
       };
     </script>
     <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260608c" defer></script>

@@ -122,6 +122,53 @@
     });
   }
 
+  // datetime-local 은 커스텀 피커 버튼(.jcc-dtp-field)이 실제로 보이므로
+  // 표시는 그 버튼에, 포커스도 그 버튼으로 보낸다.
+  function visibleControl(el) {
+    if (el && el.classList.contains("jcc-dtp-native")) {
+      return el.parentElement?.querySelector(".jcc-dtp-field") || el;
+    }
+    return el;
+  }
+
+  function markInvalid(id, invalid, message) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const visible = visibleControl(el);
+    el.classList.toggle("is-invalid", !!invalid);
+    if (visible !== el) visible.classList.toggle("is-invalid", !!invalid);
+
+    const field = el.closest(".field");
+    if (field) {
+      let hint = field.querySelector(".jcc-field-error");
+      if (invalid) {
+        if (!hint) {
+          hint = document.createElement("small");
+          hint.className = "jcc-field-error";
+          field.appendChild(hint);
+        }
+        hint.textContent = message || "필수 입력 항목입니다.";
+      } else if (hint) {
+        hint.remove();
+      }
+    }
+
+    if (invalid) {
+      const clear = () => markInvalid(id, false);
+      el.addEventListener("input", clear, { once: true });
+      el.addEventListener("change", clear, { once: true });
+    }
+  }
+
+  function clearInvalid(ids) {
+    ids.forEach((id) => markInvalid(id, false));
+  }
+
+  function focusField(id) {
+    const el = document.getElementById(id);
+    if (el) visibleControl(el)?.focus();
+  }
+
   function setVal(id, value) {
     const el = document.getElementById(id);
     if (el) el.value = value || "";
@@ -130,6 +177,7 @@
   function openModal(editItem) {
     if (!modalOverlay || !form) return;
     form.reset();
+    clearInvalid(["pickupName", "pickupTrainTime", "pickupBoardingPlace", "pickupContact"]);
     editingId = editItem ? editItem.id : null;
     if (modalTitleEl)
       modalTitleEl.textContent = editItem ? "픽업 정보 수정" : "픽업 정보 추가";
@@ -234,15 +282,34 @@
       const region = regionSelect?.value || "";
       const division = divisionSelect?.value || "";
 
-      if (!name || !trainTime || !boardingPlace || !contact) {
-        setStatus("이름, 열차 시각, 탑승장소, 연락처는 필수입니다.", true);
+      const trainTimeLabel =
+        document
+          .querySelector('label[for="pickupTrainTime"]')
+          ?.textContent?.replace(/\s*\*\s*$/, "")
+          .trim() || "열차 시각";
+
+      const missing = [];
+      if (!name) missing.push(["pickupName", "이름을 입력해 주세요."]);
+      if (!trainTime)
+        missing.push(["pickupTrainTime", `${trainTimeLabel}을(를) 선택해 주세요.`]);
+      if (!boardingPlace)
+        missing.push(["pickupBoardingPlace", "탑승장소를 입력해 주세요."]);
+      if (!contact) missing.push(["pickupContact", "연락처를 입력해 주세요."]);
+
+      clearInvalid(["pickupName", "pickupTrainTime", "pickupBoardingPlace", "pickupContact"]);
+
+      if (missing.length) {
+        missing.forEach(([id, msg]) => markInvalid(id, true, msg));
+        focusField(missing[0][0]);
         return;
       }
       if (!isValidPhone(contact)) {
-        setStatus(
-          "올바른 휴대폰 번호 형식이 아닙니다. (예: 010-1234-5678)",
-          true
+        markInvalid(
+          "pickupContact",
+          true,
+          "올바른 휴대폰 번호 형식이 아닙니다. (예: 010-1234-5678)"
         );
+        focusField("pickupContact");
         return;
       }
 

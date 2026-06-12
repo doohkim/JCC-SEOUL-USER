@@ -8,10 +8,10 @@ from rest_framework.exceptions import PermissionDenied
 from retreat.models import RetreatEvent, RetreatGroup
 from users.permissions import (
     can_add_retreat_group,
+    can_change_retreat_check_in,
     can_manage_retreat_group_leaders,
     is_retreat_council,
     is_retreat_group_leader,
-    is_retreat_staff,
     visible_retreat_groups_for,
 )
 
@@ -33,37 +33,29 @@ def assert_can_mutate_group(user, group: RetreatGroup) -> None:
 
     - 슈퍼유저 OK
     - 조장/부조장 OK (본인 그룹)
-    - staff OK (본인 region/division)
+    - 회장단 OK
     """
     if user.is_superuser:
         return
     if is_retreat_group_leader(user, group):
         return
-    if is_retreat_staff(user, group.event):
-        # staff 도 본인 region/division 한정 여부는 visible 결과로 확인.
-        if group.id in set(
-            visible_retreat_groups_for(user, group.event).values_list("id", flat=True)
-        ):
-            return
+    if is_retreat_council(user, group.event):
+        return
     raise PermissionDenied("이 조의 정보를 변경할 권한이 없습니다.")
 
 
 def user_can_edit_attendee_timestamps(user, group: RetreatGroup) -> bool:
-    """입실/퇴실 시각 직접 수정 — staff·회장단·슈퍼유저만."""
+    """입실/퇴실 시각 직접 수정 — 회장단·슈퍼유저만."""
     if user.is_superuser:
         return True
-    if is_retreat_council(user, group.event):
-        return True
-    return is_retreat_staff(user, group.event)
+    return is_retreat_council(user, group.event)
 
 
 def user_can_manage_lodging(user, event: RetreatEvent) -> bool:
-    """숙소/호실 CRUD — staff·회장단·슈퍼유저만."""
+    """숙소/호실 CRUD — 회장단·슈퍼유저만."""
     if user.is_superuser:
         return True
-    if is_retreat_council(user, event):
-        return True
-    return is_retreat_staff(user, event)
+    return is_retreat_council(user, event)
 
 
 def assert_can_manage_lodging(user, event: RetreatEvent) -> None:
@@ -74,10 +66,6 @@ def assert_can_manage_lodging(user, event: RetreatEvent) -> None:
 def user_can_view_event(user, event: RetreatEvent) -> bool:
     """행사 가시 권한 — 본인이 볼 수 있는 그룹이 하나라도 이 행사에 속하면 OK."""
     if user.is_superuser:
-        return True
-    if is_retreat_council(user, event):
-        return True
-    if is_retreat_staff(user, event):
         return True
     return visible_retreat_groups_for(user, event).exists()
 
@@ -98,12 +86,12 @@ def assert_can_manage_group_leaders(user, group: RetreatGroup) -> None:
 
 
 def user_can_edit_attendee_details(user, group: RetreatGroup) -> bool:
-    """조원 프로필(이름·연락처 등) 수정·삭제 — 회장단·staff·슈퍼유저."""
+    """조원 프로필(이름·연락처 등) 수정 — 회장단·슈퍼유저·본인 조 조장."""
     if user.is_superuser:
         return True
     if is_retreat_council(user, group.event):
         return True
-    return is_retreat_staff(user, group.event)
+    return is_retreat_group_leader(user, group)
 
 
 def assert_can_edit_attendee_details(user, group: RetreatGroup) -> None:
@@ -111,8 +99,13 @@ def assert_can_edit_attendee_details(user, group: RetreatGroup) -> None:
         raise PermissionDenied("조원 정보를 수정할 권한이 없습니다.")
 
 
+def assert_can_change_check_in_status(user, group: RetreatGroup) -> None:
+    if not can_change_retreat_check_in(user, group.event):
+        raise PermissionDenied("입·퇴실 상태를 변경할 권한이 없습니다.")
+
+
 def user_can_delete_attendee(user, group: RetreatGroup) -> bool:
-    """조원 삭제 — 관리자(슈퍼유저·회장단)만. 운영진 staff·조장 제외."""
+    """조원 삭제 — 관리자(슈퍼유저·회장단)만. 조장 제외."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if user.is_superuser:
@@ -129,6 +122,24 @@ _PROFILE_PATCH_KEYS = frozenset(
     {"name", "phone", "gender", "memo", "member_role", "user"}
 )
 
+_ATTENDEE_DETAIL_PATCH_KEYS = frozenset(
+    {
+        "name",
+        "phone",
+        "gender",
+        "memo",
+        "member_role",
+        "user",
+        "expected_check_in_at",
+        "expected_check_out_at",
+        "lodging_room",
+    }
+)
+
+_CHECK_IN_STATUS_KEYS = frozenset(
+    {"check_in_status", "checked_in_at", "checked_out_at"}
+)
+
 
 def assert_check_in_status_transition(
     user,
@@ -137,7 +148,7 @@ def assert_check_in_status_transition(
     previous: str,
     new: str,
 ) -> None:
-    """입퇴실 상태 전환 규칙."""
+    """입퇴실 상태 전환 규칙 (회장단·슈퍼유저만 호출 전제)."""
     if previous == new:
         return
     from retreat.models import RetreatAttendee
@@ -147,22 +158,5 @@ def assert_check_in_status_transition(
     checked_out = RetreatAttendee.CheckInStatus.CHECKED_OUT
 
     if new == pending and previous in (checked_in, checked_out):
-        if not (
-            user.is_superuser
-            or is_retreat_council(user, group.event)
-            or is_retreat_staff(user, group.event)
-        ):
+        if not (user.is_superuser or is_retreat_council(user, group.event)):
             raise PermissionDenied("입실·퇴실 후 입실전으로 되돌릴 수 없습니다.")
-
-    if is_retreat_group_leader(user, group) and not (
-        user.is_superuser
-        or is_retreat_council(user, group.event)
-        or is_retreat_staff(user, group.event)
-    ):
-        forward = {
-            pending: {checked_in},
-            checked_in: {checked_out},
-            checked_out: set(),
-        }
-        if new not in forward.get(previous, set()):
-            raise PermissionDenied("허용되지 않은 입퇴실 상태 변경입니다.")

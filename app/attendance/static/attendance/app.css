@@ -65,6 +65,7 @@ body {
   color: var(--text);
   line-height: 1.5;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 header.app-header {
@@ -123,6 +124,7 @@ header.app-header a:hover {
 .jcc-layout {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .jcc-leftNav {
@@ -136,6 +138,7 @@ header.app-header a:hover {
   position: sticky;
   top: 0;
   height: 100vh;
+  height: 100dvh;
   transition: width 0.28s ease, padding 0.28s ease, opacity 0.22s ease;
 }
 

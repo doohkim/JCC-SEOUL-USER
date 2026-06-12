@@ -40,9 +40,9 @@ def _group_queryset(event: RetreatEvent, user, *, restrict_to_user_groups: bool)
 
 
 def _is_staff_for_event(user, event: RetreatEvent) -> bool:
-    from users.permissions import is_retreat_staff
+    from users.permissions import can_view_retreat_all
 
-    return bool(user.is_superuser or is_retreat_staff(user, event))
+    return can_view_retreat_all(user, event)
 
 
 def _attendance_counts_by_group(session_id: int) -> dict[int, dict[str, int]]:

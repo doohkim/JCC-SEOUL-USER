@@ -1,4 +1,4 @@
-{% comment %}행사 단위 상단 탭 — event, is_retreat_staff, available_events, retreat_tab 필요{% endcomment %}
+{% comment %}행사 단위 상단 탭 — event, can_view_retreat_all, is_retreat_staff, available_events, retreat_tab 필요{% endcomment %}
 <div class="jcc-retreat-pageTabsRow">
   {% if available_events %}
     <select
@@ -45,11 +45,13 @@
       class="jcc-page-tab{% if retreat_tab == 'pickup' %} is-active{% endif %}"
       href="{% url 'retreat_pickup' event.id %}"
     >픽업</a>
-    {% if is_retreat_staff %}
+    {% if can_view_retreat_all %}
       <a
         class="jcc-page-tab{% if retreat_tab == 'lodging' or retreat_tab == 'lodging_assign' %} is-active{% endif %}"
         href="{% url 'retreat_lodging' event.id %}"
       >숙소</a>
+    {% endif %}
+    {% if is_retreat_staff %}
       <a
         class="jcc-page-tab{% if retreat_tab == 'admin' or retreat_tab == 'council' or retreat_tab == 'timetable' %} is-active{% endif %}"
         href="{% url 'retreat_admin' event.id %}"

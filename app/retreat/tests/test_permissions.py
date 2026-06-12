@@ -26,6 +26,9 @@ from users.models import (
     FunctionalDepartment,
 )
 from users.permissions import (
+    can_access_retreat_tab,
+    can_change_retreat_check_in,
+    can_view_retreat_all,
     is_retreat_group_leader,
     is_retreat_staff,
     visible_retreat_groups_for,
@@ -149,6 +152,16 @@ class _BaseFixture(TestCase):
             role=cls.role_dept_head,
         )
 
+        cls.rl_pastor, _ = RoleLevel.objects.get_or_create(
+            code="pastor", defaults={"name": "목사", "level": 80, "sort_order": 10}
+        )
+        cls.pastor = User.objects.create_user(username="pastor_r", password="x")
+        cls.pastor.role_level = cls.rl_pastor
+        cls.pastor.save()
+        UserDivisionTeam.objects.create(
+            user=cls.pastor, division=cls.div_youth_seoul, is_primary=True
+        )
+
         # 일반 유저 (조 권한 없음)
         cls.stranger = User.objects.create_user(username="stranger_r", password="x")
         UserDivisionTeam.objects.create(
@@ -176,42 +189,29 @@ class RetreatPermissionsTests(_BaseFixture):
             {self.group_seoul_2.id},
         )
 
-    def test_staff_sees_own_region_division_groups(self):
-        # 서울 청년부 회장: 서울 청년부의 1조 + 2조 보임
+    def test_role_only_president_sees_no_groups_without_council(self):
         groups = visible_retreat_groups_for(self.staff_seoul, self.event)
+        self.assertEqual(set(groups.values_list("id", flat=True)), set())
+
+    def test_council_sees_all_groups(self):
+        council = User.objects.create_user(username="council_all", password="x")
+        RetreatCouncilMembership.objects.create(
+            event=self.event,
+            user=council,
+            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+        )
+        groups = visible_retreat_groups_for(council, self.event)
         self.assertEqual(
             set(groups.values_list("id", flat=True)),
-            {self.group_seoul_1.id, self.group_seoul_2.id},
+            {self.group_seoul_1.id, self.group_seoul_2.id, self.group_incheon_1.id},
         )
 
-    def test_staff_does_not_see_other_region(self):
-        groups = visible_retreat_groups_for(self.staff_seoul, self.event)
-        self.assertNotIn(
-            self.group_incheon_1.id,
+    def test_pastor_sees_all_groups(self):
+        groups = visible_retreat_groups_for(self.pastor, self.event)
+        self.assertEqual(
             set(groups.values_list("id", flat=True)),
+            {self.group_seoul_1.id, self.group_seoul_2.id, self.group_incheon_1.id},
         )
-
-    def test_staff_sees_group_when_extra_scope_matches(self):
-        multi = RetreatGroup.objects.create(
-            event=self.event,
-            region=self.seoul,
-            division=self.div_youth_seoul,
-            name="20조",
-            order=20,
-        )
-        RetreatGroupScope.objects.create(
-            group=multi,
-            region=self.incheon,
-            division=self.div_youth_incheon,
-        )
-        staff_incheon = User.objects.create_user(username="staff_incheon", password="x")
-        staff_incheon.role_level = self.rl_president
-        staff_incheon.save()
-        UserDivisionTeam.objects.create(
-            user=staff_incheon, division=self.div_youth_incheon, is_primary=True
-        )
-        groups = visible_retreat_groups_for(staff_incheon, self.event)
-        self.assertIn(multi.id, set(groups.values_list("id", flat=True)))
 
     def test_staff_other_division_does_not_see_youth_groups(self):
         # 서울 대학부 부장: 청년부 그룹은 안 보여야 함 (division 다름)
@@ -239,11 +239,50 @@ class RetreatPermissionsTests(_BaseFixture):
             is_retreat_group_leader(self.leader_seoul_2, self.group_seoul_1)
         )
 
-    def test_is_retreat_staff_for_president(self):
-        self.assertTrue(is_retreat_staff(self.staff_seoul, self.event))
+    def test_is_retreat_staff_false_for_role_only_president(self):
+        self.assertFalse(is_retreat_staff(self.staff_seoul, self.event))
+
+    def test_is_retreat_staff_true_for_council(self):
+        council = User.objects.create_user(username="council_staff", password="x")
+        RetreatCouncilMembership.objects.create(
+            event=self.event,
+            user=council,
+            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+        )
+        self.assertTrue(is_retreat_staff(council, self.event))
 
     def test_is_retreat_staff_false_for_stranger(self):
         self.assertFalse(is_retreat_staff(self.stranger, self.event))
+
+    def test_role_only_president_cannot_access_retreat_tab(self):
+        self.assertFalse(can_access_retreat_tab(self.staff_seoul))
+
+    def test_dept_head_cannot_access_retreat_tab(self):
+        self.assertFalse(can_access_retreat_tab(self.staff_univ))
+
+    def test_pastor_can_access_retreat_tab(self):
+        self.assertTrue(can_access_retreat_tab(self.pastor))
+
+    def test_leader_can_access_retreat_tab(self):
+        self.assertTrue(can_access_retreat_tab(self.leader_seoul_1))
+
+    def test_pastor_can_view_retreat_all(self):
+        self.assertTrue(can_view_retreat_all(self.pastor, self.event))
+
+    def test_leader_cannot_view_retreat_all(self):
+        self.assertFalse(can_view_retreat_all(self.leader_seoul_1, self.event))
+
+    def test_leader_cannot_change_check_in(self):
+        self.assertFalse(can_change_retreat_check_in(self.leader_seoul_1, self.event))
+
+    def test_council_can_change_check_in(self):
+        council = User.objects.create_user(username="council_checkin", password="x")
+        RetreatCouncilMembership.objects.create(
+            event=self.event,
+            user=council,
+            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+        )
+        self.assertTrue(can_change_retreat_check_in(council, self.event))
 
 
 class RetreatGroupAttendeesApiTests(_BaseFixture):
@@ -312,6 +351,44 @@ class RetreatGroupAttendeesApiTests(_BaseFixture):
         self.assertEqual(r.status_code, 200)
         ids = [e["id"] for e in r.json()]
         self.assertNotIn(self.event.id, ids)
+
+    def test_leader_can_patch_attendee_profile(self):
+        att = RetreatAttendee.objects.create(
+            group=self.group_seoul_1, name="홍길동", gender="male"
+        )
+        self.client.force_authenticate(self.leader_seoul_1)
+        r = self.client.patch(
+            f"/api/v1/retreat/attendees/{att.id}/",
+            {"name": "홍길동수정", "phone": "010-1111-2222", "memo": "메모"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        att.refresh_from_db()
+        self.assertEqual(att.name, "홍길동수정")
+        self.assertEqual(att.phone, "010-1111-2222")
+        self.assertEqual(att.memo, "메모")
+
+    def test_leader_cannot_patch_check_in_status(self):
+        att = RetreatAttendee.objects.create(group=self.group_seoul_1, name="상태대상")
+        self.client.force_authenticate(self.leader_seoul_1)
+        r = self.client.patch(
+            f"/api/v1/retreat/attendees/{att.id}/",
+            {"check_in_status": "checked_in"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 403, r.content)
+        att.refresh_from_db()
+        self.assertEqual(att.check_in_status, "pending")
+
+    def test_pastor_cannot_patch_attendee(self):
+        att = RetreatAttendee.objects.create(group=self.group_seoul_1, name="목사읽기")
+        self.client.force_authenticate(self.pastor)
+        r = self.client.patch(
+            f"/api/v1/retreat/attendees/{att.id}/",
+            {"name": "변경시도"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 403, r.content)
 
 
 class RetreatAttendeeDeletePermissionTests(_BaseFixture):
