@@ -35,6 +35,7 @@ from users.permissions import (
     can_access_retreat_tab,
     can_change_retreat_check_in,
     can_manage_retreat_pickup,
+    can_manage_retreat_pickup_location,
     can_manage_retreat_sessions,
     can_select_pickup_group,
     can_view_retreat_all,
@@ -368,6 +369,16 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
             Division.objects.select_related("region").order_by(
                 "region__sort_order", "sort_order", "name"
             )
+        )
+        ctx["can_manage_pickup_location"] = can_manage_retreat_pickup_location(
+            user, event
+        )
+        pickup_locations = list(
+            event.pickup_locations.order_by("sort_order", "name", "id")
+        )
+        ctx["pickup_location_choices_json"] = json.dumps(
+            [{"id": loc.id, "name": loc.name} for loc in pickup_locations],
+            ensure_ascii=False,
         )
         return ctx
 
@@ -1090,9 +1101,9 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
         event = ctx["event"]
-        tab = (self.request.GET.get("tab") or "sessions").strip()
+        tab = (self.request.GET.get("tab") or "groups").strip()
         if tab not in ("sessions", "groups", "changelog"):
-            tab = "sessions"
+            tab = "groups"
         ctx["active_tab"] = tab
 
         visible_sessions = list(

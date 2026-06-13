@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 타임테이블 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260609h" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614a" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -92,7 +92,7 @@
                 <div class="jcc-retreat-modalGrid">
                   <div class="field jcc-retreat-modalField--full">
                     <label for="ttDay">날짜 *</label>
-                    <select id="ttDay" required>
+                    <select id="ttDay" required data-cselect>
                       {% for d in event_days %}
                         <option value="{{ d|date:'Y-m-d' }}">{{ d|date:'n/j (D)' }}</option>
                       {% endfor %}
@@ -140,6 +140,7 @@
       };
     </script>
     <script src="{% static 'retreat/time_picker.js' %}?v=20260609b" defer></script>
-    <script src="{% static 'retreat/retreat_timetable.js' %}?v=20260609b" defer></script>
+    <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
+    <script src="{% static 'retreat/retreat_timetable.js' %}?v=20260613a" defer></script>
   </body>
 </html>

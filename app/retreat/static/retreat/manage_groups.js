@@ -81,11 +81,12 @@
             : "jcc-retreat-leaderDraftRow";
         return `<div class="${rowClass}">
             <span class="jcc-retreat-leaderDraftName">${escapeHtml(e.label)}</span>
-            <select class="jcc-retreat-leaderRoleSelect" data-leader-role-idx="${i}" aria-label="역할">${roleOptionsHtml(e.role)}</select>
+            <select class="jcc-retreat-leaderRoleSelect" data-leader-role-idx="${i}" aria-label="역할" data-cselect>${roleOptionsHtml(e.role)}</select>
             <button type="button" class="jcc-retreat-rowDel" data-remove-leader="${i}">제거</button>
           </div>`;
       })
       .join("");
+    if (window.JccCustomSelect) window.JccCustomSelect.init(list);
     if (highlightIdx != null) {
       requestAnimationFrame(() => {
         const row = list.querySelector(`[data-leader-role-idx="${highlightIdx}"]`)?.closest(
@@ -188,6 +189,7 @@
     const rowEl = frag.querySelector("[data-group-row]");
     if (!rowEl) return null;
     rowsList.appendChild(rowEl);
+    if (window.JccCustomSelect) window.JccCustomSelect.init(rowEl);
     const state = { el: rowEl, leaders: [], picker: null };
     rowStates.push(state);
     bindRowEvents(state);
@@ -207,7 +209,12 @@
       modalStatusEl.textContent = "";
       modalStatusEl.style.display = "none";
     }
-    if (eventInput) eventInput.value = String(ctx.defaultEventId);
+    if (eventInput) {
+      eventInput.value = String(ctx.defaultEventId);
+      if (window.JccCustomSelect) {
+        window.JccCustomSelect.refresh(eventInput.closest(".jcc-cselect"));
+      }
+    }
     resetRows();
     overlay.hidden = false;
     overlay.setAttribute("aria-hidden", "false");

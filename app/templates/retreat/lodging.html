@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ event.name }} · 숙소</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260605zz" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614a" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -141,7 +141,7 @@
                   </div>
                   <div class="field jcc-retreat-modalField--full">
                     <label for="lodgingRegionInput">지역</label>
-                    <select id="lodgingRegionInput" name="region">
+                    <select id="lodgingRegionInput" name="region" data-cselect>
                       <option value="">전 지역 공용</option>
                       {% for r in region_choices %}
                         <option value="{{ r.id }}">{{ r.name }}</option>
@@ -180,7 +180,7 @@
                   </div>
                   <div class="field">
                     <label for="roomRegionInput">지역 *</label>
-                    <select id="roomRegionInput" name="region">
+                    <select id="roomRegionInput" name="region" data-cselect>
                       <option value="">(미배정)</option>
                       {% for r in region_choices %}
                         <option value="{{ r.id }}">{{ r.name }}</option>
@@ -189,14 +189,14 @@
                   </div>
                   <div class="field">
                     <label for="roomDivisionInput">부서 *</label>
-                    <select id="roomDivisionInput" name="division">
+                    <select id="roomDivisionInput" name="division" data-cselect>
                       <option value="">(미배정)</option>
                     </select>
                     <small class="muted">선택한 지역의 부서만 노출됩니다.</small>
                   </div>
                   <div class="field">
                     <label for="roomGenderInput">권장 성별</label>
-                    <select id="roomGenderInput" name="recommended_gender">
+                    <select id="roomGenderInput" name="recommended_gender" data-cselect>
                       <option value="">미지정</option>
                       <option value="male">남성</option>
                       <option value="female">여성</option>
@@ -234,6 +234,7 @@
       };
     </script>
     {% include 'includes/retreat_bottom_tabs.html' %}
-    <script src="{% static 'retreat/lodging_admin.js' %}?v=20260603k" defer></script>
+    <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
+    <script src="{% static 'retreat/lodging_admin.js' %}?v=20260613a" defer></script>
   </body>
 </html>

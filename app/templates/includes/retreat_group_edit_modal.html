@@ -19,7 +19,7 @@
         <div class="jcc-retreat-modalGrid">
           <div class="field">
             <label for="groupEditRegion">지역</label>
-            <select id="groupEditRegion" required>
+            <select id="groupEditRegion" required data-cselect>
               <option value="">선택</option>
               {% for r in region_choices %}
                 <option value="{{ r.id }}">{{ r.name }}</option>
@@ -28,7 +28,7 @@
           </div>
           <div class="field">
             <label for="groupEditDivision">부서</label>
-            <select id="groupEditDivision" required>
+            <select id="groupEditDivision" required data-cselect>
               <option value="">선택</option>
             </select>
           </div>
@@ -55,7 +55,7 @@
           </div>
           <div class="field">
             <label for="groupEditLeaderRole">역할</label>
-            <select id="groupEditLeaderRole">
+            <select id="groupEditLeaderRole" data-cselect>
               {% for code, label in group_role_choices %}
                 <option value="{{ code }}">{{ label }}</option>
               {% endfor %}
@@ -79,7 +79,7 @@
     <div class="jcc-retreat-modalGrid jcc-retreat-extraScopeGrid">
       <div class="field">
         <label>지역</label>
-        <select data-extra-region>
+        <select data-extra-region data-cselect>
           <option value="">선택</option>
           {% for r in region_choices %}
             <option value="{{ r.id }}">{{ r.name }}</option>
@@ -88,7 +88,7 @@
       </div>
       <div class="field">
         <label>부서</label>
-        <select data-extra-division>
+        <select data-extra-division data-cselect>
           <option value="">선택</option>
         </select>
       </div>

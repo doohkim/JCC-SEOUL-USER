@@ -1,65 +1,39 @@
 (function () {
   const ctx = window.RETREAT_PICKUP_CTX;
-  if (!ctx || !ctx.canManage) return;
+  if (!ctx) return;
 
-  const tbody = document.getElementById("pickupTbody");
-  const statusEl = document.getElementById("pickupStatus");
-  const btnAdd = document.getElementById("btnPickupAdd");
-  const modalOverlay = document.getElementById("pickupModalOverlay");
-  const form = document.getElementById("pickupForm");
-  const modalCancel = document.getElementById("pickupModalCancel");
-  const modalTitleEl = document.getElementById("pickupModalTitle");
-  const modalSubmitBtn = document.getElementById("pickupModalSubmit");
-  let editingId = null;
-
-  const confirmOverlay = document.getElementById("retreatConfirmOverlay");
-  const confirmTitleEl = document.getElementById("retreatConfirmTitle");
-  const confirmMsgEl = document.getElementById("retreatConfirmMsg");
-  const confirmOkBtn = document.getElementById("retreatConfirmOk");
-  const confirmCancelBtn = document.getElementById("retreatConfirmCancel");
-  let confirmResolve = null;
-
-  const colCount = 11;
-
-  const groupSelect = document.getElementById("pickupGroup");
-  const regionSelect = document.getElementById("pickupRegion");
-  const divisionSelect = document.getElementById("pickupDivision");
-
-  let allDivisions = [];
+  let allLocations = [];
   try {
-    const raw =
-      document.getElementById("retreatDivisionList")?.textContent || "[]";
-    allDivisions = JSON.parse(raw);
+    allLocations = JSON.parse(
+      document.getElementById("retreatPickupLocationList")?.textContent || "[]"
+    );
   } catch (e) {
-    allDivisions = [];
+    allLocations = [];
+  }
+  function syncLocationsFromList(items) {
+    allLocations = (items || []).map((loc) => ({
+      id: loc.id,
+      name: loc.name,
+    }));
   }
 
-  function fillDivisionSelect(regionId, selectedId) {
-    if (!divisionSelect) return;
-    divisionSelect.innerHTML = '<option value="">선택</option>';
-    if (!regionId) return;
-    allDivisions
-      .filter((d) => d.region_id === Number(regionId))
-      .forEach((d) => {
-        const opt = document.createElement("option");
-        opt.value = String(d.id);
-        opt.textContent = d.name;
-        if (selectedId != null && String(d.id) === String(selectedId)) {
-          opt.selected = true;
-        }
-        divisionSelect.appendChild(opt);
-      });
-  }
-
-  if (regionSelect) {
-    regionSelect.addEventListener("change", () => {
-      fillDivisionSelect(regionSelect.value, null);
+  function fillBoardingPlaceSelect(selectedName) {
+    const sel = document.getElementById("pickupBoardingPlace");
+    const hint = document.getElementById("pickupBoardingHint");
+    if (!sel) return;
+    const list = allLocations;
+    sel.innerHTML = '<option value="">선택</option>';
+    list.forEach((loc) => {
+      const opt = document.createElement("option");
+      opt.value = loc.name;
+      opt.textContent = loc.name;
+      if (selectedName && loc.name === selectedName) opt.selected = true;
+      sel.appendChild(opt);
     });
-  }
-
-  function isValidPhone(raw) {
-    const digits = String(raw ?? "").replace(/\D/g, "");
-    return /^01[016789]\d{7,8}$/.test(digits);
+    const empty = list.length === 0;
+    if (hint) hint.hidden = !empty;
+    sel.disabled = empty;
+    if (window.JccCustomSelect) window.JccCustomSelect.refresh(document);
   }
 
   function escapeHtml(s) {
@@ -70,18 +44,22 @@
       .replace(/"/g, "&quot;");
   }
 
-  function setStatus(msg, isError) {
-    if (!statusEl) return;
-    statusEl.textContent = msg || "";
-    statusEl.classList.toggle("error", !!isError);
-  }
-
   function csrfHeaders() {
     return {
       "Content-Type": "application/json",
       "X-CSRFToken": ctx.csrfToken,
     };
   }
+
+  const regionSelect = document.getElementById("pickupRegion");
+  const boardingSelect = document.getElementById("pickupBoardingPlace");
+
+  const confirmOverlay = document.getElementById("retreatConfirmOverlay");
+  const confirmTitleEl = document.getElementById("retreatConfirmTitle");
+  const confirmMsgEl = document.getElementById("retreatConfirmMsg");
+  const confirmOkBtn = document.getElementById("retreatConfirmOk");
+  const confirmCancelBtn = document.getElementById("retreatConfirmCancel");
+  let confirmResolve = null;
 
   function openConfirm(message, title, okLabel, cancelLabel) {
     if (!confirmOverlay) return Promise.resolve(false);
@@ -120,6 +98,66 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && !confirmOverlay.hidden) resolveConfirm(false);
     });
+  }
+
+  if (ctx.canManage) {
+  const tbody = document.getElementById("pickupTbody");
+  const statusEl = document.getElementById("pickupStatus");
+  const btnAdd = document.getElementById("btnPickupAdd");
+  const modalOverlay = document.getElementById("pickupModalOverlay");
+  const form = document.getElementById("pickupForm");
+  const modalCancel = document.getElementById("pickupModalCancel");
+  const modalTitleEl = document.getElementById("pickupModalTitle");
+  const modalSubmitBtn = document.getElementById("pickupModalSubmit");
+  let editingId = null;
+
+  const colCount = 11;
+
+  const groupSelect = document.getElementById("pickupGroup");
+  const divisionSelect = document.getElementById("pickupDivision");
+
+  let allDivisions = [];
+  try {
+    const raw =
+      document.getElementById("retreatDivisionList")?.textContent || "[]";
+    allDivisions = JSON.parse(raw);
+  } catch (e) {
+    allDivisions = [];
+  }
+
+  function fillDivisionSelect(regionId, selectedId) {
+    if (!divisionSelect) return;
+    divisionSelect.innerHTML = '<option value="">선택</option>';
+    if (!regionId) return;
+    allDivisions
+      .filter((d) => d.region_id === Number(regionId))
+      .forEach((d) => {
+        const opt = document.createElement("option");
+        opt.value = String(d.id);
+        opt.textContent = d.name;
+        if (selectedId != null && String(d.id) === String(selectedId)) {
+          opt.selected = true;
+        }
+        divisionSelect.appendChild(opt);
+      });
+    if (window.JccCustomSelect) window.JccCustomSelect.refresh(document);
+  }
+
+  if (regionSelect) {
+    regionSelect.addEventListener("change", () => {
+      fillDivisionSelect(regionSelect.value, null);
+    });
+  }
+
+  function isValidPhone(raw) {
+    const digits = String(raw ?? "").replace(/\D/g, "");
+    return /^01[016789]\d{7,8}$/.test(digits);
+  }
+
+  function setStatus(msg, isError) {
+    if (!statusEl) return;
+    statusEl.textContent = msg || "";
+    statusEl.classList.toggle("error", !!isError);
   }
 
   // datetime-local 은 커스텀 피커 버튼(.jcc-dtp-field)이 실제로 보이므로
@@ -187,15 +225,15 @@
     setVal("pickupName", editItem ? editItem.name : "");
     // datetime-local 피커 표시 갱신 (래핑된 value setter 트리거)
     setVal("pickupTrainTime", editItem ? editItem.trainTime : "");
-    setVal("pickupBoardingPlace", editItem ? editItem.boardingPlace : "");
     setVal("pickupContact", editItem ? editItem.contact : "");
     setVal("pickupNote", editItem ? editItem.note : "");
     if (groupSelect) groupSelect.value = editItem ? editItem.group || "" : "";
     if (regionSelect) regionSelect.value = editItem ? editItem.region || "" : "";
     fillDivisionSelect(
-      regionSelect ? regionSelect.value : "",
+      regionSelect ? regionSelect.value : null,
       editItem ? editItem.division : null
     );
+    fillBoardingPlaceSelect(editItem ? editItem.boardingPlace : null);
 
     modalOverlay.hidden = false;
     modalOverlay.setAttribute("aria-hidden", "false");
@@ -293,7 +331,12 @@
       if (!trainTime)
         missing.push(["pickupTrainTime", `${trainTimeLabel}을(를) 선택해 주세요.`]);
       if (!boardingPlace)
-        missing.push(["pickupBoardingPlace", "탑승장소를 입력해 주세요."]);
+        missing.push([
+          "pickupBoardingPlace",
+          allLocations.length
+            ? "탑승장소를 선택해 주세요."
+            : "등록된 탑승장소가 없습니다. 회장단에게 등록을 요청해 주세요.",
+        ]);
       if (!contact) missing.push(["pickupContact", "연락처를 입력해 주세요."]);
 
       clearInvalid(["pickupName", "pickupTrainTime", "pickupBoardingPlace", "pickupContact"]);
@@ -413,5 +456,177 @@
         setStatus(err.message || "제거에 실패했습니다.", true);
       }
     });
+  }
+  }
+
+  if (ctx.canManageLocation) initLocationManagement();
+
+  function initLocationManagement() {
+    const btnManage = document.getElementById("btnPickupLocationManage");
+    const locOverlay = document.getElementById("pickupLocationModalOverlay");
+    const locClose = document.getElementById("pickupLocationModalClose");
+    const locName = document.getElementById("pickupLocManageName");
+    const locAddBtn = document.getElementById("pickupLocAddBtn");
+    const locTbody = document.getElementById("pickupLocationTbody");
+    const locStatus = document.getElementById("pickupLocationStatus");
+    if (!btnManage || !locOverlay) return;
+
+    function setLocStatus(msg, isError) {
+      if (!locStatus) return;
+      locStatus.textContent = msg || "";
+      locStatus.classList.toggle("error", !!isError);
+    }
+
+    function renderLocationManageList() {
+      if (!locTbody) return;
+      if (!allLocations.length) {
+        locTbody.innerHTML =
+          '<tr id="pickupLocationEmptyRow"><td colspan="2">등록된 탑승장소가 없습니다.</td></tr>';
+        return;
+      }
+      locTbody.innerHTML = allLocations
+        .map(
+          (loc) => `
+        <tr data-location-id="${loc.id}">
+          <td>${escapeHtml(loc.name)}</td>
+          <td class="jcc-pickup-locActionsCell">
+            <div class="jcc-pickup-locActions">
+              <button type="button" class="jcc-pickup-locBtn" data-loc-edit>수정</button>
+              <button type="button" class="jcc-pickup-locBtn jcc-pickup-locBtn--danger" data-loc-delete>삭제</button>
+            </div>
+          </td>
+        </tr>`
+        )
+        .join("");
+    }
+
+    async function refreshLocationsFromApi() {
+      const r = await fetch(ctx.apiLocationList, { credentials: "same-origin" });
+      if (!r.ok) throw new Error("탑승장소 목록을 불러올 수 없습니다.");
+      const items = await r.json();
+      syncLocationsFromList(items);
+      renderLocationManageList();
+      fillBoardingPlaceSelect(boardingSelect?.value || null);
+    }
+
+    function openLocationModal() {
+      locOverlay.hidden = false;
+      locOverlay.setAttribute("aria-hidden", "false");
+      setLocStatus("");
+      renderLocationManageList();
+    }
+
+    function closeLocationModal() {
+      locOverlay.hidden = true;
+      locOverlay.setAttribute("aria-hidden", "true");
+    }
+
+    btnManage.addEventListener("click", openLocationModal);
+    if (locClose) locClose.addEventListener("click", closeLocationModal);
+    locOverlay.addEventListener("click", (e) => {
+      if (e.target === locOverlay) closeLocationModal();
+    });
+
+    if (locAddBtn) {
+      locAddBtn.addEventListener("click", async () => {
+        const name = locName?.value.trim() || "";
+        if (!name) {
+          setLocStatus("탑승장소 이름을 입력하세요.", true);
+          locName?.focus();
+          return;
+        }
+        setLocStatus("");
+        try {
+          const r = await fetch(ctx.apiLocationList, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: csrfHeaders(),
+            body: JSON.stringify({ name }),
+          });
+          if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            throw new Error(
+              err.detail ||
+                Object.values(err).flat().join(" ") ||
+                "추가에 실패했습니다."
+            );
+          }
+          if (locName) locName.value = "";
+          await refreshLocationsFromApi();
+          setLocStatus("탑승장소가 추가되었습니다.", false);
+          locName?.focus();
+        } catch (err) {
+          setLocStatus(err.message || "추가에 실패했습니다.", true);
+        }
+      });
+    }
+
+    if (locName) {
+      locName.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          locAddBtn?.click();
+        }
+      });
+    }
+
+    if (locTbody) {
+      locTbody.addEventListener("click", async (e) => {
+        const editBtn = e.target.closest("[data-loc-edit]");
+        const delBtn = e.target.closest("[data-loc-delete]");
+        const tr = e.target.closest("tr[data-location-id]");
+        if (!tr) return;
+        const locId = tr.dataset.locationId;
+        const currentName = tr.children[0]?.textContent?.trim() || "";
+
+        if (editBtn) {
+          const next = window.prompt("탑승장소 이름", currentName);
+          if (next == null) return;
+          const name = next.trim();
+          if (!name) {
+            setLocStatus("탑승장소 이름을 입력하세요.", true);
+            return;
+          }
+          setLocStatus("");
+          try {
+            const r = await fetch(`${ctx.apiLocationDetailBase}${locId}/`, {
+              method: "PATCH",
+              credentials: "same-origin",
+              headers: csrfHeaders(),
+              body: JSON.stringify({ name }),
+            });
+            if (!r.ok) throw new Error("수정에 실패했습니다.");
+            await refreshLocationsFromApi();
+            setLocStatus("수정되었습니다.", false);
+          } catch (err) {
+            setLocStatus(err.message || "수정에 실패했습니다.", true);
+          }
+          return;
+        }
+
+        if (delBtn) {
+          const ok = await openConfirm(
+            `"${currentName}" 탑승장소를 삭제할까요?`,
+            "탑승장소 삭제",
+            "삭제",
+            "취소"
+          );
+          if (!ok) return;
+          setLocStatus("");
+          try {
+            const r = await fetch(`${ctx.apiLocationDetailBase}${locId}/`, {
+              method: "DELETE",
+              credentials: "same-origin",
+              headers: { "X-CSRFToken": ctx.csrfToken },
+            });
+            if (!r.ok && r.status !== 204) throw new Error("삭제에 실패했습니다.");
+            await refreshLocationsFromApi();
+            setLocStatus("삭제되었습니다.", false);
+          } catch (err) {
+            setLocStatus(err.message || "삭제에 실패했습니다.", true);
+          }
+        }
+      });
+    }
   }
 })();

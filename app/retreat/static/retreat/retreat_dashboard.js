@@ -67,12 +67,15 @@
       col.className = "jcc-retreat-tripleCol";
       const table = document.createElement("table");
       table.className = "jcc-retreat-miniTable";
-      table.innerHTML = "<thead><tr><th>조</th><th>참석</th></tr></thead>";
+      table.innerHTML =
+        "<thead><tr><th>조</th><th>지역</th><th>참석</th></tr></thead>";
       const tb = document.createElement("tbody");
       slice.forEach((row) => {
         const tr = document.createElement("tr");
         // 조별 참석 = 현재 입실 상태 인원만.
-        tr.innerHTML = `<td>${escapeHtml(row.name)}</td><td>${row.checked_in}</td>`;
+        tr.innerHTML = `<td>${escapeHtml(row.name)}</td><td>${escapeHtml(
+          row.region || ""
+        )}</td><td>${row.checked_in}</td>`;
         tb.appendChild(tr);
       });
       table.appendChild(tb);
@@ -212,6 +215,9 @@
     });
     if (prev && regions.includes(prev)) {
       boardRegionFilter.value = prev;
+    }
+    if (window.JccCustomSelect) {
+      window.JccCustomSelect.refresh(boardRegionFilter.closest(".jcc-cselect"));
     }
   }
 

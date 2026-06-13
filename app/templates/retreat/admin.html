@@ -13,7 +13,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260609h" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614a" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -74,7 +74,7 @@
                               <a class="btn-link" href="{% url 'retreat_roster_check' event.id s.id g.id %}">{{ g.name }} 체크</a>
                             {% endwith %}
                           {% else %}
-                            <select class="jcc-retreat-rosterSelect" data-session-id="{{ s.id }}" aria-label="조 선택">
+                            <select class="jcc-retreat-rosterSelect" data-session-id="{{ s.id }}" aria-label="조 선택" data-cselect>
                               <option value="">조 선택…</option>
                               {% regroup visible_groups by division_id as div_groups %}
                               {% for divg in div_groups %}
@@ -200,7 +200,7 @@
           <h2>출석부 만들기</h2>
           <div class="field">
             <label for="rosterEvent">연결할 행사</label>
-            <select id="rosterEvent" required>
+            <select id="rosterEvent" required data-cselect>
               {% for ev in creatable_events %}
                 <option value="{{ ev.id }}" {% if ev.id == event.id %}selected{% endif %}>
                   {{ ev.name }} ({{ ev.start_date|date:"Y.m.d" }} ~ {{ ev.end_date|date:"Y.m.d" }})
@@ -224,7 +224,7 @@
           </div>
           <div class="field">
             <label for="rosterStatus">상태값</label>
-            <select id="rosterStatus">
+            <select id="rosterStatus" data-cselect>
               {% for code, label in session_status_choices %}
                 <option value="{{ code }}">{{ label }}</option>
               {% endfor %}
@@ -278,6 +278,10 @@
                   maxlength="150"
                   autocomplete="off"
                   data-user-picker-input
+                  data-bwignore
+                  data-1p-ignore
+                  data-lpignore="true"
+                  data-form-type="other"
                 />
                 <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
                 <input type="hidden" data-user-picker-id />
@@ -286,7 +290,7 @@
             </div>
             <div class="field">
               <label for="leaderAddRole">역할</label>
-              <select id="leaderAddRole">
+              <select id="leaderAddRole" data-cselect>
                 {% for code, label in role_choices %}
                   <option value="{{ code }}">{{ label }}</option>
                 {% endfor %}
@@ -322,7 +326,8 @@
       };
       {% endif %}
     </script>
-    <script src="{% static 'retreat/retreat_admin.js' %}?v=20260602i" defer></script>
+    <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
+    <script src="{% static 'retreat/retreat_admin.js' %}?v=20260613a" defer></script>
     {% if can_manage_sessions %}
       <script src="{% static 'retreat/retreat_rosters.js' %}?v=20260602i" defer></script>
     {% endif %}

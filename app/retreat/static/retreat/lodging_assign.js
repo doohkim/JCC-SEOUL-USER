@@ -60,6 +60,11 @@
         }
         divisionSelect.appendChild(opt);
       });
+    if (window.JccCustomSelect) {
+      window.JccCustomSelect.refresh(
+        divisionSelect.closest(".jcc-cselect") || divisionSelect.parentNode
+      );
+    }
   }
 
   async function patchRoom(roomId, payload) {
@@ -92,6 +97,8 @@
     const divisionSel = tr.querySelector("[data-room-division]");
     const saveBtn = tr.querySelector("[data-room-save]");
     if (!regionSel || !divisionSel || !saveBtn) return;
+
+    if (window.JccCustomSelect) window.JccCustomSelect.init(tr);
 
     const initialRegion = tr.dataset.roomRegionId || "";
     const initialDivision = tr.dataset.roomDivisionId || "";

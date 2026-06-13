@@ -220,6 +220,8 @@
         showStatus("저장됨");
       } catch (err) {
         sel.value = sel.dataset.prev;
+        if (window.JccCustomSelect)
+          window.JccCustomSelect.refresh(sel.closest(".jcc-cselect") || sel.parentNode);
         showStatus("저장 실패", true);
         console.error(err);
       }

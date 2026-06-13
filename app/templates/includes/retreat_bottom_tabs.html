@@ -1,4 +1,4 @@
-{% comment %}수련회 전용 모바일 하단 탭 — event 필요{% endcomment %}
+{% comment %}수련회 전용 모바일 하단 탭 (Toss 앱 스타일) — event, can_view_retreat_all, is_retreat_staff 필요{% endcomment %}
 <nav class="jcc-bottomTabs jcc-retreatBottomTabs" id="jccRetreatBottomTabs" aria-label="수련회 메뉴">
   <a
     class="jcc-bottomTab"
@@ -10,17 +10,51 @@
     </svg>
     <span>대시보드</span>
   </a>
-  <button
-    type="button"
-    class="jcc-bottomTab jcc-bottomTab--more"
-    id="jccRetreatBottomTabMore"
-    aria-label="전체 메뉴 열기"
-    aria-controls="jcc-leftNav"
-    aria-expanded="false"
+  <a
+    class="jcc-bottomTab"
+    href="{% url 'retreat_group_manage_list' event.id %}"
+    data-tab="retreat_manage_groups"
   >
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-      <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M8.5 11a3 3 0 100-6 3 3 0 000 6zm7.5.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM3 19c0-2.76 2.46-5 5.5-5s5.5 2.24 5.5 5M15 19c0-1.78.62-3.34 1.6-4.27" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
-    <span>메뉴</span>
-  </button>
+    <span>조 관리</span>
+  </a>
+  <a
+    class="jcc-bottomTab"
+    href="{% url 'retreat_pickup' event.id %}"
+    data-tab="retreat_pickup"
+  >
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+      <path d="M5 16V8.5C5 7 6 6 7.5 6h9C18 6 19 7 19 8.5V16M5 16h14M5 16v2.5h2.5V16M19 16v2.5h-2.5V16M6 12h12" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="8" cy="13.5" r="0.9" fill="currentColor"/>
+      <circle cx="16" cy="13.5" r="0.9" fill="currentColor"/>
+    </svg>
+    <span>픽업</span>
+  </a>
+  {% if can_view_retreat_all %}
+    <a
+      class="jcc-bottomTab"
+      href="{% url 'retreat_lodging' event.id %}"
+      data-tab="retreat_lodging"
+    >
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M3 18v-6.5c0-.8.7-1.5 1.5-1.5H14a3 3 0 013 3v0H4M3 18h18M3 18v2m18-2v2m0-2v-4a2 2 0 00-2-2h-2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>숙소</span>
+    </a>
+  {% endif %}
+  {% if is_retreat_staff %}
+    <a
+      class="jcc-bottomTab"
+      href="{% url 'retreat_admin' event.id %}"
+      data-tab="retreat_admin"
+    >
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="1.75"/>
+        <path d="M19.4 13.5l1.1.9-1.5 2.6-1.4-.4a6 6 0 01-1.3.8L16 19h-3l-.4-1.6a6 6 0 01-1.3-.8l-1.4.4-1.5-2.6 1.1-.9a6 6 0 010-1.5l-1.1-.9 1.5-2.6 1.4.4a6 6 0 011.3-.8L12 5h3l.4 1.6c.5.2.9.5 1.3.8l1.4-.4 1.5 2.6-1.1.9a6 6 0 010 1.5z" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>관리</span>
+    </a>
+  {% endif %}
 </nav>

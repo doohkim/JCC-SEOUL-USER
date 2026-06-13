@@ -389,6 +389,11 @@
       counseling: (p) => p.startsWith("/counseling/"),
       retreat: (p) => p.startsWith("/retreat/"),
       retreat_dashboard: (p) => /\/retreat\/\d+\/dashboard\//.test(p),
+      retreat_manage_groups: (p) => /\/retreat\/\d+\/manage-groups\//.test(p),
+      retreat_pickup: (p) => /\/retreat\/\d+\/pickup\//.test(p),
+      retreat_lodging: (p) => /\/retreat\/\d+\/lodgings\//.test(p),
+      retreat_admin: (p) =>
+        /\/retreat\/\d+\/(admin|council|timetable)\//.test(p),
       retreat_rosters: (p) =>
         /\/retreat\/\d+\/rosters\//.test(p) ||
         /\/retreat\/\d+\/roster\//.test(p),
@@ -410,12 +415,6 @@
     applyActive(".jcc-leftNav-item[data-tab]");
     applyActive(".jcc-bottomTab[data-tab]");
 
-    const retreatMore = document.getElementById("jccRetreatBottomTabMore");
-    if (retreatMore) {
-      retreatMore.addEventListener("click", () => {
-        if (menuBtn) menuBtn.click();
-      });
-    }
     if (document.getElementById("jccRetreatBottomTabs")) {
       applyActive(".jcc-retreatBottomTabs .jcc-bottomTab[data-tab]");
     }

@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 대시보드 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260608c" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260605zz2" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614i" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -21,7 +21,7 @@
         </header>
         <main>
           {% include 'includes/retreat_event_tabs.html' with retreat_tab='dashboard' %}
-          <nav class="jcc-page-tabs jcc-retreat-pageTabs" id="dashboardInnerTabs" aria-label="대시보드 하위 메뉴">
+          <nav class="jcc-page-tabs" id="dashboardInnerTabs" aria-label="대시보드 하위 메뉴">
             <button type="button" class="jcc-page-tab is-active" id="dashboardTabStats" data-dashboard-tab="stats">
               통계
             </button>
@@ -96,7 +96,7 @@
             <div class="card jcc-excel-board-panel">
               <div class="jcc-board-toolbar">
                 <label for="boardRegionFilter">지역</label>
-                <select id="boardRegionFilter" aria-label="지역 필터">
+                <select id="boardRegionFilter" aria-label="지역 필터" data-cselect>
                   <option value="">전체</option>
                 </select>
               </div>
@@ -127,6 +127,7 @@
         isStaff: {{ can_view_retreat_all|yesno:"true,false" }}
       };
     </script>
-    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260608c" defer></script>
+    <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
+    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260614a" defer></script>
   </body>
 </html>

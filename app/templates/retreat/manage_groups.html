@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>조 관리 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260612e" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614g" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -48,6 +48,8 @@
                 class="jcc-retreat-groupCardWrap"
                 data-region-name="{{ g.region.name }}"
                 data-division-name="{{ g.division.name }}"
+                data-region-names="{{ g.region.name }}{% for scope in g.extra_scopes.all %}|{{ scope.region.name }}{% endfor %}"
+                data-division-names="{{ g.division.name }}{% for scope in g.extra_scopes.all %}|{{ scope.division.name }}{% endfor %}"
               >
                 <a
                   class="jcc-retreat-groupCard"
@@ -90,7 +92,7 @@
                 <div class="jcc-retreat-modalGrid">
                   <div class="field jcc-retreat-modalField--full">
                     <label for="groupEventInput">행사 *</label>
-                    <select id="groupEventInput" name="event" required>
+                    <select id="groupEventInput" name="event" required data-cselect>
                       {% for ev in available_events %}
                         <option value="{{ ev.id }}" {% if ev.id == event.id %}selected{% endif %}>{{ ev.name }}</option>
                       {% endfor %}
@@ -124,7 +126,7 @@
                       <div class="jcc-retreat-modalGrid">
                         <div class="field">
                           <label data-label-region>지역</label>
-                          <select data-row-region required>
+                          <select data-row-region required data-cselect>
                             <option value="">선택</option>
                             {% for r in region_choices %}
                               <option value="{{ r.id }}">{{ r.name }}</option>
@@ -133,7 +135,7 @@
                         </div>
                         <div class="field">
                           <label data-label-division>부서</label>
-                          <select data-row-division required>
+                          <select data-row-division required data-cselect>
                             <option value="">선택</option>
                           </select>
                         </div>
@@ -161,7 +163,7 @@
                         </div>
                         <div class="field">
                           <label>역할</label>
-                          <select data-row-leader-role>
+                          <select data-row-leader-role data-cselect>
                             {% for code, label in group_role_choices %}
                               <option value="{{ code }}">{{ label }}</option>
                             {% endfor %}
@@ -202,10 +204,11 @@
       </div>
     </div>
     {% include 'includes/retreat_bottom_tabs.html' %}
-    <script src="{% static 'retreat/manage_groups_filter.js' %}?v=20260609a" defer></script>
+    <script src="{% static 'retreat/manage_groups_filter.js' %}?v=20260614c" defer></script>
     {% if can_add_group %}
-      <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260612c" defer></script>
-      <script src="{% static 'retreat/manage_groups.js' %}?v=20260612a" defer></script>
+      <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
+      <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260613a" defer></script>
+      <script src="{% static 'retreat/manage_groups.js' %}?v=20260613a" defer></script>
     {% endif %}
   </body>
 </html>

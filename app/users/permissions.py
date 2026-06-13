@@ -651,6 +651,17 @@ def can_manage_retreat_pickup(user: User, event) -> bool:
     return user.retreat_group_memberships.filter(group__event=event).exists()
 
 
+def can_manage_retreat_pickup_location(user: User, event) -> bool:
+    """탑승장소 목록 관리(읽기/추가/수정/삭제) — 슈퍼유저 + 해당 행사 회장단만."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_superuser:
+        return True
+    if event is None:
+        return False
+    return is_retreat_council(user, event)
+
+
 def can_select_pickup_group(user: User, event) -> bool:
     """픽업 등록 시 '조'를 직접 선택할 수 있는지 — 슈퍼유저·해당 행사 회장단만.
 

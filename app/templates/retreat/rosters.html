@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>출석부 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260605zz" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614a" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -55,7 +55,7 @@
                             <a class="btn-link" href="{% url 'retreat_roster_check' event.id s.id g.id %}">{{ g.name }} 체크</a>
                           {% endwith %}
                         {% else %}
-                          <select class="jcc-retreat-rosterSelect" data-session-id="{{ s.id }}" aria-label="조 선택">
+                          <select class="jcc-retreat-rosterSelect" data-session-id="{{ s.id }}" aria-label="조 선택" data-cselect>
                             <option value="">조 선택…</option>
                             {% regroup visible_groups by division_id as div_groups %}
                             {% for divg in div_groups %}
@@ -99,6 +99,7 @@
         canManage: false
       };
     </script>
+    <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
     <script src="{% static 'retreat/retreat_rosters.js' %}?v=20260602i" defer></script>
   </body>
 </html>

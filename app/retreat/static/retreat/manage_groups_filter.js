@@ -1,8 +1,8 @@
 /*
  * 조 관리 목록 — 지역·부서 다중선택 칩 필터 (Notion 스타일, 클라이언트 즉시 필터)
  *
- * - 서버에서 렌더된 카드(.jcc-retreat-groupCardWrap)의 data-region-name /
- *   data-division-name 을 스캔해 distinct 칩을 만든다(첫 등장 순서 유지).
+ * - 서버에서 렌더된 카드(.jcc-retreat-groupCardWrap)의 대표 지역·부서와
+ *   추가 지역·부서(data-*-names)를 함께 스캔해 distinct 칩을 만든다(첫 등장 순서 유지).
  * - 칩 다중선택 토글 → (지역 OR) AND (부서 OR) 교집합으로 카드 표시/숨김.
  * - 선택이 없으면 전체 표시. 일치 0개면 안내 메시지. 초기화 버튼으로 전체 해제.
  * - can_add_group 여부와 무관하게 모든 사용자에게 동작(별도 권한 불필요).
@@ -25,15 +25,27 @@
   const selectedRegions = new Set();
   const selectedDivisions = new Set();
 
-  function distinctInOrder(attr) {
+  function valuesFor(card, multiAttr, fallbackAttr) {
+    const raw = (card.getAttribute(multiAttr) || "").trim();
+    const values = raw
+      ? raw
+          .split("|")
+          .map((v) => v.trim())
+          .filter(Boolean)
+      : [(card.getAttribute(fallbackAttr) || "").trim()].filter(Boolean);
+    return Array.from(new Set(values));
+  }
+
+  function distinctInOrder(multiAttr, fallbackAttr) {
     const seen = [];
     const set = new Set();
     cards.forEach((card) => {
-      const value = (card.getAttribute(attr) || "").trim();
-      if (value && !set.has(value)) {
-        set.add(value);
-        seen.push(value);
-      }
+      valuesFor(card, multiAttr, fallbackAttr).forEach((value) => {
+        if (!set.has(value)) {
+          set.add(value);
+          seen.push(value);
+        }
+      });
     });
     return seen;
   }
@@ -62,11 +74,14 @@
   function applyFilter() {
     let visibleCount = 0;
     cards.forEach((card) => {
-      const region = (card.getAttribute("data-region-name") || "").trim();
-      const division = (card.getAttribute("data-division-name") || "").trim();
-      const okRegion = selectedRegions.size === 0 || selectedRegions.has(region);
+      const regions = valuesFor(card, "data-region-names", "data-region-name");
+      const divisions = valuesFor(card, "data-division-names", "data-division-name");
+      const okRegion =
+        selectedRegions.size === 0 ||
+        regions.some((region) => selectedRegions.has(region));
       const okDivision =
-        selectedDivisions.size === 0 || selectedDivisions.has(division);
+        selectedDivisions.size === 0 ||
+        divisions.some((division) => selectedDivisions.has(division));
       const show = okRegion && okDivision;
       card.hidden = !show;
       if (show) visibleCount += 1;
@@ -76,8 +91,11 @@
     if (emptyMsg) emptyMsg.hidden = visibleCount !== 0;
   }
 
-  const regionValues = distinctInOrder("data-region-name");
-  const divisionValues = distinctInOrder("data-division-name");
+  const regionValues = distinctInOrder("data-region-names", "data-region-name");
+  const divisionValues = distinctInOrder(
+    "data-division-names",
+    "data-division-name"
+  );
 
   const regionRow = regionsWrap
     ? regionsWrap.closest(".jcc-retreat-filterRow")

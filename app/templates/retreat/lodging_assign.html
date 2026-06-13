@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ event.name }} · 방배정</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260608a" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614a" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -84,13 +84,13 @@
                               {% if can_manage_lodging %}
                                 <td class="jcc-retreat-attCol-actions">
                                   <div class="jcc-retreat-roomScopeEdit">
-                                    <select class="jcc-retreat-lodgingSelect" data-room-region aria-label="{{ room.lodging.name }} {{ room.number }} 지역">
+                                    <select class="jcc-retreat-lodgingSelect" data-room-region data-cselect aria-label="{{ room.lodging.name }} {{ room.number }} 지역">
                                       <option value="">(미배정)</option>
                                       {% for r in all_regions %}
                                         <option value="{{ r.id }}" {% if r.id == room.region_id %}selected{% endif %}>{{ r.name }}</option>
                                       {% endfor %}
                                     </select>
-                                    <select class="jcc-retreat-lodgingSelect" data-room-division aria-label="{{ room.lodging.name }} {{ room.number }} 부서">
+                                    <select class="jcc-retreat-lodgingSelect" data-room-division data-cselect aria-label="{{ room.lodging.name }} {{ room.number }} 부서">
                                       <option value="">(미배정)</option>
                                     </select>
                                     <button type="button" class="secondary" data-room-save>적용</button>
@@ -166,13 +166,13 @@
                       {% if can_manage_lodging %}
                         <td class="jcc-retreat-attCol-actions">
                           <div class="jcc-retreat-roomScopeEdit">
-                            <select class="jcc-retreat-lodgingSelect" data-room-region aria-label="{{ room.lodging.name }} {{ room.number }} 지역">
+                            <select class="jcc-retreat-lodgingSelect" data-room-region data-cselect aria-label="{{ room.lodging.name }} {{ room.number }} 지역">
                               <option value="">(미배정)</option>
                               {% for r in all_regions %}
                                 <option value="{{ r.id }}" {% if r.id == room.region_id %}selected{% endif %}>{{ r.name }}</option>
                               {% endfor %}
                             </select>
-                            <select class="jcc-retreat-lodgingSelect" data-room-division aria-label="{{ room.lodging.name }} {{ room.number }} 부서">
+                            <select class="jcc-retreat-lodgingSelect" data-room-division data-cselect aria-label="{{ room.lodging.name }} {{ room.number }} 부서">
                               <option value="">(미배정)</option>
                             </select>
                             <button type="button" class="secondary" data-room-save>적용</button>
@@ -209,6 +209,7 @@
       };
     </script>
     {% include 'includes/retreat_bottom_tabs.html' %}
-    <script src="{% static 'retreat/lodging_assign.js' %}?v=20260603l" defer></script>
+    <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
+    <script src="{% static 'retreat/lodging_assign.js' %}?v=20260613a" defer></script>
   </body>
 </html>

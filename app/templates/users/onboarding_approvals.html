@@ -131,6 +131,147 @@
     @media (max-width: 640px) {
       .jcc-detail-row { grid-template-columns: 1fr; gap: 0.15rem; }
     }
+
+    @keyframes jccEventPickerIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: none; }
+    }
+    .jcc-cselect-native {
+      position: absolute !important;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .jcc-cselect {
+      position: relative;
+      display: block;
+      width: 100%;
+      min-width: 0;
+    }
+    .jcc-cselect-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.62rem 0.85rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .jcc-cselect-btn:hover,
+    .jcc-cselect-btn:focus,
+    .jcc-cselect-btn:active,
+    .jcc-cselect.is-open .jcc-cselect-btn {
+      background: var(--card);
+      color: var(--text);
+    }
+    .jcc-cselect-btn:hover {
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    }
+    .jcc-cselect.is-open .jcc-cselect-btn,
+    .jcc-cselect-btn:focus-visible {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+    .jcc-cselect.is-placeholder .jcc-cselect-label { color: var(--muted); }
+    .jcc-cselect-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .jcc-cselect-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .jcc-cselect-caret {
+      display: inline-flex;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: var(--muted);
+      transition: transform 0.15s ease;
+    }
+    .jcc-cselect-caret svg { width: 100%; height: 100%; }
+    .jcc-cselect.is-open .jcc-cselect-caret { transform: rotate(180deg); }
+    .jcc-cselect-menu {
+      position: fixed;
+      z-index: 2500;
+      margin: 0;
+      padding: 0.35rem;
+      list-style: none;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.08);
+      max-height: min(18rem, 60vh);
+      overflow-y: auto;
+      animation: jccEventPickerIn 0.12s ease;
+    }
+    .jcc-cselect-group {
+      padding: 0.5rem 0.7rem 0.25rem;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+    }
+    .jcc-cselect-group:not(:first-child) {
+      margin-top: 0.2rem;
+      border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+      padding-top: 0.5rem;
+    }
+    .jcc-cselect-opt {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      padding: 0.6rem 0.7rem;
+      border-radius: 10px;
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+    .jcc-cselect-opt:hover,
+    .jcc-cselect-opt.is-focus {
+      background: color-mix(in srgb, var(--text) 7%, transparent);
+    }
+    .jcc-cselect-opt.is-selected {
+      color: var(--accent);
+      font-weight: 800;
+    }
+    .jcc-cselect-opt.is-disabled {
+      color: var(--muted);
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .jcc-cselect-check {
+      display: inline-flex;
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      opacity: 0;
+    }
+    .jcc-cselect-check svg { width: 100%; height: 100%; }
+    .jcc-cselect-opt.is-selected .jcc-cselect-check { opacity: 1; }
+    .card table .jcc-cselect-btn {
+      min-height: 2.35rem;
+      padding: 0.45rem 0.65rem;
+      border-radius: 10px;
+      font-size: 0.84rem;
+      font-weight: 500;
+    }
   </style>
 </head>
 <body>
@@ -153,8 +294,8 @@
             {% if can_choose_onboarding_division %}
               <div class="field">
                 <label>부서</label>
-                <select name="division_code" onchange="this.form.submit()">
-                  <option value="{{ all_divisions_code }}" {% if not active_division %}selected{% endif %}>전체 (담당 부서 전체)</option>
+                <select name="division_code" data-cselect onchange="this.form.submit()">
+                  <option value="{{ all_divisions_code }}" {% if not active_division %}selected{% endif %}>전체</option>
                   {% regroup allowed_divisions by region.name as region_groups %}
                   {% for group in region_groups %}
                     <optgroup label="{{ group.grouper|default:'(지역 미지정)' }}">
@@ -176,7 +317,7 @@
             </div>
             <button type="submit">조회</button>
           </form>
-          <div class="msg" style="margin-top:0.75rem;">조회 부서: <strong>{% if active_division %}{{ active_division.name }}{% else %}전체 (담당 부서 전체){% endif %}</strong> · 승인 대기는 항상 전체 표시 · 최근 승인/반려는 처리 갱신일시 기준(기본 최근 90일)</div>
+          <div class="msg" style="margin-top:0.75rem;">조회 부서: <strong>{% if active_division %}{{ active_division.name }}{% else %}전체{% endif %}</strong> · 승인 대기는 항상 전체 표시 · 최근 승인/반려는 처리 갱신일시 기준(기본 최근 90일)</div>
         </div>
 
         {% if messages %}
@@ -465,9 +606,22 @@
     </div>
   </div>
 
+  <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c"></script>
   <script>
     const teamsMap = {{ teams_map_json|safe }};
     const userDetailMap = {{ user_detail_json|safe }};
+
+    function refreshCustomSelects(root) {
+      if (window.JccCustomSelect) {
+        JccCustomSelect.refresh(root || document);
+      }
+    }
+    document.querySelectorAll("table select").forEach((sel) => {
+      sel.setAttribute("data-cselect", "");
+    });
+    if (window.JccCustomSelect) {
+      JccCustomSelect.init(document);
+    }
     (function () {
       const modal = document.getElementById("userDetailModal");
       const body = document.getElementById("userDetailBody");
@@ -530,6 +684,7 @@
       select.innerHTML = '<option value="">팀 선택(선택)</option>' + list.map((t) =>
         `<option value="${t.id}" ${String(selectedId) === String(t.id) ? "selected" : ""}>${t.name}</option>`
       ).join("");
+      refreshCustomSelects(select);
     }
     function filterRetreatGroupOptions(groupSelect, divisionId) {
       if (!groupSelect) return;
@@ -540,6 +695,7 @@
       });
       const sel = groupSelect.selectedOptions[0];
       if (sel && sel.hidden) groupSelect.value = "";
+      refreshCustomSelects(groupSelect);
     }
 
     document.querySelectorAll(".pending-division").forEach((divisionSelect) => {
@@ -557,6 +713,7 @@
         if (groupSelect) filterRetreatGroupOptions(groupSelect, divisionSelect.value);
       });
     });
+    refreshCustomSelects(document);
 
     function syncOnboardingNoteHints(row) {
       if (!row) return;

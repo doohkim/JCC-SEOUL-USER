@@ -52,6 +52,7 @@
     titleInput.value = data.title || "";
     locationEl.value = data.location || "";
     descEl.value = data.description || "";
+    if (window.JccCustomSelect) window.JccCustomSelect.refresh(document);
 
     deleteBtn.hidden = !isEdit;
 

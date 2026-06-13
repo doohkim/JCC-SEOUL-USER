@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 결과 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260605zz" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614i" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -24,7 +24,7 @@
           <div class="toolbar card">
             <div class="field">
               <label for="sessionId">집계 기준 출석부</label>
-              <select id="sessionId">
+              <select id="sessionId" data-cselect>
                 <option value="">최종(마지막 출석부)</option>
                 {% for s in sessions %}
                   <option value="{{ s.id }}">{{ s.name }}</option>
@@ -73,6 +73,7 @@
         apiDashboard: "{% url 'api_retreat_event_dashboard' event.id %}"
       };
     </script>
+    <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
     <script src="{% static 'retreat/retreat_results.js' %}?v=20260605k" defer></script>
   </body>
 </html>

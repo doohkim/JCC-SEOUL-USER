@@ -163,3 +163,42 @@ class RetreatDashboardApiTests(APITestCase):
         gid = str(self.group.id)
         self.assertEqual(sess["groups"][gid]["present"], 1)
         self.assertEqual(sess["groups"][gid]["registered"], 1)
+
+    def test_group_board_restricts_non_staff_to_own_region(self):
+        """일반 사용자(조장)는 조 참석현황 보드에서 본인 소속 지역 조만 본다."""
+        busan = Region.objects.create(code="busan_dash", name="부산", sort_order=99)
+        busan_div = Division.objects.create(
+            region=busan, code="dash_busan_youth", name="부산청년부"
+        )
+        RetreatGroup.objects.create(
+            event=self.event, region=busan, division=busan_div, name="부산1조"
+        )
+        self.client.force_authenticate(self.leader)
+        url = reverse("api_retreat_event_group_board", args=[self.event.id])
+        data = self.client.get(url).json()
+        regions = {g["region"] for g in data["groups"]}
+        self.assertEqual(regions, {self.seoul.name})
+        self.assertNotIn(busan.name, regions)
+
+    def test_group_board_shows_all_regions_for_staff(self):
+        """수련회 회장단은 전체 지역 조를 본다."""
+        from retreat.models import RetreatCouncilMembership
+
+        busan = Region.objects.create(code="busan_staff", name="부산", sort_order=99)
+        busan_div = Division.objects.create(
+            region=busan, code="staff_busan_youth", name="부산청년부"
+        )
+        RetreatGroup.objects.create(
+            event=self.event, region=busan, division=busan_div, name="부산1조"
+        )
+        staff = User.objects.create_user(username="dash_staff", password="x")
+        UserDivisionTeam.objects.create(
+            user=staff, division=self.div, is_primary=True
+        )
+        RetreatCouncilMembership.objects.create(user=staff, event=self.event)
+        self.client.force_authenticate(staff)
+        url = reverse("api_retreat_event_group_board", args=[self.event.id])
+        data = self.client.get(url).json()
+        regions = {g["region"] for g in data["groups"]}
+        self.assertIn(self.seoul.name, regions)
+        self.assertIn(busan.name, regions)

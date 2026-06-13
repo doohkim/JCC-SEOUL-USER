@@ -10,46 +10,160 @@
   <style>
     .jcc-division-roles-table th {
       vertical-align: bottom;
+      font-size: 0.8125rem;
+      color: var(--muted);
+      font-weight: 600;
     }
     .jcc-division-roles-table tbody td {
       vertical-align: middle;
+      font-size: 0.875rem;
     }
-    .jcc-division-roles-table .jcc-role-cell {
-      min-width: min(100%, 16rem);
-      max-width: 38rem;
+    .jcc-division-roles-table tbody tr[data-account-row] {
+      cursor: pointer;
+      transition: background 0.12s ease;
     }
-    .jcc-role-form {
+    .jcc-division-roles-table tbody tr[data-account-row]:hover,
+    .jcc-division-roles-table tbody tr[data-account-row]:focus-visible {
+      background: color-mix(in srgb, var(--accent) 6%, var(--card));
+      outline: none;
+    }
+    .jcc-division-roles-table .jcc-account-name {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .jcc-account-editOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.55);
+    }
+    .jcc-account-editOverlay[hidden] {
+      display: none;
+    }
+    .jcc-account-editModal {
+      width: min(100%, 28rem);
+      max-height: min(92vh, 760px);
+      overflow: auto;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      box-shadow: 0 18px 56px rgba(0, 0, 0, 0.4);
+    }
+    .jcc-account-editModal__head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 1.6rem 1.6rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .jcc-account-editModal__title {
       margin: 0;
-      min-width: 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+      line-height: 1.3;
     }
-    .role-options {
-      min-width: 0;
+    .jcc-account-editModal__subtitle {
+      margin: 0.35rem 0 0;
+      font-size: 0.8rem;
+      color: var(--muted);
     }
-    /* 실명·휴대폰·지역·부서·팀 입력 통일 */
-    .jcc-division-roles-table tbody td input[type="text"],
-    .jcc-division-roles-table tbody td input[type="tel"],
-    .jcc-division-roles-table tbody td select.jcc-account-field {
+    .jcc-account-editModal__close {
+      flex: 0 0 auto;
+      padding: 0.45rem 0.8rem;
+      font-size: 0.82rem;
+      border-radius: 10px;
+    }
+    .jcc-account-editForm {
+      padding: 1.5rem 1.6rem 1.6rem;
+    }
+    .jcc-account-editSection {
+      margin-bottom: 1.9rem;
+    }
+    .jcc-account-editSection:last-of-type {
+      margin-bottom: 0.75rem;
+    }
+    .jcc-account-editSection__title {
+      margin: 0 0 1rem;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .jcc-account-editField {
+      margin-bottom: 1.1rem;
+    }
+    .jcc-account-editField:last-child {
+      margin-bottom: 0;
+    }
+    .jcc-account-editField label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .jcc-account-editField input[type="text"],
+    .jcc-account-editField input[type="tel"],
+    .jcc-account-editField select {
       width: 100%;
-      min-width: 0;
-      min-height: 2.3rem;
-      padding: 0.45rem 0.65rem;
-      font-size: 0.8125rem;
-      line-height: 1.2;
-      border-radius: 6px;
+      min-height: 3rem;
+      padding: 0.75rem 0.95rem;
+      font-size: 0.92rem;
+      border-radius: 14px;
       background: var(--input-elev-0);
       color: var(--text);
       border: 1px solid var(--border);
       box-sizing: border-box;
     }
-    .jcc-division-roles-table tbody td select.jcc-account-field:disabled {
-      opacity: 0.85;
+    .jcc-account-editField input:disabled,
+    .jcc-account-editField select:disabled {
+      opacity: 0.75;
       cursor: not-allowed;
     }
-    .jcc-division-roles-table .jcc-account-col-narrow {
-      min-width: 7rem;
+    .jcc-account-editReadonly {
+      min-height: 3rem;
+      padding: 0.75rem 0.95rem;
+      font-size: 0.92rem;
+      border-radius: 14px;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      line-height: 1.4;
+    }
+    .jcc-account-editChecks {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+    .jcc-account-editChecks label {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      min-height: 2.6rem;
+      padding: 0 0.95rem;
+      border-radius: 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      font-size: 0.9rem;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .jcc-account-editSummary {
+      padding: 0.85rem 0.95rem;
+      border-radius: 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--text);
+      white-space: pre-wrap;
     }
     .jcc-role-panel {
-      border-radius: 10px;
+      border-radius: 14px;
       border: 1px solid var(--border);
       background: var(--surface-2);
       overflow: hidden;
@@ -58,7 +172,7 @@
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.4rem 0.5rem;
+      padding: 0.6rem 0.65rem;
       border-bottom: 1px solid var(--border);
       background: var(--toolbar-bg);
     }
@@ -66,30 +180,24 @@
       flex: 1 1 auto;
       min-width: 0;
       margin: 0;
-      font-size: 0.8125rem;
-    }
-    .jcc-role-panel__save {
-      flex: 0 0 auto;
-      padding: 0.38rem 0.75rem;
-      font-size: 0.8rem;
-      white-space: nowrap;
-      line-height: 1.2;
+      font-size: 0.875rem;
+      min-height: 2.7rem;
+      border-radius: 12px;
     }
     .jcc-role-panel__body {
-      padding: 0.4rem 0.5rem 0.45rem;
+      padding: 0.45rem 0.55rem 0.5rem;
       overflow-x: hidden;
     }
     .jcc-role-panel__body:not(.is-empty) {
-      max-height: 5.5rem;
+      max-height: 6rem;
       overflow-y: auto;
     }
     .jcc-role-panel__body.is-empty {
-      padding-top: 0.32rem;
-      padding-bottom: 0.32rem;
+      padding-top: 0.35rem;
+      padding-bottom: 0.35rem;
     }
     .jcc-role-panel__empty-hint {
       font-size: 0.75rem;
-      letter-spacing: 0.02em;
       color: var(--muted);
       line-height: 1.35;
     }
@@ -110,13 +218,6 @@
       background: var(--tag-bg);
       border: 1px solid var(--border);
       color: var(--text);
-      max-width: 100%;
-      overflow: visible;
-    }
-    .jcc-role-tag__text {
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
     .jcc-role-tag__remove {
       position: absolute;
@@ -136,18 +237,196 @@
       justify-content: center;
       background: var(--accent);
       color: #fff;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
       transform: translate(32%, -32%);
-      z-index: 2;
       opacity: 0;
-      transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+      transition: opacity 0.15s ease;
     }
     .jcc-role-tag:hover .jcc-role-tag__remove,
     .jcc-role-tag:focus-within .jcc-role-tag__remove {
       opacity: 1;
     }
-    .jcc-role-tag__remove:hover {
-      background: rgba(220, 38, 38, 0.85);
+    .jcc-account-editActions {
+      display: flex;
+      gap: 0.5rem;
+      padding-top: 1.3rem;
+      margin-top: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+    .jcc-account-editActions button[type="submit"] {
+      flex: 1 1 auto;
+      min-height: 3.2rem;
+      border-radius: 16px;
+      font-size: 0.98rem;
+      font-weight: 700;
+    }
+    @keyframes jccEventPickerIn {
+      from {
+        opacity: 0;
+        transform: translateY(-4px);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+    .jcc-cselect-native {
+      position: absolute !important;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .jcc-cselect {
+      position: relative;
+      display: block;
+      width: 100%;
+    }
+    .jcc-cselect-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.62rem 0.85rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .jcc-cselect-btn:hover,
+    .jcc-cselect-btn:focus,
+    .jcc-cselect-btn:active,
+    .jcc-cselect.is-open .jcc-cselect-btn {
+      background: var(--card);
+      color: var(--text);
+    }
+    .jcc-cselect-btn:hover {
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    }
+    .jcc-cselect.is-open .jcc-cselect-btn,
+    .jcc-cselect-btn:focus-visible {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+    .jcc-cselect.is-placeholder .jcc-cselect-label {
+      color: var(--muted);
+    }
+    .jcc-cselect-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .jcc-cselect-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .jcc-cselect-caret {
+      display: inline-flex;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: var(--muted);
+      transition: transform 0.15s ease;
+    }
+    .jcc-cselect-caret svg {
+      width: 100%;
+      height: 100%;
+    }
+    .jcc-cselect.is-open .jcc-cselect-caret {
+      transform: rotate(180deg);
+    }
+    .jcc-cselect-menu {
+      position: fixed;
+      z-index: 2500;
+      margin: 0;
+      padding: 0.35rem;
+      list-style: none;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.08);
+      max-height: min(18rem, 60vh);
+      overflow-y: auto;
+      animation: jccEventPickerIn 0.12s ease;
+    }
+    .jcc-cselect-group {
+      padding: 0.5rem 0.7rem 0.25rem;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+    }
+    .jcc-cselect-group:not(:first-child) {
+      margin-top: 0.2rem;
+      border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+      padding-top: 0.5rem;
+    }
+    .jcc-cselect-opt {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      padding: 0.6rem 0.7rem;
+      border-radius: 10px;
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+    .jcc-cselect-opt:hover,
+    .jcc-cselect-opt.is-focus {
+      background: color-mix(in srgb, var(--text) 7%, transparent);
+    }
+    .jcc-cselect-opt.is-selected {
+      color: var(--accent);
+      font-weight: 800;
+    }
+    .jcc-cselect-opt.is-disabled {
+      color: var(--muted);
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .jcc-cselect-check {
+      display: inline-flex;
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      opacity: 0;
+    }
+    .jcc-cselect-check svg {
+      width: 100%;
+      height: 100%;
+    }
+    .jcc-cselect-opt.is-selected .jcc-cselect-check {
+      opacity: 1;
+    }
+    .jcc-account-editField .jcc-cselect-btn {
+      min-height: 3rem;
+      border-radius: 14px;
+      padding: 0.75rem 0.95rem;
+      font-size: 0.92rem;
+      font-weight: 500;
+    }
+    .jcc-role-panel__toolbar .jcc-cselect {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .jcc-role-panel__toolbar .jcc-cselect-btn {
+      min-height: 2.7rem;
+      border-radius: 12px;
+      font-size: 0.875rem;
     }
   </style>
 </head>
@@ -158,7 +437,7 @@
       <header class="app-header">
         <div class="jcc-detail-titleWrap">
           <h1>부서 계정 직책 관리</h1>
-          <p class="subtitle">직급(서열), 직책(보직), 기능권한(출석·주차·계정관리)을 분리해 관리합니다.</p>
+          <p class="subtitle">계정을 선택하면 상세 정보를 확인하고 수정할 수 있습니다.</p>
         </div>
       </header>
       <main>
@@ -174,13 +453,14 @@
 
         <div class="card" style="margin-bottom: 1rem;">
           <h2>대상 부서</h2>
-          {% if active_division %}
+          {% if allowed_divisions %}
             {% if can_choose_division %}
               <form method="get">
                 <div class="toolbar" style="padding:0; border:none; background:transparent;">
                   <div class="field">
                     <label>부서</label>
-                    <select name="division_code" onchange="this.form.submit()">
+                    <select name="division_code" data-cselect onchange="this.form.submit()">
+                      <option value="{{ all_divisions_code }}" {% if not active_division %}selected{% endif %}>전체</option>
                       {% regroup allowed_divisions by region.name as region_groups %}
                       {% for group in region_groups %}
                         <optgroup label="{{ group.grouper|default:'(지역 미지정)' }}">
@@ -212,92 +492,27 @@
                   <tr>
                     <th>실명</th>
                     <th>휴대폰</th>
-                    <th class="jcc-account-col-narrow">지역</th>
-                    <th class="jcc-account-col-narrow">부서</th>
-                    <th class="jcc-account-col-narrow">팀</th>
-                    {% if active_retreat_event %}
-                    <th class="jcc-account-col-narrow">수련회 조</th>
-                    <th class="jcc-account-col-narrow">수련회 역할</th>
-                    {% endif %}
-                    <th>기능권한</th>
-                    <th>직책 설정</th>
+                    <th>kakao id</th>
+                    <th>지역</th>
+                    <th>부서</th>
+                    <th>팀</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for u in users_payload %}
                     <tr
                       data-account-row
-                      data-region-id="{{ u.region_id|default:'' }}"
-                      data-division-id="{{ u.division_id|default:'' }}"
-                      data-team-id="{{ u.team_id|default:'' }}"
-                      data-retreat-group-id="{{ u.retreat_group_id|default:'' }}"
+                      data-user-id="{{ u.id }}"
+                      tabindex="0"
+                      role="button"
+                      aria-label="{{ u.real_name|default:u.username }} 계정 상세"
                     >
-                      <td>
-                        <input type="text" class="jcc-account-field" name="real_name" form="role-form-{{ u.id }}" value="{{ u.real_name }}" maxlength="50" autocomplete="off">
-                      </td>
-                      <td>
-                        <input type="tel" class="jcc-account-field" name="phone" form="role-form-{{ u.id }}" value="{{ u.phone }}" maxlength="30" autocomplete="off">
-                      </td>
-                      <td>
-                        <select class="jcc-account-field jcc-row-region" aria-label="지역" {% if not can_move_division %}disabled{% endif %}>
-                          <option value="">지역 선택</option>
-                          {% for region in region_choices %}
-                            <option value="{{ region.id }}" {% if u.region_id == region.id %}selected{% endif %}>{{ region.name }}</option>
-                          {% endfor %}
-                        </select>
-                      </td>
-                      <td>
-                        <select class="jcc-account-field jcc-row-division" name="division_id" form="role-form-{{ u.id }}" aria-label="부서" {% if not can_move_division %}disabled{% endif %}>
-                          <option value="">부서 선택</option>
-                        </select>
-                        {% if not can_move_division %}
-                          <input type="hidden" name="division_id" form="role-form-{{ u.id }}" value="{{ u.division_id }}">
-                        {% endif %}
-                      </td>
-                      <td>
-                        <select class="jcc-account-field jcc-row-team" name="team_id" form="role-form-{{ u.id }}" aria-label="팀">
-                          <option value="">팀 미지정</option>
-                        </select>
-                      </td>
-                      {% if active_retreat_event %}
-                      <td>
-                        <select class="jcc-account-field jcc-row-retreat-group" name="retreat_group_id" form="role-form-{{ u.id }}" aria-label="수련회 조">
-                          <option value="">조 미지정</option>
-                        </select>
-                      </td>
-                      <td>
-                        <select class="jcc-account-field jcc-row-retreat-role" name="retreat_role" form="role-form-{{ u.id }}" aria-label="수련회 역할">
-                          {% for code, label in retreat_role_choices %}
-                            <option value="{{ code }}" {% if u.retreat_role == code %}selected{% endif %}>{{ label }}</option>
-                          {% endfor %}
-                        </select>
-                      </td>
-                      {% endif %}
-                      <td>
-                        <label style="display:flex; gap:0.35rem; align-items:center; margin-bottom:0.3rem;">
-                          <input type="checkbox" name="can_manage_attendance" form="role-form-{{ u.id }}" {% if u.can_manage_attendance %}checked{% endif %}>
-                          <span style="font-size:0.8rem;">출석관리</span>
-                        </label>
-                        <label style="display:flex; gap:0.35rem; align-items:center; margin-bottom:0.3rem;">
-                          <input type="checkbox" name="can_manage_parking" form="role-form-{{ u.id }}" {% if u.can_manage_parking %}checked{% endif %}>
-                          <span style="font-size:0.8rem;">주차관리</span>
-                        </label>
-                        <label style="display:flex; gap:0.35rem; align-items:center;">
-                          <input type="checkbox" name="can_manage_accounts" form="role-form-{{ u.id }}" {% if u.can_manage_accounts %}checked{% endif %}>
-                          <span style="font-size:0.8rem;">계정관리</span>
-                        </label>
-                      </td>
-                      <td class="jcc-role-cell">
-                        <form id="role-form-{{ u.id }}" class="jcc-role-form" method="post">
-                          {% csrf_token %}
-                          <input type="hidden" name="user_id" value="{{ u.id }}">
-                          <div
-                            class="role-options"
-                            data-role-api-url="{{ role_options_api_url }}"
-                            data-assigned='{{ u.assigned_role_codes_json|safe }}'
-                          ></div>
-                        </form>
-                      </td>
+                      <td class="jcc-account-name">{{ u.real_name|default:"-" }}</td>
+                      <td>{{ u.phone|default:"-" }}</td>
+                      <td>{{ u.kakao_uid|default:"-" }}</td>
+                      <td>{{ u.region_name|default:"-" }}</td>
+                      <td>{{ u.division_name|default:"-" }}</td>
+                      <td>{{ u.team_name|default:"-" }}</td>
                     </tr>
                   {% endfor %}
                 </tbody>
@@ -310,20 +525,205 @@
       </main>
     </div>
   </div>
+
+  <div class="jcc-account-editOverlay" id="accountEditOverlay" hidden aria-hidden="true">
+    <div class="jcc-account-editModal" role="dialog" aria-modal="true" aria-labelledby="accountEditTitle">
+      <div class="jcc-account-editModal__head">
+        <div>
+          <h2 id="accountEditTitle" class="jcc-account-editModal__title">계정 상세</h2>
+          <p class="jcc-account-editModal__subtitle" id="accountEditSubtitle"></p>
+        </div>
+        <button type="button" class="secondary jcc-account-editModal__close" id="accountEditClose">닫기</button>
+      </div>
+      <form method="post" id="accountEditForm" class="jcc-account-editForm">
+        {% csrf_token %}
+        <input type="hidden" name="user_id" id="accountEditUserId" value="">
+        <input type="hidden" name="division_code" value="{{ active_division_code }}">
+
+        <section class="jcc-account-editSection">
+          <h3 class="jcc-account-editSection__title">기본 정보</h3>
+          <div class="jcc-account-editField">
+            <label for="accountEditRealName">실명</label>
+            <input type="text" id="accountEditRealName" name="real_name" maxlength="50" autocomplete="off">
+          </div>
+          <div class="jcc-account-editField">
+            <label for="accountEditPhone">휴대폰 번호</label>
+            <input type="tel" id="accountEditPhone" name="phone" maxlength="30" autocomplete="off">
+          </div>
+        </section>
+
+        <section class="jcc-account-editSection">
+          <h3 class="jcc-account-editSection__title">소속</h3>
+          <div class="jcc-account-editField">
+            <label for="accountEditRegion">지역</label>
+            <select id="accountEditRegion" class="jcc-row-region" data-cselect aria-label="지역" {% if not can_move_division %}disabled{% endif %}>
+              <option value="">지역 선택</option>
+              {% for region in region_choices %}
+                <option value="{{ region.id }}">{{ region.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="jcc-account-editField">
+            <label for="accountEditDivision">부서</label>
+            <select id="accountEditDivision" class="jcc-row-division" name="division_id" data-cselect aria-label="부서" {% if not can_move_division %}disabled{% endif %}>
+              <option value="">부서 선택</option>
+            </select>
+            {% if not can_move_division %}
+              <input type="hidden" name="division_id" id="accountEditDivisionHidden" value="{{ active_division.id|default:'' }}">
+            {% endif %}
+          </div>
+          <div class="jcc-account-editField">
+            <label for="accountEditTeam">팀</label>
+            <select id="accountEditTeam" class="jcc-row-team" name="team_id" data-cselect aria-label="팀">
+              <option value="">팀 미지정</option>
+            </select>
+          </div>
+        </section>
+
+        {% if active_retreat_event %}
+        <section class="jcc-account-editSection">
+          <h3 class="jcc-account-editSection__title">수련회</h3>
+          <div class="jcc-account-editField">
+            <label>수련회 행사</label>
+            <div class="jcc-account-editReadonly" id="accountEditEventName">{{ active_retreat_event.name }}</div>
+          </div>
+          <div class="jcc-account-editField">
+            <label for="accountEditRetreatGroup">수련회 조</label>
+            <select id="accountEditRetreatGroup" class="jcc-row-retreat-group" name="retreat_group_id" data-cselect aria-label="수련회 조">
+              <option value="">조 미지정</option>
+            </select>
+          </div>
+          <div class="jcc-account-editField">
+            <label for="accountEditRetreatRole">수련회 역할</label>
+            <select id="accountEditRetreatRole" name="retreat_role" data-cselect aria-label="수련회 역할">
+              {% for code, label in retreat_role_choices %}
+                <option value="{{ code }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </section>
+        {% endif %}
+
+        <section class="jcc-account-editSection">
+          <h3 class="jcc-account-editSection__title">권한</h3>
+          <div class="jcc-account-editField">
+            <label for="accountEditRoleLevel">직급</label>
+            <select id="accountEditRoleLevel" name="role_level_id" data-cselect aria-label="직급">
+              <option value="">직급 미지정</option>
+              {% for rl in role_level_choices %}
+                <option value="{{ rl.id }}">{{ rl.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="jcc-account-editField">
+            <label>기능권한</label>
+            <div class="jcc-account-editChecks">
+              <label>
+                <input type="checkbox" name="can_manage_attendance" id="accountEditAtt">
+                출석관리
+              </label>
+              <label>
+                <input type="checkbox" name="can_manage_parking" id="accountEditParking">
+                주차관리
+              </label>
+              <label>
+                <input type="checkbox" name="can_manage_accounts" id="accountEditAccounts">
+                계정관리
+              </label>
+            </div>
+          </div>
+          <div class="jcc-account-editField">
+            <label>직책 설정</label>
+            <div
+              class="role-options"
+              id="accountEditRolePicker"
+              data-role-api-url="{{ role_options_api_url }}"
+              data-assigned="[]"
+            ></div>
+          </div>
+          <div class="jcc-account-editField">
+            <label>가지고 있는 권한</label>
+            <div class="jcc-account-editSummary" id="accountEditPermSummary">-</div>
+          </div>
+        </section>
+
+        <section class="jcc-account-editSection">
+          <h3 class="jcc-account-editSection__title">기록</h3>
+          <div class="jcc-account-editField">
+            <label>생성 시간</label>
+            <div class="jcc-account-editReadonly" id="accountEditCreated">-</div>
+          </div>
+          <div class="jcc-account-editField">
+            <label>업데이트 시간</label>
+            <div class="jcc-account-editReadonly" id="accountEditUpdated">-</div>
+          </div>
+        </section>
+
+        <div class="jcc-account-editActions">
+          <button type="submit">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script id="jccAccountDetailsJson" type="application/json">{{ account_details_json|safe }}</script>
   <script id="jccAccountDivisionsJson" type="application/json">{{ divisions_json|safe }}</script>
   <script id="jccAccountTeamsMapJson" type="application/json">{{ teams_map_json|safe }}</script>
   {% if active_retreat_event %}<script id="jccAccountRetreatGroupsJson" type="application/json">{{ retreat_groups_json|safe }}</script>{% endif %}
+  <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c"></script>
   <script>
     (function () {
+      const overlay = document.getElementById("accountEditOverlay");
+      const form = document.getElementById("accountEditForm");
+      const closeBtn = document.getElementById("accountEditClose");
+      const titleEl = document.getElementById("accountEditTitle");
+      const subtitleEl = document.getElementById("accountEditSubtitle");
+      const permSummaryEl = document.getElementById("accountEditPermSummary");
+      const detailsEl = document.getElementById("jccAccountDetailsJson");
+      if (!overlay || !form || !detailsEl) return;
+
       const divisions = JSON.parse(document.getElementById("jccAccountDivisionsJson").textContent);
       const teamsMap = JSON.parse(document.getElementById("jccAccountTeamsMapJson").textContent);
       const retreatEl = document.getElementById("jccAccountRetreatGroupsJson");
       const retreatGroups = retreatEl ? JSON.parse(retreatEl.textContent) : [];
       const canMoveDivision = {{ can_move_division|yesno:"true,false" }};
 
-      function fillDivisionSelect(select, regionId, selectedId) {
+      let accountDetails = {};
+      try {
+        accountDetails = JSON.parse(detailsEl.textContent || "{}");
+      } catch (e) {
+        accountDetails = {};
+      }
+
+      const regionSel = document.getElementById("accountEditRegion");
+      const divisionSel = document.getElementById("accountEditDivision");
+      const teamSel = document.getElementById("accountEditTeam");
+      const retreatSel = document.getElementById("accountEditRetreatGroup");
+      const rolePickerEl = document.getElementById("accountEditRolePicker");
+
+      let cachedRoles = [];
+      let selectedRoleCodes = [];
+      let rolePickerMounted = false;
+
+      function refreshCustomSelects(root) {
+        if (window.JccCustomSelect) {
+          JccCustomSelect.refresh(root || form);
+        }
+      }
+
+      function escAttr(s) {
+        return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+      }
+
+      function roleNameByCode(code) {
+        const r = cachedRoles.find((x) => x.code === code);
+        return r ? r.name : code;
+      }
+
+      function fillDivisionSelect(selectedId) {
+        const regionId = regionSel ? regionSel.value : "";
         const current = String(selectedId || "");
-        select.innerHTML = '<option value="">부서 선택</option>';
+        divisionSel.innerHTML = '<option value="">부서 선택</option>';
         divisions
           .filter((d) => !regionId || String(d.region_id) === String(regionId))
           .forEach((d) => {
@@ -331,26 +731,26 @@
             opt.value = d.id;
             opt.textContent = d.region_name ? d.region_name + " · " + d.name : d.name;
             if (String(d.id) === current) opt.selected = true;
-            select.appendChild(opt);
+            divisionSel.appendChild(opt);
           });
       }
 
-      function fillTeamSelect(select, divisionId, selectedId) {
+      function fillTeamSelect(divisionId, selectedId) {
         const current = String(selectedId || "");
-        select.innerHTML = '<option value="">팀 미지정</option>';
+        teamSel.innerHTML = '<option value="">팀 미지정</option>';
         (teamsMap[String(divisionId)] || []).forEach((t) => {
           const opt = document.createElement("option");
           opt.value = t.id;
           opt.textContent = t.name;
           if (String(t.id) === current) opt.selected = true;
-          select.appendChild(opt);
+          teamSel.appendChild(opt);
         });
       }
 
-      function fillRetreatSelect(select, divisionId, selectedId) {
-        if (!select) return;
+      function fillRetreatSelect(divisionId, selectedId) {
+        if (!retreatSel) return;
         const current = String(selectedId || "");
-        select.innerHTML = '<option value="">조 미지정</option>';
+        retreatSel.innerHTML = '<option value="">조 미지정</option>';
         retreatGroups
           .filter((g) => String(g.division_id) === String(divisionId))
           .forEach((g) => {
@@ -358,159 +758,252 @@
             opt.value = g.id;
             opt.textContent = g.label;
             if (String(g.id) === current) opt.selected = true;
-            select.appendChild(opt);
+            retreatSel.appendChild(opt);
           });
+      }
+
+      function syncFromRegion(selectedDivisionId, selectedTeamId, selectedRetreatId) {
+        fillDivisionSelect(selectedDivisionId);
+        syncFromDivision(selectedTeamId, selectedRetreatId);
+      }
+
+      function syncFromDivision(selectedTeamId, selectedRetreatId) {
+        const divisionId = divisionSel.value;
+        fillTeamSelect(divisionId, selectedTeamId);
+        fillRetreatSelect(divisionId, selectedRetreatId);
+        updatePermSummary();
+        refreshCustomSelects(form);
+      }
+
+      if (regionSel && canMoveDivision) {
+        regionSel.addEventListener("change", () => syncFromRegion("", "", ""));
+      }
+      if (divisionSel && canMoveDivision) {
+        divisionSel.addEventListener("change", () => syncFromDivision("", ""));
+      }
+      teamSel.addEventListener("change", updatePermSummary);
+      document.getElementById("accountEditRoleLevel").addEventListener("change", updatePermSummary);
+      ["accountEditAtt", "accountEditParking", "accountEditAccounts"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("change", updatePermSummary);
+      });
+
+      function functionalPermLabels() {
+        const labels = [];
+        if (document.getElementById("accountEditAtt").checked) labels.push("출석관리");
+        if (document.getElementById("accountEditParking").checked) labels.push("주차관리");
+        if (document.getElementById("accountEditAccounts").checked) labels.push("계정관리");
+        return labels;
+      }
+
+      function updatePermSummary() {
+        const parts = [];
+        const roleLevelSel = document.getElementById("accountEditRoleLevel");
+        const roleLevelText = roleLevelSel.options[roleLevelSel.selectedIndex]?.text || "";
+        if (roleLevelSel.value && roleLevelText !== "직급 미지정") {
+          parts.push("직급: " + roleLevelText);
+        }
+        const funcPerms = functionalPermLabels();
+        if (funcPerms.length) {
+          parts.push("기능권한: " + funcPerms.join(", "));
+        }
+        if (selectedRoleCodes.length) {
+          parts.push(
+            "직책: " + selectedRoleCodes.map((c) => roleNameByCode(c)).join(", ")
+          );
+        }
+        permSummaryEl.textContent = parts.length ? parts.join("\n") : "지정된 권한 없음";
+      }
+
+      function mountRolePicker(roles, assigned) {
+        selectedRoleCodes = Array.isArray(assigned) ? assigned.slice() : [];
+        cachedRoles = roles;
+
+        rolePickerEl.innerHTML = `
+          <div class="jcc-role-panel">
+            <div class="jcc-role-panel__toolbar">
+              <select class="jcc-role-pick-select" data-cselect aria-label="직책 선택·추가"></select>
+            </div>
+            <div class="jcc-role-panel__body is-empty">
+              <div class="jcc-role-picker__tags jcc-role-tags-mount"></div>
+            </div>
+          </div>
+          <div class="jcc-role-hidden-inputs" hidden aria-hidden="true"></div>
+        `;
+
+        const pickSelect = rolePickerEl.querySelector(".jcc-role-pick-select");
+        const panelBody = rolePickerEl.querySelector(".jcc-role-panel__body");
+        const tagsMount = rolePickerEl.querySelector(".jcc-role-tags-mount");
+        const hiddenMount = rolePickerEl.querySelector(".jcc-role-hidden-inputs");
+
+        if (window.JccCustomSelect) {
+          JccCustomSelect.init(rolePickerEl);
+        }
+
+        function fillSelectOptions() {
+          const taken = new Set(selectedRoleCodes);
+          const available = cachedRoles.filter((r) => !taken.has(r.code));
+          pickSelect.innerHTML =
+            '<option value="">직책 선택으로 추가…</option>' +
+            available.map((r) => `<option value="${escAttr(r.code)}">${escAttr(r.name)}</option>`).join("");
+          pickSelect.disabled = available.length === 0;
+          refreshCustomSelects(rolePickerEl);
+        }
+
+        function syncHiddenInputs() {
+          hiddenMount.innerHTML = "";
+          selectedRoleCodes.forEach((code) => {
+            const inp = document.createElement("input");
+            inp.type = "hidden";
+            inp.name = "role_codes";
+            inp.value = code;
+            hiddenMount.appendChild(inp);
+          });
+        }
+
+        function renderTags() {
+          if (!selectedRoleCodes.length) {
+            panelBody.classList.add("is-empty");
+            tagsMount.innerHTML = '<span class="jcc-role-panel__empty-hint">지정된 직책 없음 · 위 목록에서 선택</span>';
+            syncHiddenInputs();
+            updatePermSummary();
+            return;
+          }
+          panelBody.classList.remove("is-empty");
+          tagsMount.innerHTML = selectedRoleCodes
+            .map(
+              (code) => `
+            <span class="jcc-role-tag">
+              <span class="jcc-role-tag__text">${escAttr(roleNameByCode(code))}</span>
+              <button type="button" class="jcc-role-tag__remove" data-code="${escAttr(code)}" aria-label="직책 제거">×</button>
+            </span>`
+            )
+            .join("");
+          tagsMount.querySelectorAll(".jcc-role-tag__remove").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const c = btn.getAttribute("data-code");
+              selectedRoleCodes = selectedRoleCodes.filter((x) => x !== c);
+              fillSelectOptions();
+              renderTags();
+            });
+          });
+          syncHiddenInputs();
+          updatePermSummary();
+        }
+
+        pickSelect.addEventListener("change", () => {
+          const code = (pickSelect.value || "").trim();
+          if (!code || selectedRoleCodes.includes(code)) return;
+          selectedRoleCodes.push(code);
+          fillSelectOptions();
+          renderTags();
+        });
+
+        fillSelectOptions();
+        renderTags();
+        rolePickerMounted = true;
+      }
+
+      async function ensureRolePicker(assigned) {
+        if (!rolePickerEl) return;
+        if (!cachedRoles.length) {
+          const url = rolePickerEl.dataset.roleApiUrl;
+          const res = await fetch(url, { credentials: "same-origin" });
+          if (res.ok) {
+            const data = await res.json();
+            cachedRoles = Array.isArray(data.results) ? data.results : [];
+          }
+        }
+        mountRolePicker(cachedRoles, assigned);
+      }
+
+      async function openModal(userId) {
+        const d = accountDetails[String(userId)] || accountDetails[userId];
+        if (!d) return;
+
+        const displayTitle = d.real_name || d.display_name || d.username || "계정";
+        titleEl.textContent = displayTitle;
+        subtitleEl.textContent = d.kakao_uid ? "kakao id · " + d.kakao_uid : (d.username || "");
+
+        document.getElementById("accountEditUserId").value = userId;
+        document.getElementById("accountEditRealName").value = d.real_name || "";
+        document.getElementById("accountEditPhone").value = d.phone || "";
+
+        if (regionSel) {
+          regionSel.value = d.region_id ? String(d.region_id) : "";
+        }
+        const hiddenDiv = document.getElementById("accountEditDivisionHidden");
+        if (hiddenDiv) {
+          hiddenDiv.value = d.division_id ? String(d.division_id) : "";
+        }
+        syncFromRegion(d.division_id, d.team_id, d.retreat_group_id);
+
+        const retreatRoleSel = document.getElementById("accountEditRetreatRole");
+        if (retreatRoleSel) {
+          retreatRoleSel.value = d.retreat_role || "participant";
+        }
+
+        document.getElementById("accountEditAtt").checked = !!d.can_manage_attendance;
+        document.getElementById("accountEditParking").checked = !!d.can_manage_parking;
+        document.getElementById("accountEditAccounts").checked = !!d.can_manage_accounts;
+
+        const roleLevelSel = document.getElementById("accountEditRoleLevel");
+        roleLevelSel.value = d.role_level_id ? String(d.role_level_id) : "";
+
+        document.getElementById("accountEditCreated").textContent = d.created_at || "-";
+        document.getElementById("accountEditUpdated").textContent = d.updated_at || "-";
+
+        await ensureRolePicker(d.assigned_role_codes || []);
+        refreshCustomSelects(form);
+
+        overlay.hidden = false;
+        overlay.setAttribute("aria-hidden", "false");
+        document.getElementById("accountEditRealName").focus();
+      }
+
+      function closeModal() {
+        overlay.hidden = true;
+        overlay.setAttribute("aria-hidden", "true");
+        rolePickerMounted = false;
+        selectedRoleCodes = [];
       }
 
       document.querySelectorAll("[data-account-row]").forEach((row) => {
-        const regionSel = row.querySelector(".jcc-row-region");
-        const divisionSel = row.querySelector(".jcc-row-division");
-        const teamSel = row.querySelector(".jcc-row-team");
-        const retreatSel = row.querySelector(".jcc-row-retreat-group");
-        const initRegion = row.dataset.regionId;
-        const initDivision = row.dataset.divisionId;
-        const initTeam = row.dataset.teamId;
-        const initRetreat = row.dataset.retreatGroupId;
+        row.addEventListener("click", () => {
+          const id = row.getAttribute("data-user-id");
+          if (id) openModal(id);
+        });
+        row.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            const id = row.getAttribute("data-user-id");
+            if (id) openModal(id);
+          }
+        });
+      });
 
-        function syncFromRegion() {
-          const regionId = regionSel ? regionSel.value || initRegion : initRegion;
-          fillDivisionSelect(divisionSel, regionId, divisionSel.value || initDivision);
-          syncFromDivision();
-        }
+      closeBtn.addEventListener("click", closeModal);
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) closeModal();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !overlay.hidden) closeModal();
+      });
 
-        function syncFromDivision() {
-          const divisionId = divisionSel.value || initDivision;
-          fillTeamSelect(teamSel, divisionId, teamSel.value || initTeam);
-          fillRetreatSelect(retreatSel, divisionId, retreatSel ? retreatSel.value || initRetreat : "");
+      form.addEventListener("submit", () => {
+        const hiddenMount = rolePickerEl.querySelector(".jcc-role-hidden-inputs");
+        if (hiddenMount) {
+          hiddenMount.innerHTML = "";
+          selectedRoleCodes.forEach((code) => {
+            const inp = document.createElement("input");
+            inp.type = "hidden";
+            inp.name = "role_codes";
+            inp.value = code;
+            hiddenMount.appendChild(inp);
+          });
         }
-
-        if (regionSel && canMoveDivision) {
-          regionSel.addEventListener("change", syncFromRegion);
-        }
-        if (divisionSel && canMoveDivision) {
-          divisionSel.addEventListener("change", syncFromDivision);
-        }
-
-        syncFromRegion();
       });
     })();
-  </script>
-  <script>
-    const roleContainers = document.querySelectorAll(".role-options");
-    function escAttr(s) {
-      return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-    }
-    function roleNameByCode(roles, code) {
-      const r = roles.find((x) => x.code === code);
-      return r ? r.name : code;
-    }
-    function mountRolePicker(el, roles) {
-      let selected = [];
-      try {
-        selected = JSON.parse(el.dataset.assigned || "[]");
-      } catch (e) {
-        selected = [];
-      }
-      if (!Array.isArray(selected)) selected = [];
-
-      el.innerHTML = `
-        <div class="jcc-role-panel">
-          <div class="jcc-role-panel__toolbar">
-            <select class="jcc-role-pick-select" aria-label="직책 선택·추가"></select>
-            <button type="submit" class="jcc-role-panel__save">저장</button>
-          </div>
-          <div class="jcc-role-panel__body is-empty">
-            <div class="jcc-role-picker__tags jcc-role-tags-mount"></div>
-          </div>
-        </div>
-        <div class="jcc-role-hidden-inputs" hidden aria-hidden="true"></div>
-      `;
-      const pickSelect = el.querySelector(".jcc-role-pick-select");
-      const panelBody = el.querySelector(".jcc-role-panel__body");
-      const tagsMount = el.querySelector(".jcc-role-tags-mount");
-      const hiddenMount = el.querySelector(".jcc-role-hidden-inputs");
-      const form = el.closest("form");
-
-      function fillSelectOptions() {
-        const taken = new Set(selected);
-        const available = roles.filter((r) => !taken.has(r.code));
-        pickSelect.innerHTML =
-          '<option value="">직책 선택으로 추가…</option>' +
-          available.map((r) => `<option value="${escAttr(r.code)}">${escAttr(r.name)}</option>`).join("");
-        pickSelect.disabled = available.length === 0;
-      }
-
-      function syncHiddenInputs() {
-        hiddenMount.innerHTML = "";
-        selected.forEach((code) => {
-          const inp = document.createElement("input");
-          inp.type = "hidden";
-          inp.name = "role_codes";
-          inp.value = code;
-          hiddenMount.appendChild(inp);
-        });
-      }
-
-      function renderTags() {
-        if (!selected.length) {
-          panelBody.classList.add("is-empty");
-          tagsMount.innerHTML = '<span class="jcc-role-panel__empty-hint">지정된 직책 없음 · 위 목록에서 선택</span>';
-          syncHiddenInputs();
-          return;
-        }
-        panelBody.classList.remove("is-empty");
-        tagsMount.innerHTML = selected
-          .map(
-            (code) => `
-          <span class="jcc-role-tag">
-            <span class="jcc-role-tag__text">${escAttr(roleNameByCode(roles, code))}</span>
-            <button type="button" class="jcc-role-tag__remove" data-code="${escAttr(code)}" aria-label="직책 제거">×</button>
-          </span>`
-          )
-          .join("");
-        tagsMount.querySelectorAll(".jcc-role-tag__remove").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const c = btn.getAttribute("data-code");
-            selected = selected.filter((x) => x !== c);
-            fillSelectOptions();
-            renderTags();
-          });
-        });
-        syncHiddenInputs();
-      }
-
-      function tryAdd() {
-        const code = (pickSelect.value || "").trim();
-        if (!code || selected.includes(code)) return;
-        selected.push(code);
-        fillSelectOptions();
-        renderTags();
-      }
-
-      pickSelect.addEventListener("change", () => {
-        tryAdd();
-      });
-
-      fillSelectOptions();
-      renderTags();
-
-      if (form) {
-        form.addEventListener("submit", () => {
-          syncHiddenInputs();
-        });
-      }
-    }
-
-    async function fillRoleOptions() {
-      if (!roleContainers.length) return;
-      const url = roleContainers[0].dataset.roleApiUrl;
-      const res = await fetch(url, { credentials: "same-origin" });
-      if (!res.ok) return;
-      const data = await res.json();
-      const roles = Array.isArray(data.results) ? data.results : [];
-      roleContainers.forEach((el) => mountRolePicker(el, roles));
-    }
-    fillRoleOptions();
   </script>
 </body>
 </html>

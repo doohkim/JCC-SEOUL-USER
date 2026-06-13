@@ -65,6 +65,7 @@
     if (selectedDivisionId != null) {
       roomDivisionInput.value = String(selectedDivisionId);
     }
+    if (window.JccCustomSelect) window.JccCustomSelect.refresh(document);
   }
 
   let lodgingMode = "create";
@@ -100,6 +101,7 @@
       lodgingRegionInput.value = payload?.region != null ? String(payload.region) : "";
     if (lodgingAddressInput) lodgingAddressInput.value = payload?.address || "";
     if (lodgingMemoInput) lodgingMemoInput.value = payload?.memo || "";
+    if (window.JccCustomSelect) window.JccCustomSelect.refresh(document);
     lodgingOverlay.hidden = false;
     lodgingOverlay.setAttribute("aria-hidden", "false");
     requestAnimationFrame(() => lodgingNameInput?.focus());
@@ -128,6 +130,7 @@
     if (roomGenderInput)
       roomGenderInput.value = payload?.recommended_gender || "";
     if (roomMemoInput) roomMemoInput.value = payload?.memo || "";
+    if (window.JccCustomSelect) window.JccCustomSelect.refresh(document);
     roomOverlay.hidden = false;
     roomOverlay.setAttribute("aria-hidden", "false");
     requestAnimationFrame(() => roomNumberInput?.focus());

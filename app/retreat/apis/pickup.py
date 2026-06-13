@@ -20,6 +20,7 @@ from retreat.models import (
     RetreatEvent,
     RetreatGroup,
     RetreatPickup,
+    RetreatPickupLocation,
 )
 from retreat.serializers import RetreatPickupSerializer
 from retreat.services.audit import log_retreat_change
@@ -86,6 +87,22 @@ def _next_pickup_number(event: RetreatEvent, direction: str) -> int:
         or 0
     )
     return current + 1
+
+
+def _allowed_boarding_places(event: RetreatEvent) -> set[str]:
+    return set(
+        RetreatPickupLocation.objects.filter(event=event).values_list("name", flat=True)
+    )
+
+
+def _validate_boarding_place(event: RetreatEvent, boarding_place: str) -> str | None:
+    """등록된 위치가 있으면 목록에서만 선택 가능. 없으면 과도기적으로 자유 입력 허용."""
+    allowed = _allowed_boarding_places(event)
+    if not allowed:
+        return None
+    if boarding_place not in allowed:
+        return "등록된 탑승장소 목록에서 선택해 주세요."
+    return None
 
 
 class RetreatEventPickupListCreateView(APIView):
@@ -183,6 +200,11 @@ class RetreatEventPickupListCreateView(APIView):
         if errors:
             raise ValidationError(errors)
         contact = contact_norm
+
+        place_err = _validate_boarding_place(event, boarding_place)
+        if place_err:
+            errors["boarding_place"] = place_err
+            raise ValidationError(errors)
 
         applicant_name = _applicant_name(request.user)
         with transaction.atomic():
@@ -342,6 +364,9 @@ class RetreatPickupDetailView(APIView):
         if errors:
             raise ValidationError(errors)
         if update_fields:
+            place_err = _validate_boarding_place(event, pickup.boarding_place)
+            if place_err:
+                raise ValidationError({"boarding_place": place_err})
             update_fields.append("updated_at")
             pickup.save(update_fields=sorted(set(update_fields)))
 

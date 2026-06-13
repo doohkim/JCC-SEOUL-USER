@@ -346,7 +346,58 @@
     foot.appendChild(clearBtn);
     foot.appendChild(nowBtn);
     foot.appendChild(okBtn);
+
+    // 제약(입실<퇴실 등) 위반 시 팝업 안에 보여줄 안내문구.
+    const errEl = document.createElement("div");
+    errEl.className = "jcc-dtp-error";
+    errEl.setAttribute("role", "alert");
+    errEl.hidden = true;
+    pop.appendChild(errEl);
     pop.appendChild(foot);
+
+    // 형제 필드(같은 행 또는 같은 폼)에서 경계 시각을 읽어 제약을 검사한다.
+    // - data-dtp-min-selector: 선택값이 이 시각보다 "무조건 뒤"여야 함 (퇴실)
+    // - data-dtp-max-selector: 선택값이 이 시각보다 "무조건 앞"이어야 함 (입실)
+    function readConstraint(attrKey) {
+      const sel = input.dataset[attrKey];
+      if (!sel) return null;
+      const scope = input.closest("tr") || input.closest("form") || document;
+      const src = scope.querySelector(sel);
+      if (!src) return null;
+      return parseValue(src.value);
+    }
+    function partMs(p) {
+      return new Date(p.y, p.mo, p.d, p.hh, p.mm).getTime();
+    }
+    function constraintError() {
+      const a = new Date(
+        draft.y,
+        draft.mo,
+        draft.d,
+        draft.hh,
+        draft.mm
+      ).getTime();
+      const min = readConstraint("dtpMinSelector");
+      if (min && a <= partMs(min)) {
+        return input.dataset.dtpMinMessage || "더 뒤의 시각을 선택하세요.";
+      }
+      const max = readConstraint("dtpMaxSelector");
+      if (max && a >= partMs(max)) {
+        return input.dataset.dtpMaxMessage || "더 앞의 시각을 선택하세요.";
+      }
+      return "";
+    }
+    function updateValidity() {
+      const msg = constraintError();
+      if (msg) {
+        errEl.textContent = msg;
+        errEl.hidden = false;
+        okBtn.disabled = true;
+      } else {
+        errEl.hidden = true;
+        okBtn.disabled = false;
+      }
+    }
 
     if (useSheet) {
       backdrop = document.createElement("div");
@@ -421,6 +472,7 @@
       merCtl.setSelected(t.mer);
       minCtl.inp.value = pad(draft.mm);
       minCtl.setSelected(draft.mm);
+      updateValidity();
     }
     function setHour12(h12) {
       h12 = Math.round(h12);
@@ -489,6 +541,7 @@
         });
         grid.appendChild(cell);
       }
+      updateValidity();
     }
 
     renderTime();
@@ -496,6 +549,7 @@
       const v = parseInt(hourCtl.inp.value.replace(/\D/g, ""), 10);
       if (!Number.isNaN(v)) {
         draft.hh = from12h(Math.min(12, Math.max(1, v)), to12h(draft.hh).mer);
+        updateValidity();
       }
     });
     hourCtl.inp.addEventListener("blur", function () {
@@ -503,7 +557,10 @@
     });
     minCtl.inp.addEventListener("input", function () {
       const v = parseInt(minCtl.inp.value.replace(/\D/g, ""), 10);
-      if (!Number.isNaN(v)) draft.mm = Math.max(0, Math.min(59, v));
+      if (!Number.isNaN(v)) {
+        draft.mm = Math.max(0, Math.min(59, v));
+        updateValidity();
+      }
     });
     minCtl.inp.addEventListener("blur", function () {
       renderTime();

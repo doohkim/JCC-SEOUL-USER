@@ -31,6 +31,8 @@ from retreat.apis import (
     RetreatSnapshotAttendeeDetailView,
     RetreatEventPickupListCreateView,
     RetreatPickupDetailView,
+    RetreatEventPickupLocationListCreateView,
+    RetreatPickupLocationDetailView,
     RetreatEventTimetableListCreateView,
     RetreatTimetableEntryDetailView,
     RetreatUserSearchView,
@@ -249,6 +251,16 @@ urlpatterns = [
         "api/v1/retreat/events/<int:event_id>/pickups/",
         RetreatEventPickupListCreateView.as_view(),
         name="api_retreat_event_pickups",
+    ),
+    path(
+        "api/v1/retreat/events/<int:event_id>/pickup-locations/",
+        RetreatEventPickupLocationListCreateView.as_view(),
+        name="api_retreat_event_pickup_locations",
+    ),
+    path(
+        "api/v1/retreat/pickup-locations/<int:location_id>/",
+        RetreatPickupLocationDetailView.as_view(),
+        name="api_retreat_pickup_location_detail",
     ),
     path(
         "api/v1/retreat/events/<int:event_id>/lodgings/",

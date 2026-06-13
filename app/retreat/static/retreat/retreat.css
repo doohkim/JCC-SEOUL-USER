@@ -14,8 +14,57 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   display: none !important;
 }
 
+/* ── 수련회 상단 탭: Toss 스타일 가로 내비게이션 바 ── */
 .jcc-retreat-pageTabs {
-  margin-bottom: 0.75rem;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.15rem;
+  align-items: stretch;
+  margin-bottom: 0.9rem;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.jcc-retreat-pageTabs::-webkit-scrollbar {
+  display: none;
+}
+.jcc-retreat-pageTabs .jcc-page-tab {
+  position: relative;
+  min-width: auto;
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 10px 10px 0 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.6rem 0.95rem 0.72rem;
+  white-space: nowrap;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.jcc-retreat-pageTabs .jcc-page-tab::after {
+  content: "";
+  position: absolute;
+  left: 0.7rem;
+  right: 0.7rem;
+  bottom: -1px;
+  height: 2.5px;
+  border-radius: 3px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+.jcc-retreat-pageTabs .jcc-page-tab:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.jcc-retreat-pageTabs .jcc-page-tab.is-active {
+  color: var(--accent);
+  background: transparent;
+  border-color: transparent;
+}
+.jcc-retreat-pageTabs .jcc-page-tab.is-active::after {
+  background: var(--accent);
 }
 
 .jcc-retreat-pageTabsRow {
@@ -27,6 +76,45 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 }
 .jcc-retreat-pageTabsRow .jcc-retreat-pageTabs {
   margin-bottom: 0;
+  flex: 1 1 auto;
+}
+
+/* 모바일: 상단 행사 내비는 하단 탭바로 대체하므로 숨김 (행사 선택은 유지) */
+@media (max-width: 900px) {
+  .jcc-retreat-pageTabsRow > .jcc-retreat-pageTabs {
+    display: none;
+  }
+  .jcc-retreat-eventSwitcher,
+  .jcc-retreat-eventPicker {
+    width: 100%;
+    min-width: 0;
+  }
+  /* 하단 탭바 (Toss 앱 스타일) 폴리시 */
+  .jcc-retreatBottomTabs {
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.16);
+    gap: 0.1rem;
+  }
+  .jcc-retreatBottomTabs .jcc-bottomTab {
+    font-size: 0.7rem;
+    gap: 3px;
+    border-radius: 12px;
+    transition: color 0.15s ease;
+  }
+  .jcc-retreatBottomTabs .jcc-bottomTab span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .jcc-retreatBottomTabs .jcc-bottomTab.is-active,
+  .jcc-retreatBottomTabs .jcc-bottomTab[aria-current="page"] {
+    color: var(--accent);
+    font-weight: 800;
+  }
+  .jcc-retreatBottomTabs .jcc-bottomTab.is-active svg {
+    transform: translateY(-1px) scale(1.05);
+  }
 }
 .jcc-retreat-eventSwitcher {
   background: var(--card);
@@ -39,9 +127,277 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   min-width: 12rem;
   max-width: 100%;
 }
+
+/* ── 행사 선택: Toss 스타일 커스텀 드롭다운 ── */
+.jcc-retreat-eventPicker {
+  position: relative;
+  display: inline-block;
+  min-width: 13rem;
+  max-width: 100%;
+}
+.jcc-retreat-eventPickerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.62rem 0.9rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.jcc-retreat-eventPickerBtn:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+.jcc-retreat-eventPicker.is-open .jcc-retreat-eventPickerBtn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.jcc-retreat-eventPickerLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jcc-retreat-eventPickerCaret {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.jcc-retreat-eventPicker.is-open .jcc-retreat-eventPickerCaret {
+  transform: rotate(180deg);
+}
+.jcc-retreat-eventPickerMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.08);
+  max-height: 60vh;
+  overflow-y: auto;
+  animation: jccEventPickerIn 0.12s ease;
+}
+@keyframes jccEventPickerIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.jcc-retreat-eventPickerItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.jcc-retreat-eventPickerItem:hover,
+.jcc-retreat-eventPickerItem.is-focus {
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+.jcc-retreat-eventPickerItem.is-selected {
+  color: var(--accent);
+  font-weight: 800;
+}
+.jcc-retreat-eventPickerCheck {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0;
+}
+.jcc-retreat-eventPickerItem.is-selected .jcc-retreat-eventPickerCheck {
+  opacity: 1;
+}
 .jcc-retreat-eventSwitcher:focus-visible {
   outline: 2px solid var(--accent, #4a9eff);
   outline-offset: 1px;
+}
+
+/* 폼 내부 네이티브 select 를 대체하는 커스텀 드롭다운 (Toss 스타일) */
+.jcc-cselect-native {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.jcc-cselect {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.jcc-cselect-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.62rem 0.85rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.jcc-cselect-btn:hover,
+.jcc-cselect-btn:focus,
+.jcc-cselect-btn:active,
+.jcc-cselect.is-open .jcc-cselect-btn {
+  background: var(--card);
+  color: var(--text);
+}
+.jcc-cselect-btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+.jcc-cselect.is-open .jcc-cselect-btn,
+.jcc-cselect-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.jcc-cselect.is-placeholder .jcc-cselect-label {
+  color: var(--muted);
+}
+.jcc-cselect-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.jcc-cselect-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jcc-cselect-caret {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+.jcc-cselect-caret svg {
+  width: 100%;
+  height: 100%;
+}
+.jcc-cselect.is-open .jcc-cselect-caret {
+  transform: rotate(180deg);
+}
+.jcc-cselect-menu {
+  position: fixed;
+  z-index: 2500;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.08);
+  max-height: min(18rem, 60vh);
+  overflow-y: auto;
+  animation: jccEventPickerIn 0.12s ease;
+}
+.jcc-cselect-group {
+  padding: 0.5rem 0.7rem 0.25rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.jcc-cselect-group:not(:first-child) {
+  margin-top: 0.2rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  padding-top: 0.5rem;
+}
+.jcc-cselect-opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.jcc-cselect-opt:hover,
+.jcc-cselect-opt.is-focus {
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+.jcc-cselect-opt.is-selected {
+  color: var(--accent);
+  font-weight: 800;
+}
+.jcc-cselect-opt.is-disabled {
+  color: var(--muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.jcc-cselect-check {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0;
+}
+.jcc-cselect-check svg {
+  width: 100%;
+  height: 100%;
+}
+.jcc-cselect-opt.is-selected .jcc-cselect-check {
+  opacity: 1;
+}
+/* 표 셀 안의 조 선택 드롭다운은 셀 너비에 꽉 차지 않도록 */
+.jcc-cselect:has(> .jcc-retreat-rosterSelect) {
+  display: inline-block;
+  width: auto;
+  min-width: 12rem;
+  max-width: 18rem;
+}
+/* 대시보드 지역 필터: 라벨 옆에 컴팩트하게 */
+.jcc-board-toolbar .jcc-cselect {
+  width: auto;
+  min-width: 10rem;
+  max-width: 16rem;
+}
+
+.jcc-cselect:has(> .jcc-retreat-lodgingSelect),
+.jcc-cselect:has(> .council-role-select) {
+  display: inline-block;
+  width: auto;
+  min-width: 7rem;
+  max-width: 11rem;
 }
 
 .jcc-retreat-stampCol {
@@ -231,6 +587,10 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 .jcc-retreat-miniTable td:last-child {
   width: 4.5rem;
   text-align: right;
+}
+/* 헤더 '참석'은 우측 정렬, 숫자는 첫 글자('참') 아래에 맞춰 한 글자만큼 안쪽으로 */
+.jcc-retreat-miniTable td:last-child {
+  padding-right: calc(0.5rem + 1em);
 }
 .jcc-retreat-miniTable th {
   background: var(--accent-tint, rgba(99, 102, 241, 0.12));
@@ -479,6 +839,12 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 0.6rem;
 }
+/* PC에서는 카드 폭을 넓혀 긴 pill이 한 줄에 들어갈 여유 확보 (모바일 열 개수는 유지) */
+@media (min-width: 901px) {
+  .jcc-retreat-groupGrid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
 .jcc-retreat-groupCardWrap {
   position: relative;
   min-width: 0;
@@ -506,6 +872,7 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   opacity: 1;
   border-color: var(--accent);
   color: var(--text);
+  background: rgba(0, 0, 0, 0.35);
   outline: none;
 }
 
@@ -540,6 +907,14 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   display: flex;
   gap: 0.25rem;
   flex-wrap: wrap;
+  align-content: flex-start;
+  /* pill 1줄/2줄 모두 동일 높이로 고정 → 모든 카드 높이 균일 */
+  min-height: 2.1rem;
+}
+/* 수정 버튼이 있는 카드만 우측 공간 확보(긴 pill이 버튼에 닿기 전 줄바꿈) */
+.jcc-retreat-groupCardWrap:has(.jcc-retreat-groupCardEdit)
+  .jcc-retreat-groupRegion {
+  padding-right: 2.4rem;
 }
 .jcc-retreat-pill {
   display: inline-block;
@@ -614,8 +989,19 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 }
 .jcc-retreat-filterChip:hover {
   border-color: var(--accent);
+  background: transparent;
+  color: var(--text);
 }
-.jcc-retreat-filterChip.is-active {
+.jcc-retreat-filterChip:focus,
+.jcc-retreat-filterChip:focus-visible,
+.jcc-retreat-filterChip:active {
+  background: transparent;
+  color: var(--text);
+}
+.jcc-retreat-filterChip.is-active,
+.jcc-retreat-filterChip.is-active:hover,
+.jcc-retreat-filterChip.is-active:focus,
+.jcc-retreat-filterChip.is-active:active {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
@@ -752,6 +1138,24 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   justify-content: space-between;
   gap: 0.75rem 1rem;
   width: 100%;
+}
+
+/* 모바일: 조 상세 헤더 텍스트 가운데 정렬 (햄버거/조 목록 사이 중앙) */
+@media (max-width: 900px) {
+  .jcc-retreat-groupHeaderInner {
+    position: relative;
+    justify-content: center;
+  }
+  .jcc-retreat-groupHeaderInner .jcc-detail-titleWrap {
+    width: 100%;
+    align-items: center;
+    text-align: center;
+  }
+  .jcc-retreat-groupHeaderInner .jcc-retreat-backLink {
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
 }
 
 .jcc-retreat-backLink {
@@ -981,7 +1385,7 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   z-index: 1700;
   padding: 0.75rem;
@@ -995,8 +1399,9 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 .jcc-retreat-modal {
   width: 100%;
   max-width: 480px;
-  border-radius: 16px 16px 12px 12px;
+  border-radius: 16px;
   padding: 1rem 1.1rem 1.1rem;
+  margin: auto;
 }
 @media (min-width: 640px) {
   .jcc-retreat-modalOverlay {
@@ -1072,6 +1477,43 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 }
 .jcc-retreat-pickupNameBtn:hover {
   text-decoration-style: solid;
+}
+/* 탑승장소 관리: 수정/삭제 액션 (Toss 스타일, 한 행 정렬) */
+.jcc-pickup-locActionsCell {
+  text-align: right;
+  white-space: nowrap;
+}
+.jcc-pickup-locActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+}
+.jcc-pickup-locBtn {
+  appearance: none;
+  border: none;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.45rem 0.8rem;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.05s ease;
+}
+.jcc-pickup-locBtn:hover {
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+.jcc-pickup-locBtn:active {
+  transform: scale(0.96);
+}
+.jcc-pickup-locBtn--danger {
+  background: color-mix(in srgb, #f04452 12%, transparent);
+  color: #f04452;
+}
+.jcc-pickup-locBtn--danger:hover {
+  background: color-mix(in srgb, #f04452 20%, transparent);
 }
 .jcc-retreat-modalField--full {
   grid-column: 1 / -1;
@@ -1952,9 +2394,9 @@ dialog.jcc-retreat-modal::backdrop {
   margin-bottom: 0.5rem;
 }
 .jcc-retreat-leaderDraftRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
   padding: 0.35rem 0.5rem;
   font-size: 0.88rem;
@@ -1965,14 +2407,29 @@ dialog.jcc-retreat-modal::backdrop {
   background: color-mix(in srgb, var(--accent, #4a9eff) 14%, transparent);
 }
 .jcc-retreat-leaderDraftName {
-  flex: 1 1 auto;
   min-width: 0;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 조 운영진 행: 이름 + 역할 드롭다운 + 제거 버튼을 비율 그리드로 꽉 채워 정렬 */
+.jcc-retreat-leaderDraftRow .jcc-cselect {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+.jcc-retreat-leaderDraftRow .jcc-cselect-btn {
+  padding: 0.38rem 0.55rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.jcc-retreat-leaderDraftRow .jcc-retreat-rowDel {
+  white-space: nowrap;
 }
 .jcc-retreat-leaderRoleSelect {
-  flex: 0 0 auto;
-  min-width: 5.5rem;
-  max-width: 7rem;
+  width: 100%;
+  min-width: 0;
   padding: 0.3rem 0.45rem;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -2629,7 +3086,28 @@ dialog.jcc-retreat-modal::backdrop {
 .jcc-dtp-ok:hover {
   filter: brightness(1.05);
 }
+.jcc-dtp-ok:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+}
 
+/* 제약(입실<퇴실 등) 위반 안내 — 팝업 내부 표시 */
+.jcc-dtp-error {
+  margin-top: 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--danger, #e5484d) 12%, transparent);
+  color: var(--danger, #e5484d);
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.jcc-pickup-boardingHint {
+  display: block;
+  margin-top: 0.25rem;
+}
 /* 모바일·카카오 인앱: 하단 시트 (토스 스타일) */
 .jcc-dtp-backdrop {
   position: fixed;
@@ -2811,4 +3289,283 @@ body.jcc-dtp-open {
   background: var(--input-bg, var(--card, #fff));
   color: var(--text, #212529);
   resize: vertical;
+}
+
+/* ============================================================
+   Toss 스타일 레이아웃 리프레시 (수련회 페이지 전용)
+   - 증권/키오스크 톤: 넉넉한 여백, 부드러운 카드, 세그먼트 컨트롤
+   ============================================================ */
+
+/* 보조(하위) 탭 → Toss 세그먼트 컨트롤 (이벤트 상단 내비는 제외) */
+body.has-retreat-bottom-tabs .jcc-page-tabs:not(.jcc-retreat-pageTabs) {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  padding: 0.28rem;
+  margin-bottom: 1.1rem;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 14px;
+}
+body.has-retreat-bottom-tabs .jcc-page-tabs:not(.jcc-retreat-pageTabs) .jcc-page-tab {
+  min-width: auto;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.5rem 1.05rem;
+  box-shadow: none;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+body.has-retreat-bottom-tabs
+  .jcc-page-tabs:not(.jcc-retreat-pageTabs)
+  .jcc-page-tab:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+body.has-retreat-bottom-tabs
+  .jcc-page-tabs:not(.jcc-retreat-pageTabs)
+  .jcc-page-tab.is-active {
+  background: var(--card);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18),
+    0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* 카드 → Toss 톤: 둥근 모서리, 부드러운 그림자, 옅은 경계 */
+body.has-retreat-bottom-tabs .card {
+  border-radius: 18px;
+  border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 22px rgba(0, 0, 0, 0.06);
+}
+body.has-retreat-bottom-tabs .toolbar {
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+}
+
+/* 버튼 → Toss 톤: 둥근 라운드, 살짝 넉넉한 패딩
+   (커스텀 달력 [jcc-dtp*]·탭·행사선택 등 자체 스타일 버튼은 제외) */
+body.has-retreat-bottom-tabs
+  button:not([class*="jcc-dtp"]):not([class*="jcc-tp-"]):not(.jcc-page-tab):not(.jcc-retreat-eventPickerBtn):not(.jcc-pickup-locBtn):not(.jcc-leftNav-close):not(.jcc-theme-toggle):not(.jcc-mobile-menu-btn):not(.jcc-cselect-btn):not(.jcc-retreat-filterChip):not(.jcc-retreat-groupCardEdit):not(.jcc-retreat-filterReset),
+body.has-retreat-bottom-tabs .btn {
+  border-radius: 11px;
+  padding: 0.58rem 1.05rem;
+  font-weight: 700;
+}
+body.has-retreat-bottom-tabs button.secondary:not([class*="jcc-dtp"]) {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  color: var(--text);
+}
+body.has-retreat-bottom-tabs button.secondary:not([class*="jcc-dtp"]):hover {
+  background: color-mix(in srgb, var(--text) 14%, transparent);
+}
+
+/* 본문 여백을 조금 더 시원하게 (Toss 특유의 넉넉한 레이아웃) */
+body.has-retreat-bottom-tabs main {
+  padding-top: 1.4rem;
+}
+
+/* 모바일 좌상단 햄버거 버튼: 헤더와 자연스럽게 섞이도록 배경 없이 아이콘만 키움 */
+@media (max-width: 900px) {
+  body.has-retreat-bottom-tabs .jcc-mobile-menu-btn {
+    width: 48px;
+    height: 48px;
+  }
+  body.has-retreat-bottom-tabs .jcc-mobile-menu-btn svg {
+    width: 32px;
+    height: 32px;
+  }
+  body.has-retreat-bottom-tabs .jcc-mobile-menu-btn svg path {
+    stroke-width: 2.2;
+  }
+}
+
+/* 조 운영진 관리 모달: Toss 팝업 톤 (화면 중앙 + 넉넉한 레이아웃) */
+#leaderModalOverlay {
+  align-items: center;
+  padding: 1rem;
+}
+.jcc-retreat-modal--leader {
+  max-width: 440px;
+  border-radius: 22px;
+  padding: 1.5rem 1.45rem 1.3rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.12);
+  margin: auto;
+}
+.jcc-retreat-modal--leader .jcc-retreat-modalTitle {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.35rem;
+}
+.jcc-retreat-modal--leader .jcc-retreat-modalSubtitle {
+  margin: 0 0 1.1rem;
+  font-size: 0.9rem;
+}
+/* 운영진 목록 테이블: 경계선 최소화, 행 여백 확대 */
+.jcc-retreat-modal--leader .jcc-retreat-leaderList {
+  width: 100%;
+  border-collapse: collapse;
+}
+.jcc-retreat-modal--leader .jcc-retreat-leaderList th {
+  text-align: left;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 0 0.15rem 0.55rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+.jcc-retreat-modal--leader .jcc-retreat-leaderList td {
+  padding: 0.65rem 0.15rem;
+  vertical-align: middle;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
+}
+.jcc-retreat-modal--leader .jcc-retreat-leaderList tr:last-child td {
+  border-bottom: 0;
+}
+/* 입력·커스텀 셀렉트를 Toss 톤(둥근 12px, 넉넉한 패딩)으로 */
+.jcc-retreat-modal--leader .jcc-retreat-modalGrid .field input,
+.jcc-retreat-modal--leader .jcc-retreat-userPickerInput {
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+}
+.jcc-retreat-modal--leader .jcc-retreat-modalGrid .field label {
+  font-size: 0.78rem;
+  margin-bottom: 0.1rem;
+}
+/* 풋터 버튼 Toss 톤 */
+.jcc-retreat-modal--leader .jcc-retreat-modalFooter {
+  margin-top: 1.15rem;
+}
+.jcc-retreat-modal--leader .jcc-retreat-modalFooter button {
+  border-radius: 12px;
+  padding: 0.72rem 1.25rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* 조 정보 수정 모달: Toss 팝업 톤 (화면 중앙 + 둥근 카드 + 입력 통일) */
+#groupEditModalOverlay {
+  align-items: center;
+  padding: 1rem;
+}
+#groupEditModalOverlay .jcc-retreat-modal--wide {
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+#groupEditModalOverlay .jcc-retreat-modalTitle {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  padding-top: 1.3rem;
+}
+#groupEditModalOverlay .jcc-retreat-modalBody {
+  padding-left: 1.3rem;
+  padding-right: 1.3rem;
+}
+#groupEditModalOverlay .jcc-retreat-groupScopeTitle,
+#groupEditModalOverlay .jcc-retreat-leadersDraftTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+#groupEditModalOverlay .jcc-retreat-modalGrid .field label {
+  font-size: 0.78rem;
+  margin-bottom: 0.1rem;
+}
+#groupEditModalOverlay .jcc-retreat-modalGrid .field input,
+#groupEditModalOverlay .jcc-retreat-userPickerInput {
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+}
+#groupEditModalOverlay .jcc-retreat-scopeAddBtn {
+  border-radius: 10px;
+}
+#groupEditModalOverlay .jcc-retreat-modalFooter {
+  padding: 0.9rem 1.3rem;
+}
+#groupEditModalOverlay .jcc-retreat-modalFooter button {
+  border-radius: 12px;
+  padding: 0.72rem 1.25rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* 조원 추가·수정 모달: Toss 팝업 톤 (화면 중앙 + 둥근 카드 + 입력 통일) */
+#retreatModalOverlay {
+  align-items: center;
+  padding: 1rem;
+}
+#retreatModalOverlay .jcc-retreat-modal--attendeeEdit {
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+#retreatModalOverlay .jcc-retreat-modalGrid .field input,
+#retreatModalOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field,
+#retreatModalOverlay .jcc-retreat-modal--attendeeEdit textarea {
+  border-radius: 12px;
+  padding: 0.62rem 0.8rem;
+}
+#retreatModalOverlay .jcc-retreat-modalFooter button {
+  border-radius: 12px;
+  padding: 0.7rem 1.3rem;
+  font-weight: 700;
+}
+
+/* 조 추가 모달: Toss 팝업 톤 (화면 중앙 + 둥근 카드 + 입력 통일) */
+#groupModalOverlay {
+  align-items: center;
+  padding: 1rem;
+}
+#groupModalOverlay .jcc-retreat-modal--wide {
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+#groupModalOverlay .jcc-retreat-modalTitle {
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  padding-top: 1.3rem;
+}
+#groupModalOverlay .jcc-retreat-modalBody {
+  padding-left: 1.3rem;
+  padding-right: 1.3rem;
+}
+#groupModalOverlay .jcc-retreat-groupScopeTitle,
+#groupModalOverlay .jcc-retreat-leadersDraftTitle {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+#groupModalOverlay .jcc-retreat-modalGrid .field label {
+  font-size: 0.78rem;
+  margin-bottom: 0.1rem;
+}
+#groupModalOverlay .jcc-retreat-modalGrid .field input,
+#groupModalOverlay .jcc-retreat-userPickerInput {
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+}
+#groupModalOverlay .jcc-retreat-scopeAddBtn {
+  border-radius: 10px;
+}
+#groupModalOverlay .jcc-retreat-modalFooter {
+  padding: 0.9rem 1.3rem;
+}
+#groupModalOverlay .jcc-retreat-modalFooter button {
+  border-radius: 12px;
+  padding: 0.72rem 1.25rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+/* 조 행 카드: Toss 톤 (둥근 모서리) */
+#groupModalOverlay .jcc-retreat-groupRow {
+  border-radius: 14px;
 }

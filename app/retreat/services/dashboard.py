@@ -17,7 +17,11 @@ from retreat.models import (
     RetreatSession,
     RetreatSessionAttendee,
 )
-from users.permissions import visible_retreat_groups_for, visible_retreat_sessions_for
+from users.permissions import (
+    membership_divisions_for,
+    visible_retreat_groups_for,
+    visible_retreat_sessions_for,
+)
 
 
 def _group_queryset(event: RetreatEvent, user, *, restrict_to_user_groups: bool):
@@ -271,12 +275,17 @@ def build_group_attendance_board(
     시각과 현재 시각을 비교해 실시간으로 계산한다.
     """
     now = now or timezone.now()
-    # 전체 현황 파악용 보드이므로 본인 조로 좁히지 않고 행사 전체 조를 보여준다.
-    groups = list(
-        RetreatGroup.objects.filter(event=event)
-        .select_related("region", "division")
-        .order_by("order", "id")
+    # 회장단·목사·전도사·슈퍼유저(staff_view)는 전체 조를, 그 외 일반 사용자는
+    # 본인 소속(UserDivisionTeam) 지역의 조만 볼 수 있도록 제한한다.
+    groups_qs = RetreatGroup.objects.filter(event=event).select_related(
+        "region", "division"
     )
+    if not staff_view:
+        region_ids = set(
+            membership_divisions_for(user).values_list("region_id", flat=True)
+        )
+        groups_qs = groups_qs.filter(region_id__in=region_ids)
+    groups = list(groups_qs.order_by("order", "id"))
     group_ids = [g.id for g in groups]
 
     S = RetreatAttendee.CheckInStatus

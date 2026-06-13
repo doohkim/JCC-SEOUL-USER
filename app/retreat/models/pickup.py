@@ -88,3 +88,40 @@ class RetreatPickup(models.Model):
 
     def __str__(self) -> str:
         return f"{self.event.name} · {self.get_direction_display()} #{self.number} {self.name}"
+
+
+class RetreatPickupLocation(models.Model):
+    """행사 공통 탑승장소 목록 — 지역·부서 구분 없이 픽업 등록 시 드롭다운 선택용."""
+
+    event = models.ForeignKey(
+        RetreatEvent,
+        on_delete=models.CASCADE,
+        related_name="pickup_locations",
+        verbose_name="행사",
+    )
+    name = models.CharField("탑승장소", max_length=120)
+    sort_order = models.PositiveIntegerField("정렬", default=0)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="retreat_pickup_locations_created",
+        verbose_name="등록자",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "수련회 탑승장소"
+        verbose_name_plural = "수련회 탑승장소"
+        ordering = ["sort_order", "name", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "name"],
+                name="uniq_retreat_pickup_location_event_name",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.event.name} · {self.name}"

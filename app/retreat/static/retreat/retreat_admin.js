@@ -101,7 +101,7 @@
           <tr data-membership-id="${m.id}">
             <td>${escapeHtml(shown)}</td>
             <td>
-              <select class="leader-role-select" data-prev="${escapeHtml(m.role)}">
+              <select class="leader-role-select" data-prev="${escapeHtml(m.role)}" data-cselect>
                 ${roleOptions}
               </select>
             </td>
@@ -113,6 +113,7 @@
       })
       .join("");
     tbody.innerHTML = rows;
+    if (window.JccCustomSelect) window.JccCustomSelect.init(tbody);
   }
 
   function updateRowCell(items) {
@@ -184,7 +185,10 @@
       showStatus("저장됨");
       await loadMemberships();
     } catch (err) {
-      if (sel) sel.value = sel.dataset.prev || "leader";
+      if (sel) {
+        sel.value = sel.dataset.prev || "leader";
+        if (window.JccCustomSelect) window.JccCustomSelect.refresh(sel.closest(".jcc-cselect"));
+      }
       showStatus("저장 실패", true);
       console.error(err);
     }

@@ -38,6 +38,10 @@
         }
         divisionInput.appendChild(opt);
       });
+    if (window.JccCustomSelect) {
+      window.JccCustomSelect.init(divisionInput.closest(".field") || divisionInput.parentNode);
+      window.JccCustomSelect.refresh(divisionInput.closest(".jcc-cselect"));
+    }
   }
 
   function bindExtraScopeRow(scopeRow) {
@@ -60,9 +64,15 @@
     if (!scopeRow) return null;
     listEl.appendChild(scopeRow);
     bindExtraScopeRow(scopeRow);
+    if (window.JccCustomSelect) window.JccCustomSelect.init(scopeRow);
     if (regionId) {
       const regionInput = scopeRow.querySelector("[data-extra-region]");
-      if (regionInput) regionInput.value = String(regionId);
+      if (regionInput) {
+        regionInput.value = String(regionId);
+        if (window.JccCustomSelect) {
+          window.JccCustomSelect.refresh(regionInput.closest(".jcc-cselect"));
+        }
+      }
       fillDivisionSelect(scopeRow.querySelector("[data-extra-division]"), regionId, divisionId);
     }
     return scopeRow;
@@ -316,7 +326,7 @@
             ? "jcc-retreat-leaderDraftRow is-new"
             : "jcc-retreat-leaderDraftRow";
         const rolePart = editCtx.canAddGroup
-          ? `<select class="jcc-retreat-leaderRoleSelect" data-membership-role="${m.id}" aria-label="역할">${roleOptionsHtml(m.role)}</select>`
+          ? `<select class="jcc-retreat-leaderRoleSelect" data-membership-role="${m.id}" aria-label="역할" data-cselect>${roleOptionsHtml(m.role)}</select>`
           : `<span class="muted">${escapeHtml(m.role_display || editCtx.roleLabels?.[m.role] || m.role)}</span>`;
         const removeBtn = editCtx.canAddGroup
           ? `<button type="button" class="jcc-retreat-rowDel" data-remove-membership="${m.id}">제거</button>`
@@ -328,6 +338,7 @@
           </div>`;
       })
       .join("");
+    if (window.JccCustomSelect) window.JccCustomSelect.init(editLeadersList);
     if (highlightId != null) {
       requestAnimationFrame(() => {
         const row = editLeadersList.querySelector(`[data-membership-id="${highlightId}"]`);
@@ -343,7 +354,12 @@
   function populateEditForm(data) {
     if (editName) editName.value = data.name || "";
     if (editOrder) editOrder.value = String(data.order ?? 0);
-    if (editRegion) editRegion.value = String(data.region || "");
+    if (editRegion) {
+      editRegion.value = String(data.region || "");
+      if (window.JccCustomSelect) {
+        window.JccCustomSelect.refresh(editRegion.closest(".jcc-cselect"));
+      }
+    }
     fillDivisionSelect(editDivision, data.region, data.division);
     clearEditExtraScopes();
     (data.extra_scopes || []).forEach((s) => {

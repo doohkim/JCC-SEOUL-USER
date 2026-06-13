@@ -18,6 +18,7 @@ from users.models import (
     FunctionalDepartment,
     Region,
     Role,
+    RoleLevel,
     Team,
     User,
     UserDivisionTeam,
@@ -668,9 +669,13 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
 
     template_name = "users/division_account_roles.html"
     login_url = reverse_lazy("user_login")
+    ALL_DIVISIONS_CODE = "__all__"
 
     def _manageable_divisions(self):
-        if self.request.user.is_superuser:
+        # 슈퍼유저·계정 권한 보유자는 전체 부서를 관리할 수 있다.
+        if self.request.user.is_superuser or getattr(
+            self.request.user, "can_manage_accounts", False
+        ):
             return Division.objects.all().order_by(
                 "region__sort_order", "sort_order", "name"
             )
@@ -688,7 +693,15 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         if not divisions.exists():
             return None, divisions
 
-        requested_code = (self.request.GET.get("division_code") or "").strip()
+        requested_code = (
+            self.request.GET.get("division_code")
+            or self.request.POST.get("division_code")
+            or ""
+        ).strip()
+        can_all = self.request.user.is_superuser or divisions.count() > 1
+        # "전체" 선택 시 담당 부서 전체를 한 번에 조회한다(active_division=None).
+        if can_all and requested_code == self.ALL_DIVISIONS_CODE:
+            return None, divisions
         active = divisions.filter(code=requested_code).first() if requested_code else None
         if active is None:
             active = prefer_own_division(self.request.user, divisions)
@@ -708,12 +721,26 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):
+        manageable = self._manageable_divisions()
         active_division, _ = self._resolve_active_division()
-        if active_division is None:
+        requested_code = (request.POST.get("division_code") or "").strip()
+        all_mode = (
+            active_division is None
+            and manageable.exists()
+            and requested_code == self.ALL_DIVISIONS_CODE
+        )
+
+        if active_division is None and not all_mode:
             messages.error(request, "관리 가능한 부서가 없습니다.")
             return HttpResponseRedirect(reverse_lazy("user_division_account_roles"))
 
-        redirect_url = self._roles_redirect(active_division)
+        if all_mode:
+            redirect_url = (
+                f"{reverse_lazy('user_division_account_roles')}"
+                f"?division_code={self.ALL_DIVISIONS_CODE}"
+            )
+        else:
+            redirect_url = self._roles_redirect(active_division)
         user_id = (request.POST.get("user_id") or "").strip()
         team_id = (request.POST.get("team_id") or "").strip()
         division_id_raw = (request.POST.get("division_id") or "").strip()
@@ -726,6 +753,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         phone = (request.POST.get("phone") or "").strip()
         retreat_group_id = (request.POST.get("retreat_group_id") or "").strip()
         retreat_role = (request.POST.get("retreat_role") or "").strip()
+        role_level_id_raw = (request.POST.get("role_level_id") or "").strip()
 
         if not user_id.isdigit():
             messages.error(request, "대상 사용자를 선택해 주세요.")
@@ -735,6 +763,19 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         if target_user is None:
             messages.error(request, "대상 사용자를 찾을 수 없습니다.")
             return HttpResponseRedirect(redirect_url)
+        if all_mode:
+            # "전체" 모드에서는 대상 사용자가 소속된 관리 가능 부서 중
+            # 대표(우선) 멤버십 부서를 기준 부서로 삼는다.
+            base_division_id = (
+                target_user.division_teams.filter(division__in=manageable)
+                .order_by("-is_primary", "sort_order", "id")
+                .values_list("division_id", flat=True)
+                .first()
+            )
+            if base_division_id is None:
+                messages.error(request, "선택한 부서 소속 계정만 수정할 수 있습니다.")
+                return HttpResponseRedirect(redirect_url)
+            active_division = Division.objects.get(pk=base_division_id)
         if not target_user.division_teams.filter(division=active_division).exists():
             messages.error(request, "선택한 부서 소속 계정만 수정할 수 있습니다.")
             return HttpResponseRedirect(redirect_url)
@@ -772,6 +813,15 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         if target_user.can_manage_accounts != manage_accounts:
             target_user.can_manage_accounts = manage_accounts
             user_updates.append("can_manage_accounts")
+        new_role_level = None
+        if role_level_id_raw.isdigit():
+            new_role_level = RoleLevel.objects.filter(pk=int(role_level_id_raw)).first()
+            if new_role_level is None:
+                messages.error(request, "선택한 직급을 찾을 수 없습니다.")
+                return HttpResponseRedirect(redirect_url)
+        if target_user.role_level_id != (new_role_level.id if new_role_level else None):
+            target_user.role_level = new_role_level
+            user_updates.append("role_level")
         if user_updates:
             target_user.save(update_fields=user_updates)
 
@@ -929,7 +979,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         active_division, allowed_divisions = self._resolve_active_division()
         can_choose_division = (
-            self.request.user.is_superuser or allowed_divisions.count() > 1
+            self.request.user.is_superuser
+            or getattr(self.request.user, "can_manage_accounts", False)
+            or allowed_divisions.count() > 1
         )
 
         from retreat.models import RetreatEvent, RetreatGroupMembership
@@ -977,57 +1029,109 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             )
 
         team_map: dict[str, list] = {}
+        team_name_by_id: dict[int, str] = {}
         for team in Team.objects.select_related("division").order_by(
             "division__sort_order", "sort_order", "name"
         ):
             team_map.setdefault(str(team.division_id), []).append(
                 {"id": team.id, "name": team.name}
             )
+            team_name_by_id[team.id] = team.name
 
-        membership_map: dict[int, int | None] = {}
         users_payload = []
+        account_details: dict[int, dict] = {}
+
+        # 단일 부서면 그 부서만, "전체"면 관리 가능한 모든 부서를 대상으로 한다.
+        division_by_id = {d.id: d for d in division_choices}
+        if active_division and active_division.id not in division_by_id:
+            division_by_id[active_division.id] = active_division
         if active_division:
-            department = self._division_functional_department(active_division)
-            user_qs = (
-                User.objects.filter(division_teams__division=active_division, is_active=True)
-                .select_related("role_level", "profile")
-                .distinct()
-                .order_by("username")
-            )
+            target_division_ids = [active_division.id]
+        else:
+            target_division_ids = [d.id for d in allowed_divisions]
+
+        if target_division_ids:
+            # 사용자당 대표(우선) 멤버십 부서를 1개만 고른다(전체 모드 중복 방지).
+            rep_division_by_user: dict[int, int] = {}
+            rep_team_by_user: dict[int, int | None] = {}
             for row in (
                 UserDivisionTeam.objects.filter(
-                    user__in=user_qs, division=active_division
+                    division_id__in=target_division_ids, user__is_active=True
                 )
-                .order_by("-is_primary", "sort_order", "id")
-                .values("user_id", "team_id")
+                .order_by("-is_primary", "division__sort_order", "sort_order", "id")
+                .values("user_id", "division_id", "team_id")
             ):
-                if row["user_id"] in membership_map:
+                if row["user_id"] in rep_division_by_user:
                     continue
-                membership_map[row["user_id"]] = row["team_id"]
+                rep_division_by_user[row["user_id"]] = row["division_id"]
+                rep_team_by_user[row["user_id"]] = row["team_id"]
+
+            user_ids = list(rep_division_by_user.keys())
+            user_qs = (
+                User.objects.filter(pk__in=user_ids, is_active=True)
+                .select_related("role_level", "profile")
+                .order_by("username")
+            )
 
             retreat_membership_map: dict[int, tuple[int | None, str]] = {}
             if active_retreat:
                 for mem in RetreatGroupMembership.objects.filter(
-                    user__in=user_qs, group__event=active_retreat
+                    user_id__in=user_ids, group__event=active_retreat
                 ).select_related("group"):
                     retreat_membership_map[mem.user_id] = (mem.group_id, mem.role)
 
-            role_links = UserFunctionalDeptRole.objects.filter(
-                user__in=user_qs,
-                functional_department=department,
-            ).select_related("role")
-            kakao_nickname_by_user = kakao_nickname_map_for_user_ids(
-                user_qs.values_list("pk", flat=True)
-            )
+            # 대표 부서별 기능부서(FunctionalDepartment) → 직책(Role) 매핑.
+            rep_division_ids = set(rep_division_by_user.values())
+            dept_by_division = {
+                d_id: self._division_functional_department(division_by_id[d_id])
+                for d_id in rep_division_ids
+                if d_id in division_by_id
+            }
+            dept_division_by_dept_id = {
+                dept.id: d_id for d_id, dept in dept_by_division.items()
+            }
             role_map: dict[int, set[str]] = {}
-            for link in role_links:
-                role_map.setdefault(link.user_id, set()).add(link.role.code)
+            if dept_by_division:
+                for link in UserFunctionalDeptRole.objects.filter(
+                    user_id__in=user_ids,
+                    functional_department_id__in=[
+                        d.id for d in dept_by_division.values()
+                    ],
+                ).select_related("role"):
+                    if (
+                        dept_division_by_dept_id.get(link.functional_department_id)
+                        == rep_division_by_user.get(link.user_id)
+                    ):
+                        role_map.setdefault(link.user_id, set()).add(link.role.code)
+
+            kakao_nickname_by_user = kakao_nickname_map_for_user_ids(user_ids)
+            memberships_detail: dict[int, list] = {}
+            for udt in UserDivisionTeam.objects.filter(
+                user_id__in=user_ids
+            ).select_related("division", "division__region", "team"):
+                memberships_detail.setdefault(udt.user_id, []).append(
+                    {
+                        "division": (
+                            f"{udt.division.region.name} · {udt.division.name}"
+                            if udt.division_id and udt.division.region_id
+                            else (udt.division.name if udt.division_id else "")
+                        ),
+                        "team": udt.team.name if udt.team_id else "",
+                        "is_primary": bool(getattr(udt, "is_primary", False)),
+                    }
+                )
 
             for u in user_qs:
                 prof = getattr(u, "profile", None)
-                region_id = active_division.region_id if active_division else None
-                region_name = active_division.region.name if region_id else ""
-                team_id = membership_map.get(u.id)
+                rep_division = division_by_id.get(rep_division_by_user.get(u.id))
+                region_id = rep_division.region_id if rep_division else None
+                region_name = (
+                    rep_division.region.name if rep_division and region_id else ""
+                )
+                division_id = rep_division.id if rep_division else None
+                division_name = rep_division.name if rep_division else ""
+                team_id = rep_team_by_user.get(u.id)
+                team_name = team_name_by_id.get(team_id, "") if team_id else ""
                 retreat_group_id = None
                 retreat_role = ""
                 if active_retreat and prof:
@@ -1047,29 +1151,67 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                         "username": u.username,
                         "real_name": (getattr(prof, "real_name", "") or "").strip(),
                         "phone": getattr(prof, "phone", "") or "",
+                        "kakao_uid": u.username[6:]
+                        if u.username.startswith("kakao_")
+                        else "",
                         "region_id": region_id,
                         "region_name": region_name,
-                        "division_id": active_division.id if active_division else None,
-                        "division_name": active_division.name if active_division else "",
+                        "division_id": division_id,
+                        "division_name": division_name,
                         "team_id": team_id,
-                        "retreat_group_id": retreat_group_id,
-                        "retreat_role": retreat_role,
-                        "assigned_role_codes": sorted(list(role_map.get(u.id, set()))),
-                        "assigned_role_codes_json": json.dumps(
-                            sorted(list(role_map.get(u.id, set()))),
-                            ensure_ascii=False,
-                        ),
-                        "can_manage_attendance": bool(
-                            getattr(u, "can_manage_attendance", False)
-                        ),
-                        "can_manage_parking": bool(
-                            getattr(u, "can_manage_parking", False)
-                        ),
-                        "can_manage_accounts": bool(
-                            getattr(u, "can_manage_accounts", False)
-                        ),
+                        "team_name": team_name,
                     }
                 )
+                assigned_codes = sorted(list(role_map.get(u.id, set())))
+                created_at = ""
+                if u.date_joined:
+                    created_at = timezone.localtime(u.date_joined).strftime(
+                        "%Y-%m-%d %H:%M"
+                    )
+                updated_at = ""
+                if prof and getattr(prof, "updated_at", None):
+                    updated_at = timezone.localtime(prof.updated_at).strftime(
+                        "%Y-%m-%d %H:%M"
+                    )
+                account_details[u.id] = {
+                    "username": u.username,
+                    "kakao_uid": u.username[6:]
+                    if u.username.startswith("kakao_")
+                    else "",
+                    "first_name": u.first_name or "",
+                    "last_name": u.last_name or "",
+                    "email": u.email or "",
+                    "role_level": getattr(u.role_level, "name", "") or "",
+                    "role_level_id": u.role_level_id,
+                    "signup_source": u.get_signup_source_display(),
+                    "is_superuser": bool(u.is_superuser),
+                    "display_name": (getattr(prof, "display_name", "") or "").strip()
+                    or kakao_nickname_by_user.get(u.id, ""),
+                    "real_name": (getattr(prof, "real_name", "") or "").strip(),
+                    "phone": getattr(prof, "phone", "") or "",
+                    "region_id": region_id,
+                    "region_name": region_name,
+                    "division_id": division_id,
+                    "division_name": division_name,
+                    "team_id": team_id,
+                    "team_name": team_name,
+                    "retreat_group_id": retreat_group_id,
+                    "retreat_role": retreat_role,
+                    "can_manage_attendance": bool(
+                        getattr(u, "can_manage_attendance", False)
+                    ),
+                    "can_manage_parking": bool(
+                        getattr(u, "can_manage_parking", False)
+                    ),
+                    "can_manage_accounts": bool(
+                        getattr(u, "can_manage_accounts", False)
+                    ),
+                    "assigned_role_codes": assigned_codes,
+                    "memberships": memberships_detail.get(u.id, []),
+                    "created_at": created_at,
+                    "updated_at": updated_at,
+                    "event_name": active_retreat.name if active_retreat else "",
+                }
 
         region_qs = Region.objects.all().order_by("sort_order", "name")
         if not self.request.user.is_superuser and active_division and active_division.region_id:
@@ -1077,9 +1219,14 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
 
         ctx["allowed_divisions"] = division_choices
         ctx["active_division"] = active_division
+        ctx["all_divisions_code"] = self.ALL_DIVISIONS_CODE
+        ctx["active_division_code"] = (
+            active_division.code if active_division else self.ALL_DIVISIONS_CODE
+        )
         ctx["can_choose_division"] = can_choose_division
         ctx["can_move_division"] = self.request.user.is_superuser
         ctx["users_payload"] = users_payload
+        ctx["account_details_json"] = json.dumps(account_details, ensure_ascii=False)
         ctx["region_choices"] = list(region_qs)
         ctx["divisions_json"] = json.dumps(
             [
@@ -1101,6 +1248,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             ("leader", "조장"),
             ("vice_leader", "부조장"),
         ]
+        ctx["role_level_choices"] = list(
+            RoleLevel.objects.order_by("-level", "sort_order")
+        )
         ctx["account_tab"] = "roles"
         ctx["role_options_api_url"] = reverse_lazy("api_user_assignable_roles")
         return ctx

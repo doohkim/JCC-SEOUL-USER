@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.utils import timezone
 from rest_framework import serializers
 
-from retreat.models import RetreatPickup
+from retreat.models import RetreatPickup, RetreatPickupLocation
 
 
 class RetreatPickupSerializer(serializers.ModelSerializer):
@@ -60,3 +60,16 @@ class RetreatPickupSerializer(serializers.ModelSerializer):
 
     def get_group_name(self, obj) -> str:
         return obj.group.name if obj.group_id else ""
+
+
+class RetreatPickupLocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RetreatPickupLocation
+        fields = [
+            "id",
+            "event",
+            "name",
+            "sort_order",
+            "created_at",
+        ]
+        read_only_fields = ["id", "event", "created_at"]
