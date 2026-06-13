@@ -204,3 +204,63 @@ class AccountManagePostTests(AccountManageFixture):
         profile = UserProfile.objects.get(user=self.member)
         self.assertEqual(profile.requested_retreat_group_id, self.group.id)
         self.assertTrue(profile.requested_retreat_participation)
+
+
+class OnboardingApprovalAllDivisionsTests(AccountManageFixture):
+    """가입 승인 '전체(담당 부서 전체)' 조회 동작."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.pending_a = User.objects.create_user(username="acct_pending_a", password="x")
+        prof_a = ensure_user_profile(cls.pending_a)
+        prof_a.real_name = "대기A"
+        prof_a.onboarding_status = UserProfile.OnboardingStatus.PENDING
+        prof_a.requested_division = cls.div_a
+        prof_a.save()
+        cls.prof_a = prof_a
+
+        cls.pending_b = User.objects.create_user(username="acct_pending_b", password="x")
+        prof_b = ensure_user_profile(cls.pending_b)
+        prof_b.real_name = "대기B"
+        prof_b.onboarding_status = UserProfile.OnboardingStatus.PENDING
+        prof_b.requested_division = cls.div_b
+        prof_b.save()
+        cls.prof_b = prof_b
+
+    def test_superuser_all_shows_every_allowed_division(self):
+        self.client.force_login(self.superuser)
+        r = self.client.get(
+            reverse("user_onboarding_approvals"),
+            {"division_code": "__all__"},
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertIsNone(r.context["active_division"])
+        pending_ids = {p.id for p in r.context["pending_profiles"]}
+        self.assertIn(self.prof_a.id, pending_ids)
+        self.assertIn(self.prof_b.id, pending_ids)
+
+    def test_specific_division_filters_out_others(self):
+        self.client.force_login(self.superuser)
+        r = self.client.get(
+            reverse("user_onboarding_approvals"),
+            {"division_code": self.div_a.code},
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.context["active_division"].id, self.div_a.id)
+        pending_ids = {p.id for p in r.context["pending_profiles"]}
+        self.assertIn(self.prof_a.id, pending_ids)
+        self.assertNotIn(self.prof_b.id, pending_ids)
+
+    def test_pastor_all_limited_to_assigned_divisions(self):
+        # 목사는 div_a만 담당하므로 '전체'라도 div_b 신청은 보이지 않는다.
+        self.client.force_login(self.pastor)
+        r = self.client.get(
+            reverse("user_onboarding_approvals"),
+            {"division_code": "__all__"},
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertIsNone(r.context["active_division"])
+        pending_ids = {p.id for p in r.context["pending_profiles"]}
+        self.assertIn(self.prof_a.id, pending_ids)
+        self.assertNotIn(self.prof_b.id, pending_ids)

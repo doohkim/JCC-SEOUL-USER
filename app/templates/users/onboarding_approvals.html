@@ -154,6 +154,7 @@
               <div class="field">
                 <label>부서</label>
                 <select name="division_code" onchange="this.form.submit()">
+                  <option value="{{ all_divisions_code }}" {% if not active_division %}selected{% endif %}>전체 (담당 부서 전체)</option>
                   {% regroup allowed_divisions by region.name as region_groups %}
                   {% for group in region_groups %}
                     <optgroup label="{{ group.grouper|default:'(지역 미지정)' }}">
@@ -175,9 +176,7 @@
             </div>
             <button type="submit">조회</button>
           </form>
-          {% if active_division %}
-            <div class="msg" style="margin-top:0.75rem;">조회 부서: <strong>{{ active_division.name }}</strong> · 승인 대기는 항상 전체 표시 · 최근 승인/반려는 처리 갱신일시 기준(기본 최근 90일)</div>
-          {% endif %}
+          <div class="msg" style="margin-top:0.75rem;">조회 부서: <strong>{% if active_division %}{{ active_division.name }}{% else %}전체 (담당 부서 전체){% endif %}</strong> · 승인 대기는 항상 전체 표시 · 최근 승인/반려는 처리 갱신일시 기준(기본 최근 90일)</div>
         </div>
 
         {% if messages %}
@@ -277,7 +276,7 @@
                           <input type="hidden" name="action" value="save">
                           <input type="hidden" name="date_from" value="{{ date_from }}">
                           <input type="hidden" name="date_to" value="{{ date_to }}">
-                          {% if active_division %}<input type="hidden" name="division_code" value="{{ active_division.code }}">{% endif %}
+                          {% if active_division_code %}<input type="hidden" name="division_code" value="{{ active_division_code }}">{% endif %}
                           <button type="submit">저장</button>
                         </form>
                       </td>
@@ -358,7 +357,7 @@
                           <input type="hidden" name="action" value="save">
                           <input type="hidden" name="date_from" value="{{ date_from }}">
                           <input type="hidden" name="date_to" value="{{ date_to }}">
-                          {% if active_division %}<input type="hidden" name="division_code" value="{{ active_division.code }}">{% endif %}
+                          {% if active_division_code %}<input type="hidden" name="division_code" value="{{ active_division_code }}">{% endif %}
                           <button type="submit">저장</button>
                         </form>
                       </td>
@@ -439,7 +438,7 @@
                           <input type="hidden" name="action" value="save">
                           <input type="hidden" name="date_from" value="{{ date_from }}">
                           <input type="hidden" name="date_to" value="{{ date_to }}">
-                          {% if active_division %}<input type="hidden" name="division_code" value="{{ active_division.code }}">{% endif %}
+                          {% if active_division_code %}<input type="hidden" name="division_code" value="{{ active_division_code }}">{% endif %}
                           <button type="submit">저장</button>
                         </form>
                       </td>

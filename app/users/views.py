@@ -261,6 +261,7 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
     template_name = "users/onboarding_approvals.html"
     login_url = reverse_lazy("user_login")
     _list_limit = 500
+    ALL_DIVISIONS_CODE = "__all__"
 
     def dispatch(self, request, *args, **kwargs):
         if not can_access_onboarding_approvals(request.user):
@@ -316,6 +317,9 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
             or self.request.user.is_superuser
             or divisions.count() > 1
         ):
+            # "전체" 선택 시 담당 부서 전체를 한 번에 조회한다(active_division=None).
+            if requested_code == self.ALL_DIVISIONS_CODE:
+                return None, divisions
             active = divisions.filter(code=requested_code).first() if requested_code else None
             if active is None:
                 active = prefer_own_division(self.request.user, divisions)
@@ -487,6 +491,10 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
             )
         )
         ctx["active_division"] = active_division
+        ctx["active_division_code"] = (
+            active_division.code if active_division else self.ALL_DIVISIONS_CODE
+        )
+        ctx["all_divisions_code"] = self.ALL_DIVISIONS_CODE
         ctx["date_from"] = date_from
         ctx["date_to"] = date_to
         ctx["onboarding_status_choices"] = [
@@ -541,6 +549,9 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
         )
         if active_division is not None:
             scoped = scoped.filter(requested_division_id=active_division.id)
+        else:
+            # "전체" 선택: 담당(허용) 부서로만 한정해 권한 경계를 유지한다.
+            scoped = scoped.filter(requested_division_id__in=self._allowed_division_ids())
 
         pending_profiles = scoped.filter(onboarding_status=UserProfile.OnboardingStatus.PENDING).order_by(
             "-updated_at", "-id"

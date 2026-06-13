@@ -66,6 +66,21 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("이름은 비워둘 수 없습니다.")
         return v
 
+    def validate(self, attrs):
+        # 부분 수정(PATCH)에서 한쪽만 들어와도 인스턴스 값과 합쳐 비교한다.
+        sentinel = object()
+        in_at = attrs.get("expected_check_in_at", sentinel)
+        if in_at is sentinel:
+            in_at = getattr(self.instance, "expected_check_in_at", None)
+        out_at = attrs.get("expected_check_out_at", sentinel)
+        if out_at is sentinel:
+            out_at = getattr(self.instance, "expected_check_out_at", None)
+        if in_at and out_at and out_at <= in_at:
+            raise serializers.ValidationError(
+                {"expected_check_out_at": "퇴실 시각은 입실 시각보다 뒤여야 합니다."}
+            )
+        return attrs
+
     def get_lodging_room_label(self, attendee: RetreatAttendee) -> str:
         room = attendee.lodging_room
         if not room:

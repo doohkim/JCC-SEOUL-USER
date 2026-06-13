@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>픽업 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260612d" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260612g" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -110,9 +110,10 @@
 
     {% if can_manage_pickup %}
       <div class="jcc-retreat-modalOverlay" id="pickupModalOverlay" hidden aria-hidden="true">
-        <div class="jcc-retreat-modal card" role="dialog" aria-modal="true" aria-labelledby="pickupModalTitle">
+        <div class="jcc-retreat-modal jcc-retreat-modal--wide card" role="dialog" aria-modal="true" aria-labelledby="pickupModalTitle">
           <h2 id="pickupModalTitle" class="jcc-retreat-modalTitle">픽업 정보 추가</h2>
           <form id="pickupForm" novalidate>
+            <div class="jcc-retreat-modalBody">
             <div class="jcc-retreat-modalGrid">
               <div class="field">
                 <label for="pickupName">이름 *</label>
@@ -162,6 +163,7 @@
                 <label for="pickupNote">기타 참고사항</label>
                 <input type="text" id="pickupNote" name="note" maxlength="200" autocomplete="off" />
               </div>
+            </div>
             </div>
             <div class="jcc-retreat-modalFooter">
               <button type="button" class="secondary" id="pickupModalCancel">취소</button>

@@ -1493,6 +1493,21 @@ dialog.jcc-retreat-modal::backdrop {
   color: var(--danger, #e5484d);
 }
 
+/* 표 내 입실/퇴실 인라인 입력 오류 표시 */
+.jcc-retreat-stampInput.is-invalid,
+.jcc-retreat-attCol-expected .jcc-dtp-field.is-invalid {
+  border-color: var(--danger, #e5484d);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger, #e5484d) 18%, transparent);
+}
+.jcc-retreat-stampError {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--danger, #e5484d);
+}
+
 /* 이력 모달 */
 .jcc-retreat-historyOverlay {
   z-index: 1750;

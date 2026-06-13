@@ -432,6 +432,106 @@ class AttendeeEditPermissionTests(_GroupManageFixture):
         self.assertEqual(r.status_code, 403, r.content)
 
 
+class AttendeeExpectedTimeValidationTests(_GroupManageFixture):
+    """입실/퇴실 예상 시각: 퇴실은 입실보다 무조건 뒤여야 한다."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.attendee = RetreatAttendee.objects.create(
+            group=self.group, name="시간검증", gender="male"
+        )
+        self.url = reverse("api_retreat_attendee_detail", args=[self.attendee.id])
+        self.client.force_authenticate(self.council_user)
+
+    def test_check_out_before_check_in_rejected(self):
+        r = self.client.patch(
+            self.url,
+            {
+                "expected_check_in_at": "2026-01-01T01:10:00+09:00",
+                "expected_check_out_at": "2026-01-01T01:09:00+09:00",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("expected_check_out_at", r.json())
+
+    def test_check_out_equal_check_in_rejected(self):
+        r = self.client.patch(
+            self.url,
+            {
+                "expected_check_in_at": "2026-01-01T01:10:00+09:00",
+                "expected_check_out_at": "2026-01-01T01:10:00+09:00",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("expected_check_out_at", r.json())
+
+    def test_check_out_after_check_in_allowed(self):
+        r = self.client.patch(
+            self.url,
+            {
+                "expected_check_in_at": "2026-01-01T01:10:00+09:00",
+                "expected_check_out_at": "2026-01-01T01:11:00+09:00",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.attendee.refresh_from_db()
+        self.assertIsNotNone(self.attendee.expected_check_out_at)
+
+    def test_partial_update_compares_with_existing_check_in(self):
+        # 먼저 입실 시각을 정해두고, 그보다 이른 퇴실만 단독 PATCH 하면 거부.
+        self.attendee.expected_check_in_at = "2026-01-01T01:10:00+09:00"
+        self.attendee.save(update_fields=["expected_check_in_at"])
+        r = self.client.patch(
+            self.url,
+            {"expected_check_out_at": "2026-01-01T01:05:00+09:00"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("expected_check_out_at", r.json())
+
+
+class AttendeeCheckInStatusEditTests(_GroupManageFixture):
+    """회장단은 입실 상태를 자유롭게(되돌리기 포함) 수정할 수 있어야 한다."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.attendee = RetreatAttendee.objects.create(
+            group=self.group,
+            name="상태수정대상",
+            gender="male",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+        )
+        self.url = reverse("api_retreat_attendee_detail", args=[self.attendee.id])
+
+    def test_council_can_revert_checked_out_to_checked_in(self):
+        self.client.force_authenticate(self.council_user)
+        r = self.client.patch(
+            self.url, {"check_in_status": "checked_in"}, format="json"
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.check_in_status, "checked_in")
+
+    def test_council_can_revert_to_pending(self):
+        self.client.force_authenticate(self.council_user)
+        r = self.client.patch(
+            self.url, {"check_in_status": "pending"}, format="json"
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.check_in_status, "pending")
+
+    def test_leader_cannot_change_check_in_status(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.patch(
+            self.url, {"check_in_status": "checked_in"}, format="json"
+        )
+        self.assertEqual(r.status_code, 403, r.content)
+
+
 class GroupMembershipWritePermissionTests(_GroupManageFixture):
     def setUp(self):
         self.client = APIClient()

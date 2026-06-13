@@ -133,6 +133,44 @@
     return d.toISOString();
   }
 
+  const STAMP_ORDER_MSG = "퇴실 시각은 입실 시각보다 뒤여야 합니다.";
+
+  // 입실·퇴실 둘 다 있을 때만 검사: 퇴실은 입실보다 무조건 커야 한다(같거나 작으면 오류).
+  function isCheckOutAfterCheckIn(inVal, outVal) {
+    if (!inVal || !outVal) return true;
+    const ti = new Date(inVal).getTime();
+    const to = new Date(outVal).getTime();
+    if (Number.isNaN(ti) || Number.isNaN(to)) return true;
+    return to > ti;
+  }
+
+  // datetime-local 은 커스텀 피커 버튼(.jcc-dtp-field)이 실제로 보이므로 거기에도 표시한다.
+  function markStampInvalid(input, invalid) {
+    if (!input) return;
+    input.classList.toggle("is-invalid", !!invalid);
+    const field = input.nextElementSibling;
+    if (field && field.classList.contains("jcc-dtp-field")) {
+      field.classList.toggle("is-invalid", !!invalid);
+    }
+  }
+
+  function setFieldError(input, message) {
+    if (!input) return;
+    const field = input.closest(".field");
+    if (!field) return;
+    let hint = field.querySelector(".jcc-field-error");
+    if (message) {
+      if (!hint) {
+        hint = document.createElement("small");
+        hint.className = "jcc-field-error";
+        field.appendChild(hint);
+      }
+      hint.textContent = message;
+    } else if (hint) {
+      hint.remove();
+    }
+  }
+
   function showToast(message, isError) {
     if (!toastEl) {
       if (statusLineEl) statusLineEl.textContent = message || "";
@@ -163,8 +201,12 @@
 
   function syncCheckInSelectOptions(current) {
     if (!checkInInput) return;
+    // 회장단·슈퍼유저(canChangeStatus)는 입실 상태를 자유롭게 수정·정정할 수 있다.
+    // 서버 전환 규칙(assert_check_in_status_transition)도 이들에게는 되돌리기를 허용한다.
+    const canEditFreely = !!ctx.canChangeStatus;
     Array.from(checkInInput.options).forEach((opt) => {
       opt.disabled = false;
+      if (canEditFreely) return;
       if (current === "checked_in" && opt.value === "pending") opt.disabled = true;
       if (
         current === "checked_out" &&
@@ -261,6 +303,7 @@
       try {
         const j = await res.json();
         if (j.detail) detail = j.detail;
+        else if (Array.isArray(j.expected_check_out_at)) detail = j.expected_check_out_at[0];
         else if (Array.isArray(j.lodging_room)) detail = j.lodging_room[0];
         else if (typeof j.lodging_room === "string") detail = j.lodging_room;
         else detail = JSON.stringify(j);
@@ -268,6 +311,30 @@
       throw new Error(detail);
     }
     return res.json();
+  }
+
+  function setRowStampError(tr, invalid) {
+    if (!tr) return;
+    const inInput = tr.querySelector('[data-expected-field="expected_check_in_at"]');
+    const outInput = tr.querySelector('[data-expected-field="expected_check_out_at"]');
+    markStampInvalid(inInput, invalid);
+    markStampInvalid(outInput, invalid);
+    const outCell = outInput
+      ? outInput.closest("[data-expected-cell]")
+      : null;
+    if (outCell) {
+      let hint = outCell.querySelector(".jcc-retreat-stampError");
+      if (invalid) {
+        if (!hint) {
+          hint = document.createElement("small");
+          hint.className = "jcc-retreat-stampError";
+          outCell.appendChild(hint);
+        }
+        hint.textContent = "퇴실은 입실보다 뒤여야 함";
+      } else if (hint) {
+        hint.remove();
+      }
+    }
   }
 
   function bindExpectedInputs() {
@@ -280,6 +347,16 @@
       const field = input.dataset.expectedField;
       if (!field) return;
       const aid = Number(tr.dataset.attendeeId);
+
+      const inInput = tr.querySelector('[data-expected-field="expected_check_in_at"]');
+      const outInput = tr.querySelector('[data-expected-field="expected_check_out_at"]');
+      if (!isCheckOutAfterCheckIn(inInput?.value || "", outInput?.value || "")) {
+        setRowStampError(tr, true);
+        showToast(STAMP_ORDER_MSG, true);
+        return;
+      }
+      setRowStampError(tr, false);
+
       const iso = isoFromDatetimeLocal(input.value);
       input.disabled = true;
       try {
@@ -686,6 +763,9 @@
       expectedInInput.value = toDatetimeLocalValue(payload?.expectedIn || "");
     if (expectedOutInput)
       expectedOutInput.value = toDatetimeLocalValue(payload?.expectedOut || "");
+    markStampInvalid(expectedInInput, false);
+    markStampInvalid(expectedOutInput, false);
+    setFieldError(expectedOutInput, "");
     if (lodgingInput) lodgingInput.value = payload?.lodgingRoom || "";
     if (roleInput) roleInput.value = payload?.memberRole || "member";
     if (checkInInput) {
@@ -762,6 +842,25 @@
       showToast("성별은 필수입니다.", true);
       genderInput?.focus();
       return;
+    }
+    if (ctx.canEditAttendee) {
+      markStampInvalid(expectedInInput, false);
+      markStampInvalid(expectedOutInput, false);
+      setFieldError(expectedOutInput, "");
+      if (
+        !isCheckOutAfterCheckIn(
+          expectedInInput?.value || "",
+          expectedOutInput?.value || ""
+        )
+      ) {
+        submitBtn.disabled = false;
+        markStampInvalid(expectedInInput, true);
+        markStampInvalid(expectedOutInput, true);
+        setFieldError(expectedOutInput, STAMP_ORDER_MSG);
+        showToast(STAMP_ORDER_MSG, true);
+        (expectedOutInput?.nextElementSibling || expectedOutInput)?.focus?.();
+        return;
+      }
     }
     if (!Object.keys(payload).length) {
       submitBtn.disabled = false;
