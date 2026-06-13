@@ -33,11 +33,12 @@ def _retired_username(user) -> str:
 
 @transaction.atomic
 def retire_user(user, *, changed_by=None) -> None:
-    """계정 탈퇴: User 행은 보존, 신원·연동만 분리.
+    """계정 탈퇴: User 행은 보존, 신원·연동·조원 명단을 정리.
 
-    - 보존: RetreatAttendee(출석부), 주차·상담·변경이력 등 User FK CASCADE 대상
+    - 보존: 주차·상담·변경이력 등 User FK CASCADE 대상, 출석부 스냅샷
+      (``RetreatSessionAttendee`` 는 ``source_attendee=SET_NULL`` 로 보존)
     - 연동 제거: RetreatGroupMembership, RetreatCouncilMembership, 소속/직책/동아리/목회담당
-    - RetreatAttendee.user → NULL (조원 명단·출석 데이터 유지)
+    - 조원 명단(RetreatAttendee): 탈퇴 계정의 조원 행을 삭제(명단 정리)
     """
     if user.is_superuser:
         raise ValueError("슈퍼유저 계정은 탈퇴 처리할 수 없습니다.")
@@ -51,18 +52,9 @@ def retire_user(user, *, changed_by=None) -> None:
     RetreatGroupMembership.objects.filter(user=user).delete()
     RetreatCouncilMembership.objects.filter(user=user).delete()
 
-    # 조원 출석부: 행 유지, 계정 연동만 해제 (조장/부조장 역할은 일반 조원으로 강등)
-    leader_roles = (
-        RetreatAttendee.MemberRole.LEADER,
-        RetreatAttendee.MemberRole.VICE_LEADER,
-    )
-    for attendee in RetreatAttendee.objects.filter(user=user):
-        attendee.user = None
-        if attendee.member_role in leader_roles:
-            attendee.member_role = RetreatAttendee.MemberRole.MEMBER
-            attendee.save(update_fields=["user", "member_role", "updated_at"])
-        else:
-            attendee.save(update_fields=["user", "updated_at"])
+    # 조원 명단: 탈퇴 계정의 조원 행 제거(명단 정리).
+    # 이미 만든 출석부 스냅샷은 source_attendee=SET_NULL 로 보존된다.
+    RetreatAttendee.objects.filter(user=user).delete()
 
     # 앱 조직 소속·직책 연동 제거
     UserDivisionTeam.objects.filter(user=user).delete()

@@ -75,11 +75,9 @@
     return window.innerHeight;
   }
 
-  function shouldUseSheet(field) {
-    if (window.matchMedia("(max-width: 640px)").matches) return true;
-    return !!field.closest(
-      ".jcc-retreat-modal--attendeeEdit, .jcc-retreat-modalOverlay:not([hidden])"
-    );
+  function shouldUseSheet() {
+    // 모바일에서만 하단 시트(토스 스타일). PC 는 모달 안이라도 컴팩트 앵커 팝업.
+    return window.matchMedia("(max-width: 640px)").matches;
   }
 
   function enhance(input) {
@@ -567,20 +565,38 @@
 
     function position() {
       if (useSheet) return;
+      const margin = 8;
       const r = field.getBoundingClientRect();
+      const vh = getViewportHeight();
+
+      // 뷰포트보다 길면 내부 스크롤로 전환(최후 수단)하고, 그 높이로 위치 계산.
+      pop.style.maxHeight = `${vh - margin * 2}px`;
+      pop.style.overflowY = "auto";
+
       const pw = pop.offsetWidth || 280;
       const ph = pop.offsetHeight || 320;
-      const vh = getViewportHeight();
+
       let left = r.left;
-      if (left + pw > window.innerWidth - 8) {
-        left = Math.max(8, window.innerWidth - pw - 8);
+      if (left + pw > window.innerWidth - margin) {
+        left = window.innerWidth - pw - margin;
       }
-      let top = r.bottom + 6;
-      if (top + ph > vh - 8 && r.top - ph - 6 > 8) {
+      left = Math.max(margin, left);
+
+      // 아래 우선, 아래가 부족하면 위로 뒤집기.
+      const spaceBelow = vh - r.bottom;
+      const spaceAbove = r.top;
+      let top;
+      if (spaceBelow >= ph + margin || spaceBelow >= spaceAbove) {
+        top = r.bottom + 6;
+      } else {
         top = r.top - ph - 6;
       }
-      pop.style.left = `${Math.max(8, left)}px`;
-      pop.style.top = `${Math.max(8, top)}px`;
+      // 어느 쪽이든 화면 안에 전체가 보이도록 clamp.
+      top = Math.min(top, vh - ph - margin);
+      top = Math.max(margin, top);
+
+      pop.style.left = `${left}px`;
+      pop.style.top = `${top}px`;
     }
     position();
 

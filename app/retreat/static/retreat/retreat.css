@@ -322,6 +322,12 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   background: var(--surface-2, #1c2230);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
+/* 입력칸 아래 공간이 부족할 때 위로 펼침(모달 하단 잘림 방지) */
+.jcc-retreat-userPickerList--up {
+  top: auto;
+  bottom: 100%;
+  margin: 0 0 4px 0;
+}
 .jcc-retreat-userPickerList li {
   padding: 0.45rem 0.6rem;
   cursor: pointer;
@@ -329,7 +335,10 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 }
 .jcc-retreat-userPickerList li.is-active,
 .jcc-retreat-userPickerList li:hover {
-  background: rgba(59, 130, 246, 0.18);
+  background: rgba(59, 130, 246, 0.12);
+}
+.jcc-retreat-userPickerList li.is-active {
+  font-weight: 600;
 }
 .jcc-retreat-userPickerList li.muted {
   cursor: default;
@@ -1694,15 +1703,27 @@ dialog.jcc-retreat-modal::backdrop {
 .jcc-retreat-modal--attendeeEdit {
   width: min(96vw, 640px);
   max-width: 640px;
-  padding: 1.5rem 1.6rem 1.4rem;
   max-height: min(90dvh, 90vh);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalTitle {
-  margin-bottom: 1.25rem;
+  flex: 0 0 auto;
+  margin-bottom: 0.85rem;
+  padding: 1.25rem 1.6rem 0;
   font-size: 1.2rem;
+}
+.jcc-retreat-modal--attendeeEdit > form {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.jcc-retreat-modal--attendeeEdit .jcc-retreat-modalBody {
+  padding: 0 1.6rem 1rem;
 }
 .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalGrid {
   gap: 1.1rem 1.1rem;
@@ -1726,8 +1747,12 @@ dialog.jcc-retreat-modal::backdrop {
   font-size: 0.9rem;
 }
 .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalFooter {
-  margin-top: 1.4rem;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.85rem 1.6rem;
   gap: 0.6rem;
+  background: var(--card);
+  border-top: 1px solid var(--border);
 }
 .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalFooter button {
   padding: 0.6rem 1.4rem;
@@ -1916,12 +1941,33 @@ dialog.jcc-retreat-modal::backdrop {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.25rem 0;
+  padding: 0.35rem 0.5rem;
   font-size: 0.88rem;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+.jcc-retreat-leaderDraftRow.is-new {
+  background: color-mix(in srgb, var(--accent, #4a9eff) 14%, transparent);
+}
+.jcc-retreat-leaderDraftName {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+}
+.jcc-retreat-leaderRoleSelect {
+  flex: 0 0 auto;
+  min-width: 5.5rem;
+  max-width: 7rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.82rem;
 }
 .jcc-retreat-leadersDraftAdd {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 0.5rem 0.65rem;
   align-items: end;
 }
@@ -2302,13 +2348,13 @@ dialog.jcc-retreat-modal::backdrop {
 .jcc-dtp-pop {
   position: fixed;
   z-index: 2200;
-  width: 280px;
+  width: 310px;
   max-width: calc(100vw - 16px);
-  padding: 12px;
+  padding: 16px;
   background: var(--card, #fff);
   color: var(--text, #212529);
   border: 1px solid var(--border, #ced4da);
-  border-radius: 14px;
+  border-radius: 16px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
 }
 .jcc-dtp-head {
@@ -2351,9 +2397,6 @@ dialog.jcc-retreat-modal::backdrop {
 .jcc-dtp-dow .sun {
   color: #e0506e;
 }
-.jcc-dtp-dow .sat {
-  color: #4a9eff;
-}
 .jcc-dtp-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -2386,11 +2429,16 @@ dialog.jcc-retreat-modal::backdrop {
 .jcc-dtp-day.sun {
   color: #e0506e;
 }
-.jcc-dtp-day.sat {
-  color: #4a9eff;
+/* PC 팝업: 날짜 셀 정사각 + 꽉 찬 원형 선택(토스풍). 모바일 시트는 별도 규칙 유지 */
+.jcc-dtp-pop:not(.jcc-dtp-pop--sheet) .jcc-dtp-day {
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  font-size: 0.85rem;
 }
 .jcc-dtp-day.today {
-  box-shadow: inset 0 0 0 1px var(--accent, #4a9eff);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--accent, #4a9eff) 45%, transparent);
 }
 .jcc-dtp-day.selected {
   background: var(--accent, #4a9eff);
@@ -2410,6 +2458,16 @@ dialog.jcc-retreat-modal::backdrop {
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid var(--border, #e9ecef);
+}
+/* PC 팝업: 시간/푸터 여백 넉넉하게(토스풍) */
+.jcc-dtp-pop:not(.jcc-dtp-pop--sheet) .jcc-dtp-time {
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+}
+.jcc-dtp-pop:not(.jcc-dtp-pop--sheet) .jcc-dtp-foot {
+  margin-top: 14px;
+  gap: 8px;
 }
 .jcc-dtp-timeLbl {
   flex: 0 0 auto;
@@ -2444,7 +2502,7 @@ dialog.jcc-retreat-modal::backdrop {
   box-shadow: 0 0 0 3px var(--accent-tint, rgba(74, 158, 255, 0.25));
 }
 .jcc-dtp-select input.jcc-dtp-num {
-  width: 2.6ch;
+  width: 3.2ch;
   min-width: 0;
   height: 100%;
   margin: 0;

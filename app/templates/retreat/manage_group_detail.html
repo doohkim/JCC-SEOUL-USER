@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ group.name }} · 조 관리</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260612b" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260612f" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -175,6 +175,7 @@
             <div class="jcc-retreat-modal jcc-retreat-modal--attendeeEdit card" role="dialog" aria-modal="true" aria-labelledby="retreatModalTitle">
               <h2 id="retreatModalTitle" class="jcc-retreat-modalTitle">조원 추가</h2>
               <form id="retreatAttendeeForm" novalidate>
+                <div class="jcc-retreat-modalBody">
                 <div class="jcc-retreat-modalGrid">
                   {% if can_change_status %}
                     <div class="field jcc-retreat-modalField--full" data-modal-status-only>
@@ -249,6 +250,7 @@
                     </div>
                   {% endif %}
                 </div>
+                </div>
                 <div class="jcc-retreat-modalFooter">
                   <button type="button" class="secondary" id="retreatModalCancel">취소</button>
                   <button type="submit" id="retreatModalSubmit">저장</button>
@@ -291,9 +293,9 @@
     </script>
     {% include 'includes/retreat_bottom_tabs.html' %}
     {% if can_add_group %}
-      <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260609d" defer></script>
+      <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260612c" defer></script>
     {% endif %}
-    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260612a" defer></script>
+    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260612c" defer></script>
     <script src="{% static 'retreat/manage_group.js' %}?v=20260609e" defer></script>
   </body>
 </html>

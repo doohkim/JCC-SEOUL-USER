@@ -1,0 +1,20 @@
+---
+description: 기능·버그·권한 변경 시 테스트 필수 규칙
+globs: app/**/*.py
+alwaysApply: false
+---
+
+# @TEST — 테스트 필수
+
+- 기능/버그/권한 변경에는 **테스트 추가·수정**을 기본으로 한다. 위치: `app/<app>/tests/`.
+- 기존 패턴 참고: `app/retreat/tests/test_permissions.py`, `app/users/tests/test_account_manage.py`.
+- 권한 변경은 해당 유저 타입별 allow/deny 케이스를 최소 1개씩 포함한다.
+- 마이그레이션 파일은 명시 요청 없이는 수정하지 않는다.
+
+## 검증 명령
+
+```bash
+cd app && poetry run python manage.py check
+cd app && poetry run python manage.py test <app> -v 1
+cd app && poetry run python manage.py makemigrations --check --dry-run  # 모델 변경 시
+```

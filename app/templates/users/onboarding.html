@@ -103,27 +103,6 @@
             {{ form.requested_team }}
             {{ form.requested_team.errors }}
           </div>
-          {% if active_retreat_event %}
-            <div class="retreatBlock">
-              <div class="field">
-                <label>
-                  {{ form.requested_retreat_participation }}
-                  {{ active_retreat_event.name }} 수련회 참여
-                </label>
-              </div>
-              <div id="retreatFields" hidden>
-                <div class="field">
-                  <label for="{{ form.requested_retreat_group.id_for_label }}">희망 조 *</label>
-                  {{ form.requested_retreat_group }}
-                  {{ form.requested_retreat_group.errors }}
-                </div>
-                <div class="field">
-                  <label for="{{ form.requested_retreat_role.id_for_label }}">희망 역할</label>
-                  {{ form.requested_retreat_role }}
-                </div>
-              </div>
-            </div>
-          {% endif %}
         {% endif %}
         <div class="actions">
           {% if is_pending_locked %}
@@ -140,18 +119,13 @@
       const region = document.getElementById("id_requested_region");
       const division = document.getElementById("id_requested_division");
       const team = document.getElementById("id_requested_team");
-      const retreatGroup = document.getElementById("id_requested_retreat_group");
-      const participate = document.getElementById("id_requested_retreat_participation");
-      const retreatFields = document.getElementById("retreatFields");
       const divisionsMap = {{ divisions_map_json|safe }};
       const teamsMap = {{ teams_map_json|safe }};
-      const retreatGroups = {{ retreat_groups_json|safe }};
       const isLocked = {{ is_pending_locked|yesno:"true,false" }};
       if (isLocked) return;
 
       const selectedDivision = division ? division.value : "";
       const selectedTeam = team ? team.value : "";
-      const selectedGroup = retreatGroup ? retreatGroup.value : "";
 
       function renderDivisions() {
         if (!region || !division) return;
@@ -172,7 +146,6 @@
           division.value = selectedDivision;
         }
         renderTeams();
-        renderRetreatGroups();
       }
 
       function renderTeams() {
@@ -195,45 +168,11 @@
         }
       }
 
-      function renderRetreatGroups() {
-        if (!retreatGroup) return;
-        const did = division ? division.value : "";
-        const rid = region ? region.value : "";
-        retreatGroup.innerHTML = "";
-        const empty = document.createElement("option");
-        empty.value = "";
-        empty.textContent = "조를 선택해 주세요";
-        retreatGroup.appendChild(empty);
-        retreatGroups
-          .filter((g) => String(g.division_id) === String(did) && String(g.region_id) === String(rid))
-          .forEach((g) => {
-            const opt = document.createElement("option");
-            opt.value = String(g.id);
-            opt.textContent = g.label;
-            retreatGroup.appendChild(opt);
-          });
-        if ([...retreatGroup.options].some((o) => o.value === selectedGroup)) {
-          retreatGroup.value = selectedGroup;
-        }
-      }
-
-      function toggleRetreat() {
-        if (!participate || !retreatFields) return;
-        const on = participate.checked;
-        retreatFields.hidden = !on;
-        if (retreatGroup) retreatGroup.required = on;
-      }
-
       if (region) region.addEventListener("change", renderDivisions);
       if (division) {
-        division.addEventListener("change", () => {
-          renderTeams();
-          renderRetreatGroups();
-        });
+        division.addEventListener("change", renderTeams);
       }
-      if (participate) participate.addEventListener("change", toggleRetreat);
       renderDivisions();
-      toggleRetreat();
     })();
   </script>
 </body>

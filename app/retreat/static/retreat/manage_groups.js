@@ -56,7 +56,17 @@
     appendExtraScopeRow(list);
   }
 
-  function renderRowLeaders(state) {
+  function roleOptionsHtml(selectedRole) {
+    const labels = ctx.roleLabels || {};
+    return Object.entries(labels)
+      .map(
+        ([code, label]) =>
+          `<option value="${escapeHtml(code)}"${code === selectedRole ? " selected" : ""}>${escapeHtml(label)}</option>`
+      )
+      .join("");
+  }
+
+  function renderRowLeaders(state, highlightIdx) {
     const list = state.el.querySelector("[data-row-leaders-list]");
     if (!list) return;
     if (!state.leaders.length) {
@@ -64,14 +74,43 @@
       return;
     }
     list.innerHTML = state.leaders
-      .map(
-        (e, i) =>
-          `<div class="jcc-retreat-leaderDraftRow">
-            <span>${escapeHtml(e.label)} · ${escapeHtml(ctx.roleLabels[e.role] || e.role)}</span>
+      .map((e, i) => {
+        const rowClass =
+          highlightIdx === i
+            ? "jcc-retreat-leaderDraftRow is-new"
+            : "jcc-retreat-leaderDraftRow";
+        return `<div class="${rowClass}">
+            <span class="jcc-retreat-leaderDraftName">${escapeHtml(e.label)}</span>
+            <select class="jcc-retreat-leaderRoleSelect" data-leader-role-idx="${i}" aria-label="역할">${roleOptionsHtml(e.role)}</select>
             <button type="button" class="jcc-retreat-rowDel" data-remove-leader="${i}">제거</button>
-          </div>`
-      )
+          </div>`;
+      })
       .join("");
+    if (highlightIdx != null) {
+      requestAnimationFrame(() => {
+        const row = list.querySelector(`[data-leader-role-idx="${highlightIdx}"]`)?.closest(
+          ".jcc-retreat-leaderDraftRow"
+        );
+        row?.classList.remove("is-new");
+      });
+    }
+  }
+
+  function addRowLeader(state, user) {
+    if (!user?.id) return;
+    const leaderRoleInput = state.el.querySelector("[data-row-leader-role]");
+    const role = leaderRoleInput?.value || "leader";
+    if (state.leaders.some((e) => e.user_id === user.id)) {
+      showStatus("이미 목록에 있는 사용자입니다.", true, modalStatusEl);
+      return;
+    }
+    state.leaders.push({
+      user_id: user.id,
+      role,
+      label: user.name || user.display_name || user.username,
+    });
+    renderRowLeaders(state, state.leaders.length - 1);
+    showStatus("", false, modalStatusEl);
   }
 
   function updateRowLabels() {
@@ -87,14 +126,16 @@
     const divisionInput = rowEl.querySelector("[data-row-division]");
     const btnRemove = rowEl.querySelector("[data-remove-row]");
     const btnAddScope = rowEl.querySelector("[data-add-extra-scope]");
-    const btnAddLeader = rowEl.querySelector("[data-add-row-leader]");
-    const leaderRoleInput = rowEl.querySelector("[data-row-leader-role]");
     const leadersList = rowEl.querySelector("[data-row-leaders-list]");
 
-    state.picker = createUserPicker(rowEl.querySelector("[data-user-picker]"), () => ({
-      division: divisionInput?.value || "",
-      region: regionInput?.value || "",
-    }));
+    state.picker = createUserPicker(
+      rowEl.querySelector("[data-user-picker]"),
+      () => ({
+        division: divisionInput?.value || "",
+        region: regionInput?.value || "",
+      }),
+      (user) => addRowLeader(state, user)
+    );
 
     if (regionInput) {
       regionInput.addEventListener("change", () => {
@@ -123,28 +164,6 @@
         showStatus("", false, modalStatusEl);
       });
     }
-    if (btnAddLeader) {
-      btnAddLeader.addEventListener("click", () => {
-        const selected = state.picker && state.picker.getSelected();
-        if (!selected || !selected.id) {
-          showStatus("운영진으로 등록할 사용자를 검색에서 선택하세요.", true, modalStatusEl);
-          return;
-        }
-        const role = leaderRoleInput?.value || "leader";
-        if (state.leaders.some((e) => e.user_id === selected.id)) {
-          showStatus("이미 목록에 있는 사용자입니다.", true, modalStatusEl);
-          return;
-        }
-        state.leaders.push({
-          user_id: selected.id,
-          role,
-          label: selected.name || selected.display_name || selected.username,
-        });
-        renderRowLeaders(state);
-        if (state.picker) state.picker.clear();
-        showStatus("", false, modalStatusEl);
-      });
-    }
     if (leadersList) {
       leadersList.addEventListener("click", (e) => {
         const btn = e.target.closest("[data-remove-leader]");
@@ -152,6 +171,12 @@
         const idx = Number(btn.dataset.removeLeader);
         state.leaders.splice(idx, 1);
         renderRowLeaders(state);
+      });
+      leadersList.addEventListener("change", (e) => {
+        const sel = e.target.closest("[data-leader-role-idx]");
+        if (!sel) return;
+        const idx = Number(sel.dataset.leaderRoleIdx);
+        if (state.leaders[idx]) state.leaders[idx].role = sel.value;
       });
     }
     renderRowLeaders(state);

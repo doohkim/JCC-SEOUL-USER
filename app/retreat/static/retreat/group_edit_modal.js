@@ -84,13 +84,14 @@
     return { scopes };
   }
 
-  function createUserPicker(root, getFilters) {
+  function createUserPicker(root, getFilters, onPick) {
     if (!root) return null;
     const input = root.querySelector("[data-user-picker-input]");
     const list = root.querySelector("[data-user-picker-list]");
     const hidden = root.querySelector("[data-user-picker-id]");
     if (!input || !list || !hidden) return null;
     const filters = typeof getFilters === "function" ? getFilters : () => ({});
+    const pickHandler = typeof onPick === "function" ? onPick : null;
 
     let selected = null;
     let items = [];
@@ -108,13 +109,33 @@
     function closeList() {
       list.hidden = true;
       list.innerHTML = "";
+      list.classList.remove("jcc-retreat-userPickerList--up");
       activeIdx = -1;
+    }
+
+    // 스크롤 컨테이너(모달 본문) 기준으로 위/아래 가용 공간을 재고,
+    // 아래가 좁으면 위로 펼치며, 목록 높이도 가용 공간에 맞춰 잘리지 않게 한다.
+    function positionList() {
+      const container =
+        input.closest(".jcc-retreat-modalBody") ||
+        input.closest(".jcc-retreat-modal") ||
+        document.documentElement;
+      const cRect = container.getBoundingClientRect();
+      const r = input.getBoundingClientRect();
+      const gap = 6;
+      const below = cRect.bottom - r.bottom - gap;
+      const above = r.top - cRect.top - gap;
+      const openUp = below < 160 && above > below;
+      list.classList.toggle("jcc-retreat-userPickerList--up", openUp);
+      const avail = Math.max(96, Math.floor(openUp ? above : below));
+      list.style.maxHeight = `${Math.min(240, avail)}px`;
     }
 
     function renderList() {
       if (!items.length) {
         list.innerHTML = '<li class="muted" role="option" aria-disabled="true">결과 없음</li>';
         list.hidden = false;
+        positionList();
         return;
       }
       list.innerHTML = items
@@ -124,6 +145,7 @@
         })
         .join("");
       list.hidden = false;
+      positionList();
     }
 
     async function search(q) {
@@ -151,13 +173,27 @@
       }
     }
 
-    function pick(idx) {
+    function applyPick(idx) {
       const u = items[idx];
       if (!u) return;
+      if (pickHandler) {
+        pickHandler(u);
+        clear();
+        return;
+      }
       selected = u;
       hidden.value = String(u.id);
       input.value = u.name || u.display_name || u.username;
       closeList();
+    }
+
+    function moveActive(delta) {
+      if (!items.length || list.hidden) return;
+      if (activeIdx < 0) activeIdx = 0;
+      else activeIdx = (activeIdx + delta + items.length) % items.length;
+      renderList();
+      const active = list.querySelector(".is-active");
+      active?.scrollIntoView({ block: "nearest" });
     }
 
     function hasFilter() {
@@ -181,11 +217,30 @@
       if (!input.value.trim() && hasFilter()) search("");
     });
 
+    input.addEventListener("keydown", (e) => {
+      if (list.hidden) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        moveActive(1);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        moveActive(-1);
+      } else if (e.key === "Enter") {
+        if (activeIdx >= 0 && items[activeIdx]) {
+          e.preventDefault();
+          applyPick(activeIdx);
+        }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        closeList();
+      }
+    });
+
     list.addEventListener("mousedown", (e) => {
       const li = e.target.closest("li[data-idx]");
       if (!li) return;
       e.preventDefault();
-      pick(Number(li.dataset.idx));
+      applyPick(Number(li.dataset.idx));
     });
 
     document.addEventListener("click", (e) => {
@@ -207,7 +262,6 @@
   const editLeadersAdd = document.getElementById("groupEditLeadersAdd");
   const editLeaderRole = document.getElementById("groupEditLeaderRole");
   const btnEditAddScope = document.getElementById("btnEditAddScope");
-  const btnEditAddLeader = document.getElementById("btnEditAddLeader");
   const btnEditCancel = document.getElementById("groupEditModalCancel");
   const btnEditSubmit = document.getElementById("groupEditModalSubmit");
   const editModalStatus = document.getElementById("groupEditModalStatus");
@@ -238,21 +292,48 @@
     if (btnEditSubmit) btnEditSubmit.hidden = readOnly;
   }
 
-  function renderEditLeaders() {
+  function roleOptionsHtml(selectedRole) {
+    const labels = editCtx.roleLabels || {};
+    return Object.entries(labels)
+      .map(
+        ([code, label]) =>
+          `<option value="${escapeHtml(code)}"${code === selectedRole ? " selected" : ""}>${escapeHtml(label)}</option>`
+      )
+      .join("");
+  }
+
+  function renderEditLeaders(highlightId) {
     if (!editLeadersList) return;
     if (!editMemberships.length) {
       editLeadersList.innerHTML = '<p class="muted">등록된 운영진이 없습니다.</p>';
       return;
     }
     editLeadersList.innerHTML = editMemberships
-      .map(
-        (m) =>
-          `<div class="jcc-retreat-leaderDraftRow" data-membership-id="${m.id}">
-            <span>${escapeHtml(m.display_name || m.username || m.name || "")} · ${escapeHtml(m.role_display || editCtx.roleLabels?.[m.role] || m.role)}</span>
-            ${editCtx.canAddGroup ? `<button type="button" class="jcc-retreat-rowDel" data-remove-membership="${m.id}">제거</button>` : ""}
-          </div>`
-      )
+      .map((m) => {
+        const name = escapeHtml(m.display_name || m.username || m.name || "");
+        const rowClass =
+          highlightId != null && m.id === highlightId
+            ? "jcc-retreat-leaderDraftRow is-new"
+            : "jcc-retreat-leaderDraftRow";
+        const rolePart = editCtx.canAddGroup
+          ? `<select class="jcc-retreat-leaderRoleSelect" data-membership-role="${m.id}" aria-label="역할">${roleOptionsHtml(m.role)}</select>`
+          : `<span class="muted">${escapeHtml(m.role_display || editCtx.roleLabels?.[m.role] || m.role)}</span>`;
+        const removeBtn = editCtx.canAddGroup
+          ? `<button type="button" class="jcc-retreat-rowDel" data-remove-membership="${m.id}">제거</button>`
+          : "";
+        return `<div class="${rowClass}" data-membership-id="${m.id}">
+            <span class="jcc-retreat-leaderDraftName">${name}</span>
+            ${rolePart}
+            ${removeBtn}
+          </div>`;
+      })
       .join("");
+    if (highlightId != null) {
+      requestAnimationFrame(() => {
+        const row = editLeadersList.querySelector(`[data-membership-id="${highlightId}"]`);
+        row?.classList.remove("is-new");
+      });
+    }
   }
 
   function clearEditExtraScopes() {
@@ -364,13 +445,8 @@
     }
   }
 
-  async function addEditLeader() {
-    if (!editCtx.canAddGroup || !editGroupId || !editLeaderPicker) return;
-    const selected = editLeaderPicker.getSelected();
-    if (!selected || !selected.id) {
-      showEditStatus("운영진으로 등록할 사용자를 검색에서 선택하세요.", true);
-      return;
-    }
+  async function addEditLeaderFor(user) {
+    if (!editCtx.canAddGroup || !editGroupId || !user?.id) return;
     const role = editLeaderRole?.value || "leader";
     const url = editCtx.urls.membershipsTemplate.replace("__gid__", String(editGroupId));
     try {
@@ -381,7 +457,7 @@
           "X-CSRFToken": editCtx.csrfToken,
         },
         credentials: "same-origin",
-        body: JSON.stringify({ user_id: selected.id, role }),
+        body: JSON.stringify({ user_id: user.id, role }),
       });
       if (!r.ok) {
         let detail = "운영진 추가 실패";
@@ -394,11 +470,36 @@
       const membership = await r.json();
       editMemberships = editMemberships.filter((m) => m.user !== membership.user);
       editMemberships.push(membership);
-      renderEditLeaders();
-      editLeaderPicker.clear();
+      renderEditLeaders(membership.id);
       showEditStatus("", false);
+      requestAnimationFrame(() => editLeaderPicker?.clear());
     } catch (err) {
       showEditStatus(err.message || "운영진 추가 실패", true);
+    }
+  }
+
+  async function updateEditLeaderRole(membershipId, role) {
+    if (!editCtx.canAddGroup) return;
+    const url = editCtx.urls.membershipDetailTemplate.replace("__mid__", String(membershipId));
+    try {
+      const r = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": editCtx.csrfToken,
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({ role }),
+      });
+      if (!r.ok) throw new Error("역할 변경 실패");
+      const membership = await r.json();
+      editMemberships = editMemberships.map((m) =>
+        m.id === membership.id ? membership : m
+      );
+      showEditStatus("", false);
+    } catch (err) {
+      showEditStatus(err.message || "역할 변경 실패", true);
+      renderEditLeaders();
     }
   }
 
@@ -434,7 +535,6 @@
   if (btnEditAddScope) {
     btnEditAddScope.addEventListener("click", () => appendExtraScopeRow(editExtraList));
   }
-  if (btnEditAddLeader) btnEditAddLeader.addEventListener("click", addEditLeader);
   if (btnEditCancel) btnEditCancel.addEventListener("click", closeEditModal);
   if (editForm) editForm.addEventListener("submit", onEditSubmit);
   if (editOverlay) {
@@ -448,12 +548,21 @@
       if (!btn) return;
       removeEditLeader(Number(btn.dataset.removeMembership));
     });
+    editLeadersList.addEventListener("change", (e) => {
+      const sel = e.target.closest("[data-membership-role]");
+      if (!sel) return;
+      updateEditLeaderRole(Number(sel.dataset.membershipRole), sel.value);
+    });
   }
 
-  editLeaderPicker = createUserPicker(document.getElementById("groupEditUserPicker"), () => ({
-    division: editDivision?.value || "",
-    region: editRegion?.value || "",
-  }));
+  editLeaderPicker = createUserPicker(
+    document.getElementById("groupEditUserPicker"),
+    () => ({
+      division: editDivision?.value || "",
+      region: editRegion?.value || "",
+    }),
+    (user) => addEditLeaderFor(user)
+  );
 
   document.querySelectorAll("[data-group-edit-trigger][data-group-id]").forEach((trigger) => {
     trigger.addEventListener("click", (e) => {

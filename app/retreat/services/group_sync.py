@@ -139,6 +139,45 @@ def remove_membership_for_attendee(attendee: RetreatAttendee, *, changed_by) -> 
     )
 
 
+def delete_attendees_for_membership(
+    membership: RetreatGroupMembership,
+    *,
+    changed_by,
+) -> int:
+    """운영진 멤버십에 연결된 조원 명단 행을 제거한다.
+
+    admin 에서 운영진(또는 계정)을 삭제할 때 조원 명단까지 함께 정리하는 용도.
+    인-앱 '운영진 해제'(``clear_leader_role_on_membership_removed``)와 달리
+    조원 행 자체를 삭제한다. 이미 생성된 출석부 스냅샷
+    (``RetreatSessionAttendee``)은 ``source_attendee=SET_NULL`` 이라 보존된다.
+    """
+    group_id = membership.group_id
+    user_id = membership.user_id
+    if not group_id or not user_id:
+        return 0
+    removed = 0
+    for attendee in list(
+        RetreatAttendee.objects.filter(group_id=group_id, user_id=user_id)
+    ):
+        attendee_id = attendee.id
+        event_id = attendee.group.event_id
+        attendee.delete()
+        removed += 1
+        log_retreat_change(
+            user=changed_by,
+            event=event_id,
+            action=RetreatChangeLog.Action.DELETE,
+            target_type=RetreatChangeLog.TargetType.ATTENDEE,
+            target_id=attendee_id,
+            payload_before={
+                "group_id": group_id,
+                "user_id": user_id,
+                "source": "admin_membership_delete",
+            },
+        )
+    return removed
+
+
 def clear_leader_role_on_membership_removed(
     membership: RetreatGroupMembership,
     *,
