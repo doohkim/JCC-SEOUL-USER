@@ -52,8 +52,8 @@ SOCIAL_AUTH_PIPELINE = (
 )
 
 SOCIAL_AUTH_LOGIN_ERROR_URL = "/login/?error=1"
-SOCIAL_AUTH_LOGIN_REDIRECT_URL = "/attendance/?welcome=1"
+SOCIAL_AUTH_LOGIN_REDIRECT_URL = "/onboarding/"
 
 LOGIN_URL = "/login/"
-LOGIN_REDIRECT_URL = "/attendance/?welcome=1"
+LOGIN_REDIRECT_URL = "/onboarding/"
 LOGOUT_REDIRECT_URL = "/login/"

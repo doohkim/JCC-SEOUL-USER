@@ -56,7 +56,7 @@ class KakaoAuthEntryView(TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        query = {"next": self.request.GET.get("next", "/attendance/?welcome=1")}
+        query = {"next": self.request.GET.get("next", "/onboarding/")}
         ctx["kakao_begin_url"] = f"{reverse_lazy('social:begin', args=['kakao'])}?{urlencode(query)}"
         error = self.request.GET.get("error", "")
         error_reason = self.request.GET.get("error_reason", "")
@@ -144,7 +144,7 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
     def dispatch(self, request, *args, **kwargs):
         profile = ensure_user_profile(request.user)
         if is_onboarding_complete(request.user, profile):
-            target = request.GET.get("next") or reverse_lazy("attendance_dashboard")
+            target = request.GET.get("next") or "/attendance/?welcome=1"
             return HttpResponseRedirect(target)
         return super().dispatch(request, *args, **kwargs)
 
