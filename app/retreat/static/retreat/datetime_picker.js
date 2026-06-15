@@ -47,7 +47,34 @@
     return ((h % 24) + 24) % 24;
   }
 
-  function fmtDisplay(v) {
+  // ymdampm 전용: 날짜(연도 4자리/2자리 둘 다 포함)와 시간을 별도 span 으로 감싸
+  // PC(한 줄·4자리)·모바일(두 줄·2자리)을 CSS 로 전환할 수 있게 한다.
+  function fmtDisplayYmdAmPm(v) {
+    const s = parseValue(v);
+    if (!s) return "";
+    const t12 = to12h(s.hh);
+    const mer = t12.mer === "pm" ? "오후" : "오전";
+    const y4 = String(s.y);
+    const y2 = pad(s.y % 100);
+    const md = `-${pad(s.mo + 1)}-${pad(s.d)}`;
+    const time = `${mer} ${t12.h12}:${pad(s.mm)}`;
+    return (
+      '<span class="jcc-stamp-date">' +
+      '<span class="jcc-stamp-y4">' +
+      y4 +
+      "</span>" +
+      '<span class="jcc-stamp-y2">' +
+      y2 +
+      "</span>" +
+      md +
+      "</span>" +
+      '<span class="jcc-stamp-time">' +
+      time +
+      "</span>"
+    );
+  }
+
+  function fmtDisplay(v, input) {
     const s = parseValue(v);
     if (!s) return "";
     const now = new Date();
@@ -107,7 +134,21 @@
     input.insertAdjacentElement("afterend", field);
 
     function refresh() {
-      const disp = fmtDisplay(input.value);
+      // ymdampm 포맷은 PC(4자리 연도·한 줄) / 모바일(2자리 연도·두 줄)을 CSS 로
+      // 전환하기 위해 구조화된 마크업으로 출력한다.
+      if (input.dataset && input.dataset.dtpFormat === "ymdampm") {
+        const html = fmtDisplayYmdAmPm(input.value);
+        if (html) {
+          valSpan.innerHTML = html;
+          valSpan.classList.remove("muted");
+        } else {
+          valSpan.textContent = "날짜·시간 선택";
+          valSpan.classList.add("muted");
+        }
+        field.disabled = !!input.disabled;
+        return;
+      }
+      const disp = fmtDisplay(input.value, input);
       if (disp) {
         valSpan.textContent = disp;
         valSpan.classList.remove("muted");

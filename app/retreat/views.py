@@ -395,9 +395,10 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
                 att.get_check_in_status_display() if att else ""
             )
 
-        # 구분별 입실 상태 필터:
+        # 구분별 입실 상태 필터 (입회/출회 탭에서만 적용):
         # - 입회(arrival): 아직 입실 전(pending/미기록)인 대상만 노출 (입실·퇴실 제외)
         # - 출회(departure): 입실 상태인 대상만 노출 (입실 전·퇴실 제외)
+        # '전체' 탭은 숨김 없이 모든 픽업을 표시한다.
         def _visible_by_status(p) -> bool:
             st = p.check_in_status or ""
             if p.direction == RetreatPickup.Direction.ARRIVAL:
@@ -406,7 +407,8 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
                 return st == RetreatAttendee.CheckInStatus.CHECKED_IN
             return True
 
-        pickups = [p for p in pickups if _visible_by_status(p)]
+        if tab != "all":
+            pickups = [p for p in pickups if _visible_by_status(p)]
 
         # 정렬: 1) 입실 상태(입실전 → 입실 → 퇴실) 2) 열차 시각
         pickups.sort(

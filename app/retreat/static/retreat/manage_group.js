@@ -110,11 +110,53 @@
     if (!iso) return "-";
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "-";
+    const yy = String(d.getFullYear() % 100).padStart(2, "0");
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
-    const hh = String(d.getHours()).padStart(2, "0");
+    const h24 = d.getHours();
+    const mer = h24 < 12 ? "오전" : "오후";
+    let h12 = h24 % 12;
+    if (h12 === 0) h12 = 12;
     const mi = String(d.getMinutes()).padStart(2, "0");
-    return `${mm}/${dd} ${hh}:${mi}`;
+    return `${yy}-${mm}-${dd} ${mer} ${h12}:${mi}`;
+  }
+
+  // 입실/퇴실 라벨용: PC(4자리 연도·한 줄) / 모바일(2자리 연도·두 줄)을 CSS 로
+  // 전환할 수 있도록 구조화된 마크업을 반환한다.
+  function formatStampHtml(iso) {
+    if (!iso) return "-";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "-";
+    const y4 = String(d.getFullYear());
+    const y2 = String(d.getFullYear() % 100).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const h24 = d.getHours();
+    const mer = h24 < 12 ? "오전" : "오후";
+    let h12 = h24 % 12;
+    if (h12 === 0) h12 = 12;
+    const mi = String(d.getMinutes()).padStart(2, "0");
+    return (
+      '<span class="jcc-stamp-date">' +
+      '<span class="jcc-stamp-y4">' +
+      y4 +
+      "</span>" +
+      '<span class="jcc-stamp-y2">' +
+      y2 +
+      "</span>" +
+      "-" +
+      mm +
+      "-" +
+      dd +
+      "</span>" +
+      '<span class="jcc-stamp-time">' +
+      mer +
+      " " +
+      h12 +
+      ":" +
+      mi +
+      "</span>"
+    );
   }
 
   function toDatetimeLocalValue(iso) {
@@ -231,18 +273,33 @@
 
     if (data.member_role) {
       tr.dataset.memberRole = data.member_role;
-      const roleCell = tr.querySelector(".jcc-retreat-attCol-role");
-      if (roleCell && data.member_role_display)
-        roleCell.textContent = data.member_role_display;
+      const roleTag = tr.querySelector(".jcc-retreat-attCol-role [data-role-tag]");
+      if (roleTag) {
+        if (data.member_role_display)
+          roleTag.textContent = data.member_role_display;
+        roleTag.className = `jcc-retreat-roleTag jcc-retreat-roleTag--${data.member_role}`;
+      }
     }
     if ("user" in data) {
       tr.dataset.userId = data.user ? String(data.user) : "";
       tr.dataset.userLabel = data.user_label || "";
+      const userCell = tr.querySelector("[data-user-cell]");
+      if (userCell) {
+        userCell.innerHTML = data.user
+          ? '<span class="jcc-retreat-roleTag jcc-retreat-roleTag--linked">연동</span>'
+          : '<span class="muted">미연동</span>';
+      }
     }
 
     if ("lodging_room" in data) {
       tr.dataset.lodgingRoom = data.lodging_room ? String(data.lodging_room) : "";
       tr.dataset.lodgingLabel = data.lodging_room_label || "";
+      const lodgingCell = tr.querySelector("[data-lodging-cell]");
+      if (lodgingCell) {
+        lodgingCell.innerHTML = data.lodging_room_label
+          ? escapeHtml(data.lodging_room_label)
+          : '<span class="muted">-</span>';
+      }
     }
 
     const nameEl = tr.querySelector("[data-name]");
@@ -272,11 +329,19 @@
       const inLabel = tr.querySelector("[data-expected-in-label]");
       const outLabel = tr.querySelector("[data-expected-out-label]");
       if (inLabel) {
-        inLabel.textContent = formatStamp(data.expected_check_in_at);
+        if (data.expected_check_in_at) {
+          inLabel.innerHTML = formatStampHtml(data.expected_check_in_at);
+        } else {
+          inLabel.textContent = "-";
+        }
         inLabel.classList.toggle("muted", !data.expected_check_in_at);
       }
       if (outLabel) {
-        outLabel.textContent = formatStamp(data.expected_check_out_at);
+        if (data.expected_check_out_at) {
+          outLabel.innerHTML = formatStampHtml(data.expected_check_out_at);
+        } else {
+          outLabel.textContent = "-";
+        }
         outLabel.classList.toggle("muted", !data.expected_check_out_at);
       }
     }

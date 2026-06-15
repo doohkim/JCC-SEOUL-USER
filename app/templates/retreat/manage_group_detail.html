@@ -7,43 +7,75 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ group.name }} · 조 관리</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615s" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615al" />
   </head>
-  <body class="has-retreat-bottom-tabs">
+  <body class="has-retreat-bottom-tabs jcc-retreat-detail">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
+        <a href="{{ back_url }}" class="jcc-retreat-mobileBack" aria-label="조 목록으로 돌아가기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </a>
         <header class="app-header jcc-retreat-groupHeader">
           <div class="jcc-retreat-groupHeaderInner">
             <div class="jcc-detail-titleWrap">
               <h1>{{ group.name }}</h1>
               <p class="subtitle">
-                {{ event.name }} · {{ group.region.name }} {{ group.division.name }}{% for s in group.extra_scopes.all %}, {{ s.region.name }} {{ s.division.name }}{% endfor %}
+                {{ group.region.name }} {{ group.division.name }}{% for s in group.extra_scopes.all %}, {{ s.region.name }} {{ s.division.name }}{% endfor %}
               </p>
             </div>
-            <a href="{{ back_url }}" class="jcc-retreat-backLink">{{ back_label }}</a>
+            {% if can_add_group %}
+              <button type="button" class="jcc-retreat-groupEditTop jcc-retreat-groupEditIcon" data-group-edit-trigger data-group-id="{{ group.id }}" aria-label="조 정보 수정" title="조 정보 수정">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+                </svg>
+              </button>
+            {% endif %}
           </div>
-          {% include 'includes/retreat_event_tabs.html' with retreat_tab='manage_groups' %}
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='manage_groups' hide_event_picker=True %}
         </header>
         <main>
+          <div class="jcc-retreat-subTabsRow">
+            {% include 'includes/retreat_event_picker.html' with retreat_tab='manage_groups' %}
+            {% if can_edit_attendee %}
+              <button type="button" class="jcc-retreat-addGroupBtn jcc-retreat-addMemberBtn" id="btnAddAttendee" aria-label="조원 추가">
+                <svg class="jcc-retreat-addGroupBtn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <line x1="19" y1="8" x2="19" y2="14" />
+                  <line x1="22" y1="11" x2="16" y2="11" />
+                </svg>
+                <span class="jcc-retreat-addGroupBtn-text">조원 추가</span>
+              </button>
+            {% endif %}
+          </div>
           <div class="jcc-retreat-summaryBar" id="retreatSummaryBar">
-            <span class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending">입실전 <strong data-summary-pending>{{ count_pending }}</strong>명</span>
-            <span class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in">입실 <strong data-summary-in>{{ count_checked_in }}</strong>명</span>
-            <span class="jcc-retreat-summaryItem jcc-retreat-summaryItem--out">퇴실 <strong data-summary-out>{{ count_checked_out }}</strong>명</span>
-            <span class="jcc-retreat-summaryItem jcc-retreat-summaryItem--total">총 <strong data-summary-total>{{ count_total }}</strong>명</span>
+            <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending">
+              <span class="jcc-retreat-summaryItem-label">입실전</span>
+              <span class="jcc-retreat-summaryItem-value"><strong data-summary-pending>{{ count_pending }}</strong> 명</span>
+            </div>
+            <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in">
+              <span class="jcc-retreat-summaryItem-label">입실</span>
+              <span class="jcc-retreat-summaryItem-value"><strong data-summary-in>{{ count_checked_in }}</strong> 명</span>
+            </div>
+            <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--out">
+              <span class="jcc-retreat-summaryItem-label">퇴실</span>
+              <span class="jcc-retreat-summaryItem-value"><strong data-summary-out>{{ count_checked_out }}</strong> 명</span>
+            </div>
+            <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--total">
+              <span class="jcc-retreat-summaryItem-label">총</span>
+              <span class="jcc-retreat-summaryItem-value"><strong data-summary-total>{{ count_total }}</strong> 명</span>
+            </div>
           </div>
           <div class="jcc-retreat-listTop">
             <div class="msg" id="retreatStatus" role="status"></div>
-            <div class="jcc-retreat-listTopActions">
-              {% if can_add_group %}
-                <button type="button" class="secondary" data-group-edit-trigger data-group-id="{{ group.id }}">조 정보 수정</button>
-              {% endif %}
-              {% if can_edit_attendee %}
-                <button type="button" class="secondary" id="btnAddAttendee">+ 조원 추가</button>
-              {% else %}
+            {% if not can_edit_attendee %}
+              <div class="jcc-retreat-listTopActions">
                 <span class="muted">읽기 전용</span>
-              {% endif %}
-            </div>
+              </div>
+            {% endif %}
           </div>
 
           <div class="card jcc-retreat-rosterCard">
@@ -51,16 +83,18 @@
               <table class="jcc-retreat-attendeeTable jcc-retreat-manageTable">
                 <thead>
                   <tr>
-                    <th class="jcc-retreat-attCol-num">#</th>
+                    <th class="jcc-retreat-attCol-num">NO.</th>
                     <th class="jcc-retreat-attCol-role jcc-retreat-sortable" data-sort-key="role" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">역할</span></th>
                     <th class="jcc-retreat-attCol-name jcc-retreat-sortable" data-sort-key="name" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">이름</span></th>
-                    <th class="jcc-retreat-attCol-gender jcc-retreat-sortable" data-sort-key="gender" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">성별</span></th>
-                    <th class="jcc-retreat-attCol-phone jcc-retreat-sortable" data-sort-key="phone" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">연락처</span></th>
                     <th class="jcc-retreat-attCol-status jcc-retreat-sortable" data-sort-key="status" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">상태</span></th>
-                    <th class="jcc-retreat-attCol-expected jcc-retreat-sortable" data-sort-key="expected_in" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">입실</span></th>
-                    <th class="jcc-retreat-attCol-expected jcc-retreat-sortable" data-sort-key="expected_out" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">퇴실</span></th>
+                    <th class="jcc-retreat-attCol-gender jcc-retreat-sortable" data-sort-key="gender" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">성별</span></th>
+                    <th class="jcc-retreat-attCol-phone jcc-retreat-sortable" data-sort-key="phone" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">핸드폰번호</span></th>
+                    <th class="jcc-retreat-attCol-expected jcc-retreat-sortable" data-sort-key="expected_in" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">입실 시각</span></th>
+                    <th class="jcc-retreat-attCol-expected jcc-retreat-sortable" data-sort-key="expected_out" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">퇴실 시각</span></th>
+                    <th class="jcc-retreat-attCol-lodging">숙소</th>
+                    <th class="jcc-retreat-attCol-user">사용자 연동</th>
                     {% if can_edit_attendee %}
-                      <th class="jcc-retreat-attCol-actions"></th>
+                      <th class="jcc-retreat-attCol-actions" scope="col">ACTION</th>
                     {% endif %}
                   </tr>
                 </thead>
@@ -81,7 +115,9 @@
                       data-lodging-label="{% if a.lodging_room_id %}{{ a.lodging_room.lodging.name }} {{ a.lodging_room.number }}{% endif %}"
                     >
                       <td class="jcc-retreat-attCol-num" data-row-num>{{ forloop.counter }}</td>
-                      <td class="jcc-retreat-attCol-role">{{ a.get_member_role_display }}</td>
+                      <td class="jcc-retreat-attCol-role">
+                        <span class="jcc-retreat-roleTag jcc-retreat-roleTag--{{ a.member_role }}" data-role-tag>{{ a.get_member_role_display }}</span>
+                      </td>
                       <td class="jcc-retreat-attCol-name">
                         <span class="jcc-retreat-attName" data-name>{{ a.name }}</span>
                         {% if a.memo %}
@@ -90,28 +126,36 @@
                           <div class="jcc-retreat-attMemo" data-memo hidden></div>
                         {% endif %}
                       </td>
-                      <td class="jcc-retreat-attCol-gender" data-gender-cell>{{ a.get_gender_display|default:"-" }}</td>
-                      <td class="jcc-retreat-attCol-phone" data-phone>{{ a.phone|default:"-" }}</td>
                       <td class="jcc-retreat-attCol-status">
                         <span
                           class="jcc-retreat-checkInBadge jcc-retreat-checkInBadge--{{ a.check_in_status }}"
                           data-status-badge
                         >{{ a.get_check_in_status_display }}</span>
                       </td>
+                      <td class="jcc-retreat-attCol-gender" data-gender-cell>{{ a.get_gender_display|default:"-" }}</td>
+                      <td class="jcc-retreat-attCol-phone" data-phone>{{ a.phone|default:"-" }}</td>
                       <td class="jcc-retreat-attCol-expected" data-expected-cell>
                         <span class="jcc-retreat-stampInlineLabel" aria-hidden="true">입실</span>
                         {% if can_edit_attendee %}
-                          <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_in_at" data-dtp-max-selector="[data-expected-field='expected_check_out_at']" data-dtp-max-message="입실은 퇴실 시각보다 앞이어야 합니다." value="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 입실 시각">
+                          <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_in_at" data-dtp-format="ymdampm" data-dtp-max-selector="[data-expected-field='expected_check_out_at']" data-dtp-max-message="입실은 퇴실 시각보다 앞이어야 합니다." value="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 입실 시각">
                         {% else %}
-                          <span class="jcc-retreat-stampLabel{% if not a.expected_check_in_at %} muted{% endif %}" data-expected-in-label>{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'m/d H:i' }}{% else %}-{% endif %}</span>
+                          <span class="jcc-retreat-stampLabel{% if not a.expected_check_in_at %} muted{% endif %}" data-expected-in-label>{% if a.expected_check_in_at %}<span class="jcc-stamp-date"><span class="jcc-stamp-y4">{{ a.expected_check_in_at|date:'Y' }}</span><span class="jcc-stamp-y2">{{ a.expected_check_in_at|date:'y' }}</span>-{{ a.expected_check_in_at|date:'m-d' }}</span><span class="jcc-stamp-time">{{ a.expected_check_in_at|date:'A g:i' }}</span>{% else %}-{% endif %}</span>
                         {% endif %}
                       </td>
                       <td class="jcc-retreat-attCol-expected" data-expected-cell>
                         <span class="jcc-retreat-stampInlineLabel" aria-hidden="true">퇴실</span>
                         {% if can_edit_attendee %}
-                          <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_out_at" data-dtp-min-selector="[data-expected-field='expected_check_in_at']" data-dtp-min-message="퇴실은 입실 시각보다 뒤여야 합니다." value="{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 퇴실 시각">
+                          <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_out_at" data-dtp-format="ymdampm" data-dtp-min-selector="[data-expected-field='expected_check_in_at']" data-dtp-min-message="퇴실은 입실 시각보다 뒤여야 합니다." value="{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 퇴실 시각">
                         {% else %}
-                          <span class="jcc-retreat-stampLabel{% if not a.expected_check_out_at %} muted{% endif %}" data-expected-out-label>{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'m/d H:i' }}{% else %}-{% endif %}</span>
+                          <span class="jcc-retreat-stampLabel{% if not a.expected_check_out_at %} muted{% endif %}" data-expected-out-label>{% if a.expected_check_out_at %}<span class="jcc-stamp-date"><span class="jcc-stamp-y4">{{ a.expected_check_out_at|date:'Y' }}</span><span class="jcc-stamp-y2">{{ a.expected_check_out_at|date:'y' }}</span>-{{ a.expected_check_out_at|date:'m-d' }}</span><span class="jcc-stamp-time">{{ a.expected_check_out_at|date:'A g:i' }}</span>{% else %}-{% endif %}</span>
+                        {% endif %}
+                      </td>
+                      <td class="jcc-retreat-attCol-lodging" data-lodging-cell>{% if a.lodging_room_id %}{{ a.lodging_room.lodging.name }} {{ a.lodging_room.number }}{% else %}<span class="muted">-</span>{% endif %}</td>
+                      <td class="jcc-retreat-attCol-user" data-user-cell>
+                        {% if a.user_id %}
+                          <span class="jcc-retreat-roleTag jcc-retreat-roleTag--linked">연동</span>
+                        {% else %}
+                          <span class="muted">미연동</span>
                         {% endif %}
                       </td>
                       {% if can_edit_attendee %}
@@ -119,14 +163,21 @@
                           <button type="button" class="jcc-retreat-rowHistory" data-history aria-label="{{ a.name }} 이력">이력</button>
                           <button type="button" class="jcc-retreat-rowEdit" data-edit aria-label="{{ a.name }} 수정">수정</button>
                           {% if can_delete_attendee %}
-                            <button type="button" class="jcc-retreat-rowDel" data-del aria-label="{{ a.name }} 삭제">삭제</button>
+                            <button type="button" class="jcc-retreat-pickupDelete" data-del aria-label="{{ a.name }} 삭제" title="삭제">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M3 6h18" />
+                                <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                <path d="M10 11v6M14 11v6" />
+                              </svg>
+                            </button>
                           {% endif %}
                         </td>
                       {% endif %}
                     </tr>
                   {% empty %}
                     <tr>
-                      <td colspan="{% if can_edit_attendee %}9{% else %}8{% endif %}">
+                      <td colspan="{% if can_edit_attendee %}11{% else %}10{% endif %}">
                         <div class="msg">조원이 없습니다.{% if can_edit_attendee %} 우측 상단에서 추가하세요.{% endif %}</div>
                       </td>
                     </tr>
@@ -296,8 +347,8 @@
     {% if can_add_group %}
       <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260613a" defer></script>
     {% endif %}
-    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260613a" defer></script>
-    <script src="{% static 'retreat/manage_group.js' %}?v=20260613b" defer></script>
+    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260615f" defer></script>
+    <script src="{% static 'retreat/manage_group.js' %}?v=20260615g" defer></script>
     <script>
       // 조원 수정 모달은 열릴 때 select 값을 프로그램으로 채우므로, 표시될 때 커스텀 드롭다운 라벨을 다시 동기화한다.
       document.addEventListener("DOMContentLoaded", function () {
