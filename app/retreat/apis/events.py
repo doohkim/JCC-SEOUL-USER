@@ -135,6 +135,7 @@ def _create_single_group(
         division=division,
         name=name,
         order=int(order or 0),
+        created_by=user if getattr(user, "is_authenticated", False) else None,
     )
     for region_id, division_id in extra_scope_pairs:
         RetreatGroupScope.objects.create(

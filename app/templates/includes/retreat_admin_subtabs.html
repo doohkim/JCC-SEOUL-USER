@@ -1,8 +1,7 @@
 {% comment %}관리 하위 탭 — event, admin_subtab('groups'|'council'|'timetable'|'sessions'|'changelog') 필요{% endcomment %}
 <nav class="jcc-page-tabs" aria-label="관리 하위 메뉴">
-  <a class="jcc-page-tab{% if admin_subtab == 'groups' %} is-active{% endif %}" href="{% url 'retreat_admin' event.id %}?tab=groups">조</a>
   <a class="jcc-page-tab{% if admin_subtab == 'council' %} is-active{% endif %}" href="{% url 'retreat_council' event.id %}">회장단</a>
   <a class="jcc-page-tab{% if admin_subtab == 'timetable' %} is-active{% endif %}" href="{% url 'retreat_timetable' event.id %}">타임테이블</a>
-  <a class="jcc-page-tab{% if admin_subtab == 'sessions' %} is-active{% endif %}" href="{% url 'retreat_admin' event.id %}?tab=sessions">출석부</a>
+  {% comment %}출석부 하위 탭은 요청에 따라 숨김 (탭=sessions 페이지 자체는 유지){% endcomment %}
   <a class="jcc-page-tab{% if admin_subtab == 'changelog' %} is-active{% endif %}" href="{% url 'retreat_admin' event.id %}?tab=changelog">변경 이력</a>
 </nav>

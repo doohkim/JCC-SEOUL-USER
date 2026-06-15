@@ -25,6 +25,38 @@
   const selectedRegions = new Set();
   const selectedDivisions = new Set();
 
+  // 선택 상태를 sessionStorage에 저장/복원 (조 생성·수정 시 location.reload() 후에도 유지).
+  // 키에 location.pathname(=event_id 포함)을 넣어 행사별로 분리한다.
+  const STORAGE_KEY = "retreatGroupFilter:" + location.pathname;
+
+  function loadStored() {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return { regions: [], divisions: [] };
+      const data = JSON.parse(raw);
+      return {
+        regions: Array.isArray(data.regions) ? data.regions : [],
+        divisions: Array.isArray(data.divisions) ? data.divisions : [],
+      };
+    } catch (e) {
+      return { regions: [], divisions: [] };
+    }
+  }
+
+  function persist() {
+    try {
+      sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          regions: Array.from(selectedRegions),
+          divisions: Array.from(selectedDivisions),
+        })
+      );
+    } catch (e) {
+      /* 스토리지 사용 불가 시 무시 */
+    }
+  }
+
   function valuesFor(card, multiAttr, fallbackAttr) {
     const raw = (card.getAttribute(multiAttr) || "").trim();
     const values = raw
@@ -55,7 +87,10 @@
     chip.type = "button";
     chip.className = "jcc-retreat-filterChip";
     chip.textContent = value;
-    chip.setAttribute("aria-pressed", "false");
+    // 복원된 선택값이면 활성 상태로 렌더
+    const preselected = selectedSet.has(value);
+    chip.setAttribute("aria-pressed", preselected ? "true" : "false");
+    if (preselected) chip.classList.add("is-active");
     chip.addEventListener("click", function () {
       if (selectedSet.has(value)) {
         selectedSet.delete(value);
@@ -66,6 +101,7 @@
         chip.classList.add("is-active");
         chip.setAttribute("aria-pressed", "true");
       }
+      persist();
       applyFilter();
     });
     groupEl.appendChild(chip);
@@ -97,6 +133,17 @@
     "data-division-name"
   );
 
+  // 저장된 선택을 현재 카드에 실제 존재하는 값과 교집합으로 복원(사라진 값 정리).
+  const stored = loadStored();
+  const regionSetAll = new Set(regionValues);
+  const divisionSetAll = new Set(divisionValues);
+  stored.regions.forEach((v) => {
+    if (regionSetAll.has(v)) selectedRegions.add(v);
+  });
+  stored.divisions.forEach((v) => {
+    if (divisionSetAll.has(v)) selectedDivisions.add(v);
+  });
+
   const regionRow = regionsWrap
     ? regionsWrap.closest(".jcc-retreat-filterRow")
     : null;
@@ -126,6 +173,9 @@
 
   bar.hidden = false;
 
+  // 복원된 선택을 화면에 즉시 반영(상호작용 전에도 필터 적용).
+  applyFilter();
+
   if (resetBtn) {
     resetBtn.addEventListener("click", function () {
       selectedRegions.clear();
@@ -136,6 +186,7 @@
           chip.classList.remove("is-active");
           chip.setAttribute("aria-pressed", "false");
         });
+      persist();
       applyFilter();
     });
   }

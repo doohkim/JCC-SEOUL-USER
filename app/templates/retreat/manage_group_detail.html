@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ group.name }} · 조 관리</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614c" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615s" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -23,9 +23,9 @@
             </div>
             <a href="{{ back_url }}" class="jcc-retreat-backLink">{{ back_label }}</a>
           </div>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='manage_groups' %}
         </header>
         <main>
-          {% include 'includes/retreat_event_tabs.html' with retreat_tab='manage_groups' %}
           <div class="jcc-retreat-summaryBar" id="retreatSummaryBar">
             <span class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending">입실전 <strong data-summary-pending>{{ count_pending }}</strong>명</span>
             <span class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in">입실 <strong data-summary-in>{{ count_checked_in }}</strong>명</span>

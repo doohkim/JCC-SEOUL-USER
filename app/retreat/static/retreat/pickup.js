@@ -111,26 +111,76 @@
   const modalSubmitBtn = document.getElementById("pickupModalSubmit");
   let editingId = null;
 
-  const colCount = 11;
+  const colCount = 8;
 
   const groupSelect = document.getElementById("pickupGroup");
   const divisionSelect = document.getElementById("pickupDivision");
+  const nameEl = document.getElementById("pickupName");
+  // 회장단 캐스케이딩 플로우에서는 이름이 '조원 선택' select 로 동작한다.
+  const memberSelect =
+    nameEl && nameEl.tagName === "SELECT" && nameEl.hasAttribute("data-member-select")
+      ? nameEl
+      : null;
 
-  let allDivisions = [];
-  try {
-    const raw =
-      document.getElementById("retreatDivisionList")?.textContent || "[]";
-    allDivisions = JSON.parse(raw);
-  } catch (e) {
-    allDivisions = [];
+  function parseJsonEl(id, fallback) {
+    try {
+      return JSON.parse(document.getElementById(id)?.textContent || fallback);
+    } catch (e) {
+      return JSON.parse(fallback);
+    }
+  }
+
+  const allDivisions = parseJsonEl("retreatDivisionList", "[]");
+  const allGroups = parseJsonEl("retreatPickupGroupList", "[]");
+  const groupMembers = parseJsonEl("retreatPickupGroupMembers", "{}");
+
+  // 현재 모달의 구분(입회/출회). 추가 시 활성 탭, 수정 시 항목의 구분을 따른다.
+  let modalDirection = ctx.direction || "";
+
+  /**
+   * 구분에 따라 조원 노출 여부 결정.
+   * - 입회(arrival): 입실 전(pending)만 — 아직 입실 안 한 조원
+   * - 출회(departure): 입실(checked_in)만 — 입실했고 아직 퇴실 전인 조원
+   * - 그 외(all 등): 전체 노출
+   */
+  function memberAllowedForDirection(status) {
+    const st = status || "";
+    if (modalDirection === "arrival") return st === "pending" || st === "";
+    if (modalDirection === "departure") return st === "checked_in";
+    return true;
+  }
+
+  // 실제 조가 존재하는 지역·부서만 노출해 선택 실수를 줄인다.
+  const regionsWithGroups = new Set(allGroups.map((g) => Number(g.region_id)));
+  const divisionsWithGroups = new Set(allGroups.map((g) => Number(g.division_id)));
+
+  function refreshCustomSelects() {
+    if (window.JccCustomSelect) window.JccCustomSelect.refresh(document);
+  }
+
+  // 지역 select: 조가 있는 지역만 남긴다 (캐스케이딩 플로우 한정)
+  if (regionSelect && memberSelect) {
+    Array.from(regionSelect.options).forEach((opt) => {
+      if (opt.value && !regionsWithGroups.has(Number(opt.value))) opt.remove();
+    });
   }
 
   function fillDivisionSelect(regionId, selectedId) {
     if (!divisionSelect) return;
+    if (!regionId) {
+      divisionSelect.innerHTML = '<option value="">지역을 먼저 선택</option>';
+      divisionSelect.disabled = true;
+      refreshCustomSelects();
+      return;
+    }
+    divisionSelect.disabled = false;
     divisionSelect.innerHTML = '<option value="">선택</option>';
-    if (!regionId) return;
     allDivisions
-      .filter((d) => d.region_id === Number(regionId))
+      .filter(
+        (d) =>
+          d.region_id === Number(regionId) &&
+          (!memberSelect || divisionsWithGroups.has(Number(d.id)))
+      )
       .forEach((d) => {
         const opt = document.createElement("option");
         opt.value = String(d.id);
@@ -140,13 +190,112 @@
         }
         divisionSelect.appendChild(opt);
       });
-    if (window.JccCustomSelect) window.JccCustomSelect.refresh(document);
+    refreshCustomSelects();
+  }
+
+  function fillGroupSelect(regionId, divisionId, selectedId) {
+    if (!groupSelect) return;
+    if (!regionId || !divisionId) {
+      groupSelect.innerHTML = '<option value="">부서를 먼저 선택</option>';
+      groupSelect.disabled = true;
+      refreshCustomSelects();
+      return;
+    }
+    groupSelect.disabled = false;
+    groupSelect.innerHTML = '<option value="">선택</option>';
+    allGroups
+      .filter(
+        (g) =>
+          Number(g.region_id) === Number(regionId) &&
+          Number(g.division_id) === Number(divisionId)
+      )
+      .forEach((g) => {
+        const opt = document.createElement("option");
+        opt.value = String(g.id);
+        opt.textContent = g.name;
+        if (selectedId != null && String(g.id) === String(selectedId)) {
+          opt.selected = true;
+        }
+        groupSelect.appendChild(opt);
+      });
+    refreshCustomSelects();
+  }
+
+  function fillMemberSelect(groupId, selectedName) {
+    if (!memberSelect) return;
+    if (!groupId) {
+      memberSelect.innerHTML = '<option value="">조를 먼저 선택</option>';
+      memberSelect.disabled = true;
+      refreshCustomSelects();
+      return;
+    }
+    memberSelect.disabled = false;
+    memberSelect.innerHTML = '<option value="">선택</option>';
+    const members = groupMembers[String(groupId)] || [];
+    let matched = false;
+    members.forEach((m) => {
+      const isSelected = selectedName != null && m.name === selectedName;
+      // 구분(입회/출회)에 따른 입실 상태 필터. 단, 수정 중 선택된 조원은 항상 유지.
+      if (!isSelected && !memberAllowedForDirection(m.check_in_status)) return;
+      const opt = document.createElement("option");
+      opt.value = m.name;
+      opt.textContent = m.name;
+      opt.dataset.phone = m.phone || "";
+      if (isSelected) {
+        opt.selected = true;
+        matched = true;
+      }
+      memberSelect.appendChild(opt);
+    });
+    // 편집 시 기존 이름이 명단에 없으면 그대로 보존
+    if (selectedName && !matched) {
+      const opt = document.createElement("option");
+      opt.value = selectedName;
+      opt.textContent = `${selectedName} (명단 외)`;
+      opt.dataset.phone = "";
+      opt.selected = true;
+      memberSelect.appendChild(opt);
+    }
+    refreshCustomSelects();
+  }
+
+  function autofillContactFromMember() {
+    if (!memberSelect) return;
+    const opt = memberSelect.options[memberSelect.selectedIndex];
+    const phone = opt ? opt.dataset.phone || "" : "";
+    if (phone) {
+      const contactEl = document.getElementById("pickupContact");
+      if (contactEl) {
+        contactEl.value = phone;
+        markInvalid("pickupContact", false);
+      }
+    }
   }
 
   if (regionSelect) {
     regionSelect.addEventListener("change", () => {
       fillDivisionSelect(regionSelect.value, null);
+      fillGroupSelect(regionSelect.value, "", null);
+      fillMemberSelect("", null);
     });
+  }
+  if (divisionSelect) {
+    divisionSelect.addEventListener("change", () => {
+      fillGroupSelect(
+        regionSelect ? regionSelect.value : "",
+        divisionSelect.value,
+        null
+      );
+      fillMemberSelect("", null);
+    });
+  }
+  if (groupSelect) {
+    groupSelect.addEventListener("change", () => {
+      fillMemberSelect(groupSelect.value, null);
+    });
+  }
+  if (memberSelect) {
+    memberSelect.addEventListener("change", autofillContactFromMember);
   }
 
   function isValidPhone(raw) {
@@ -215,24 +364,60 @@
   function openModal(editItem) {
     if (!modalOverlay || !form) return;
     form.reset();
-    clearInvalid(["pickupName", "pickupTrainTime", "pickupBoardingPlace", "pickupContact"]);
+    clearInvalid([
+      "pickupRegion",
+      "pickupDivision",
+      "pickupGroup",
+      "pickupName",
+      "pickupTrainTime",
+      "pickupBoardingPlace",
+      "pickupContact",
+    ]);
     editingId = editItem ? editItem.id : null;
+    // 조원 명단 필터 기준이 되는 구분 결정 (수정 시 항목 구분, 추가 시 활성 탭)
+    modalDirection =
+      editItem && editItem.direction ? editItem.direction : ctx.direction || "";
     if (modalTitleEl)
       modalTitleEl.textContent = editItem ? "픽업 정보 수정" : "픽업 정보 추가";
     if (modalSubmitBtn)
       modalSubmitBtn.textContent = editItem ? "저장" : "등록";
 
-    setVal("pickupName", editItem ? editItem.name : "");
+    // 픽업 대상 조원의 입실 상태 표시 (수정 화면에서만)
+    const statusField = document.getElementById("pickupModalStatusField");
+    const statusBadge = document.getElementById("pickupModalStatusBadge");
+    if (statusField && statusBadge) {
+      const stVal = editItem ? editItem.checkInStatus || "" : "";
+      const stLabel = editItem ? editItem.checkInStatusDisplay || "" : "";
+      if (editItem && stLabel) {
+        statusBadge.textContent = stLabel;
+        statusBadge.className = `jcc-retreat-checkInBadge jcc-retreat-checkInBadge--${stVal || "pending"}`;
+        statusField.hidden = false;
+      } else {
+        statusField.hidden = true;
+      }
+    }
+
     // datetime-local 피커 표시 갱신 (래핑된 value setter 트리거)
     setVal("pickupTrainTime", editItem ? editItem.trainTime : "");
     setVal("pickupContact", editItem ? editItem.contact : "");
     setVal("pickupNote", editItem ? editItem.note : "");
-    if (groupSelect) groupSelect.value = editItem ? editItem.group || "" : "";
-    if (regionSelect) regionSelect.value = editItem ? editItem.region || "" : "";
-    fillDivisionSelect(
-      regionSelect ? regionSelect.value : null,
-      editItem ? editItem.division : null
-    );
+
+    const reg = editItem ? editItem.region || "" : "";
+    const div = editItem ? editItem.division || "" : "";
+    const grp = editItem ? editItem.group || "" : "";
+    if (memberSelect) {
+      // 캐스케이딩 플로우: 지역→부서→조→조원 순서로 복원
+      if (regionSelect) regionSelect.value = reg;
+      fillDivisionSelect(reg, div);
+      fillGroupSelect(reg, div, grp);
+      fillMemberSelect(grp, editItem ? editItem.name : "");
+    } else {
+      // 조장 플로우: 이름은 자유 입력
+      setVal("pickupName", editItem ? editItem.name : "");
+      if (regionSelect) regionSelect.value = reg;
+      fillDivisionSelect(regionSelect ? regionSelect.value : null, div);
+      if (groupSelect) groupSelect.value = grp;
+    }
     fillBoardingPlaceSelect(editItem ? editItem.boardingPlace : null);
 
     modalOverlay.hidden = false;
@@ -252,18 +437,35 @@
   }
 
   function rowHtml(item) {
+    const dir = item.direction || ctx.direction;
+    const dirLabel =
+      item.direction_display ||
+      (dir === "arrival" ? "입회" : dir === "departure" ? "출회" : "");
+    const parts = String(item.train_time_display || "").split(" ");
+    const date = parts[0] || "";
+    const time = parts[1] || item.train_time_display || "";
     return `
       <td class="num">${escapeHtml(item.number)}</td>
-      <td><button type="button" class="jcc-retreat-pickupNameBtn" data-pickup-edit>${escapeHtml(item.name)}</button></td>
-      <td>${escapeHtml(item.group_name || "-")}</td>
-      <td>${escapeHtml(item.region_name || "-")}</td>
-      <td>${escapeHtml(item.division_name || "-")}</td>
-      <td>${escapeHtml(item.train_time_display)}</td>
-      <td>${escapeHtml(item.boarding_place)}</td>
-      <td>${escapeHtml(item.contact)}</td>
-      <td>${escapeHtml(item.applicant_name || "-")}</td>
-      <td>${escapeHtml(item.note || "-")}</td>
-      <td><button type="button" class="secondary jcc-retreat-pickupDelete" data-pickup-delete>제거</button></td>
+      <td><span class="jcc-retreat-dirTag jcc-retreat-dirTag--${escapeHtml(dir)}">${escapeHtml(dirLabel)}</span></td>
+      <td class="jcc-retreat-pickupParticipantName">${escapeHtml(item.name)}</td>
+      <td class="jcc-retreat-pickupStatusCol">${
+        item.check_in_status_display
+          ? `<span class="jcc-retreat-checkInBadge jcc-retreat-checkInBadge--${escapeHtml(item.check_in_status || "pending")}">${escapeHtml(item.check_in_status_display)}</span>`
+          : "-"
+      }</td>
+      <td class="jcc-retreat-pickupContactCol">${escapeHtml(item.contact)}</td>
+      <td>
+        <span class="jcc-retreat-pickupWhen">
+          <span class="jcc-retreat-pickupWhen-time">${escapeHtml(time)}</span>
+          <span class="jcc-retreat-pickupWhen-date">${escapeHtml(date)}</span>
+        </span>
+      </td>
+      <td>${
+        item.boarding_place
+          ? `<span class="jcc-retreat-pickupPlaceTag">${escapeHtml(item.boarding_place)}</span>`
+          : "-"
+      }</td>
+      <td class="jcc-retreat-pickupManageCol"><button type="button" class="jcc-retreat-pickupDelete" data-pickup-delete aria-label="제거" title="제거"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /></svg></button></td>
     `;
   }
 
@@ -277,6 +479,9 @@
     tr.dataset.boardingPlace = item.boarding_place || "";
     tr.dataset.contact = item.contact || "";
     tr.dataset.note = item.note || "";
+    tr.dataset.checkInStatus = item.check_in_status || "";
+    tr.dataset.checkInStatusDisplay = item.check_in_status_display || "";
+    tr.dataset.direction = item.direction || ctx.direction || "";
     tr.innerHTML = rowHtml(item);
   }
 
@@ -327,7 +532,16 @@
           .trim() || "열차 시각";
 
       const missing = [];
-      if (!name) missing.push(["pickupName", "이름을 입력해 주세요."]);
+      if (memberSelect) {
+        if (!region) missing.push(["pickupRegion", "지역을 선택해 주세요."]);
+        if (!division) missing.push(["pickupDivision", "부서를 선택해 주세요."]);
+        if (!group) missing.push(["pickupGroup", "조를 선택해 주세요."]);
+      }
+      if (!name)
+        missing.push([
+          "pickupName",
+          memberSelect ? "조원을 선택해 주세요." : "이름을 입력해 주세요.",
+        ]);
       if (!trainTime)
         missing.push(["pickupTrainTime", `${trainTimeLabel}을(를) 선택해 주세요.`]);
       if (!boardingPlace)
@@ -339,7 +553,15 @@
         ]);
       if (!contact) missing.push(["pickupContact", "연락처를 입력해 주세요."]);
 
-      clearInvalid(["pickupName", "pickupTrainTime", "pickupBoardingPlace", "pickupContact"]);
+      clearInvalid([
+        "pickupRegion",
+        "pickupDivision",
+        "pickupGroup",
+        "pickupName",
+        "pickupTrainTime",
+        "pickupBoardingPlace",
+        "pickupContact",
+      ]);
 
       if (missing.length) {
         missing.forEach(([id, msg]) => markInvalid(id, true, msg));
@@ -401,33 +623,38 @@
     });
   }
 
+  function openEditFromRow(tr) {
+    if (!tr) return;
+    openModal({
+      id: tr.dataset.pickupId,
+      name: tr.dataset.name || "",
+      trainTime: tr.dataset.trainTime || "",
+      boardingPlace: tr.dataset.boardingPlace || "",
+      contact: tr.dataset.contact || "",
+      note: tr.dataset.note || "",
+      group: tr.dataset.group || "",
+      region: tr.dataset.region || "",
+      division: tr.dataset.division || "",
+      checkInStatus: tr.dataset.checkInStatus || "",
+      checkInStatusDisplay: tr.dataset.checkInStatusDisplay || "",
+      direction: tr.dataset.direction || "",
+    });
+  }
+
   if (tbody) {
     tbody.addEventListener("click", async (e) => {
-      const editBtn = e.target.closest("[data-pickup-edit]");
-      if (editBtn) {
-        const tr = editBtn.closest("tr[data-pickup-id]");
-        if (tr) {
-          openModal({
-            id: tr.dataset.pickupId,
-            name: tr.dataset.name || "",
-            trainTime: tr.dataset.trainTime || "",
-            boardingPlace: tr.dataset.boardingPlace || "",
-            contact: tr.dataset.contact || "",
-            note: tr.dataset.note || "",
-            group: tr.dataset.group || "",
-            region: tr.dataset.region || "",
-            division: tr.dataset.division || "",
-          });
-        }
+      const btn = e.target.closest("[data-pickup-delete]");
+      if (!btn) {
+        // 제거 버튼이 아닌 행 클릭 → 수정 모달 바로 열기
+        const row = e.target.closest("tr[data-pickup-id]");
+        if (row) openEditFromRow(row);
         return;
       }
-
-      const btn = e.target.closest("[data-pickup-delete]");
-      if (!btn) return;
+      e.stopPropagation();
       const tr = btn.closest("tr[data-pickup-id]");
       if (!tr) return;
       const pickupId = tr.dataset.pickupId;
-      const name = tr.children[1]?.textContent?.trim() || "";
+      const name = tr.dataset.name || "";
       const ok = await openConfirm(
         `${name} 픽업 정보를 제거할까요?`,
         "픽업 정보 제거",

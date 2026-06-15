@@ -10,10 +10,12 @@ from django.db.models.functions import TruncHour
 from django.utils import timezone
 
 from retreat.models import (
+    LodgingRoom,
     RetreatAttendance,
     RetreatAttendee,
     RetreatEvent,
     RetreatGroup,
+    RetreatPickup,
     RetreatSession,
     RetreatSessionAttendee,
 )
@@ -164,7 +166,11 @@ def _format_group_range(names: list[str]) -> str:
         return "-"
     if len(names) == 1:
         return names[0]
-    return f"{names[0]}~{names[-1]}"
+    first, last = names[0], names[-1]
+    # "5조~22조" 대신 "5~22조": 시작·끝이 같은 접미사("조")면 시작쪽 접미사는 생략
+    if first.endswith("조") and last.endswith("조"):
+        first = first[:-1]
+    return f"{first}~{last}"
 
 
 def _effective_check_in_status(check_in_at, check_out_at, now) -> str:
@@ -245,6 +251,19 @@ def build_realtime_dashboard(
     grand_in = sum(r["checked_in"] for r in by_group)
     grand_out = sum(r["checked_out"] for r in by_group)
     grand_attended = grand_in + grand_out
+    grand_all = grand_pending + grand_in + grand_out
+
+    region_ids = {g.region_id for g in groups}
+    summary = _build_dashboard_summary(
+        event,
+        group_ids=group_ids,
+        region_ids=region_ids,
+        staff_view=staff_view,
+        now=now,
+        checked_in=grand_in,
+        attended=grand_attended,
+        total=grand_all,
+    )
 
     return {
         "generated_at": timezone.localtime(now).isoformat(),
@@ -256,8 +275,61 @@ def build_realtime_dashboard(
             "checked_in": grand_in,
             "checked_out": grand_out,
             "attended": grand_attended,
-            "total": grand_pending + grand_in + grand_out,
+            "total": grand_all,
         },
+        "summary": summary,
+    }
+
+
+def _build_dashboard_summary(
+    event: RetreatEvent,
+    *,
+    group_ids: list[int],
+    region_ids: set[int],
+    staff_view: bool,
+    now,
+    checked_in: int,
+    attended: int,
+    total: int,
+) -> dict[str, Any]:
+    """상단 요약 카드용 집계.
+
+    - 실시간 참석: 입실 인원 / 총 참석인원, 전체 인원 대비 입실 비율(%)
+    - 숙소 배정: 호실이 배정된 조원 수 + 여유 있는(잔여) 객실 수
+    - 차량 지원: 오늘 열차 시각이 잡힌 픽업 인원 수
+
+    staff_view 가 아니면 사용자가 볼 수 있는 조(group_ids)·지역(region_ids)으로
+    범위를 제한해 타 부서 데이터가 노출되지 않게 한다.
+    """
+    attend_percent = round(checked_in / total * 100) if total else 0
+
+    lodging_assigned = RetreatAttendee.objects.filter(
+        group_id__in=group_ids, lodging_room__isnull=False
+    ).count()
+
+    rooms = LodgingRoom.objects.filter(lodging__event=event)
+    if not staff_view:
+        rooms = rooms.filter(region_id__in=region_ids)
+    rooms = rooms.annotate(occ=Count("attendees"))
+    # capacity 0 = 정원 무제한 → 항상 여유 있음으로 간주
+    rooms_remaining = sum(
+        1 for r in rooms if r.capacity == 0 or r.occ < r.capacity
+    )
+
+    today = timezone.localdate(now)
+    pickups = RetreatPickup.objects.filter(event=event, train_time__date=today)
+    if not staff_view:
+        pickups = pickups.filter(region_id__in=region_ids)
+    car_today = pickups.count()
+
+    return {
+        "checked_in": checked_in,
+        "attended": attended,
+        "total": total,
+        "attend_percent": attend_percent,
+        "lodging_assigned": lodging_assigned,
+        "rooms_remaining": rooms_remaining,
+        "car_today": car_today,
     }
 
 

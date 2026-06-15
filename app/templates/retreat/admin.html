@@ -13,7 +13,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614a" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615ab" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -21,10 +21,13 @@
       <div class="jcc-layout-content">
         <header class="app-header">
           {% include 'includes/retreat_admin_header.html' %}
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='admin' hide_event_picker=True %}
         </header>
         <main>
-          {% include 'includes/retreat_event_tabs.html' with retreat_tab='admin' %}
-          {% include 'includes/retreat_admin_subtabs.html' with admin_subtab=active_tab %}
+          <div class="jcc-retreat-subTabsRow">
+            {% include 'includes/retreat_event_picker.html' %}
+            {% include 'includes/retreat_admin_subtabs.html' with admin_subtab=active_tab %}
+          </div>
 
           {% if active_tab == 'sessions' %}
             {% if can_manage_sessions %}

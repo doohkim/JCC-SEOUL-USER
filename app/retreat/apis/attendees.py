@@ -111,7 +111,7 @@ class RetreatGroupAttendeesView(APIView):
                 lodging_room=target_room,
             )
             assert_room_can_accept(target_room, tmp)
-        attendee = ser.save()
+        attendee = ser.save(created_by=request.user)
         stamp_fields = ["updated_at"]
         if attendee.check_in_status == RetreatAttendee.CheckInStatus.CHECKED_IN:
             attendee.checked_in_at = timezone.now()

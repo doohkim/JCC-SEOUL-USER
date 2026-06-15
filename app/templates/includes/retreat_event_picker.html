@@ -1,0 +1,125 @@
+{% comment %}행사 선택 드롭다운 — event, available_events, retreat_tab 필요. 페이지당 1회만 include.{% endcomment %}
+{% if available_events %}
+  <div class="jcc-retreat-eventPicker" id="retreatEventPicker">
+    <button
+      type="button"
+      class="jcc-retreat-eventPickerBtn"
+      id="retreatEventPickerBtn"
+      aria-haspopup="listbox"
+      aria-expanded="false"
+      aria-label="행사 선택"
+    >
+      <span class="jcc-retreat-eventPickerLabel">{{ event.name }}</span>
+      <svg class="jcc-retreat-eventPickerCaret" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <ul class="jcc-retreat-eventPickerMenu" id="retreatEventPickerMenu" role="listbox" aria-label="행사 목록" hidden>
+      {% for ev in available_events %}
+        {% if retreat_tab == 'manage_groups' %}
+          {% url 'retreat_group_manage_list' ev.id as ev_url %}
+        {% elif retreat_tab == 'lodging' %}
+          {% url 'retreat_lodging' ev.id as ev_url %}
+        {% elif retreat_tab == 'lodging_assign' %}
+          {% url 'retreat_lodging_assign' ev.id as ev_url %}
+        {% elif retreat_tab == 'admin' %}
+          {% url 'retreat_admin' ev.id as ev_url %}
+        {% elif retreat_tab == 'council' %}
+          {% url 'retreat_council' ev.id as ev_url %}
+        {% elif retreat_tab == 'timetable' %}
+          {% url 'retreat_timetable' ev.id as ev_url %}
+        {% elif retreat_tab == 'pickup' %}
+          {% url 'retreat_pickup' ev.id as ev_url %}
+        {% elif retreat_tab == 'results' %}
+          {% url 'retreat_results' ev.id as ev_url %}
+        {% elif retreat_tab == 'rosters' %}
+          {% url 'retreat_rosters' ev.id as ev_url %}
+        {% else %}
+          {% url 'retreat_dashboard' ev.id as ev_url %}
+        {% endif %}
+        <li
+          class="jcc-retreat-eventPickerItem{% if ev.id == event.id %} is-selected{% endif %}"
+          role="option"
+          aria-selected="{% if ev.id == event.id %}true{% else %}false{% endif %}"
+          data-url="{{ ev_url }}"
+        >
+          <span>{{ ev.name }}</span>
+          <svg class="jcc-retreat-eventPickerCheck" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+            <path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <script>
+    (function () {
+      var picker = document.getElementById("retreatEventPicker");
+      if (!picker) return;
+      var btn = document.getElementById("retreatEventPickerBtn");
+      var menu = document.getElementById("retreatEventPickerMenu");
+      var items = Array.prototype.slice.call(
+        menu.querySelectorAll(".jcc-retreat-eventPickerItem")
+      );
+      var focusIdx = items.findIndex(function (el) {
+        return el.classList.contains("is-selected");
+      });
+
+      function setFocus(i) {
+        items.forEach(function (el) {
+          el.classList.remove("is-focus");
+        });
+        if (i >= 0 && items[i]) {
+          items[i].classList.add("is-focus");
+          items[i].scrollIntoView({ block: "nearest" });
+          focusIdx = i;
+        }
+      }
+      function open() {
+        picker.classList.add("is-open");
+        menu.hidden = false;
+        btn.setAttribute("aria-expanded", "true");
+        setFocus(focusIdx < 0 ? 0 : focusIdx);
+        document.addEventListener("click", onDocClick, true);
+        document.addEventListener("keydown", onKey);
+      }
+      function close() {
+        picker.classList.remove("is-open");
+        menu.hidden = true;
+        btn.setAttribute("aria-expanded", "false");
+        document.removeEventListener("click", onDocClick, true);
+        document.removeEventListener("keydown", onKey);
+      }
+      function go(el) {
+        var url = el && el.getAttribute("data-url");
+        if (url) window.location.href = url;
+      }
+      function onDocClick(e) {
+        if (!picker.contains(e.target)) close();
+      }
+      function onKey(e) {
+        if (e.key === "Escape") {
+          close();
+          btn.focus();
+        } else if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setFocus(Math.min(items.length - 1, focusIdx + 1));
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setFocus(Math.max(0, focusIdx - 1));
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          go(items[focusIdx]);
+        }
+      }
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        picker.classList.contains("is-open") ? close() : open();
+      });
+      items.forEach(function (el) {
+        el.addEventListener("click", function () {
+          go(el);
+        });
+      });
+    })();
+  </script>
+{% endif %}

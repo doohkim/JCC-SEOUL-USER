@@ -18,7 +18,7 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 .jcc-retreat-pageTabs {
   display: flex;
   flex-wrap: nowrap;
-  gap: 0.15rem;
+  gap: 0.6rem;
   align-items: stretch;
   margin-bottom: 0.9rem;
   border-bottom: 1px solid var(--border);
@@ -77,6 +77,58 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 .jcc-retreat-pageTabsRow .jcc-retreat-pageTabs {
   margin-bottom: 0;
   flex: 1 1 auto;
+}
+
+/* PC: 메인 탭(대시보드·조관리·픽업·숙소·관리)을 상단 헤더(app-header) 안에 배치.
+   헤더 제목 아래 한 줄을 차지하며, 탭 밑줄이 헤더 하단 경계선 위에 붙는다. */
+@media (min-width: 901px) {
+  body.has-retreat-bottom-tabs header.app-header {
+    align-items: flex-start;
+    /* main(max-width:1400; margin:auto)과 동일한 가운데 정렬 박스에 헤더 내용(h1·탭)을
+       맞춘다. 배경/하단 보더는 전체 폭을 유지하고, 내용만 main 콘텐츠 좌측선
+       (= 행사선택 드롭다운 위치)에 정렬되도록 좌우 패딩을 반응형으로 계산. */
+    padding-left: max(1.5rem, calc((100% - 1400px) / 2 + 1.5rem));
+    padding-right: max(1.5rem, calc((100% - 1400px) / 2 + 1.5rem));
+  }
+  header.app-header > .jcc-retreat-pageTabsRow {
+    flex-basis: 100%;
+    width: 100%;
+    margin: 0.45rem 0 -1rem;
+  }
+  header.app-header > .jcc-retreat-pageTabsRow .jcc-retreat-pageTabs {
+    margin-bottom: 0;
+    border-bottom: none;
+    /* 첫 탭의 좌측 패딩만큼 당겨 헤더 제목(h1)과 탭 글씨 시작점을 정렬 */
+    margin-left: -0.95rem;
+  }
+}
+
+/* 대시보드 컨트롤 줄: [행사선택] [통계/조참석현황 토글] ……… [현재시각·새로고침]
+   탭은 윗줄 단독, 이 줄에서 행사선택+토글은 왼쪽, 새로고침 카드는 오른쪽으로 정렬 */
+.jcc-retreat-dashControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.85rem;
+  margin-bottom: 1.1rem;
+}
+.jcc-retreat-dashControls #dashboardInnerTabs {
+  margin-bottom: 0;
+}
+.jcc-retreat-dashControls .jcc-retreat-dashControls-refresh {
+  margin-left: auto;
+  align-items: center;
+  padding: 0.6rem 1rem;
+}
+@media (max-width: 900px) {
+  .jcc-retreat-dashControls {
+    align-items: stretch;
+  }
+  .jcc-retreat-dashControls .jcc-retreat-dashControls-refresh {
+    margin-left: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 
 /* 모바일: 상단 행사 내비는 하단 탭바로 대체하므로 숨김 (행사 선택은 유지) */
@@ -141,7 +193,7 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   justify-content: space-between;
   gap: 0.6rem;
   width: 100%;
-  padding: 0.62rem 0.9rem;
+  padding: 0.8rem 0.95rem;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -228,6 +280,25 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 }
 .jcc-retreat-eventPickerItem.is-selected .jcc-retreat-eventPickerCheck {
   opacity: 1;
+}
+/* PC: 행사명이 길어도 버튼·드롭다운 모두 한 줄로 (행 바꿈 방지, 영역 확장) */
+@media (min-width: 901px) {
+  .jcc-retreat-eventPicker {
+    min-width: 17rem;
+  }
+  .jcc-retreat-eventPickerLabel {
+    overflow: visible;
+    text-overflow: clip;
+  }
+  .jcc-retreat-eventPickerMenu {
+    right: auto;
+    width: max-content;
+    min-width: 100%;
+    max-width: min(30rem, 90vw);
+  }
+  .jcc-retreat-eventPickerItem {
+    white-space: nowrap;
+  }
 }
 .jcc-retreat-eventSwitcher:focus-visible {
   outline: 2px solid var(--accent, #4a9eff);
@@ -515,12 +586,20 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 
 .jcc-retreat-dashGrid {
   display: grid;
-  grid-template-columns: 1fr;
+  /* minmax(0, 1fr): 트랙 최소너비를 0으로 허용해, 넓은 표가 카드를 늘려
+     페이지 가로 오버플로우를 만드는 것을 막는다(내부 tableWrap이 스크롤됨). */
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
+  /* 카드가 컨텐츠 높이에 맞도록(행 적은 카드의 하단 여백 늘어남 방지) */
+  align-items: start;
+}
+/* 그리드 자식(카드)이 내용보다 작게 줄어들 수 있게 해 내부 표가 스크롤되도록 */
+.jcc-retreat-dashGrid > .card {
+  min-width: 0;
 }
 @media (min-width: 960px) {
   .jcc-retreat-dashGrid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
   .jcc-retreat-dashFull {
     grid-column: 1 / -1;
@@ -547,14 +626,336 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-#divisionTable tfoot th {
-  font-weight: 700;
-  border-top: 2px solid var(--border);
+/* 지역·부서별 인원체크 상단 합계 요약 알약 (실시간 참석 인원의 '현재 참석'과 같은 위치) */
+.jcc-retreat-statPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.85rem;
+}
+.jcc-retreat-statPill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.22rem;
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+/* 지역·부서별 합계 알약(입실전/입실/퇴실/총)은 항상 한 줄에 노출 */
+#divisionTotalPills {
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+}
+#divisionTotalPills .jcc-retreat-statPill {
+  flex: 0 1 auto;
+  min-width: 0;
+  justify-content: center;
+}
+.jcc-retreat-statPill strong {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.jcc-retreat-statPill--pending {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.28);
+}
+.jcc-retreat-statPill--in {
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+  border-color: rgba(34, 197, 94, 0.28);
+}
+.jcc-retreat-statPill--out {
+  background: rgba(148, 163, 184, 0.18);
+  color: #475569;
+  border-color: rgba(148, 163, 184, 0.32);
+}
+.jcc-retreat-statPill--total {
+  background: rgba(99, 102, 241, 0.14);
+  color: #4338ca;
+  border-color: rgba(99, 102, 241, 0.3);
 }
 
+/* ── 대시보드 상단 요약 카드(실시간 참석·숙소 배정·차량 지원) ── */
+.jcc-retreat-summaryCards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin: 0 0 1.25rem;
+}
+/* 모바일: 카드 1열 전체폭 (auto-fit 부분 행으로 생기던 오른쪽 여백 제거) */
+@media (max-width: 900px) {
+  .jcc-retreat-summaryCards {
+    grid-template-columns: 1fr;
+  }
+}
+.jcc-retreat-summaryCard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1.05rem 1.15rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  /* 카드 내용 정중앙 배치(같은 행 카드는 그리드 stretch로 높이가 같아져 세로 중앙도 맞음) */
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.jcc-retreat-summaryCard-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+.jcc-retreat-summaryCard-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+.jcc-retreat-summaryCard-icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.jcc-retreat-summaryCard-icon--in {
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+}
+.jcc-retreat-summaryCard-icon--bed {
+  background: rgba(99, 102, 241, 0.14);
+  color: #4338ca;
+}
+.jcc-retreat-summaryCard-icon--car {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
+}
+.jcc-retreat-summaryCard-label {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.jcc-retreat-summaryCard-body {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.jcc-retreat-summaryCard-num {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+}
+.jcc-retreat-summaryCard-num strong {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.jcc-retreat-summaryCard-unit {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.jcc-retreat-summaryCard-tag {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.jcc-retreat-summaryCard-tag--in {
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+}
+.jcc-retreat-summaryCard-sub {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* ── 실시간 참석 인원: 한 줄 리스트(조 · 지역 · 부서 ··· 참석수) ── */
+.jcc-retreat-attList {
+  display: flex;
+  flex-direction: column;
+}
+.jcc-retreat-attRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.15rem;
+  border-bottom: 1px solid var(--border);
+}
+.jcc-retreat-attRow:last-child {
+  border-bottom: none;
+}
+.jcc-retreat-attInfo {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-size: 0.92rem;
+  color: var(--text);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.jcc-retreat-attName {
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.jcc-retreat-attDiv {
+  color: var(--muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 모바일에서도 한 줄 유지(이미지와 동일) — 폰트만 살짝 축소 */
+@media (max-width: 640px) {
+  .jcc-retreat-attInfo {
+    font-size: 0.86rem;
+    gap: 0.25rem;
+  }
+  .jcc-retreat-attRow {
+    padding: 0.62rem 0.1rem;
+  }
+  .jcc-retreat-attCount {
+    font-size: 1rem;
+  }
+}
+.jcc-retreat-attDot {
+  color: var(--muted);
+}
+.jcc-retreat-attCount {
+  flex-shrink: 0;
+  font-weight: 800;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.jcc-retreat-attCount--zero {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* 지역·부서별 표: 지역+부서를 한 컬럼으로(부서는 작은 보조 텍스트) */
+/* 실시간 참석 표도 동일한 행 높이가 되도록 같은 line-height 적용 */
+#divisionTable td.jcc-retreat-divRegionCell,
+.jcc-retreat-attTable td.jcc-retreat-divRegionCell {
+  white-space: normal;
+  line-height: 1.3;
+}
+.jcc-retreat-divSub {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
 .jcc-retreat-sectionTitle {
   margin: 0 0 0.75rem 0;
   font-size: 1rem;
+}
+
+/* ── 대시보드 통계 표(실시간 참석·지역부서별·시간대별) 토스풍 통일 레이아웃 ── */
+.jcc-retreat-dashGrid table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.jcc-retreat-dashGrid thead th {
+  padding: 0.6rem 0.7rem;
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--muted);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.jcc-retreat-dashGrid tbody td {
+  padding: 0.6rem 0.7rem;
+  text-align: left;
+  color: var(--text);
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border);
+}
+.jcc-retreat-dashGrid tbody tr:last-child td {
+  border-bottom: none;
+}
+.jcc-retreat-dashGrid tbody tr:hover td {
+  background: var(--accent-tint, rgba(99, 102, 241, 0.08));
+}
+/* 숫자 컬럼 등폭 숫자: 시간대별·미니표는 우측 정렬 유지 */
+#hourlyTable th:nth-child(n + 2),
+#hourlyTable td:nth-child(n + 2),
+.jcc-retreat-miniTable th:last-child,
+.jcc-retreat-miniTable td:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+/* 지역·부서별 표의 입실전/입실/퇴실/참석 숫자는 좌측 정렬(헤더 아래로 정렬) */
+#divisionTable th:nth-child(n + 3),
+#divisionTable td:nth-child(n + 3) {
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+/* 실시간 참석 인원 표: 열 너비 고정(모바일 2표 쌓임 시 지역·부서 정렬 일치) */
+.jcc-retreat-attTable {
+  table-layout: fixed;
+}
+.jcc-retreat-attTable th:first-child,
+.jcc-retreat-attTable td:first-child {
+  width: 4.5rem;
+}
+.jcc-retreat-attTable th:last-child,
+.jcc-retreat-attTable td:last-child {
+  width: 4rem;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+/* 지역·부서 열(헤더+값)은 가운데 정렬 (PC·모바일 공통) */
+.jcc-retreat-attTable th:nth-child(2),
+.jcc-retreat-attTable td:nth-child(2) {
+  text-align: center;
+}
+/* 실시간 참석 인원: PC 2열, 모바일 단일 연속 표 */
+.jcc-retreat-attGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 901px) {
+  .jcc-retreat-attGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 1.75rem;
+    align-items: start;
+  }
+}
+@media (max-width: 900px) {
+  /* 두 번째 표 헤더 숨기고 첫 표 마지막 행 구분선을 살려 하나의 표처럼 이어 보이게 */
+  .jcc-retreat-attGrid > table:nth-child(2) thead {
+    display: none;
+  }
+  .jcc-retreat-attGrid > table:first-child tbody tr:last-child td {
+    border-bottom: 1px solid var(--border);
+  }
+}
+/* 합계 행 */
+#divisionTable tfoot th {
+  padding: 0.6rem 0.7rem;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
 }
 
 .jcc-retreat-tripleGrid {
@@ -562,38 +963,52 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   grid-template-columns: repeat(1, 1fr);
   gap: 0.5rem;
 }
+/* PC: 두 개의 테이블로 나눠서 표시 (각자 헤더) */
 @media (min-width: 640px) {
   .jcc-retreat-tripleGrid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+/* 모바일: 하나의 표처럼 연속 나열 — 헤더는 첫 테이블에서만 한 번 노출 */
+@media (max-width: 639.98px) {
+  .jcc-retreat-tripleGrid {
+    gap: 0;
+  }
+  .jcc-retreat-tripleGrid .jcc-retreat-tripleCol:not(:first-child) thead {
+    display: none;
+  }
+  .jcc-retreat-tripleGrid
+    .jcc-retreat-tripleCol:not(:first-child)
+    tbody
+    tr:first-child
+    td {
+    border-top: 1px solid var(--border);
   }
 }
 
 .jcc-retreat-tripleCol .jcc-retreat-miniTable {
-  width: 100%;
   table-layout: fixed;
-  border-collapse: collapse;
-  font-size: 0.85rem;
 }
 .jcc-retreat-miniTable th,
 .jcc-retreat-miniTable td {
-  border: 1px solid var(--border);
-  padding: 0.35rem 0.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* 모든 미니 테이블의 컬럼 폭 통일: 참석 컬럼 고정, 조 컬럼은 나머지 */
+/* 참석 컬럼 고정 폭, 조 컬럼은 나머지 */
 .jcc-retreat-miniTable th:last-child,
 .jcc-retreat-miniTable td:last-child {
-  width: 4.5rem;
-  text-align: right;
+  width: 3.5rem;
 }
-/* 헤더 '참석'은 우측 정렬, 숫자는 첫 글자('참') 아래에 맞춰 한 글자만큼 안쪽으로 */
-.jcc-retreat-miniTable td:last-child {
-  padding-right: calc(0.5rem + 1em);
+/* 지역 셀: 지역 + 부서를 함께 표기 (부서는 작은 보조 텍스트) */
+.jcc-retreat-miniTable td.jcc-miniRegionCell {
+  white-space: normal;
+  line-height: 1.3;
 }
-.jcc-retreat-miniTable th {
-  background: var(--accent-tint, rgba(99, 102, 241, 0.12));
+.jcc-miniDivision {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
 }
 
 .jcc-retreat-grandTotal {
@@ -658,6 +1073,52 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 .jcc-retreat-checkInBadge--pending {
   color: rgb(253, 224, 71);
   background: rgba(234, 179, 8, 0.12);
+}
+
+/* 픽업 수정 모달: 대상 조원의 입실 상태 표시 줄 */
+/* 모달 입실 상태: 폼 그리드 안의 읽기 전용 필드 (라벨 + 배지) */
+.jcc-retreat-pickupStatusField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.jcc-retreat-pickupStatusField[hidden] {
+  display: none;
+}
+.jcc-retreat-pickupStatusFieldLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.jcc-retreat-pickupStatusField .jcc-retreat-checkInBadge {
+  align-self: flex-start;
+  margin-left: 0;
+  font-size: 0.8rem;
+  padding: 0.18rem 0.6rem;
+}
+
+/* 표 상태 컬럼: 입실 상태 배지 */
+.jcc-retreat-pickupStatusCol .jcc-retreat-checkInBadge {
+  margin-left: 0;
+  font-size: 0.72rem;
+  padding: 0.1rem 0.5rem;
+}
+
+/* 밝은 배경에서도 또렷하게 (다른 태그와 같은 팔레트) */
+.jcc-retreat-pickupStatusField .jcc-retreat-checkInBadge--pending,
+#pickupTable .jcc-retreat-checkInBadge--pending {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.15);
+}
+.jcc-retreat-pickupStatusField .jcc-retreat-checkInBadge--checked_in,
+#pickupTable .jcc-retreat-checkInBadge--checked_in {
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.15);
+}
+.jcc-retreat-pickupStatusField .jcc-retreat-checkInBadge--checked_out,
+#pickupTable .jcc-retreat-checkInBadge--checked_out {
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.18);
 }
 
 .jcc-retreat-userPicker {
@@ -742,6 +1203,494 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   align-items: center;
   gap: 0.5rem;
   margin: 0 0 0.5rem 0;
+}
+
+/* 행사 선택을 탭 줄에서 빼서 컨트롤 줄 왼쪽에 두고, 액션 버튼은 오른쪽 유지 */
+.jcc-retreat-listTop--withPicker {
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.jcc-retreat-listTop--withPicker > .jcc-retreat-eventPicker {
+  margin-right: auto;
+}
+
+/* 조 추가 버튼: PC는 아이콘+"조 추가" 파란 버튼, 모바일은 우측 하단 원형 FAB */
+.jcc-retreat-addGroupBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.1rem;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent, #4a9eff);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+.jcc-retreat-addGroupBtn:hover {
+  background: color-mix(in srgb, var(--accent) 88%, black);
+}
+.jcc-retreat-addGroupBtn:active {
+  transform: translateY(1px);
+}
+.jcc-retreat-addGroupBtn-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+}
+
+/* 픽업 + 추가: 조 추가 버튼과 동일한 파란 톤 (FAB 전환 없이 인라인 유지) */
+.jcc-retreat-pickupAddBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.1rem;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent, #4a9eff);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+.jcc-retreat-pickupAddBtn:hover {
+  background: color-mix(in srgb, var(--accent) 88%, black);
+}
+.jcc-retreat-pickupAddBtn:active {
+  transform: translateY(1px);
+}
+/* 아이콘은 PC에서 숨기고 모바일에서만 노출 */
+.jcc-retreat-pickupAddBtn-icon {
+  display: none;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+}
+
+/* 픽업 표: 번호·구분·참가자명·소속정보·도착출발·탑승장소·연락처·관리 8컬럼 고정 레이아웃.
+   (행 클릭 시 상세 팝업, 모바일은 소속정보·도착출발 2컬럼만 노출) */
+#pickupTable {
+  table-layout: fixed;
+  min-width: 60rem;
+}
+/* No. / 구분 / 이름 / 상태 / 연락처 / 열차 시각 / 탑승장소 / ACTION
+   내용 길이에 맞춰 너비를 잡아 컬럼 간 간격을 고르게 유지한다 */
+#pickupTable th:nth-child(1),
+#pickupTable td:nth-child(1) { width: 3.5rem; }
+#pickupTable th:nth-child(2),
+#pickupTable td:nth-child(2) { width: 6rem; }
+#pickupTable th:nth-child(3),
+#pickupTable td:nth-child(3) { width: 7rem; }
+#pickupTable th:nth-child(4),
+#pickupTable td:nth-child(4) { width: 6.5rem; }
+#pickupTable th:nth-child(5),
+#pickupTable td:nth-child(5) { width: 10.5rem; }
+#pickupTable th:nth-child(6),
+#pickupTable td:nth-child(6) { width: 9.5rem; }
+#pickupTable th:nth-child(7),
+#pickupTable td:nth-child(7) { width: 10rem; }
+#pickupTable th:nth-child(8),
+#pickupTable td:nth-child(8) { width: 5.5rem; }
+
+/* 행을 이미지처럼 여유있게: 셀 상하 여백 확대 */
+#pickupTable th,
+#pickupTable td {
+  padding-top: 1.2rem;
+  padding-bottom: 1.2rem;
+  vertical-align: middle;
+}
+
+/* 연락처: 번호가 줄바꿈되지 않도록 한 줄 유지 */
+.jcc-retreat-pickupContactCol {
+  white-space: nowrap;
+}
+
+/* 행 클릭 → 수정 모달: 클릭 가능한 행임을 표시 */
+#pickupTable tbody tr[data-pickup-id] {
+  cursor: pointer;
+}
+#pickupTable tbody tr[data-pickup-id]:hover {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+/* 참가자명: 아바타 원 + 이름 */
+.jcc-retreat-pickupParticipant {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+.jcc-retreat-pickupAvatar {
+  width: 1.9rem;
+  height: 1.9rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.jcc-retreat-pickupParticipantName {
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 소속 정보: 부서·조(굵게) / 지역(옅게) 2줄 */
+.jcc-retreat-pickupAffil {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  line-height: 1.3;
+  min-width: 0;
+}
+.jcc-retreat-pickupAffil-main {
+  font-weight: 700;
+  color: var(--text);
+}
+.jcc-retreat-pickupAffil-sub {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* 도착/출발 예정: 시각(굵게) / 날짜(옅게) 2줄 */
+.jcc-retreat-pickupWhen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.jcc-retreat-pickupWhen-time {
+  font-weight: 700;
+  color: var(--text);
+}
+.jcc-retreat-pickupWhen-date {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* 제거 버튼: 배경 없이 옅은 빨강 텍스트, 호버 시 진해짐 */
+.jcc-retreat-pickupManageCol {
+  text-align: right;
+}
+.jcc-retreat-pickupDelete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.jcc-retreat-pickupDelete svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+.jcc-retreat-pickupDelete:hover {
+  color: var(--danger, #e5484d);
+  background: color-mix(in srgb, var(--danger, #e5484d) 12%, transparent);
+}
+
+/* 상세 팝업 (행 클릭) */
+.jcc-retreat-detailModal {
+  max-width: 26rem;
+}
+.jcc-retreat-detailList {
+  margin: 0.5rem 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.7rem 1.2rem;
+  align-items: baseline;
+}
+.jcc-retreat-detailList dt {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.jcc-retreat-detailList dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+  text-align: right;
+  word-break: break-word;
+}
+.jcc-retreat-detailList dd .jcc-retreat-detailSub {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* 픽업 표 태그: 탑승장소 / 구분(입회·출회) — 상태 알약과 동일 톤 */
+.jcc-retreat-pickupPlaceTag,
+.jcc-retreat-dirTag {
+  display: inline-block;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.jcc-retreat-pickupPlaceTag {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+  border-color: rgba(99, 102, 241, 0.28);
+}
+.jcc-retreat-dirTag--arrival {
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+  border-color: rgba(34, 197, 94, 0.28);
+}
+.jcc-retreat-dirTag--departure {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+/* 모바일: 픽업 표는 구분·이름·열차 시각·탑승장소·ACTION 컬럼만 노출
+   (No.·상태·연락처는 숨김, 상세는 행 클릭 시 수정 모달에서 확인) */
+@media (max-width: 900px) {
+  /* 고정 레이아웃 + 퍼센트 너비로 탭(전체/입회/출회) 전환 시 컬럼 위치를 일치시킨다 */
+  #pickupTable {
+    table-layout: fixed;
+    min-width: 0;
+    width: 100%;
+  }
+  #pickupTable th:nth-child(1),
+  #pickupTable td:nth-child(1),
+  #pickupTable th:nth-child(4),
+  #pickupTable td:nth-child(4),
+  #pickupTable th:nth-child(5),
+  #pickupTable td:nth-child(5) {
+    display: none;
+  }
+  /* 구분 / 이름 / 열차 시각 / 탑승장소 / ACTION */
+  #pickupTable th:nth-child(2),
+  #pickupTable td:nth-child(2) { width: 16%; }
+  #pickupTable th:nth-child(3),
+  #pickupTable td:nth-child(3) { width: 20%; }
+  #pickupTable th:nth-child(6),
+  #pickupTable td:nth-child(6) { width: 27%; }
+  #pickupTable th:nth-child(7),
+  #pickupTable td:nth-child(7) { width: 25%; }
+  #pickupTable th:nth-child(8),
+  #pickupTable td:nth-child(8) { width: 12%; }
+}
+
+@media (max-width: 900px) {
+  /* 모바일: + 추가를 조관리 추가처럼 우측 하단 원형 FAB(자동차+플러스 아이콘)로 전환 */
+  .jcc-retreat-pickupAddBtn {
+    position: fixed;
+    right: 1.1rem;
+    bottom: 5rem;
+    z-index: 50;
+    width: 3.4rem;
+    height: 3.4rem;
+    gap: 0;
+    padding: 0;
+    border-radius: 50%;
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  .jcc-retreat-pickupAddBtn-text {
+    display: none;
+  }
+  .jcc-retreat-pickupAddBtn-icon {
+    display: block;
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .jcc-retreat-addGroupBtn {
+    position: fixed;
+    right: 1.1rem;
+    bottom: 5rem;
+    z-index: 50;
+    width: 3.4rem;
+    height: 3.4rem;
+    padding: 0;
+    border-radius: 50%;
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  .jcc-retreat-addGroupBtn-text {
+    display: none;
+  }
+  .jcc-retreat-addGroupBtn-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+/* 하위탭 줄: [행사선택] + [하위탭] 한 줄 (대시보드 컨트롤 줄과 동일 톤) */
+.jcc-retreat-subTabsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.85rem;
+  margin-bottom: 1.1rem;
+}
+.jcc-retreat-subTabsRow > .jcc-page-tabs {
+  margin-bottom: 0;
+}
+/* 픽업 액션: 행사 드롭다운·하위탭과 같은 행 우측에 [날짜] [+ 차량 요청].
+   "총 N건"은 그 아래 줄 우측에 두기 위해 PC에서는 absolute 로 배치한다. */
+.jcc-retreat-pickupActions {
+  position: relative;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+/* PC: 카운트는 액션 바로 아래·우측에 단독 배치 (행 높이에는 영향 X) */
+.jcc-retreat-pickupCount {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* 카운트 한 줄을 위한 여유 공간 확보 (픽업 행만) */
+.jcc-retreat-subTabsRow:has(.jcc-retreat-pickupActions) {
+  margin-bottom: 2.4rem;
+}
+
+/* 픽업 날짜 필터: [📅 날짜 ▾] 커스텀 달력 버튼 */
+.jcc-retreat-pickupDateBar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.jcc-retreat-pickupDateForm {
+  margin: 0;
+  display: contents;
+}
+/* 날짜 버튼: Toss 톤 칩 — 옅은 회색 필, 부드러운 라운드, 파란 캘린더 아이콘 */
+.jcc-retreat-dateField {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.95rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.92rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.jcc-retreat-dateField:hover {
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+}
+.jcc-retreat-dateField:active {
+  transform: translateY(0.5px);
+}
+.jcc-retreat-dateField:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.jcc-retreat-dateField-cal {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.jcc-retreat-dateField-chev {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex-shrink: 0;
+  margin-left: 0.05rem;
+  color: var(--muted);
+}
+.jcc-retreat-dateField-text {
+  white-space: nowrap;
+}
+
+/* 모바일: 날짜 버튼은 하위 탭(세그먼트)과 같은 크기(전체 폭·높이·라운드)로,
+   "총 N건"은 그 아래 줄로 내린다. 추가 버튼은 우하단 FAB. */
+@media (max-width: 900px) {
+  .jcc-retreat-pickupActions {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+  .jcc-retreat-pickupDateBar {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .jcc-retreat-dateField {
+    width: 100%;
+    justify-content: center;
+    padding: 0.8rem 1rem;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--text) 7%, transparent);
+    border-color: color-mix(in srgb, var(--border) 60%, transparent);
+  }
+  .jcc-retreat-pickupCount {
+    position: static;
+    flex: 1 1 100%;
+    text-align: right;
+    min-width: 0;
+  }
+  .jcc-retreat-subTabsRow:has(.jcc-retreat-pickupActions) {
+    margin-bottom: 1.1rem;
+  }
+}
+
+/* PC: 행사 드롭다운은 키우고(.eventPickerBtn 패딩↑), 우측 하위탭(세그먼트)은
+   높이를 더 낮춰서 드롭다운 세로 중앙선에 맞춘다. (행 자체는 align-items:center) */
+@media (min-width: 901px) {
+  .jcc-retreat-subTabsRow,
+  .jcc-retreat-dashControls,
+  .jcc-retreat-listTop--withPicker {
+    align-items: center;
+  }
+  body.has-retreat-bottom-tabs
+    .jcc-page-tabs:not(.jcc-retreat-pageTabs) {
+    padding: 0.18rem;
+    align-self: center;
+    margin-bottom: 0;
+  }
+  body.has-retreat-bottom-tabs
+    .jcc-retreat-subTabsRow
+    .jcc-page-tabs:not(.jcc-retreat-pageTabs) {
+    margin-bottom: 0;
+  }
+  body.has-retreat-bottom-tabs
+    .jcc-page-tabs:not(.jcc-retreat-pageTabs)
+    .jcc-page-tab {
+    padding-top: 0.32rem;
+    padding-bottom: 0.32rem;
+    font-size: 0.88rem;
+  }
 }
 
 .jcc-retreat-summaryBar {
@@ -854,25 +1803,28 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   top: 0.45rem;
   right: 0.45rem;
   z-index: 2;
-  padding: 0.2rem 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  border: none;
   border-radius: 6px;
-  border: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.35);
+  background: transparent;
   color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 700;
-  line-height: 1.3;
   cursor: pointer;
   opacity: 0.85;
-  transition: opacity 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+.jcc-retreat-groupCardEdit svg {
+  width: 1.05rem;
+  height: 1.05rem;
 }
 .jcc-retreat-groupCardWrap:hover .jcc-retreat-groupCardEdit,
 .jcc-retreat-groupCardEdit:hover,
 .jcc-retreat-groupCardEdit:focus-visible {
   opacity: 1;
-  border-color: var(--accent);
-  color: var(--text);
-  background: rgba(0, 0, 0, 0.35);
+  color: var(--accent);
+  background: transparent;
   outline: none;
 }
 
@@ -914,7 +1866,7 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 /* 수정 버튼이 있는 카드만 우측 공간 확보(긴 pill이 버튼에 닿기 전 줄바꿈) */
 .jcc-retreat-groupCardWrap:has(.jcc-retreat-groupCardEdit)
   .jcc-retreat-groupRegion {
-  padding-right: 2.4rem;
+  padding-right: 2rem;
 }
 .jcc-retreat-pill {
   display: inline-block;
@@ -1082,9 +2034,11 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   border-radius: 8px;
 }
 
-/* 버튼/액션이 없는 하위 탭(조·변경 이력)에서도 출석부 탭과 동일한 상단 여백을 확보. */
+/* 출석부 하위 탭을 숨긴 뒤에는 정렬용 placeholder 가 불필요 → 빈 여백 제거. */
 .jcc-retreat-listTop--placeholder {
-  min-height: 2.45rem;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .jcc-retreat-tableWrap {
@@ -1465,18 +2419,23 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 .jcc-retreat-pickupNameBtn {
   background: none;
   border: none;
-  padding: 0;
-  margin: 0;
+  /* 상시 약간의 패딩 + 음수 마진: hover 배경이 생겨도 레이아웃이 밀리지 않음 */
+  padding: 0.18rem 0.45rem;
+  margin: -0.18rem -0.45rem;
   font: inherit;
-  color: var(--accent, #4a9eff);
+  color: var(--text);
   cursor: pointer;
   text-align: left;
-  text-decoration: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 3px;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
-.jcc-retreat-pickupNameBtn:hover {
-  text-decoration-style: solid;
+.jcc-retreat-pickupNameBtn:hover,
+.jcc-retreat-pickupNameBtn:focus-visible,
+.jcc-retreat-pickupNameBtn:active {
+  color: var(--accent, #4a9eff);
+  background: color-mix(in srgb, var(--accent, #4a9eff) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #4a9eff) 28%, transparent);
 }
 /* 탑승장소 관리: 수정/삭제 액션 (Toss 스타일, 한 행 정렬) */
 .jcc-pickup-locActionsCell {
@@ -1822,6 +2781,38 @@ dialog.jcc-retreat-modal::backdrop {
 .jcc-retreat-roomAssignee small {
   margin-left: 0.2rem;
   font-size: 0.72rem;
+}
+
+/* 숙소·호실 관리 표(lodging.html): 모바일은 핵심 컬럼만, 한 행으로 정렬하고
+   수정·삭제 버튼은 PC처럼 작은 인라인 버튼으로. (방배정 표에는 영향 없음) */
+@media (max-width: 640px) {
+  .jcc-retreat-roomTable--manage th,
+  .jcc-retreat-roomTable--manage td {
+    white-space: nowrap;
+    padding: 0.5rem 0.4rem;
+    font-size: 0.82rem;
+  }
+  /* 정원(3번째)·배정된 조원(6번째) 숨김 → 호수·지역부서·성별·현재인원·수정·삭제만 */
+  .jcc-retreat-roomTable--manage th:nth-child(3),
+  .jcc-retreat-roomTable--manage td:nth-child(3),
+  .jcc-retreat-roomTable--manage th:nth-child(6),
+  .jcc-retreat-roomTable--manage td:nth-child(6) {
+    display: none;
+  }
+  .jcc-retreat-roomTable--manage th.jcc-retreat-attCol-actions,
+  .jcc-retreat-roomTable--manage td.jcc-retreat-attCol-actions {
+    width: auto;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .jcc-retreat-roomTable--manage .jcc-retreat-attCol-actions .jcc-retreat-rowEdit,
+  .jcc-retreat-roomTable--manage .jcc-retreat-attCol-actions .jcc-retreat-rowDel {
+    display: inline-block;
+    width: auto;
+    margin: 0 0 0 0.25rem;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.72rem;
+  }
 }
 
 /* 조 관리 화면 숙소 컬럼 */
@@ -3158,6 +4149,14 @@ body.jcc-dtp-open {
   padding-top: 12px;
   gap: 8px;
 }
+/* 날짜 전용 달력은 시간 행이 없어 더 짧으므로, 그 높이만큼 보완해
+   날짜+시간 피커와 높이를 맞춘다 (더 큰 쪽 기준). */
+.jcc-dtp-pop--dateOnly.jcc-dtp-pop--sheet .jcc-dtp-grid {
+  margin-bottom: 65px;
+}
+.jcc-dtp-pop--dateOnly:not(.jcc-dtp-pop--sheet) .jcc-dtp-grid {
+  margin-bottom: 63px;
+}
 .jcc-dtp-pop--sheet .jcc-dtp-select {
   height: 40px;
   padding: 0 14px;
@@ -3334,6 +4333,25 @@ body.has-retreat-bottom-tabs
     0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
+/* 모바일: 하위 탭 세그먼트를 전체 너비로 채우고 각 탭이 비율(동일 비중)로 분배 */
+@media (max-width: 900px) {
+  body.has-retreat-bottom-tabs .jcc-page-tabs:not(.jcc-retreat-pageTabs) {
+    display: flex;
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+  body.has-retreat-bottom-tabs
+    .jcc-page-tabs:not(.jcc-retreat-pageTabs)
+    .jcc-page-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+
 /* 카드 → Toss 톤: 둥근 모서리, 부드러운 그림자, 옅은 경계 */
 body.has-retreat-bottom-tabs .card {
   border-radius: 18px;
@@ -3348,7 +4366,7 @@ body.has-retreat-bottom-tabs .toolbar {
 /* 버튼 → Toss 톤: 둥근 라운드, 살짝 넉넉한 패딩
    (커스텀 달력 [jcc-dtp*]·탭·행사선택 등 자체 스타일 버튼은 제외) */
 body.has-retreat-bottom-tabs
-  button:not([class*="jcc-dtp"]):not([class*="jcc-tp-"]):not(.jcc-page-tab):not(.jcc-retreat-eventPickerBtn):not(.jcc-pickup-locBtn):not(.jcc-leftNav-close):not(.jcc-theme-toggle):not(.jcc-mobile-menu-btn):not(.jcc-cselect-btn):not(.jcc-retreat-filterChip):not(.jcc-retreat-groupCardEdit):not(.jcc-retreat-filterReset),
+  button:not([class*="jcc-dtp"]):not([class*="jcc-tp-"]):not(.jcc-page-tab):not(.jcc-retreat-eventPickerBtn):not(.jcc-pickup-locBtn):not(.jcc-leftNav-close):not(.jcc-theme-toggle):not(.jcc-mobile-menu-btn):not(.jcc-cselect-btn):not(.jcc-retreat-filterChip):not(.jcc-retreat-groupCardEdit):not(.jcc-retreat-filterReset):not(.jcc-retreat-pickupNameBtn):not(.jcc-retreat-addGroupBtn):not(.jcc-retreat-pickupAddBtn):not(.jcc-retreat-dateField):not(.jcc-retreat-pickupDelete),
 body.has-retreat-bottom-tabs .btn {
   border-radius: 11px;
   padding: 0.58rem 1.05rem;
@@ -3568,4 +4586,67 @@ body.has-retreat-bottom-tabs main {
 /* 조 행 카드: Toss 톤 (둥근 모서리) */
 #groupModalOverlay .jcc-retreat-groupRow {
   border-radius: 14px;
+}
+
+/* ── 일정 추가/수정 모달: Toss 팝업 톤 (여백 넉넉히) ───────────────────── */
+#ttModalOverlay {
+  align-items: center;
+  padding: 1rem;
+}
+#ttModalOverlay .jcc-retreat-modal--attendeeEdit {
+  max-width: 540px;
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+#ttModalOverlay .jcc-retreat-modalTitle {
+  padding: 1.8rem 1.9rem 0;
+  margin-bottom: 1.4rem;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+/* 본문 래퍼가 없으므로 그리드에 직접 좌우 여백을 줘 제목·푸터와 정렬 */
+#ttModalOverlay .jcc-retreat-modalGrid {
+  padding: 0 1.9rem 0.4rem;
+  gap: 1.35rem 1.1rem;
+}
+#ttModalOverlay .jcc-retreat-modalGrid .field label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+#ttModalOverlay .jcc-retreat-modalGrid .field input,
+#ttModalOverlay .jcc-retreat-modalGrid .field select,
+#ttModalOverlay .jcc-retreat-modalGrid .field textarea,
+#ttModalOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field {
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  border-radius: 12px;
+}
+#ttModalOverlay .jcc-retreat-modalGrid .field input:focus,
+#ttModalOverlay .jcc-retreat-modalGrid .field select:focus,
+#ttModalOverlay .jcc-retreat-modalGrid .field textarea:focus,
+#ttModalOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field:focus-visible {
+  outline: none;
+  border-color: var(--accent, #3182f6);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #3182f6) 18%, transparent);
+}
+#ttModalOverlay .jcc-retreat-modalGrid .field textarea {
+  min-height: 96px;
+  line-height: 1.5;
+}
+#ttModalOverlay .jcc-retreat-modalGrid .field .jcc-dtp-icon {
+  font-size: 1rem;
+}
+#ttModalOverlay .jcc-retreat-modalFooter {
+  padding: 1.2rem 1.9rem 1.6rem;
+  gap: 0.6rem;
+  border-top: none;
+}
+#ttModalOverlay .jcc-retreat-modalFooter button {
+  padding: 0.85rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 12px;
 }

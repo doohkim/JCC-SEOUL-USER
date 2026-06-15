@@ -24,10 +24,10 @@
     if (!btn) return;
 
     btn.addEventListener("click", function () {
-      var cur = document.documentElement.getAttribute("data-theme") || "dark";
+      var cur = document.documentElement.getAttribute("data-theme") || "light";
       apply(cur === "dark" ? "light" : "dark");
     });
 
-    apply(document.documentElement.getAttribute("data-theme") || "dark");
+    apply(document.documentElement.getAttribute("data-theme") || "light");
   });
 })();

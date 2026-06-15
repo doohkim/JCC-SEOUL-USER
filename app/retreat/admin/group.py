@@ -13,12 +13,13 @@ class RetreatGroupMembershipInline(admin.TabularInline):
 
 @admin.register(RetreatGroup)
 class RetreatGroupAdmin(admin.ModelAdmin):
-    list_display = ["event", "region", "division", "name", "order"]
+    list_display = ["event", "region", "division", "name", "order", "created_by"]
     list_filter = ["event", "region", "division"]
     list_editable = ["order"]
     ordering = ["event", "order", "id"]
     search_fields = ["name", "division__name", "region__name", "event__name"]
     autocomplete_fields = ["event", "region", "division"]
+    readonly_fields = ["created_by", "created_at", "updated_at"]
     inlines = [RetreatGroupMembershipInline]
 
     def save_formset(self, request, form, formset, change):

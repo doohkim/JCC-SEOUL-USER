@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 회장단 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614a" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615ab" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -15,10 +15,13 @@
       <div class="jcc-layout-content">
         <header class="app-header">
           {% include 'includes/retreat_admin_header.html' %}
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='council' hide_event_picker=True %}
         </header>
         <main>
-          {% include 'includes/retreat_event_tabs.html' with retreat_tab='council' %}
-          {% include 'includes/retreat_admin_subtabs.html' with admin_subtab='council' %}
+          <div class="jcc-retreat-subTabsRow">
+            {% include 'includes/retreat_event_picker.html' %}
+            {% include 'includes/retreat_admin_subtabs.html' with admin_subtab='council' %}
+          </div>
           <div class="jcc-retreat-listTop jcc-retreat-listTop--placeholder" aria-hidden="true"></div>
 
           {% if is_retreat_council %}

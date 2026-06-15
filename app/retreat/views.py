@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import timedelta
+from datetime import date, timedelta
 from urllib.parse import urlparse
 
 from django.contrib import messages
@@ -13,6 +13,7 @@ from django.db.models import Count
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views.generic import FormView, TemplateView
 
 from retreat.forms import RetreatApplyForm
@@ -340,21 +341,79 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         if tab not in (
             RetreatPickup.Direction.ARRIVAL,
             RetreatPickup.Direction.DEPARTURE,
+            "all",
         ):
             tab = RetreatPickup.Direction.ARRIVAL
         ctx["active_pickup_tab"] = tab
 
-        pickups_qs = (
-            event.pickups.filter(direction=tab)
-            .select_related("group", "region", "division")
-            .order_by("number", "id")
-        )
+        pickups_qs = event.pickups.select_related("group", "region", "division")
+        if tab == "all":
+            # 전체 보기: 입회·출회를 함께 노출 (보기 전용, 열차 시각 기준 정렬)
+            pickups_qs = pickups_qs.order_by("train_time", "id")
+        else:
+            pickups_qs = pickups_qs.filter(direction=tab).order_by("number", "id")
+
+        # 날짜 필터: 파라미터 미지정이면 오늘 기준, 빈 값('')이면 전체 표시
+        raw_date = self.request.GET.get("date")
+        if raw_date is None:
+            filter_date = timezone.localdate()
+        elif raw_date.strip() == "":
+            filter_date = None
+        else:
+            try:
+                filter_date = date.fromisoformat(raw_date.strip())
+            except ValueError:
+                filter_date = timezone.localdate()
+        if filter_date is not None:
+            pickups_qs = pickups_qs.filter(train_time__date=filter_date)
+        ctx["pickup_filter_date"] = filter_date.isoformat() if filter_date else ""
+
         can_select_group = can_select_pickup_group(user, event)
         # 조장/부조장은 본인 조의 픽업만 조회
         if not can_select_group:
             group_ids = retreat_pickup_group_ids_for(user, event)
             pickups_qs = pickups_qs.filter(group_id__in=group_ids)
-        ctx["pickups"] = list(pickups_qs)
+
+        pickups = list(pickups_qs)
+        # 픽업 대상 조원의 입실 상태 매핑 ((group_id, name) -> 조원)
+        pickup_group_ids = {p.group_id for p in pickups if p.group_id}
+        attendee_map: dict[tuple[int, str], RetreatAttendee] = {}
+        if pickup_group_ids:
+            for a in RetreatAttendee.objects.filter(
+                group_id__in=pickup_group_ids
+            ).only("group_id", "name", "check_in_status"):
+                attendee_map.setdefault((a.group_id, a.name), a)
+        status_rank = {
+            RetreatAttendee.CheckInStatus.PENDING: 0,
+            RetreatAttendee.CheckInStatus.CHECKED_IN: 1,
+            RetreatAttendee.CheckInStatus.CHECKED_OUT: 2,
+        }
+        for p in pickups:
+            att = attendee_map.get((p.group_id, p.name))
+            p.check_in_status = att.check_in_status if att else ""
+            p.check_in_status_display = (
+                att.get_check_in_status_display() if att else ""
+            )
+
+        # 구분별 입실 상태 필터:
+        # - 입회(arrival): 아직 입실 전(pending/미기록)인 대상만 노출 (입실·퇴실 제외)
+        # - 출회(departure): 입실 상태인 대상만 노출 (입실 전·퇴실 제외)
+        def _visible_by_status(p) -> bool:
+            st = p.check_in_status or ""
+            if p.direction == RetreatPickup.Direction.ARRIVAL:
+                return st in ("", RetreatAttendee.CheckInStatus.PENDING)
+            if p.direction == RetreatPickup.Direction.DEPARTURE:
+                return st == RetreatAttendee.CheckInStatus.CHECKED_IN
+            return True
+
+        pickups = [p for p in pickups if _visible_by_status(p)]
+
+        # 정렬: 1) 입실 상태(입실전 → 입실 → 퇴실) 2) 열차 시각
+        pickups.sort(
+            key=lambda p: (status_rank.get(p.check_in_status, 9), p.train_time)
+        )
+        ctx["pickups"] = pickups
+        ctx["pickup_count"] = len(pickups)
 
         ctx["can_manage_pickup"] = can_manage_retreat_pickup(user, event)
         ctx["can_select_pickup_group"] = can_select_group
@@ -370,6 +429,33 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
                 "region__sort_order", "sort_order", "name"
             )
         )
+        # 모달 캐스케이딩(지역→부서→조)·조원 자동완성용 데이터
+        group_list = ctx["group_choices"]
+        ctx["pickup_group_list_json"] = json.dumps(
+            [
+                {
+                    "id": g.id,
+                    "name": g.name,
+                    "region_id": g.region_id,
+                    "division_id": g.division_id,
+                }
+                for g in group_list
+            ],
+            ensure_ascii=False,
+        )
+        members_map: dict[int, list[dict]] = {}
+        if group_list:
+            for a in RetreatAttendee.objects.filter(group__in=group_list).order_by(
+                "group_id", "sort_order", "name", "id"
+            ):
+                members_map.setdefault(a.group_id, []).append(
+                    {
+                        "name": a.name,
+                        "phone": a.phone or "",
+                        "check_in_status": a.check_in_status or "",
+                    }
+                )
+        ctx["pickup_group_members_json"] = json.dumps(members_map, ensure_ascii=False)
         ctx["can_manage_pickup_location"] = can_manage_retreat_pickup_location(
             user, event
         )

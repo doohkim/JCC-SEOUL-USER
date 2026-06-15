@@ -92,6 +92,14 @@ class RetreatAttendee(models.Model):
         verbose_name="숙소 호실",
     )
     sort_order = models.PositiveSmallIntegerField("정렬 순서", default=0)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="retreat_attendees_created",
+        verbose_name="생성자",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

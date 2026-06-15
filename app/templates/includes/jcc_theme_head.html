@@ -1,11 +1,10 @@
-{# FOUC 방지: app.css 로드 전에 data-theme 적용 #}
 <script>
 (function () {
   try {
     var t = localStorage.getItem("jcc-theme");
-    document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
+    document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
   } catch (e) {
-    document.documentElement.setAttribute("data-theme", "dark");
+    document.documentElement.setAttribute("data-theme", "light");
   }
 })();
 </script>

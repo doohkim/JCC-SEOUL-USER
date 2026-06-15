@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 결과 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614i" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615ab" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -18,9 +18,9 @@
             <h1>수련회 총 참석 인원</h1>
             <p class="subtitle">{{ event.name }}</p>
           </div>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='results' %}
         </header>
         <main>
-          {% include 'includes/retreat_event_tabs.html' with retreat_tab='results' %}
           <div class="toolbar card">
             <div class="field">
               <label for="sessionId">집계 기준 출석부</label>

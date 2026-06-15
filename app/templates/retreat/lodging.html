@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ event.name }} · 숙소</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614a" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615ab" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -15,16 +15,18 @@
       <div class="jcc-layout-content">
         <header class="app-header">
           <div class="jcc-detail-titleWrap">
-            <h1>숙소 관리</h1>
-            <p class="subtitle">{{ event.name }}</p>
+            <h1>숙소</h1>
           </div>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='lodging' hide_event_picker=True %}
         </header>
         <main>
-          {% include 'includes/retreat_event_tabs.html' with retreat_tab='lodging' %}
-          <nav class="jcc-page-tabs" aria-label="숙소 관리 서브탭">
-            <a class="jcc-page-tab is-active" href="{% url 'retreat_lodging' event.id %}">숙소·호수 관리</a>
-            <a class="jcc-page-tab" href="{% url 'retreat_lodging_assign' event.id %}">방배정</a>
-          </nav>
+          <div class="jcc-retreat-subTabsRow">
+            {% include 'includes/retreat_event_picker.html' %}
+            <nav class="jcc-page-tabs" aria-label="숙소 관리 서브탭">
+              <a class="jcc-page-tab is-active" href="{% url 'retreat_lodging' event.id %}">숙소·호수 관리</a>
+              <a class="jcc-page-tab" href="{% url 'retreat_lodging_assign' event.id %}">방배정</a>
+            </nav>
+          </div>
           {% if can_manage_lodging %}
             <div class="jcc-retreat-listTop">
               <div class="msg" id="retreatStatus" role="status"></div>
@@ -60,7 +62,7 @@
                     {% endif %}
                   </header>
                   <div class="jcc-retreat-tableWrap">
-                    <table class="jcc-retreat-attendeeTable jcc-retreat-roomTable">
+                    <table class="jcc-retreat-attendeeTable jcc-retreat-roomTable jcc-retreat-roomTable--manage">
                       <thead>
                         <tr>
                           <th>호수</th>

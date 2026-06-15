@@ -12,7 +12,7 @@
   </svg>
 </button>
 
-<aside class="jcc-leftNav" id="jcc-leftNav" aria-label="주 메뉴">
+<aside class="jcc-leftNav collapsed" id="jcc-leftNav" aria-label="주 메뉴">
   <div class="jcc-leftNav-profile">
     {% if user.is_authenticated %}
       <div class="jcc-leftNav-avatar" aria-hidden="true">{{ user|user_display_name|slice:":1" }}</div>
@@ -145,7 +145,7 @@
   </div>
 </aside>
 
-<script src="{% static 'attendance/jcc-theme.js' %}" defer></script>
+<script src="{% static 'attendance/jcc-theme.js' %}?v=20260615a" defer></script>
 
 <nav class="jcc-bottomTabs" id="jccBottomTabs" aria-label="모바일 주요 메뉴">
   {% if user.is_superuser %}
@@ -209,7 +209,16 @@
     if (!nav) return;
 
     const mqMobile = window.matchMedia("(max-width: 900px)");
+    // 마우스(정밀 포인터)가 있는 데스크톱에서만 가장자리 호버 펼침을 허용한다.
+    const mqDesktopPointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+
+    // 페이지 진입 시 항상 닫힌 상태로 초기화 (탭/페이지 이동 후 드로어가 남는 현상 방지)
     nav.classList.add("collapsed");
+    document.body.classList.remove("jcc-leftNav-drawer-open");
+    if (backdrop) {
+      backdrop.hidden = true;
+      backdrop.setAttribute("aria-hidden", "true");
+    }
 
     let edgeStart = null;
     let lastFocused = null;
@@ -314,7 +323,7 @@
     /** 데스크톱: 왼쪽 가장자리 호버로 펼침 (기존 동작) */
     const LEFT_EDGE_PX = 28;
     window.addEventListener("mousemove", (e) => {
-      if (isMobileLayout()) return;
+      if (isMobileLayout() || !mqDesktopPointer.matches) return;
       const rect = nav.getBoundingClientRect();
       const inside =
         e.clientX >= rect.left &&

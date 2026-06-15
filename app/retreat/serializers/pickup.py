@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.utils import timezone
 from rest_framework import serializers
 
-from retreat.models import RetreatPickup, RetreatPickupLocation
+from retreat.models import RetreatAttendee, RetreatPickup, RetreatPickupLocation
 
 
 class RetreatPickupSerializer(serializers.ModelSerializer):
@@ -15,6 +15,8 @@ class RetreatPickupSerializer(serializers.ModelSerializer):
     region_name = serializers.SerializerMethodField()
     division_name = serializers.SerializerMethodField()
     group_name = serializers.SerializerMethodField()
+    check_in_status = serializers.SerializerMethodField()
+    check_in_status_display = serializers.SerializerMethodField()
 
     class Meta:
         model = RetreatPickup
@@ -37,6 +39,8 @@ class RetreatPickupSerializer(serializers.ModelSerializer):
             "contact",
             "note",
             "applicant_name",
+            "check_in_status",
+            "check_in_status_display",
             "created_at",
         ]
         read_only_fields = ["id", "number", "applicant_name", "created_at"]
@@ -60,6 +64,26 @@ class RetreatPickupSerializer(serializers.ModelSerializer):
 
     def get_group_name(self, obj) -> str:
         return obj.group.name if obj.group_id else ""
+
+    def _matched_attendee(self, obj):
+        """픽업 대상(조 + 이름)과 일치하는 조원."""
+        if not obj.group_id:
+            return None
+        if not hasattr(obj, "_matched_attendee_cache"):
+            obj._matched_attendee_cache = (
+                RetreatAttendee.objects.filter(group_id=obj.group_id, name=obj.name)
+                .order_by("id")
+                .first()
+            )
+        return obj._matched_attendee_cache
+
+    def get_check_in_status(self, obj) -> str:
+        att = self._matched_attendee(obj)
+        return att.check_in_status if att else ""
+
+    def get_check_in_status_display(self, obj) -> str:
+        att = self._matched_attendee(obj)
+        return att.get_check_in_status_display() if att else ""
 
 
 class RetreatPickupLocationSerializer(serializers.ModelSerializer):

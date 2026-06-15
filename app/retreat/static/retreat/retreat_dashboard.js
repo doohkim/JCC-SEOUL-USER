@@ -13,6 +13,7 @@
   const innerTabs = document.getElementById("dashboardInnerTabs");
   const panelStats = document.getElementById("dashboardPanelStats");
   const panelBoard = document.getElementById("dashboardPanelBoard");
+  const summaryCards = document.getElementById("dashSummaryCards");
   const boardHost = document.getElementById("retreatGroupBoard");
   const boardTotalEl = document.getElementById("groupBoardTotal");
   const boardRegionFilter = document.getElementById("boardRegionFilter");
@@ -20,11 +21,12 @@
   let activeTab = "stats";
   let lastBoardGroups = [];
   let lastBoardGrand = {};
+  // 합계 값은 상단 요약 알약([data-total-*])에 표시되므로 모두 갱신한다.
   const totalEls = {
-    pending: document.querySelector("[data-total-pending]"),
-    in: document.querySelector("[data-total-in]"),
-    out: document.querySelector("[data-total-out]"),
-    attended: document.querySelector("[data-total-attended]"),
+    pending: document.querySelectorAll("[data-total-pending]"),
+    in: document.querySelectorAll("[data-total-in]"),
+    out: document.querySelectorAll("[data-total-out]"),
+    attended: document.querySelectorAll("[data-total-attended]"),
   };
 
   const REFRESH_MS = 60000;
@@ -35,6 +37,7 @@
       const r = await fetch(ctx.apiDashboard, { credentials: "same-origin" });
       if (!r.ok) throw new Error(await r.text());
       const data = await r.json();
+      renderSummary(data.summary || {});
       renderAttendTotal(data.grand_total || {});
       renderGroups(data.by_group || []);
       renderDivisions(data.by_division || [], data.grand_total || {});
@@ -55,33 +58,60 @@
     if (attendTotalEl) attendTotalEl.textContent = grand.checked_in ?? 0;
   }
 
+  function setText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  }
+
+  // 상단 요약 카드: 실시간 참석(입실/총참석, 전체 대비 %)·숙소 배정·오늘 차량 지원
+  function renderSummary(s) {
+    setText("sumAttendIn", s.checked_in ?? 0);
+    setText("sumAttendTotal", s.attended ?? 0);
+    setText("sumAttendPct", `${s.attend_percent ?? 0}%`);
+    setText("sumLodging", s.lodging_assigned ?? 0);
+    setText("sumRoomsRemaining", s.rooms_remaining ?? 0);
+    setText("sumCarToday", s.car_today ?? 0);
+  }
+
+  function buildAttRow(row) {
+    const region = escapeHtml((row.region || "").trim());
+    const division = escapeHtml((row.division || "").trim());
+    const regionCell = division
+      ? `${region}<span class="jcc-retreat-divSub">${division}</span>`
+      : region;
+    const count = row.checked_in ?? 0;
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td>${escapeHtml(row.name)}</td>` +
+      `<td class="jcc-retreat-divRegionCell">${regionCell}</td>` +
+      `<td>${count}</td>`;
+    return tr;
+  }
+
+  function buildAttTable(rows) {
+    const table = document.createElement("table");
+    table.className = "jcc-table jcc-retreat-attTable";
+    table.innerHTML =
+      "<thead><tr><th>조</th><th>지역·부서</th><th>참석</th></tr></thead>";
+    const tb = document.createElement("tbody");
+    rows.forEach((row) => tb.appendChild(buildAttRow(row)));
+    table.appendChild(tb);
+    return table;
+  }
+
   function renderGroups(rows) {
     if (!groupGrid) return;
     groupGrid.innerHTML = "";
-    const cols = 3;
-    const perCol = Math.ceil(rows.length / cols) || 1;
-    for (let c = 0; c < cols; c++) {
-      const slice = rows.slice(c * perCol, (c + 1) * perCol);
-      if (!slice.length && c > 0) continue;
-      const col = document.createElement("div");
-      col.className = "jcc-retreat-tripleCol";
-      const table = document.createElement("table");
-      table.className = "jcc-retreat-miniTable";
-      table.innerHTML =
-        "<thead><tr><th>조</th><th>지역</th><th>참석</th></tr></thead>";
-      const tb = document.createElement("tbody");
-      slice.forEach((row) => {
-        const tr = document.createElement("tr");
-        // 조별 참석 = 현재 입실 상태 인원만.
-        tr.innerHTML = `<td>${escapeHtml(row.name)}</td><td>${escapeHtml(
-          row.region || ""
-        )}</td><td>${row.checked_in}</td>`;
-        tb.appendChild(tr);
-      });
-      table.appendChild(tb);
-      col.appendChild(table);
-      groupGrid.appendChild(col);
+    // 지역·부서별 인원체크 표와 동일한 테이블 UI (순서: 조 · 지역·부서 · 참석).
+    // PC: 2열 그리드(두 개의 표), 모바일: 두 번째 표 헤더를 숨겨 단일 연속 표.
+    const grid = document.createElement("div");
+    grid.className = "jcc-retreat-attGrid";
+    const mid = Math.ceil(rows.length / 2);
+    grid.appendChild(buildAttTable(rows.slice(0, mid)));
+    if (rows.length > mid) {
+      grid.appendChild(buildAttTable(rows.slice(mid)));
     }
+    groupGrid.appendChild(grid);
   }
 
   function renderDivisions(rows, grand) {
@@ -89,9 +119,13 @@
     divBody.innerHTML = "";
     rows.forEach((row) => {
       const tr = document.createElement("tr");
+      const region = escapeHtml((row.region || "").trim());
+      const division = escapeHtml((row.division || "").trim());
+      const regionCell = division
+        ? `${region}<span class="jcc-retreat-divSub">${division}</span>`
+        : region;
       tr.innerHTML = `
-        <td>${escapeHtml(row.region)}</td>
-        <td>${escapeHtml(row.division)}</td>
+        <td class="jcc-retreat-divRegionCell">${regionCell}</td>
         <td>${escapeHtml(row.group_range)}</td>
         <td>${row.pending}</td>
         <td>${row.checked_in}</td>
@@ -99,10 +133,15 @@
         <td>${row.attended}</td>`;
       divBody.appendChild(tr);
     });
-    if (totalEls.pending) totalEls.pending.textContent = grand.pending ?? 0;
-    if (totalEls.in) totalEls.in.textContent = grand.checked_in ?? 0;
-    if (totalEls.out) totalEls.out.textContent = grand.checked_out ?? 0;
-    if (totalEls.attended) totalEls.attended.textContent = grand.attended ?? 0;
+    const setTotal = (nodes, val) => {
+      nodes.forEach((n) => {
+        n.textContent = val;
+      });
+    };
+    setTotal(totalEls.pending, grand.pending ?? 0);
+    setTotal(totalEls.in, grand.checked_in ?? 0);
+    setTotal(totalEls.out, grand.checked_out ?? 0);
+    setTotal(totalEls.attended, grand.attended ?? 0);
   }
 
   async function loadBoard() {
@@ -346,6 +385,9 @@
   function applyTab() {
     if (panelStats) panelStats.style.display = activeTab === "board" ? "none" : "";
     if (panelBoard) panelBoard.style.display = activeTab === "board" ? "" : "none";
+    // 요약 카드(실시간 참석·숙소 배정·차량 지원)는 '실시간' 탭에서만 노출
+    if (summaryCards)
+      summaryCards.style.display = activeTab === "board" ? "none" : "";
     if (innerTabs) {
       innerTabs.querySelectorAll("[data-dashboard-tab]").forEach((btn) => {
         btn.classList.toggle(

@@ -13,7 +13,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614a" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615s" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -29,9 +29,9 @@
             </div>
             <a href="{{ back_url }}" class="jcc-retreat-backLink">{{ back_label }}</a>
           </div>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='rosters' %}
         </header>
         <main>
-          {% include 'includes/retreat_event_tabs.html' with retreat_tab='rosters' %}
           <div class="card jcc-retreat-sessionBar" role="tablist" aria-label="세션 선택">
             {% if sessions %}
               {% for s in sessions %}

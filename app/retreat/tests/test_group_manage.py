@@ -135,6 +135,22 @@ class GroupCreateApiTests(_GroupManageFixture):
         )
         self.assertEqual(r.status_code, 403)
 
+    def test_create_group_records_created_by(self):
+        """조 추가 시 생성자(created_by)가 기록된다."""
+        self.client.force_authenticate(self.council_user)
+        r = self.client.post(
+            self._url(),
+            {
+                "region": self.seoul.id,
+                "division": self.div.id,
+                "name": "77조",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        group = RetreatGroup.objects.get(event=self.event, name="77조")
+        self.assertEqual(group.created_by_id, self.council_user.id)
+
     def test_council_can_bulk_create_groups_with_leaders(self):
         self.client.force_authenticate(self.council_user)
         leader_a = User.objects.create_user(username="gm_bulk_a", password="x")
@@ -600,3 +616,20 @@ class OnboardingRetreatAssignTests(_GroupManageFixture):
                 group=self.group, name=applicant.username
             ).exists()
         )
+
+
+class AttendeeCreateCreatedByTests(_GroupManageFixture):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_create_attendee_records_created_by(self):
+        """조원 추가 시 생성자(created_by)가 기록된다."""
+        self.client.force_authenticate(self.leader)
+        r = self.client.post(
+            reverse("api_retreat_group_attendees", args=[self.group.id]),
+            {"name": "기록조원"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        attendee = RetreatAttendee.objects.get(pk=r.json()["id"])
+        self.assertEqual(attendee.created_by_id, self.leader.id)

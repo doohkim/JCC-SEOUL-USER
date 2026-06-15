@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>조 관리 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615ab" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -15,20 +15,26 @@
       <div class="jcc-layout-content">
         <header class="app-header">
           <div class="jcc-detail-titleWrap">
-            <h1>조 관리</h1>
-            <p class="subtitle">{{ event.name }} · 입실·퇴실·조원 정보</p>
+            <h1>조</h1>
           </div>
+          {% include 'includes/retreat_event_tabs.html' with retreat_tab='manage_groups' hide_event_picker=True %}
         </header>
         <main>
-          {% include 'includes/retreat_event_tabs.html' with retreat_tab='manage_groups' %}
-          {% if can_add_group %}
-            <div class="jcc-retreat-listTop">
-              <div class="msg" id="retreatStatus" role="status"></div>
-              <button type="button" class="secondary" id="btnAddGroup">+ 조 추가</button>
-            </div>
-          {% else %}
-            <div class="msg" id="retreatStatus" role="status" style="margin-bottom:0.75rem;"></div>
-          {% endif %}
+          <div class="jcc-retreat-listTop jcc-retreat-listTop--withPicker">
+            {% include 'includes/retreat_event_picker.html' %}
+            <div class="msg" id="retreatStatus" role="status"></div>
+            {% if can_add_group %}
+              <button type="button" class="jcc-retreat-addGroupBtn" id="btnAddGroup" aria-label="조 추가">
+                <svg class="jcc-retreat-addGroupBtn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <line x1="19" y1="8" x2="19" y2="14" />
+                  <line x1="22" y1="11" x2="16" y2="11" />
+                </svg>
+                <span class="jcc-retreat-addGroupBtn-text">조 추가</span>
+              </button>
+            {% endif %}
+          </div>
 
           <div class="jcc-retreat-filterBar" id="groupFilterBar" hidden>
             <div class="jcc-retreat-filterRow" data-filter-row="region">
@@ -71,7 +77,11 @@
                     data-group-id="{{ g.id }}"
                     aria-label="{{ g.name }} 조 정보 수정"
                     title="조 정보 수정"
-                  >수정</button>
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M4 20h4l10.5-10.5a2 2 0 00-2.83-2.83L5.17 17.17 4 20z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
                 {% endif %}
               </div>
             {% empty %}
@@ -204,7 +214,7 @@
       </div>
     </div>
     {% include 'includes/retreat_bottom_tabs.html' %}
-    <script src="{% static 'retreat/manage_groups_filter.js' %}?v=20260614c" defer></script>
+    <script src="{% static 'retreat/manage_groups_filter.js' %}?v=20260615a" defer></script>
     {% if can_add_group %}
       <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
       <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260613a" defer></script>
