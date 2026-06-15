@@ -68,6 +68,7 @@
       "</span>" +
       md +
       "</span>" +
+      " " +
       '<span class="jcc-stamp-time">' +
       time +
       "</span>"

@@ -149,6 +149,7 @@
       "-" +
       dd +
       "</span>" +
+      " " +
       '<span class="jcc-stamp-time">' +
       mer +
       " " +

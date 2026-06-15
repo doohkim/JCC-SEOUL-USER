@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 대시보드 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260615d" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615ab" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615aq" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -39,7 +39,7 @@
             </div>
           </div>
           <div class="jcc-retreat-summaryCards" id="dashSummaryCards">
-            <div class="jcc-retreat-summaryCard">
+            <a class="jcc-retreat-summaryCard jcc-retreat-summaryCard--link" href="{% url 'retreat_group_manage_list' event.id %}">
               <div class="jcc-retreat-summaryCard-head">
                 <span class="jcc-retreat-summaryCard-icon jcc-retreat-summaryCard-icon--in" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" focusable="false">
@@ -57,9 +57,9 @@
                 </span>
                 <span class="jcc-retreat-summaryCard-tag jcc-retreat-summaryCard-tag--in" id="sumAttendPct">0%</span>
               </div>
-            </div>
+            </a>
 
-            <div class="jcc-retreat-summaryCard">
+            {% if can_view_retreat_all %}<a class="jcc-retreat-summaryCard jcc-retreat-summaryCard--link" href="{% url 'retreat_lodging' event.id %}">{% else %}<div class="jcc-retreat-summaryCard">{% endif %}
               <div class="jcc-retreat-summaryCard-head">
                 <span class="jcc-retreat-summaryCard-icon jcc-retreat-summaryCard-icon--bed" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" focusable="false">
@@ -73,11 +73,11 @@
                   <strong id="sumLodging">0</strong>
                   <span class="jcc-retreat-summaryCard-unit">명</span>
                 </span>
+                <span class="jcc-retreat-summaryCard-tag jcc-retreat-summaryCard-tag--bed">잔여객실 <span id="sumRoomsRemaining">0</span>개</span>
               </div>
-              <div class="jcc-retreat-summaryCard-sub">잔여 객실 <span id="sumRoomsRemaining">0</span>개</div>
-            </div>
+            {% if can_view_retreat_all %}</a>{% else %}</div>{% endif %}
 
-            <div class="jcc-retreat-summaryCard">
+            <a class="jcc-retreat-summaryCard jcc-retreat-summaryCard--link" href="{% url 'retreat_pickup' event.id %}?tab=all">
               <div class="jcc-retreat-summaryCard-head">
                 <span class="jcc-retreat-summaryCard-icon jcc-retreat-summaryCard-icon--car" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" focusable="false">
@@ -94,7 +94,7 @@
                   <span class="jcc-retreat-summaryCard-unit">명</span>
                 </span>
               </div>
-            </div>
+            </a>
           </div>
           <div id="dashboardStatus" class="msg" role="status"></div>
           <div id="dashboardPanelStats">
