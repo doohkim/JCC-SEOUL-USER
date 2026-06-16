@@ -6,23 +6,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ notice.title }} · 공지사항</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616x" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617e" />
   </head>
   <body class="has-notice-bottom-tabs jcc-notice-detail-page">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        <header class="app-header">
-          <a class="jcc-notice-back" href="{% url 'notice_list' %}" aria-label="뒤로">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </a>
-          <div class="jcc-detail-titleWrap">
-            <h1 class="jcc-notice-detailHeaderTitle">{{ notice.title }}</h1>
-          </div>
-          {% include 'notices/_subtabs.html' with notices_tab='notices' %}
-        </header>
+        {% url 'notice_list' as notice_back_url %}
+        {% include 'notices/_page_header.html' with title=notice.title notices_tab='notices' back_url=notice_back_url title_class='jcc-notice-detailHeaderTitle' %}
         <main class="jcc-notice-detailMain">
           {% if can_manage_notices %}
             <div class="jcc-notice-detailTopActions jcc-notice-detailTopActions--desktop">

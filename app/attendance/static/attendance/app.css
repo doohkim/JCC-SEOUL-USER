@@ -84,6 +84,11 @@ header.app-header h1 {
   font-weight: 600;
   letter-spacing: -0.02em;
 }
+/* 공지 영역 헤더 제목: 모든 공지 페이지에서 동일 크기로 통일하고 굵기를 없앤다. */
+body.has-notice-bottom-tabs header.app-header h1 {
+  font-size: 1.35rem;
+  font-weight: 400;
+}
 
 header.app-header .subtitle {
   color: var(--muted);
@@ -287,14 +292,6 @@ body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab.is-active::after 
   body.has-notice-bottom-tabs .jcc-notice-addBtn {
     height: 2.7rem;
     border-radius: 10px;
-  }
-}
-/* PC: 작성/수정 페이지만 헤더를 콘텐츠 좌측 가까이 정렬.
-   상세 페이지는 목록/타임테이블과 동일한 1400px 중앙 정렬 헤더를 그대로 사용한다. */
-@media (min-width: 901px) {
-  body.jcc-notice-form-page.has-notice-bottom-tabs header.app-header {
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
   }
 }
 /* 모바일: 헤더 안 하위 탭은 숨기고 하단 탭바로 대체 */
@@ -724,47 +721,21 @@ body.has-notice-bottom-tabs .jcc-retreat-listTop {
   gap: 1rem;
   /* 목록 페이지와 동일하게 전역 main(max-width:1400px; margin:0 auto)을 그대로 사용한다. */
 }
-/* 넓은 화면: 배너(미디어) + 본문 2열. 좁아지면 1열로 쌓인다(반응형). */
-@media (min-width: 860px) {
-  .jcc-notice-detailArticle {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
-    align-items: stretch;
-  }
-  .jcc-notice-detailArticle > .jcc-notice-detailBanner {
-    aspect-ratio: auto;
-    height: 100%;
-    min-height: 18rem;
-  }
+/* 상세 본문: 배너(상단 전체폭) → 제목·메타·본문·태그(아래) 세로 스택 단일 컬럼.
+   화면이 줄어들어도 그대로 비율에 맞게 쌓인다(반응형). */
+.jcc-notice-detailArticle {
+  display: flex;
+  flex-direction: column;
 }
 .jcc-notice-detailHeaderTitle {
   display: none;
 }
 @media (min-width: 901px) {
-  /* PC: 상세 페이지 뒤로가기 버튼은 숨긴다(요청). 작성/수정 페이지는 유지.
-     모바일 뒤로가기 FAB(.jcc-notice-back, max-width:900px)는 그대로 노출된다. */
-  body.jcc-notice-detail-page .app-header .jcc-notice-back {
-    display: none;
-  }
+  /* PC: 상세·작성/수정 헤더의 뒤로가기 버튼은 숨겨 제목을 목록과 동일한 좌측선에 정렬한다.
+     모바일에서는 .jcc-notice-back 가 좌측 상단 FAB로 노출된다. */
+  body.jcc-notice-detail-page .app-header .jcc-notice-back,
   body.jcc-notice-form-page .app-header .jcc-notice-back {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    border: none;
-    background: transparent;
-    color: var(--text);
-    flex: 0 0 auto;
-    transition: color 0.15s ease;
-  }
-  body.jcc-notice-form-page .app-header .jcc-notice-back:hover {
-    color: var(--accent);
-  }
-  body.jcc-notice-form-page .app-header .jcc-notice-back svg {
-    width: 22px;
-    height: 22px;
+    display: none;
   }
   body.jcc-notice-detail-page .jcc-notice-detailHeaderTitle {
     display: block;
@@ -1088,10 +1059,8 @@ body.has-notice-bottom-tabs .jcc-retreat-listTop {
 }
 
 /* === 공지 작성/수정 페이지: 헤더 정렬 + 2단 레이아웃 === */
-body.jcc-notice-form-page header.app-header {
-  padding-left: 0;
-  padding-right: 0;
-}
+/* 공지 작성/수정 헤더는 공통 헤더(notices/_page_header.html)를 사용하므로
+   별도 패딩 override 없이 목록/상세와 동일한 중앙 정렬 헤더를 따른다. */
 .jcc-notice-formHeaderInner {
   width: 100%;
   max-width: none;
@@ -1103,36 +1072,47 @@ body.jcc-notice-form-page header.app-header {
 }
 .jcc-notice-formHeaderActions {
   margin-left: auto;
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: 0.6rem;
+  flex: 0 0 auto;
 }
-.jcc-notice-headerCancel {
-  padding: 0.55rem 1rem;
+/* 작성/수정 폼 하단: 취소·저장 버튼을 동일 크기(높이·최소너비)로 맞춘다. */
+.jcc-notice-headerCancel,
+.jcc-notice-headerSave {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 2.7rem;
+  min-width: 7rem;
+  padding: 0 1.25rem;
   border-radius: 10px;
+  border: 1px solid transparent;
   font-weight: 700;
   font-size: 0.92rem;
-  color: var(--muted);
+  line-height: 1;
   text-decoration: none;
+  cursor: pointer;
+}
+.jcc-notice-headerCancel {
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--text);
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 .jcc-notice-headerCancel:hover {
+  background: color-mix(in srgb, var(--text) 4%, var(--card));
+  border-color: color-mix(in srgb, var(--text) 18%, var(--border));
   color: var(--text);
-  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 .jcc-notice-headerSave {
-  padding: 0.6rem 1.15rem;
-  border: none;
-  border-radius: 10px;
   background: var(--accent);
   color: #fff;
-  font-weight: 800;
-  font-size: 0.92rem;
-  cursor: pointer;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent);
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition: filter 0.15s ease, transform 0.1s ease;
 }
 .jcc-notice-headerSave:hover {
-  background: color-mix(in srgb, var(--accent) 88%, black);
+  filter: brightness(0.95);
 }
 .jcc-notice-headerSave:active {
   transform: translateY(1px);
@@ -1243,10 +1223,6 @@ body.jcc-notice-form-page header.app-header {
   color: var(--muted);
 }
 
-/* 헤더 액션은 데스크톱, 하단 액션은 모바일 */
-.jcc-notice-actions--mobile {
-  display: none;
-}
 @media (max-width: 1024px) {
   .jcc-notice-formLayout {
     grid-template-columns: 1fr;
@@ -1256,12 +1232,6 @@ body.jcc-notice-form-page header.app-header {
   }
 }
 @media (max-width: 900px) {
-  .jcc-notice-formHeaderActions {
-    display: none;
-  }
-  .jcc-notice-actions--mobile {
-    display: flex;
-  }
   .jcc-notice-formHeaderInner {
     padding-left: 3rem;
   }
@@ -1618,21 +1588,16 @@ body.jcc-notice-form-page header.app-header {
 .jcc-notice-cancel:hover {
   color: var(--text);
 }
-/* 작성/수정 폼: 에디터 컬럼 하단의 단일 행 액션(취소·작성완료) */
+/* 작성/수정 폼: 에디터 컬럼 하단의 단일 행 액션(취소·작성완료) — 우측 정렬, 동일 크기 */
 .jcc-notice-formActions {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 0.25rem;
-}
-.jcc-notice-formActions .jcc-notice-saveBtn {
-  width: auto;
-  padding: 0.8rem 1.8rem;
-}
-.jcc-notice-formActions .jcc-notice-cancel {
-  padding: 0.6rem 1rem;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
 }
 /* 태그 칩 입력 */
 .jcc-tagInput-hidden {

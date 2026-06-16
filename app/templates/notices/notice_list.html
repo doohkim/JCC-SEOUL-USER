@@ -6,18 +6,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>공지사항</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616k" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617e" />
   </head>
   <body class="has-notice-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        <header class="app-header">
-          <div class="jcc-detail-titleWrap">
-            <h1>공지사항</h1>
-          </div>
-          {% include 'notices/_subtabs.html' with notices_tab='notices' %}
-        </header>
+        {% include 'notices/_page_header.html' with title='공지사항' notices_tab='notices' %}
         <main class="jcc-notice-listMain">
           {% if can_manage_notices %}
             <div class="jcc-notice-listToolbar">

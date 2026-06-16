@@ -22,6 +22,12 @@ def _png_bytes() -> bytes:
     return buf.getvalue()
 
 
+def _large_png_bytes(width: int = 2400, height: int = 1600) -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", (width, height), (30, 120, 200)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
 class NoticeImageUploadTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -80,6 +86,28 @@ class NoticeImageUploadTests(TestCase):
         self.client.force_login(self.superuser)
         r = self.client.get(reverse("notice_image_upload"))
         self.assertEqual(r.status_code, 405)
+
+
+class NoticeThumbnailCompressTests(TestCase):
+    def test_large_thumbnail_is_resized_and_reencoded(self):
+        original = _large_png_bytes()
+        upload = SimpleUploadedFile(
+            "banner.png", original, content_type="image/png"
+        )
+        form = NoticeForm(
+            data={"title": "썸네일", "body": "<p>본문</p>", "scope": "all",
+                  "is_pinned": False},
+            files={"thumbnail": upload},
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        thumb = form.cleaned_data["thumbnail"]
+        thumb.seek(0)
+        img = Image.open(thumb)
+        self.assertEqual(img.format, "JPEG")
+        self.assertLessEqual(img.width, 1200)
+        thumb.seek(0)
+        self.assertLess(len(thumb.read()), len(original))
+        self.assertTrue(thumb.name.endswith(".jpg"))
 
 
 class NoticeBodyImageSanitizeTests(TestCase):

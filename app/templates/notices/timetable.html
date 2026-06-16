@@ -6,18 +6,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>타임테이블</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616g" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617e" />
   </head>
   <body class="has-notice-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        <header class="app-header">
-          <div class="jcc-detail-titleWrap">
-            <h1>타임테이블</h1>
-          </div>
-          {% include 'notices/_subtabs.html' with notices_tab='timetable' %}
-        </header>
+        {% include 'notices/_page_header.html' with title='타임테이블' notices_tab='timetable' %}
         <main>
 
           {% if events %}

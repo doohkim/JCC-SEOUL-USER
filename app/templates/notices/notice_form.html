@@ -6,25 +6,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% if object %}공지사항 수정{% else %}공지 작성{% endif %}</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616o" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617e" />
   </head>
   <body class="has-notice-bottom-tabs jcc-notice-form-page">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        <header class="app-header">
-          <div class="jcc-notice-formHeaderInner">
-            <a class="jcc-notice-back" href="{% if object %}{% url 'notice_detail' object.pk %}{% else %}{% url 'notice_list' %}{% endif %}" aria-label="뒤로">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </a>
-            <div class="jcc-detail-titleWrap">
-              <h1>{% if object %}공지사항 수정{% else %}공지 작성{% endif %}</h1>
-            </div>
-          </div>
-          {% include 'notices/_subtabs.html' with notices_tab='notices' %}
-        </header>
+        {% if object %}
+          {% url 'notice_detail' object.pk as form_back_url %}
+          {% include 'notices/_page_header.html' with title='공지사항 수정' notices_tab='notices' back_url=form_back_url %}
+        {% else %}
+          {% url 'notice_list' as form_back_url %}
+          {% include 'notices/_page_header.html' with title='공지 작성' notices_tab='notices' back_url=form_back_url %}
+        {% endif %}
         <main>
           <form id="noticeForm" method="post" enctype="multipart/form-data" class="jcc-notice-formBody">
             {% csrf_token %}
@@ -173,8 +167,8 @@
                 </section>
 
                 <div class="jcc-notice-formActions">
-                  <a class="jcc-notice-cancel" href="{% if object %}{% url 'notice_detail' object.pk %}{% else %}{% url 'notice_list' %}{% endif %}">취소</a>
-                  <button type="submit" class="jcc-notice-saveBtn">{% if object %}수정 완료{% else %}작성 완료{% endif %}</button>
+                  <a class="jcc-notice-headerCancel" href="{% if object %}{% url 'notice_detail' object.pk %}{% else %}{% url 'notice_list' %}{% endif %}">취소</a>
+                  <button type="submit" class="jcc-notice-headerSave">{% if object %}수정 완료{% else %}작성 완료{% endif %}</button>
                 </div>
               </div>
 

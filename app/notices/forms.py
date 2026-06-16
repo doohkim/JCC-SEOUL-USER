@@ -2,9 +2,11 @@
 
 import nh3
 from django import forms
+from django.core.files.uploadedfile import UploadedFile
 from tinymce.widgets import TinyMCE
 
 from notices.models import Notice
+from notices.services import compress_thumbnail
 from users.models import Division
 
 ALLOWED_BODY_TAGS = {
@@ -87,6 +89,13 @@ class NoticeForm(forms.ModelForm):
             "region"
         ).order_by("region__sort_order", "sort_order", "name")
         self.fields["division"].empty_label = "지역·부서 선택"
+
+    def clean_thumbnail(self):
+        # 새로 업로드된 파일만 리사이즈/압축한다. (기존 파일 유지·삭제는 그대로)
+        thumbnail = self.cleaned_data.get("thumbnail")
+        if isinstance(thumbnail, UploadedFile):
+            return compress_thumbnail(thumbnail)
+        return thumbnail
 
     def clean_body(self):
         raw = self.cleaned_data.get("body") or ""
