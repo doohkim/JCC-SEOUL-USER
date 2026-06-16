@@ -13,4 +13,4 @@ def api_root_redirect(request):
     host = request.get_host().split(":")[0].lower()
     if host in getattr(settings, "DOCS_SWAGGER_HOSTS", frozenset()):
         return HttpResponseRedirect("/api/schema/swagger-ui/")
-    return HttpResponseRedirect("/login/?next=/attendance/")
+    return HttpResponseRedirect("/login/?next=/notices/")

@@ -45,6 +45,7 @@ def user_permission_snapshot(user: User) -> dict[str, Any]:
             "can_manage_attendance": bool(getattr(user, "can_manage_attendance", False)),
             "can_manage_accounts": bool(getattr(user, "can_manage_accounts", False)),
             "can_manage_parking": bool(getattr(user, "can_manage_parking", False)),
+            "can_manage_notices": bool(getattr(user, "can_manage_notices", False)),
         },
         "access": {
             "platform_admin": is_platform_admin(user),

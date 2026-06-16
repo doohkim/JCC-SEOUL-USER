@@ -6,9 +6,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>공지 삭제</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616g" />
   </head>
-  <body>
+  <body class="has-notice-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
@@ -31,5 +31,6 @@
         </main>
       </div>
     </div>
+    {% include 'includes/notice_bottom_tabs.html' with notices_tab='notices' %}
   </body>
 </html>

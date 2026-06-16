@@ -21,6 +21,14 @@ class _NoticeAccessFixture(TestCase):
         cls.superuser = User.objects.create_superuser(
             username="notice_super", password="x"
         )
+        cls.staff_user = User.objects.create_user(
+            username="notice_staff", password="x", is_staff=True
+        )
+        UserProfile.objects.create(
+            user=cls.staff_user,
+            onboarding_status=UserProfile.OnboardingStatus.APPROVED,
+            requested_division=cls.div,
+        )
         cls.pending_user = User.objects.create_user(
             username="notice_pending", password="x"
         )
@@ -58,7 +66,7 @@ class _NoticeAccessFixture(TestCase):
 
 
 class NoticeAccessTests(_NoticeAccessFixture):
-    """개발 단계: 공지/타임테이블은 superuser 전용."""
+    """보기(목록·상세·타임테이블)는 로그인 사용자 전체 허용, 비로그인은 로그인으로."""
 
     def test_anonymous_redirects_to_login(self):
         r = self.client.get(reverse("notice_list"))
@@ -70,23 +78,53 @@ class NoticeAccessTests(_NoticeAccessFixture):
         r = self.client.get(reverse("notice_list"))
         self.assertEqual(r.status_code, 200)
 
-    def test_pending_forbidden(self):
+    def test_staff_can_list(self):
+        self.client.force_login(self.staff_user)
+        self.assertEqual(self.client.get(reverse("notice_list")).status_code, 200)
+
+    def test_pending_can_list(self):
         self.client.force_login(self.pending_user)
-        self.assertEqual(self.client.get(reverse("notice_list")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("notice_list")).status_code, 200)
 
-    def test_approved_forbidden(self):
+    def test_approved_can_list(self):
         self.client.force_login(self.approved_user)
-        self.assertEqual(self.client.get(reverse("notice_list")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("notice_list")).status_code, 200)
 
-    def test_rejected_forbidden(self):
+    def test_rejected_redirected(self):
         self.client.force_login(self.rejected_user)
-        self.assertEqual(self.client.get(reverse("notice_list")).status_code, 403)
+        r = self.client.get(reverse("notice_list"))
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/onboarding", r.url)
 
-    def test_timetable_superuser_only(self):
+    def test_unsubmitted_redirected(self):
+        self.client.force_login(self.unsubmitted_user)
+        r = self.client.get(reverse("notice_list"))
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/onboarding", r.url)
+
+    def test_notice_manager_can_list_even_when_rejected(self):
+        self.rejected_user.can_manage_notices = True
+        self.rejected_user.save(update_fields=["can_manage_notices"])
+        self.client.force_login(self.rejected_user)
+        r = self.client.get(reverse("notice_list"))
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.context["can_manage_notices"])
+
+    def test_manage_button_only_for_superuser_or_staff(self):
+        self.client.force_login(self.staff_user)
+        self.assertTrue(self.client.get(reverse("notice_list")).context["can_manage_notices"])
+        self.client.force_login(self.approved_user)
+        self.assertFalse(self.client.get(reverse("notice_list")).context["can_manage_notices"])
+
+    def test_timetable_login_required(self):
         self.client.force_login(self.superuser)
         self.assertEqual(self.client.get(reverse("timetable")).status_code, 200)
         self.client.force_login(self.approved_user)
-        self.assertEqual(self.client.get(reverse("timetable")).status_code, 403)
+        self.assertEqual(self.client.get(reverse("timetable")).status_code, 200)
+        self.client.force_login(self.rejected_user)
+        r = self.client.get(reverse("timetable"))
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/onboarding", r.url)
         self.client.logout()
         r = self.client.get(reverse("timetable"))
         self.assertEqual(r.status_code, 302)
@@ -158,6 +196,27 @@ class NoticeWriteAccessTests(_NoticeAccessFixture):
 
         self.assertTrue(Notice.objects.filter(title="테스트 공지").exists())
 
+    def test_staff_can_open_create_form(self):
+        self.client.force_login(self.staff_user)
+        r = self.client.get(reverse("notice_create"))
+        self.assertEqual(r.status_code, 200)
+
+    def test_staff_can_create_notice(self):
+        self.client.force_login(self.staff_user)
+        r = self.client.post(
+            reverse("notice_create"),
+            {"title": "스태프 공지", "body": "내용", "is_pinned": False, "scope": "all"},
+        )
+        self.assertEqual(r.status_code, 302)
+        from notices.models import Notice
+
+        self.assertTrue(Notice.objects.filter(title="스태프 공지").exists())
+
+    def test_anonymous_cannot_create(self):
+        r = self.client.get(reverse("notice_create"))
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/login/", r.url)
+
     def test_pending_user_cannot_create(self):
         self.client.force_login(self.pending_user)
         r = self.client.get(reverse("notice_create"))
@@ -167,6 +226,27 @@ class NoticeWriteAccessTests(_NoticeAccessFixture):
         self.client.force_login(self.approved_user)
         r = self.client.get(reverse("notice_create"))
         self.assertEqual(r.status_code, 403)
+
+    def test_notice_manager_flag_can_create(self):
+        """can_manage_notices 기능권한만 가진 일반 계정도 작성 가능."""
+        self.approved_user.can_manage_notices = True
+        self.approved_user.save(update_fields=["can_manage_notices"])
+        self.client.force_login(self.approved_user)
+        r = self.client.post(
+            reverse("notice_create"),
+            {"title": "공지관리자 공지", "body": "내용", "is_pinned": False, "scope": "all"},
+        )
+        self.assertEqual(r.status_code, 302)
+        from notices.models import Notice
+
+        self.assertTrue(Notice.objects.filter(title="공지관리자 공지").exists())
+
+    def test_notice_manager_flag_sees_manage_context(self):
+        self.approved_user.can_manage_notices = True
+        self.approved_user.save(update_fields=["can_manage_notices"])
+        self.client.force_login(self.approved_user)
+        r = self.client.get(reverse("notice_list"))
+        self.assertTrue(r.context["can_manage_notices"])
 
 
 class NoticeScopeTests(_NoticeAccessFixture):
@@ -236,7 +316,8 @@ class NoticeScopeTests(_NoticeAccessFixture):
         self.assertIn(my_n.id, ids)
         self.assertNotIn(other_n.id, ids)
 
-    def test_list_filter_by_division(self):
+    def test_list_shows_all_visible_notices(self):
+        """목록은 지역·부서 드롭다운 없이 전체 가시 공지를 표시한다."""
         Notice = self.notice_model()
         Notice.objects.create(title="전체", body="x", scope="all")
         Notice.objects.create(
@@ -246,9 +327,9 @@ class NoticeScopeTests(_NoticeAccessFixture):
             title="다른부서", body="x", scope="division", division=self.other_div
         )
         self.client.force_login(self.superuser)
-        r = self.client.get(reverse("notice_list"), {"division": self.div.id})
+        r = self.client.get(reverse("notice_list"))
         titles = {n.title for n in r.context["notices"]}
-        self.assertEqual(titles, {"전체", "우리부서"})
+        self.assertEqual(titles, {"전체", "우리부서", "다른부서"})
 
     @staticmethod
     def notice_model():

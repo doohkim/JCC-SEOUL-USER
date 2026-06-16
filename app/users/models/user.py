@@ -36,6 +36,11 @@ class User(AbstractUser):
         default=False,
         help_text="부서 계정 직책 관리 화면 접근 권한",
     )
+    can_manage_notices = models.BooleanField(
+        "공지 관리 권한",
+        default=False,
+        help_text="공지사항 작성·수정·삭제 권한",
+    )
     signup_source = models.CharField(
         "가입 경로",
         max_length=16,

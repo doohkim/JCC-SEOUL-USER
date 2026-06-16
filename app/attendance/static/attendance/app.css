@@ -170,6 +170,1431 @@ header.app-header a:hover {
   display: none;
 }
 
+/* 공지사항 섹션: 모바일 하단 탭을 전역 메뉴 대신 공지사항·타임테이블 2탭으로 교체하고,
+   상단 하위 탭(공지사항·공지작성·타임테이블)은 모바일에서 숨긴다. */
+body.has-notice-bottom-tabs #jccBottomTabs {
+  display: none !important;
+}
+body:not(.has-notice-bottom-tabs) .jcc-noticeBottomTabs {
+  display: none !important;
+}
+/* 헤더: 수련회 페이지와 동일하게 스크롤 시 상단 고정 */
+body.has-notice-bottom-tabs header.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+/* 모바일 햄버거: 수련회 페이지와 동일한 크기·굵기 */
+@media (max-width: 900px) {
+  body.has-notice-bottom-tabs .jcc-mobile-menu-btn {
+    width: 48px;
+    height: 48px;
+  }
+  body.has-notice-bottom-tabs .jcc-mobile-menu-btn svg {
+    width: 32px;
+    height: 32px;
+  }
+  body.has-notice-bottom-tabs .jcc-mobile-menu-btn svg path {
+    stroke-width: 2.2;
+  }
+}
+/* 공지 하위 탭(공지사항·타임테이블): 수련회 메인 탭(대시보드·조관리…)과 동일한 밑줄 탭 톤·레이아웃.
+   PC 에서는 헤더(app-header) 안 제목 아래 한 줄로 배치한다. */
+body.has-notice-bottom-tabs .jcc-notice-pageTabsRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+body.has-notice-bottom-tabs .jcc-notice-pageTabs {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.6rem;
+  align-items: stretch;
+  margin-bottom: 0.9rem;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex: 1 1 auto;
+}
+body.has-notice-bottom-tabs .jcc-notice-pageTabs::-webkit-scrollbar {
+  display: none;
+}
+body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab {
+  position: relative;
+  min-width: auto;
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 10px 10px 0 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 0.6rem 0.95rem 0.72rem;
+  box-shadow: none;
+}
+body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab::after {
+  content: "";
+  position: absolute;
+  left: 0.7rem;
+  right: 0.7rem;
+  bottom: -1px;
+  height: 2.5px;
+  border-radius: 3px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab.is-active {
+  color: var(--accent);
+  background: transparent;
+}
+body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab.is-active::after {
+  background: var(--accent);
+}
+
+/* PC: 메인 탭을 헤더 안 제목 아래 한 줄로 배치하고, 헤더 내용은 main 콘텐츠 좌측선에 정렬한다(수련회와 동일). */
+@media (min-width: 901px) {
+  body.has-notice-bottom-tabs header.app-header {
+    align-items: flex-start;
+    padding-left: max(1.5rem, calc((100% - 1400px) / 2 + 1.5rem));
+    padding-right: max(1.5rem, calc((100% - 1400px) / 2 + 1.5rem));
+  }
+  body.has-notice-bottom-tabs header.app-header > .jcc-notice-pageTabsRow {
+    flex-basis: 100%;
+    width: 100%;
+    margin: 0.45rem 0 -1rem;
+  }
+  body.has-notice-bottom-tabs
+    header.app-header
+    > .jcc-notice-pageTabsRow
+    .jcc-notice-pageTabs {
+    margin-bottom: 0;
+    border-bottom: none;
+    margin-left: -0.95rem;
+  }
+  /* 필터(지역·부서 select)·적용·공지작성 버튼을 같은 높이로 통일해 한 행에 정렬 */
+  body.has-notice-bottom-tabs #noticeFilter {
+    align-items: center;
+  }
+  body.has-notice-bottom-tabs #noticeFilter select,
+  body.has-notice-bottom-tabs #noticeFilter button.secondary,
+  body.has-notice-bottom-tabs .jcc-notice-addBtn {
+    height: 2.7rem;
+    border-radius: 10px;
+  }
+}
+/* 모바일: 헤더 안 하위 탭은 숨기고 하단 탭바로 대체 */
+@media (max-width: 900px) {
+  body.has-notice-bottom-tabs .jcc-notice-pageTabsRow {
+    display: none;
+  }
+}
+/* 공지 목록 상단: 필터(전체 지역·부서)와 + 공지 작성 버튼을 같은 행에 세로 중앙 정렬,
+   버튼은 우측 정렬 */
+body.has-notice-bottom-tabs .jcc-retreat-listTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+/* 공지 목록 제목: 링크 하이라이트(파란색·밑줄) 제거 → 일반 텍스트 */
+.jcc-notice-titleLink {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+.jcc-notice-titleLink:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+/* 목록 행: 클릭 시 상세로 이동(JS) — 커서·호버 강조 */
+.jcc-notice-row {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.jcc-notice-row:hover {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+/* ACTION 컬럼 + 수정/삭제 아이콘 버튼 — 픽업 제거 버튼과 동일 톤 */
+.jcc-notice-actionCol {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+}
+.jcc-notice-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.jcc-notice-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.jcc-notice-action svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+.jcc-notice-action:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.jcc-notice-delete:hover {
+  color: var(--danger, #e5484d);
+  background: color-mix(in srgb, var(--danger, #e5484d) 12%, transparent);
+}
+
+/* + 공지 작성: 픽업 + 차량 요청 버튼과 동일한 파란 톤 */
+.jcc-notice-addBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.1rem;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent, #4a9eff);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+.jcc-notice-addBtn:hover {
+  background: color-mix(in srgb, var(--accent) 88%, black);
+}
+.jcc-notice-addBtn:active {
+  transform: translateY(1px);
+}
+/* 아이콘(문서 모양)은 PC에서 숨기고 모바일에서만 노출 */
+.jcc-notice-addBtn-icon {
+  display: none;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+}
+/* 모바일 FAB: 우측 하단 원형(문서 아이콘) */
+.jcc-notice-addBtn--mobile {
+  display: none;
+}
+@media (max-width: 900px) {
+  .jcc-notice-addBtn--desktop {
+    display: none !important;
+  }
+  .jcc-notice-addBtn--mobile {
+    display: inline-flex;
+    position: fixed;
+    right: 1.1rem;
+    bottom: 5rem;
+    z-index: 50;
+    width: 3.4rem;
+    height: 3.4rem;
+    gap: 0;
+    padding: 0;
+    border-radius: 50%;
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  .jcc-notice-addBtn--mobile .jcc-notice-addBtn-icon {
+    display: block;
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+}
+@media (min-width: 901px) {
+  .jcc-notice-addBtn--mobile {
+    display: none !important;
+  }
+}
+
+/* ===== 공지 목록: 검색·카테고리 필터·카드 그리드 ===== */
+.jcc-notice-listMain {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.jcc-notice-listToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem 0.85rem;
+}
+.jcc-notice-searchForm {
+  flex: 0 1 22rem;
+  min-width: 0;
+}
+.jcc-notice-searchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.jcc-notice-searchIcon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.05rem;
+  height: 1.05rem;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 1;
+}
+.jcc-notice-searchInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem 1rem 0.7rem 2.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.95rem;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.jcc-notice-searchInput::-webkit-search-decoration,
+.jcc-notice-searchInput::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.jcc-notice-searchInput::placeholder {
+  color: var(--muted);
+}
+.jcc-notice-searchInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.jcc-notice-categoryBar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.2rem;
+  align-items: center;
+  margin-left: auto;
+  padding: 0.3rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+.jcc-notice-categoryPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.jcc-notice-categoryPill:hover {
+  color: var(--text);
+}
+.jcc-notice-categoryPill.is-active {
+  background: var(--card);
+  color: var(--cat-color, var(--text));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.jcc-notice-cardGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.1rem;
+}
+.jcc-notice-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  overflow: hidden;
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+.jcc-notice-card:hover {
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 10%, transparent);
+  transform: translateY(-2px);
+}
+.jcc-notice-cardLink {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  color: inherit;
+  text-decoration: none;
+}
+.jcc-notice-cardMedia {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  overflow: hidden;
+}
+.jcc-notice-cardMedia img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.jcc-notice-cardPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--muted);
+}
+.jcc-notice-cardPlaceholder svg {
+  width: 3rem;
+  height: 3rem;
+  opacity: 0.45;
+}
+.jcc-notice-cardBadge {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #fff;
+  background: color-mix(in srgb, var(--text) 55%, transparent);
+}
+.jcc-notice-cardBadge--important {
+  background: #e5484d;
+}
+.jcc-notice-cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.95rem 1rem 1rem;
+  flex: 1 1 auto;
+}
+.jcc-notice-cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.jcc-notice-cardCat {
+  display: inline-flex;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--cat-color, var(--accent));
+  background: color-mix(in srgb, var(--cat-color, var(--accent)) 14%, transparent);
+}
+.jcc-notice-cardDate {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.jcc-notice-cardCat--important {
+  color: #e5484d;
+  background: color-mix(in srgb, #e5484d 14%, transparent);
+}
+.jcc-notice-card--text .jcc-notice-cardBody {
+  min-height: 13rem;
+  padding-top: 1.1rem;
+}
+.jcc-notice-card--text .jcc-notice-cardExcerpt {
+  -webkit-line-clamp: 4;
+}
+.jcc-notice-cardTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.jcc-notice-cardExcerpt {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1 1 auto;
+}
+.jcc-notice-cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.jcc-notice-cardViews {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.jcc-notice-cardViews svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+.jcc-notice-cardAuthor {
+  font-weight: 600;
+}
+.jcc-notice-cardActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  padding: 0 0.65rem 0.65rem;
+}
+.jcc-notice-empty {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+.jcc-notice-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+.jcc-notice-paginationBtns {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.jcc-notice-pageBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.88rem;
+  text-decoration: none;
+}
+.jcc-notice-pageBtn.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ===== 공지 상세: 배너·태그·이전/다음·모바일 하단 액션바 ===== */
+.jcc-notice-detailMain {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 860px;
+  margin: 0 auto;
+}
+.jcc-notice-detailHeaderTitle {
+  display: none;
+}
+@media (min-width: 901px) {
+  body.jcc-notice-detail-page .app-header .jcc-notice-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    flex: 0 0 auto;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  body.jcc-notice-detail-page .app-header .jcc-notice-back:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+    color: var(--accent);
+  }
+  body.jcc-notice-detail-page .app-header .jcc-notice-back svg {
+    width: 22px;
+    height: 22px;
+  }
+  body.jcc-notice-detail-page .jcc-notice-detailHeaderTitle {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+.jcc-notice-detailTopActions--desktop {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.jcc-notice-detailArticle {
+  padding: 0;
+  overflow: hidden;
+}
+.jcc-notice-detailBanner {
+  position: relative;
+  aspect-ratio: 21 / 9;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  overflow: hidden;
+}
+.jcc-notice-detailBanner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.jcc-notice-detailBannerPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--muted);
+}
+.jcc-notice-detailBannerPlaceholder svg {
+  width: 4rem;
+  height: 4rem;
+  opacity: 0.4;
+}
+.jcc-notice-detailBannerBadges {
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.jcc-notice-detailBadge {
+  display: inline-flex;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fff;
+  background: color-mix(in srgb, var(--cat-color, var(--accent)) 85%, black);
+}
+.jcc-notice-detailBadge--important {
+  background: #4a9eff;
+}
+.jcc-notice-detailContent {
+  padding: 1.25rem 1.35rem 1.5rem;
+}
+.jcc-notice-detailTitle {
+  margin: 0 0 0.85rem;
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+}
+.jcc-notice-detailMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.jcc-notice-detailMetaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.jcc-notice-detailMetaItem svg {
+  width: 1rem;
+  height: 1rem;
+}
+.jcc-notice-body {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--text);
+}
+.jcc-notice-detailTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.jcc-notice-tagPill {
+  display: inline-flex;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.jcc-notice-detailNav {
+  padding: 0;
+  overflow: hidden;
+}
+.jcc-notice-detailNavRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+.jcc-notice-detailNavRow:last-child {
+  border-bottom: none;
+}
+.jcc-notice-detailNavLabel {
+  flex: 0 0 3.5rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+.jcc-notice-detailNavRow a {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jcc-notice-detailNavRow a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.jcc-notice-detailBottomBar {
+  display: none;
+}
+.jcc-notice-fieldHint {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+}
+.jcc-notice-thumbPreview {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+}
+.jcc-notice-imageUploader {
+  margin-bottom: 1.25rem;
+}
+.jcc-notice-imageUploader-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+.jcc-notice-imageUploader-head label {
+  margin: 0;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+.jcc-notice-imageChangeBtn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.jcc-notice-imageChangeBtn svg {
+  width: 1rem;
+  height: 1rem;
+}
+.jcc-notice-imageChangeBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.jcc-notice-imagePreview {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  aspect-ratio: 3 / 4;
+  border-radius: 0.85rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+.jcc-notice-imagePreview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.jcc-notice-imagePreviewPlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--muted);
+}
+.jcc-notice-imagePreviewPlaceholder svg {
+  width: 3rem;
+  height: 3rem;
+  opacity: 0.55;
+}
+.jcc-notice-imagePreviewPlaceholder span {
+  font-size: 0.85rem;
+}
+.jcc-notice-imagePreview.has-image .jcc-notice-imagePreviewPlaceholder {
+  display: none;
+}
+.jcc-notice-imageOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.jcc-notice-imagePreview.has-image:hover .jcc-notice-imageOverlay,
+.jcc-notice-imagePreview.has-image:focus-within .jcc-notice-imageOverlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+.jcc-notice-imageOverlayBtn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1f2733;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.jcc-notice-imageOverlayBtn svg {
+  width: 20px;
+  height: 20px;
+}
+.jcc-notice-imageOverlayBtn:hover {
+  background: #fff;
+}
+.jcc-notice-imageOverlayBtn--danger {
+  color: #e5484d;
+}
+.jcc-notice-imageHint {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+}
+.jcc-notice-imageInputWrap {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* === 공지 작성/수정 페이지: 헤더 정렬 + 2단 레이아웃 === */
+body.jcc-notice-form-page header.app-header {
+  padding-left: 0;
+  padding-right: 0;
+}
+.jcc-notice-formHeaderInner {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.jcc-notice-formHeaderActions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.jcc-notice-headerCancel {
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+.jcc-notice-headerCancel:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.jcc-notice-headerSave {
+  padding: 0.6rem 1.15rem;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.92rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.jcc-notice-headerSave:hover {
+  background: color-mix(in srgb, var(--accent) 88%, black);
+}
+.jcc-notice-headerSave:active {
+  transform: translateY(1px);
+}
+
+.jcc-notice-formLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 1.5rem;
+  align-items: start;
+}
+.jcc-notice-formMain {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+.jcc-notice-formSide {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  position: sticky;
+  top: 1.25rem;
+}
+.jcc-notice-formCard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 16px;
+  padding: 1.25rem 1.4rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 22px rgba(0, 0, 0, 0.04);
+}
+.jcc-notice-formCard.jcc-notice-imageUploader {
+  margin-bottom: 0;
+}
+.jcc-notice-sideTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.jcc-notice-sideCard .jcc-toggle-row {
+  padding: 0;
+}
+
+/* 카테고리 pill (라디오) */
+.jcc-notice-catPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.jcc-notice-catPill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.jcc-notice-catPill input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.jcc-notice-catPill:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+.jcc-notice-catPill:has(input:checked) {
+  background: var(--cat-color, var(--accent));
+  border-color: var(--cat-color, var(--accent));
+  color: #fff;
+}
+
+/* 우측 안내 카드 */
+.jcc-notice-noticeCard {
+  background: color-mix(in srgb, var(--accent) 8%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: 16px;
+  padding: 1.1rem 1.25rem;
+}
+.jcc-notice-noticeHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+.jcc-notice-noticeHead svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+.jcc-notice-noticeCard p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* 헤더 액션은 데스크톱, 하단 액션은 모바일 */
+.jcc-notice-actions--mobile {
+  display: none;
+}
+@media (max-width: 1024px) {
+  .jcc-notice-formLayout {
+    grid-template-columns: 1fr;
+  }
+  .jcc-notice-formSide {
+    position: static;
+  }
+}
+@media (max-width: 900px) {
+  .jcc-notice-formHeaderActions {
+    display: none;
+  }
+  .jcc-notice-actions--mobile {
+    display: flex;
+  }
+  .jcc-notice-formHeaderInner {
+    padding-left: 3rem;
+  }
+}
+.jcc-notice-body ul,
+.jcc-notice-body ol {
+  margin: 0.75rem 0;
+  padding-left: 1.35rem;
+}
+.jcc-notice-body li {
+  margin: 0.35rem 0;
+}
+.jcc-notice-body h1,
+.jcc-notice-body h2,
+.jcc-notice-body h3 {
+  margin: 1.25rem 0 0.65rem;
+  line-height: 1.35;
+  font-weight: 800;
+}
+.jcc-notice-body h1 { font-size: 1.35rem; }
+.jcc-notice-body h2 { font-size: 1.2rem; }
+.jcc-notice-body h3 { font-size: 1.05rem; }
+.jcc-notice-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.92rem;
+}
+.jcc-notice-body th,
+.jcc-notice-body td {
+  border: 1px solid var(--border);
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+}
+.jcc-notice-body th {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  font-weight: 800;
+}
+.jcc-notice-body a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.jcc-notice-body blockquote {
+  margin: 1rem 0;
+  padding: 0.65rem 1rem;
+  border-left: 3px solid var(--accent);
+  color: var(--muted);
+}
+.jcc-notice-body p {
+  margin: 0 0 0.85rem;
+}
+.jcc-notice-body p:last-child {
+  margin-bottom: 0;
+}
+.jcc-notice-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.5rem 0;
+}
+.jcc-notice-body [style*="text-align: center"],
+.jcc-notice-body [style*="text-align:center"] {
+  text-align: center;
+}
+.jcc-notice-body [style*="text-align: right"],
+.jcc-notice-body [style*="text-align:right"] {
+  text-align: right;
+}
+.jcc-notice-body [style*="text-align: left"],
+.jcc-notice-body [style*="text-align:left"] {
+  text-align: left;
+}
+
+@media (max-width: 1100px) {
+  .jcc-notice-cardGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .jcc-notice-listToolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .jcc-notice-categoryBar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.15rem;
+  }
+  .jcc-notice-categoryBar::-webkit-scrollbar {
+    display: none;
+  }
+  .jcc-notice-categoryPill {
+    flex: 0 0 auto;
+  }
+  .jcc-notice-cardGrid {
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+  }
+  .jcc-notice-detailTopActions--desktop {
+    display: none;
+  }
+  .jcc-notice-detailBottomBar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(3.6rem + env(safe-area-inset-bottom, 0px));
+    z-index: 45;
+    gap: 0.65rem;
+    padding: 0.75rem 1rem;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 16px color-mix(in srgb, var(--text) 8%, transparent);
+  }
+  body.jcc-notice-detail-page .jcc-notice-detailMain {
+    padding-bottom: 5rem;
+  }
+  .jcc-notice-detailBottomDelete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    flex: 0 0 auto;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-decoration: none;
+  }
+  .jcc-notice-detailBottomDelete svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  .jcc-notice-detailBottomEdit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    flex: 1 1 auto;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.95rem;
+    text-decoration: none;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .jcc-notice-detailBottomEdit svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  .jcc-notice-detailBanner {
+    aspect-ratio: 16 / 10;
+  }
+  .jcc-notice-detailTitle {
+    font-size: 1.3rem;
+  }
+}
+@media (min-width: 901px) {
+  .jcc-notice-detailBottomBar {
+    display: none !important;
+  }
+}
+
+/* ===== 공지 작성/수정 폼 (Toss 톤, 모바일 우선) ===== */
+.jcc-notice-formBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.jcc-notice-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.jcc-notice-field > label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+.jcc-notice-formBody input[type="text"],
+.jcc-notice-formBody textarea,
+.jcc-notice-formBody select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text);
+}
+.jcc-notice-formBody textarea {
+  min-height: 160px;
+  resize: vertical;
+  line-height: 1.55;
+}
+.jcc-notice-formBody input[type="text"]:focus,
+.jcc-notice-formBody textarea:focus,
+.jcc-notice-formBody select:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--card);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.jcc-notice-formBody .jcc-field-row select {
+  flex: 1 1 12rem;
+  width: auto;
+}
+
+/* 공개 범위 세그먼트 컨트롤 (전체 / 지역·부서) */
+.jcc-segmented {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.3rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+.jcc-segmented-item {
+  position: relative;
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 0.5rem;
+  border-radius: 11px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.jcc-segmented-item input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.jcc-segmented-item:has(input:checked) {
+  background: var(--card);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* 상단 고정 토글 카드 */
+.jcc-notice-pinCard {
+  background: var(--card);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 22px rgba(0, 0, 0, 0.05);
+}
+.jcc-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  margin: 0;
+  cursor: pointer;
+}
+.jcc-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text);
+}
+.jcc-toggle-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.jcc-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.jcc-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.jcc-switch-track {
+  display: inline-block;
+  position: relative;
+  width: 46px;
+  height: 28px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 22%, transparent);
+  transition: background 0.18s ease;
+}
+.jcc-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.18s ease;
+}
+.jcc-switch:has(input:checked) .jcc-switch-track {
+  background: var(--accent);
+}
+.jcc-switch:has(input:checked) .jcc-switch-thumb {
+  transform: translateX(18px);
+}
+
+/* 저장(풀폭) + 취소(텍스트) */
+.jcc-notice-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+.jcc-notice-saveBtn {
+  width: 100%;
+  padding: 0.95rem 1rem;
+  border: none;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.jcc-notice-saveBtn:hover {
+  background: color-mix(in srgb, var(--accent) 88%, black);
+}
+.jcc-notice-saveBtn:active {
+  transform: translateY(1px);
+}
+.jcc-notice-cancel {
+  text-align: center;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+  padding: 0.5rem;
+}
+.jcc-notice-cancel:hover {
+  color: var(--text);
+}
+
+/* 헤더 뒤로가기 버튼: 모바일에서만 노출(햄버거 대체) */
+.jcc-notice-back {
+  display: none;
+}
+.app-header .jcc-notice-back {
+  color: var(--text);
+}
+@media (max-width: 900px) {
+  body.jcc-notice-form-page .jcc-mobile-menu-btn,
+  body.jcc-notice-detail-page .jcc-mobile-menu-btn {
+    display: none !important;
+  }
+  body.jcc-notice-form-page .app-header .subtitle {
+    display: none;
+  }
+  .jcc-notice-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+    left: 0.35rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    z-index: 1390;
+  }
+  .jcc-notice-back svg {
+    width: 26px;
+    height: 26px;
+  }
+}
+
 .jcc-leftNav-tabs {
   display: flex;
   flex-direction: column;

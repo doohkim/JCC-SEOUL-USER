@@ -630,6 +630,10 @@
                 <input type="checkbox" name="can_manage_accounts" id="accountEditAccounts">
                 계정관리
               </label>
+              <label>
+                <input type="checkbox" name="can_manage_notices" id="accountEditNotices">
+                공지관리
+              </label>
             </div>
           </div>
           <div class="jcc-account-editField">
@@ -946,6 +950,7 @@
         document.getElementById("accountEditAtt").checked = !!d.can_manage_attendance;
         document.getElementById("accountEditParking").checked = !!d.can_manage_parking;
         document.getElementById("accountEditAccounts").checked = !!d.can_manage_accounts;
+        document.getElementById("accountEditNotices").checked = !!d.can_manage_notices;
 
         const roleLevelSel = document.getElementById("accountEditRoleLevel");
         roleLevelSel.value = d.role_level_id ? String(d.role_level_id) : "";

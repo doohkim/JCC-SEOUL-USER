@@ -12,6 +12,7 @@ _HTTP_METHODS = frozenset({"get", "post", "put", "patch", "delete", "head", "opt
 _PATH_TAG_RULES: tuple[tuple[str, str], ...] = tuple(
     sorted(
         (
+            ("/api/v1/notices/", "notices"),
             ("/api/v1/attendance/", "attendance"),
             ("/api/v1/counseling/", "counseling"),
             ("/api/v1/integration/", "users"),

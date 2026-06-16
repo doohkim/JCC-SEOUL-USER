@@ -1243,8 +1243,9 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   flex-shrink: 0;
 }
 
-/* 픽업 + 추가: 조 추가 버튼과 동일한 파란 톤 (FAB 전환 없이 인라인 유지) */
-.jcc-retreat-pickupAddBtn {
+/* 픽업 + 추가 / 타임테이블 일정 추가: 조 추가 버튼과 동일한 파란 톤 (PC 인라인, 모바일 FAB) */
+.jcc-retreat-pickupAddBtn,
+.jcc-retreat-ttAddBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1260,14 +1261,17 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 35%, transparent);
   transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
 }
-.jcc-retreat-pickupAddBtn:hover {
+.jcc-retreat-pickupAddBtn:hover,
+.jcc-retreat-ttAddBtn:hover {
   background: color-mix(in srgb, var(--accent) 88%, black);
 }
-.jcc-retreat-pickupAddBtn:active {
+.jcc-retreat-pickupAddBtn:active,
+.jcc-retreat-ttAddBtn:active {
   transform: translateY(1px);
 }
 /* 아이콘은 PC에서 숨기고 모바일에서만 노출 */
-.jcc-retreat-pickupAddBtn-icon {
+.jcc-retreat-pickupAddBtn-icon,
+.jcc-retreat-ttAddBtn-icon {
   display: none;
   width: 1.35rem;
   height: 1.35rem;
@@ -1500,8 +1504,9 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 }
 
 @media (max-width: 900px) {
-  /* 모바일: + 추가를 조관리 추가처럼 우측 하단 원형 FAB(자동차+플러스 아이콘)로 전환 */
-  .jcc-retreat-pickupAddBtn {
+  /* 모바일: + 추가를 조관리 추가처럼 우측 하단 원형 FAB로 전환 */
+  .jcc-retreat-pickupAddBtn,
+  .jcc-retreat-ttAddBtn {
     position: fixed;
     right: 1.1rem;
     bottom: 5rem;
@@ -1513,10 +1518,12 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
     border-radius: 50%;
     box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 45%, transparent);
   }
-  .jcc-retreat-pickupAddBtn-text {
+  .jcc-retreat-pickupAddBtn-text,
+  .jcc-retreat-ttAddBtn-text {
     display: none;
   }
-  .jcc-retreat-pickupAddBtn-icon {
+  .jcc-retreat-pickupAddBtn-icon,
+  .jcc-retreat-ttAddBtn-icon {
     display: block;
     width: 1.7rem;
     height: 1.7rem;
@@ -4366,7 +4373,7 @@ body.has-retreat-bottom-tabs .toolbar {
 /* 버튼 → Toss 톤: 둥근 라운드, 살짝 넉넉한 패딩
    (커스텀 달력 [jcc-dtp*]·탭·행사선택 등 자체 스타일 버튼은 제외) */
 body.has-retreat-bottom-tabs
-  button:not([class*="jcc-dtp"]):not([class*="jcc-tp-"]):not(.jcc-page-tab):not(.jcc-retreat-eventPickerBtn):not(.jcc-pickup-locBtn):not(.jcc-leftNav-close):not(.jcc-theme-toggle):not(.jcc-mobile-menu-btn):not(.jcc-cselect-btn):not(.jcc-retreat-filterChip):not(.jcc-retreat-groupCardEdit):not(.jcc-retreat-filterReset):not(.jcc-retreat-pickupNameBtn):not(.jcc-retreat-addGroupBtn):not(.jcc-retreat-pickupAddBtn):not(.jcc-retreat-dateField):not(.jcc-retreat-pickupDelete),
+  button:not([class*="jcc-dtp"]):not([class*="jcc-tp-"]):not(.jcc-page-tab):not(.jcc-retreat-eventPickerBtn):not(.jcc-pickup-locBtn):not(.jcc-leftNav-close):not(.jcc-theme-toggle):not(.jcc-mobile-menu-btn):not(.jcc-cselect-btn):not(.jcc-retreat-filterChip):not(.jcc-retreat-groupCardEdit):not(.jcc-retreat-filterReset):not(.jcc-retreat-pickupNameBtn):not(.jcc-retreat-addGroupBtn):not(.jcc-retreat-pickupAddBtn):not(.jcc-retreat-ttAddBtn):not(.jcc-retreat-dateField):not(.jcc-retreat-pickupDelete),
 body.has-retreat-bottom-tabs .btn {
   border-radius: 11px;
   padding: 0.58rem 1.05rem;
@@ -4605,9 +4612,13 @@ body.has-retreat-bottom-tabs main {
   font-weight: 800;
   letter-spacing: -0.01em;
 }
-/* 본문 래퍼가 없으므로 그리드에 직접 좌우 여백을 줘 제목·푸터와 정렬 */
+/* 본문 래퍼가 없으므로 그리드에 직접 좌우 여백을 줘 제목·푸터와 정렬.
+   본문(그리드)만 스크롤하고 제목·푸터는 고정되도록 flex 스크롤 영역으로 만든다. */
 #ttModalOverlay .jcc-retreat-modalGrid {
-  padding: 0 1.9rem 0.4rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 1.9rem 0.8rem;
   gap: 1.35rem 1.1rem;
 }
 #ttModalOverlay .jcc-retreat-modalGrid .field label {

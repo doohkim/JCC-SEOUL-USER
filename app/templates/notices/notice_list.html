@@ -6,104 +6,132 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>공지사항</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616k" />
   </head>
-  <body>
+  <body class="has-notice-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
         <header class="app-header">
           <div class="jcc-detail-titleWrap">
             <h1>공지사항</h1>
-            <p class="subtitle">수련회 및 교회 소식을 확인합니다.</p>
           </div>
-        </header>
-        <main>
           {% include 'notices/_subtabs.html' with notices_tab='notices' %}
-          <div class="jcc-retreat-listTop">
-            <form method="get" class="jcc-field-row" id="noticeFilter">
-              <select name="region" id="regionFilter">
-                <option value="">전체 지역</option>
-                {% for region in regions %}
-                  <option value="{{ region.id }}"{% if selected_region_id == region.id %} selected{% endif %}>{{ region.name }}</option>
-                {% endfor %}
-              </select>
-              <select name="division" id="divisionFilter">
-                <option value="">전체 부서</option>
-                {% for division in divisions %}
-                  <option value="{{ division.id }}" data-region="{{ division.region_id }}"{% if selected_division_id == division.id %} selected{% endif %}>{{ division.region.name }} · {{ division.name }}</option>
-                {% endfor %}
-              </select>
-              <button type="submit" class="secondary">적용</button>
-            </form>
-            {% if can_manage_notices %}
-              <a class="secondary" href="{% url 'notice_create' %}">+ 공지 작성</a>
-            {% endif %}
-          </div>
-          <div class="card">
-            <div class="jcc-retreat-tableWrap">
-              <table class="jcc-table">
-                <thead>
-                  <tr>
-                    <th>제목</th>
-                    <th>대상</th>
-                    <th>작성일</th>
-                    {% if can_manage_notices %}<th></th>{% endif %}
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for notice in notices %}
-                    <tr>
-                      <td>
-                        {% if notice.is_pinned %}<span class="jcc-retreat-pill">고정</span> {% endif %}
-                        <a href="{% url 'notice_detail' notice.pk %}">{{ notice.title }}</a>
-                      </td>
-                      <td>
-                        {% if notice.scope == 'all' %}
-                          <span class="jcc-retreat-pill">전체</span>
-                        {% else %}
-                          {{ notice.target_label }}
-                        {% endif %}
-                      </td>
-                      <td>{{ notice.created_at|date:"Y-m-d H:i" }}</td>
-                      {% if can_manage_notices %}
-                        <td>
-                          <a class="btn-link" href="{% url 'notice_edit' notice.pk %}">수정</a>
-                          <a class="btn-link" href="{% url 'notice_delete' notice.pk %}">삭제</a>
-                        </td>
-                      {% endif %}
-                    </tr>
-                  {% empty %}
-                    <tr><td colspan="{% if can_manage_notices %}4{% else %}3{% endif %}">등록된 공지가 없습니다.</td></tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+        </header>
+        <main class="jcc-notice-listMain">
+          {% if can_manage_notices %}
+            <div class="jcc-notice-listToolbar">
+              <a class="jcc-notice-addBtn jcc-notice-addBtn--desktop" href="{% url 'notice_create' %}" aria-label="공지 작성">
+                <svg class="jcc-notice-addBtn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                  <path d="M14 3v5h5" />
+                  <path d="M9 13h6M9 17h6" />
+                </svg>
+                <span class="jcc-notice-addBtn-text">+ 공지 작성</span>
+              </a>
             </div>
-            {% if is_paginated %}
-              <p class="muted" style="margin-top:0.75rem;">페이지 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</p>
-            {% endif %}
-          </div>
+          {% endif %}
+
+          {% if notices %}
+            <div class="jcc-notice-cardGrid">
+              {% for notice in notices %}
+                <article class="jcc-notice-card{% if notice.is_pinned %} jcc-notice-card--featured{% endif %}{% if not notice.thumbnail %} jcc-notice-card--text{% endif %}">
+                  <a class="jcc-notice-cardLink" href="{% url 'notice_detail' notice.pk %}">
+                    {% if notice.thumbnail %}
+                      <div class="jcc-notice-cardMedia">
+                        <img src="{{ notice.thumbnail.url }}" alt="" loading="lazy" />
+                        {% if notice.is_pinned %}
+                          <span class="jcc-notice-cardBadge jcc-notice-cardBadge--important">중요 공지</span>
+                        {% endif %}
+                      </div>
+                    {% endif %}
+                    <div class="jcc-notice-cardBody">
+                      <div class="jcc-notice-cardMeta">
+                        {% if not notice.thumbnail and notice.is_pinned %}
+                          <span class="jcc-notice-cardCat jcc-notice-cardCat--important">중요 공지</span>
+                        {% endif %}
+                        {% if notice.category %}
+                          <span
+                            class="jcc-notice-cardCat"
+                            {% if notice.category.color %}style="--cat-color: {{ notice.category.color }}"{% endif %}
+                          >{{ notice.category.name }}</span>
+                        {% endif %}
+                        <span class="jcc-notice-cardDate">{{ notice.created_at|date:"Y.m.d" }}</span>
+                      </div>
+                      <h2 class="jcc-notice-cardTitle">{{ notice.title }}</h2>
+                      <p class="jcc-notice-cardExcerpt">{{ notice.body|striptags|truncatechars:120 }}</p>
+                      <div class="jcc-notice-cardFooter">
+                        <span class="jcc-notice-cardViews">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                          {{ notice.view_count }}
+                        </span>
+                        {% if notice.created_by %}
+                          <span class="jcc-notice-cardAuthor">{{ notice.created_by|user_display_name }}</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </a>
+                  {% if can_manage_notices %}
+                    <div class="jcc-notice-cardActions">
+                      <a class="jcc-notice-action" href="{% url 'notice_edit' notice.pk %}" aria-label="수정" title="수정">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M12 20h9" />
+                          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                        </svg>
+                      </a>
+                      <a class="jcc-notice-action jcc-notice-delete" href="{% url 'notice_delete' notice.pk %}" aria-label="삭제" title="삭제">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                          <path d="M10 11v6M14 11v6" />
+                        </svg>
+                      </a>
+                    </div>
+                  {% endif %}
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="jcc-notice-empty card">
+              <p>등록된 공지가 없습니다.</p>
+            </div>
+          {% endif %}
+
+          {% if is_paginated %}
+            <nav class="jcc-notice-pagination" aria-label="페이지">
+              <p class="muted">
+                전체 {{ page_obj.paginator.count }}개 항목 중
+                {{ page_obj.start_index }}-{{ page_obj.end_index }} 표시
+              </p>
+              <div class="jcc-notice-paginationBtns">
+                {% if page_obj.has_previous %}
+                  <a class="jcc-notice-pageBtn" href="?page=1">«</a>
+                  <a class="jcc-notice-pageBtn" href="?page={{ page_obj.previous_page_number }}">‹</a>
+                {% endif %}
+                <span class="jcc-notice-pageBtn is-active">{{ page_obj.number }}</span>
+                {% if page_obj.has_next %}
+                  <a class="jcc-notice-pageBtn" href="?page={{ page_obj.next_page_number }}">›</a>
+                  <a class="jcc-notice-pageBtn" href="?page={{ page_obj.paginator.num_pages }}">»</a>
+                {% endif %}
+              </div>
+            </nav>
+          {% endif %}
         </main>
       </div>
     </div>
-    <script>
-      (function () {
-        var regionFilter = document.getElementById('regionFilter');
-        var divisionFilter = document.getElementById('divisionFilter');
-        if (!regionFilter || !divisionFilter) return;
-        var allOptions = Array.prototype.slice.call(divisionFilter.options);
-        function filterDivisions() {
-          var region = regionFilter.value;
-          allOptions.forEach(function (opt) {
-            if (!opt.value) return;
-            var show = !region || opt.getAttribute('data-region') === region;
-            opt.hidden = !show;
-            if (!show && opt.selected) divisionFilter.value = '';
-          });
-        }
-        regionFilter.addEventListener('change', filterDivisions);
-        filterDivisions();
-      })();
-    </script>
+    {% if can_manage_notices %}
+      <a class="jcc-notice-addBtn jcc-notice-addBtn--mobile" href="{% url 'notice_create' %}" aria-label="공지 작성">
+        <svg class="jcc-notice-addBtn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+          <path d="M14 3v5h5" />
+          <path d="M9 13h6M9 17h6" />
+        </svg>
+      </a>
+    {% endif %}
+    {% include 'includes/notice_bottom_tabs.html' with notices_tab='notices' %}
   </body>
 </html>

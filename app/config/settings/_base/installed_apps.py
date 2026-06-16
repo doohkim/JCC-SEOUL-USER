@@ -6,6 +6,7 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "django_celery_beat",
     "django_celery_results",
+    "tinymce",
     # "django_crontab",
     # "django_extensions",
     "django_filters",

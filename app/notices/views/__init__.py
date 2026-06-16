@@ -6,6 +6,7 @@ from .notices import (
     NoticeUpdateView,
     TimetableView,
 )
+from .uploads import notice_image_upload
 
 __all__ = [
     "NoticeListView",
@@ -14,4 +15,5 @@ __all__ = [
     "NoticeUpdateView",
     "NoticeDeleteView",
     "TimetableView",
+    "notice_image_upload",
 ]

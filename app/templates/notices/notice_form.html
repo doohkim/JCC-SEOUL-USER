@@ -5,79 +5,215 @@
     {% include 'includes/jcc_theme_head.html' %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% if object %}공지 수정{% else %}공지 작성{% endif %}</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <title>{% if object %}공지사항 수정{% else %}공지 작성{% endif %}</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616j" />
   </head>
-  <body>
+  <body class="has-notice-bottom-tabs jcc-notice-form-page">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
         <header class="app-header">
-          <div class="jcc-detail-titleWrap">
-            <h1>{% if object %}공지 수정{% else %}공지 작성{% endif %}</h1>
-            <p class="subtitle">전체 또는 특정 지역·부서를 대상으로 공지를 등록합니다.</p>
+          <div class="jcc-notice-formHeaderInner">
+            <a class="jcc-notice-back" href="{% if object %}{% url 'notice_detail' object.pk %}{% else %}{% url 'notice_list' %}{% endif %}" aria-label="뒤로">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </a>
+            <div class="jcc-detail-titleWrap">
+              <h1>{% if object %}공지사항 수정{% else %}공지 작성{% endif %}</h1>
+            </div>
+            <div class="jcc-notice-formHeaderActions">
+              <a class="jcc-notice-headerCancel" href="{% if object %}{% url 'notice_detail' object.pk %}{% else %}{% url 'notice_list' %}{% endif %}">취소</a>
+              <button type="submit" form="noticeForm" class="jcc-notice-headerSave">{% if object %}수정 완료{% else %}작성 완료{% endif %}</button>
+            </div>
           </div>
         </header>
         <main>
-          {% include 'notices/_subtabs.html' with notices_tab='create' %}
-          <div class="card">
-            <form method="post">
-              {% csrf_token %}
-              {% if form.non_field_errors %}
-                <div class="msg error">{{ form.non_field_errors }}</div>
-              {% endif %}
-              <div class="field">
-                <label for="{{ form.title.id_for_label }}">제목</label>
-                {{ form.title }}
-                {{ form.title.errors }}
+          {% include 'notices/_subtabs.html' with notices_tab='notices' %}
+          <form id="noticeForm" method="post" enctype="multipart/form-data" class="jcc-notice-formBody">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+              <div class="msg error">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="jcc-notice-formLayout">
+              <div class="jcc-notice-formMain">
+                <section class="jcc-notice-formCard">
+                  <div class="jcc-notice-field">
+                    <label for="{{ form.title.id_for_label }}">공지 제목</label>
+                    {{ form.title }}
+                    {{ form.title.errors }}
+                  </div>
+
+                  <div class="jcc-notice-field">
+                    <label>카테고리</label>
+                    <div class="jcc-notice-catPills" role="radiogroup" aria-label="카테고리">
+                      <label class="jcc-notice-catPill">
+                        <input type="radio" name="category" value=""{% if not form.category.value %} checked{% endif %} />
+                        <span>미지정</span>
+                      </label>
+                      {% for cat in categories %}
+                        <label class="jcc-notice-catPill"{% if cat.color %} style="--cat-color: {{ cat.color }}"{% endif %}>
+                          <input type="radio" name="category" value="{{ cat.id }}"{% if form.category.value|stringformat:'s' == cat.id|stringformat:'s' %} checked{% endif %} />
+                          <span>{{ cat.name }}</span>
+                        </label>
+                      {% endfor %}
+                    </div>
+                    {{ form.category.errors }}
+                  </div>
+                </section>
+
+                <section class="jcc-notice-formCard jcc-notice-imageUploader">
+                  <div class="jcc-notice-imageUploader-head">
+                    <label>이미지 및 포스터</label>
+                    <button type="button" class="jcc-notice-imageChangeBtn" id="thumbnailChangeBtn">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 3v12" />
+                        <path d="M8 7l4-4 4 4" />
+                        <path d="M5 21h14" />
+                      </svg>
+                      파일 변경
+                    </button>
+                  </div>
+                  <div class="jcc-notice-imagePreview{% if object and object.thumbnail %} has-image{% endif %}" id="thumbnailPreview">
+                    {% if object and object.thumbnail %}
+                      <img src="{{ object.thumbnail.url }}" alt="" id="thumbnailPreviewImg" />
+                    {% endif %}
+                    <div class="jcc-notice-imagePreviewPlaceholder" id="thumbnailPreviewPlaceholder" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                        <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
+                        <path d="M21 15l-5-5L5 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <span>이미지를 등록해 주세요</span>
+                    </div>
+                    <div class="jcc-notice-imageOverlay" id="thumbnailOverlay">
+                      <button type="button" class="jcc-notice-imageOverlayBtn" id="thumbnailPreviewBtn" aria-label="원본 보기" title="원본 보기">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      </button>
+                      <button type="button" class="jcc-notice-imageOverlayBtn jcc-notice-imageOverlayBtn--danger" id="thumbnailDeleteBtn" aria-label="이미지 삭제" title="이미지 삭제">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                          <path d="M10 11v6M14 11v6" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <p class="muted jcc-notice-imageHint">권장 사이즈: 1200 x 1600 px (3:4 비율)</p>
+                  <div class="jcc-notice-imageInputWrap">
+                    {{ form.thumbnail }}
+                  </div>
+                  {{ form.thumbnail.errors }}
+                </section>
+
+                <section class="jcc-notice-formCard">
+                  <div class="jcc-notice-field">
+                    <label for="{{ form.tags.id_for_label }}">태그</label>
+                    {{ form.tags }}
+                    <p class="muted jcc-notice-fieldHint">쉼표로 구분 (예: 수련회, 청년부)</p>
+                    {{ form.tags.errors }}
+                  </div>
+                </section>
+
+                <section class="jcc-notice-formCard">
+                  <div class="jcc-notice-field">
+                    <label>공개 범위</label>
+                    <div class="jcc-segmented" role="radiogroup" aria-label="공개 범위">
+                      {% for radio in form.scope %}
+                        <label class="jcc-segmented-item">
+                          {{ radio.tag }}
+                          <span>{{ radio.choice_label }}</span>
+                        </label>
+                      {% endfor %}
+                    </div>
+                    {{ form.scope.errors }}
+                  </div>
+
+                  <div class="jcc-notice-field" id="divisionField">
+                    <label>대상 지역 · 부서</label>
+                    <div class="jcc-field-row">
+                      <select id="regionFilter">
+                        <option value="">지역 선택</option>
+                        {% for region in regions %}
+                          <option value="{{ region.id }}"{% if selected_region_id == region.id %} selected{% endif %}>{{ region.name }}</option>
+                        {% endfor %}
+                      </select>
+                      <select name="division" id="id_division">
+                        <option value="">지역·부서 선택</option>
+                        {% for division in divisions %}
+                          <option value="{{ division.id }}" data-region="{{ division.region_id }}"{% if form.division.value|stringformat:'s' == division.id|stringformat:'s' %} selected{% endif %}>{{ division.region.name }} · {{ division.name }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    {{ form.division.errors }}
+                  </div>
+                </section>
+
+                <section class="jcc-notice-formCard">
+                  <div class="jcc-notice-field">
+                    <label for="{{ form.body.id_for_label }}">내용</label>
+                    {{ form.body }}
+                    {{ form.body.errors }}
+                  </div>
+                </section>
               </div>
-              <div class="field">
-                <label>공개 범위</label>
-                <div class="jcc-radio-row">{{ form.scope }}</div>
-                {{ form.scope.errors }}
-              </div>
-              <div class="field" id="divisionField">
-                <label>대상 지역 · 부서</label>
-                <div class="jcc-field-row">
-                  <select id="regionFilter">
-                    <option value="">지역 선택</option>
-                    {% for region in regions %}
-                      <option value="{{ region.id }}"{% if selected_region_id == region.id %} selected{% endif %}>{{ region.name }}</option>
-                    {% endfor %}
-                  </select>
-                  <select name="division" id="id_division">
-                    <option value="">지역·부서 선택</option>
-                    {% for division in divisions %}
-                      <option value="{{ division.id }}" data-region="{{ division.region_id }}"{% if form.division.value|stringformat:'s' == division.id|stringformat:'s' %} selected{% endif %}>{{ division.region.name }} · {{ division.name }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                {{ form.division.errors }}
-              </div>
-              <div class="field">
-                <label for="{{ form.body.id_for_label }}">내용</label>
-                {{ form.body }}
-                {{ form.body.errors }}
-              </div>
-              <div class="field">
-                <label>{{ form.is_pinned }} 상단 고정</label>
-                {{ form.is_pinned.errors }}
-              </div>
-              <div class="toolbar" style="padding:0; border:none; background:transparent;">
-                <button type="submit">저장</button>
-                <a class="secondary" href="{% url 'notice_list' %}">취소</a>
-              </div>
-            </form>
-          </div>
+
+              <aside class="jcc-notice-formSide">
+                <section class="jcc-notice-formCard jcc-notice-sideCard">
+                  <h2 class="jcc-notice-sideTitle">게시 설정</h2>
+                  <label class="jcc-toggle-row">
+                    <span class="jcc-toggle-label">
+                      <span class="jcc-toggle-icon" aria-hidden="true">📌</span>
+                      상단 고정
+                    </span>
+                    <span class="jcc-switch">
+                      {{ form.is_pinned }}
+                      <span class="jcc-switch-track"><span class="jcc-switch-thumb"></span></span>
+                    </span>
+                  </label>
+                  {{ form.is_pinned.errors }}
+                </section>
+
+                <section class="jcc-notice-noticeCard">
+                  <div class="jcc-notice-noticeHead">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 8h.01M11 12h1v4h1" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    {% if object %}수정 유의사항{% else %}작성 유의사항{% endif %}
+                  </div>
+                  <p>
+                    {% if object %}
+                      수정 완료 시 즉시 사용자 앱에 반영됩니다. 포스터 이미지가 변경될 경우 기기에서 즉시 업데이트되지 않을 수 있습니다.
+                    {% else %}
+                      작성 완료 시 즉시 공지 목록에 노출됩니다. 포스터 이미지는 권장 비율(3:4)로 올리면 가장 보기 좋습니다.
+                    {% endif %}
+                  </p>
+                </section>
+              </aside>
+            </div>
+
+            <div class="jcc-notice-actions jcc-notice-actions--mobile">
+              <button type="submit" class="jcc-notice-saveBtn">{% if object %}수정 완료{% else %}작성 완료{% endif %}</button>
+              <a class="jcc-notice-cancel" href="{% if object %}{% url 'notice_detail' object.pk %}{% else %}{% url 'notice_list' %}{% endif %}">취소</a>
+            </div>
+          </form>
         </main>
       </div>
     </div>
+    {% include 'includes/notice_bottom_tabs.html' with notices_tab='notices' %}
     <script>
       (function () {
         var scopeInputs = document.querySelectorAll('input[name="scope"]');
         var divisionField = document.getElementById('divisionField');
         var regionFilter = document.getElementById('regionFilter');
         var divisionSelect = document.getElementById('id_division');
+        if (!divisionSelect) return;
         var allOptions = Array.prototype.slice.call(divisionSelect.options);
 
         function currentScope() {
@@ -109,6 +245,109 @@
         syncScope();
         filterDivisions();
       })();
+
+      (function () {
+        var changeBtn = document.getElementById('thumbnailChangeBtn');
+        var fileInput = document.getElementById('id_thumbnail');
+        var preview = document.getElementById('thumbnailPreview');
+        var previewBtn = document.getElementById('thumbnailPreviewBtn');
+        var deleteBtn = document.getElementById('thumbnailDeleteBtn');
+        if (!changeBtn || !fileInput || !preview) return;
+        var clearCb = document.getElementById('thumbnail-clear_id');
+
+        function setImage(src) {
+          var placeholder = document.getElementById('thumbnailPreviewPlaceholder');
+          var img = document.getElementById('thumbnailPreviewImg');
+          if (!img) {
+            img = document.createElement('img');
+            img.id = 'thumbnailPreviewImg';
+            img.alt = '';
+            preview.insertBefore(img, placeholder || preview.firstChild);
+          }
+          img.src = src;
+          preview.classList.add('has-image');
+        }
+
+        function clearImage() {
+          var img = document.getElementById('thumbnailPreviewImg');
+          if (img) img.remove();
+          preview.classList.remove('has-image');
+        }
+
+        changeBtn.addEventListener('click', function () {
+          fileInput.click();
+        });
+
+        fileInput.addEventListener('change', function () {
+          var file = fileInput.files && fileInput.files[0];
+          if (!file || !file.type.match(/^image\//)) return;
+          if (clearCb) clearCb.checked = false;
+          var reader = new FileReader();
+          reader.onload = function (ev) {
+            setImage(ev.target.result);
+          };
+          reader.readAsDataURL(file);
+        });
+
+        if (previewBtn) {
+          previewBtn.addEventListener('click', function () {
+            var img = document.getElementById('thumbnailPreviewImg');
+            if (img && img.src) window.open(img.src, '_blank');
+          });
+        }
+
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', function () {
+            fileInput.value = '';
+            if (clearCb) clearCb.checked = true;
+            clearImage();
+          });
+        }
+      })();
     </script>
+    <script>
+      // TinyMCE 본문 인라인 이미지 업로드 핸들러 (CSRF 유지)
+      window.jccNoticeImageUpload = function (blobInfo, progress) {
+        return new Promise(function (resolve, reject) {
+          var xhr = new XMLHttpRequest();
+          xhr.open('POST', '{% url "notice_image_upload" %}');
+          xhr.withCredentials = true;
+          var tokenEl = document.querySelector('input[name=csrfmiddlewaretoken]');
+          var fd = new FormData();
+          fd.append('file', blobInfo.blob(), blobInfo.filename());
+          if (tokenEl) {
+            fd.append('csrfmiddlewaretoken', tokenEl.value);
+          }
+          xhr.upload.onprogress = function (e) {
+            if (e.lengthComputable && typeof progress === 'function') {
+              progress((e.loaded / e.total) * 100);
+            }
+          };
+          xhr.onload = function () {
+            if (xhr.status < 200 || xhr.status >= 300) {
+              var msg = '이미지 업로드 실패 (' + xhr.status + ')';
+              try { msg = JSON.parse(xhr.responseText).error || msg; } catch (err) {}
+              reject({ message: msg, remove: true });
+              return;
+            }
+            var json;
+            try { json = JSON.parse(xhr.responseText); } catch (err) {
+              reject({ message: '서버 응답을 해석할 수 없습니다.', remove: true });
+              return;
+            }
+            if (!json || typeof json.location !== 'string') {
+              reject({ message: '업로드 응답이 올바르지 않습니다.', remove: true });
+              return;
+            }
+            resolve(json.location);
+          };
+          xhr.onerror = function () {
+            reject({ message: '네트워크 오류로 업로드에 실패했습니다.', remove: true });
+          };
+          xhr.send(fd);
+        });
+      };
+    </script>
+    {{ form.media }}
   </body>
 </html>

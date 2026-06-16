@@ -33,6 +33,9 @@ class AccountManageFixture(TestCase):
         cls.div_b = Division.objects.create(
             region=cls.seoul, code="acct_div_b", name="대학부", sort_order=2
         )
+        cls.div_c = Division.objects.create(
+            region=cls.seoul, code="acct_div_c", name="유년부", sort_order=3
+        )
         cls.team_a = Team.objects.create(
             division=cls.div_a, code="acct_t1", name="1팀", sort_order=1
         )
@@ -41,6 +44,9 @@ class AccountManageFixture(TestCase):
         )
         cls.team_b = Team.objects.create(
             division=cls.div_b, code="acct_t2", name="대학1팀", sort_order=1
+        )
+        cls.team_c = Team.objects.create(
+            division=cls.div_c, code="acct_t3", name="유년1팀", sort_order=1
         )
 
         cls.rl_pastor, _ = RoleLevel.objects.get_or_create(
@@ -63,6 +69,13 @@ class AccountManageFixture(TestCase):
             user=cls.manager, division=cls.div_b, is_primary=False, sort_order=1
         )
 
+        cls.staff = User.objects.create_user(
+            username="acct_staff", password="x", is_staff=True
+        )
+        UserDivisionTeam.objects.create(
+            user=cls.staff, division=cls.div_a, team=cls.team_a, is_primary=True
+        )
+
         cls.superuser = User.objects.create_superuser(
             username="acct_super", password="x"
         )
@@ -80,6 +93,17 @@ class AccountManageFixture(TestCase):
         profile.requested_division = cls.div_a
         profile.requested_team = cls.team_a
         profile.save()
+
+        cls.member_c = User.objects.create_user(username="acct_member_c", password="x")
+        UserDivisionTeam.objects.create(
+            user=cls.member_c, division=cls.div_c, team=cls.team_c, is_primary=True
+        )
+        profile_c = ensure_user_profile(cls.member_c)
+        profile_c.real_name = "유년멤버"
+        profile_c.onboarding_status = UserProfile.OnboardingStatus.APPROVED
+        profile_c.requested_division = cls.div_c
+        profile_c.requested_team = cls.team_c
+        profile_c.save()
 
         cls.event = RetreatEvent.objects.create(
             name="계정관리 테스트 수련회",
@@ -104,10 +128,50 @@ class AccountManageAccessTests(AccountManageFixture):
         r = self.client.get(reverse("user_division_account_roles"))
         self.assertEqual(r.status_code, 403)
 
+    def test_pastor_onboarding_forbidden(self):
+        self.client.force_login(self.pastor)
+        r = self.client.get(reverse("user_onboarding_approvals"))
+        self.assertEqual(r.status_code, 403)
+
+    def test_staff_can_open_account_tab(self):
+        self.client.force_login(self.staff)
+        r = self.client.get(reverse("user_division_account_roles"))
+        self.assertEqual(r.status_code, 200)
+
+    def test_staff_can_open_onboarding_tab(self):
+        self.client.force_login(self.staff)
+        r = self.client.get(reverse("user_onboarding_approvals"))
+        self.assertEqual(r.status_code, 200)
+
     def test_manager_can_open_account_tab(self):
         self.client.force_login(self.manager)
         r = self.client.get(reverse("user_division_account_roles"))
         self.assertEqual(r.status_code, 200)
+
+    def test_manager_can_open_onboarding_tab(self):
+        self.client.force_login(self.manager)
+        r = self.client.get(reverse("user_onboarding_approvals"))
+        self.assertEqual(r.status_code, 200)
+
+
+class AccountManageScopeTests(AccountManageFixture):
+    def test_staff_sees_all_divisions_in_choices(self):
+        self.client.force_login(self.staff)
+        r = self.client.get(reverse("user_division_account_roles"))
+        self.assertEqual(r.status_code, 200)
+        choice_ids = {d.id for d in r.context["allowed_divisions"]}
+        self.assertIn(self.div_a.id, choice_ids)
+        self.assertIn(self.div_b.id, choice_ids)
+        self.assertIn(self.div_c.id, choice_ids)
+
+    def test_manager_sees_only_membership_divisions(self):
+        self.client.force_login(self.manager)
+        r = self.client.get(reverse("user_division_account_roles"))
+        self.assertEqual(r.status_code, 200)
+        choice_ids = {d.id for d in r.context["allowed_divisions"]}
+        self.assertIn(self.div_a.id, choice_ids)
+        self.assertIn(self.div_b.id, choice_ids)
+        self.assertNotIn(self.div_c.id, choice_ids)
 
 
 class AccountManageDefaultDivisionTests(AccountManageFixture):
@@ -186,6 +250,26 @@ class AccountManagePostTests(AccountManageFixture):
         )
         self.assertEqual(membership.team_id, self.team_b.id)
 
+    def test_staff_can_move_division(self):
+        self.client.force_login(self.staff)
+        r = self._post_row(
+            self.staff,
+            {
+                "division_id": str(self.div_b.id),
+                "team_id": str(self.team_b.id),
+            },
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assertFalse(
+            UserDivisionTeam.objects.filter(
+                user=self.member, division=self.div_a
+            ).exists()
+        )
+        membership = UserDivisionTeam.objects.get(
+            user=self.member, division=self.div_b
+        )
+        self.assertEqual(membership.team_id, self.team_b.id)
+
     def test_superuser_can_assign_retreat_group(self):
         self.client.force_login(self.superuser)
         # member back in div_a for retreat group scope
@@ -228,6 +312,14 @@ class OnboardingApprovalAllDivisionsTests(AccountManageFixture):
         prof_b.save()
         cls.prof_b = prof_b
 
+        cls.pending_c = User.objects.create_user(username="acct_pending_c", password="x")
+        prof_c = ensure_user_profile(cls.pending_c)
+        prof_c.real_name = "대기C"
+        prof_c.onboarding_status = UserProfile.OnboardingStatus.PENDING
+        prof_c.requested_division = cls.div_c
+        prof_c.save()
+        cls.prof_c = prof_c
+
     def test_superuser_all_shows_every_allowed_division(self):
         self.client.force_login(self.superuser)
         r = self.client.get(
@@ -239,6 +331,19 @@ class OnboardingApprovalAllDivisionsTests(AccountManageFixture):
         pending_ids = {p.id for p in r.context["pending_profiles"]}
         self.assertIn(self.prof_a.id, pending_ids)
         self.assertIn(self.prof_b.id, pending_ids)
+
+    def test_staff_all_shows_every_division(self):
+        self.client.force_login(self.staff)
+        r = self.client.get(
+            reverse("user_onboarding_approvals"),
+            {"division_code": "__all__"},
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertIsNone(r.context["active_division"])
+        pending_ids = {p.id for p in r.context["pending_profiles"]}
+        self.assertIn(self.prof_a.id, pending_ids)
+        self.assertIn(self.prof_b.id, pending_ids)
+        self.assertIn(self.prof_c.id, pending_ids)
 
     def test_specific_division_filters_out_others(self):
         self.client.force_login(self.superuser)
@@ -252,9 +357,9 @@ class OnboardingApprovalAllDivisionsTests(AccountManageFixture):
         self.assertIn(self.prof_a.id, pending_ids)
         self.assertNotIn(self.prof_b.id, pending_ids)
 
-    def test_pastor_all_limited_to_assigned_divisions(self):
-        # 목사는 div_a만 담당하므로 '전체'라도 div_b 신청은 보이지 않는다.
-        self.client.force_login(self.pastor)
+    def test_manager_all_limited_to_membership_divisions(self):
+        # 계정관리권한자는 소속 부서(div_a, div_b)만 — div_c 신청은 보이지 않는다.
+        self.client.force_login(self.manager)
         r = self.client.get(
             reverse("user_onboarding_approvals"),
             {"division_code": "__all__"},
@@ -263,4 +368,5 @@ class OnboardingApprovalAllDivisionsTests(AccountManageFixture):
         self.assertIsNone(r.context["active_division"])
         pending_ids = {p.id for p in r.context["pending_profiles"]}
         self.assertIn(self.prof_a.id, pending_ids)
-        self.assertNotIn(self.prof_b.id, pending_ids)
+        self.assertIn(self.prof_b.id, pending_ids)
+        self.assertNotIn(self.prof_c.id, pending_ids)

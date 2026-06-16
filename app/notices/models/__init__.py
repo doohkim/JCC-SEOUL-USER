@@ -1,4 +1,4 @@
-from .notice import Notice
+from .notice import Notice, NoticeCategory
 from .timetable import TimetableEntry
 
-__all__ = ["Notice", "TimetableEntry"]
+__all__ = ["Notice", "NoticeCategory", "TimetableEntry"]

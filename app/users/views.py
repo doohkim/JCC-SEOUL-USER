@@ -28,6 +28,7 @@ from users.models import (
 from users.permissions import (
     can_access_onboarding_approvals,
     can_manage_division_accounts,
+    is_platform_admin,
     membership_divisions_for,
     onboarding_approval_divisions_for,
 )
@@ -50,7 +51,7 @@ class KakaoAuthEntryView(TemplateView):
         if request.user.is_authenticated:
             profile = ensure_user_profile(request.user)
             if is_onboarding_complete(request.user, profile):
-                return HttpResponseRedirect(reverse_lazy("attendance_dashboard"))
+                return HttpResponseRedirect(reverse_lazy("notice_list"))
             return HttpResponseRedirect(reverse_lazy("user_onboarding"))
         return super().dispatch(request, *args, **kwargs)
 
@@ -144,7 +145,7 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
     def dispatch(self, request, *args, **kwargs):
         profile = ensure_user_profile(request.user)
         if is_onboarding_complete(request.user, profile):
-            target = request.GET.get("next") or "/attendance/?welcome=1"
+            target = request.GET.get("next") or "/notices/"
             return HttpResponseRedirect(target)
         return super().dispatch(request, *args, **kwargs)
 
@@ -206,7 +207,7 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
         profile = ensure_user_profile(self.request.user)
         if profile.onboarding_status == UserProfile.OnboardingStatus.APPROVED:
             messages.info(self.request, "이미 승인된 계정입니다. 화면이 자동 갱신됩니다.")
-            return HttpResponseRedirect(reverse_lazy("attendance_dashboard"))
+            return HttpResponseRedirect(reverse_lazy("notice_list"))
         if (
             profile.onboarding_status == UserProfile.OnboardingStatus.PENDING
             and profile.requested_division_id
@@ -311,11 +312,9 @@ class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):
         if not divisions.exists():
             return None, divisions
 
-        role_code = getattr(getattr(self.request.user, "role_level", None), "code", "")
         requested_code = (self.request.GET.get("division_code") or self.request.POST.get("division_code") or "").strip()
         if (
-            role_code in ("pastor", "evangelist")
-            or self.request.user.is_superuser
+            is_platform_admin(self.request.user)
             or divisions.count() > 1
         ):
             # "전체" 선택 시 담당 부서 전체를 한 번에 조회한다(active_division=None).
@@ -672,10 +671,8 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
     ALL_DIVISIONS_CODE = "__all__"
 
     def _manageable_divisions(self):
-        # 슈퍼유저·계정 권한 보유자는 전체 부서를 관리할 수 있다.
-        if self.request.user.is_superuser or getattr(
-            self.request.user, "can_manage_accounts", False
-        ):
+        # 스태프(슈퍼유저·is_staff)는 전체 부서, 계정 권한 보유자는 소속 부서만.
+        if is_platform_admin(self.request.user):
             return Division.objects.all().order_by(
                 "region__sort_order", "sort_order", "name"
             )
@@ -698,7 +695,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             or self.request.POST.get("division_code")
             or ""
         ).strip()
-        can_all = self.request.user.is_superuser or divisions.count() > 1
+        can_all = is_platform_admin(self.request.user) or divisions.count() > 1
         # "전체" 선택 시 담당 부서 전체를 한 번에 조회한다(active_division=None).
         if can_all and requested_code == self.ALL_DIVISIONS_CODE:
             return None, divisions
@@ -749,6 +746,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         manage_attendance = request.POST.get("can_manage_attendance") == "on"
         manage_parking = request.POST.get("can_manage_parking") == "on"
         manage_accounts = request.POST.get("can_manage_accounts") == "on"
+        manage_notices = request.POST.get("can_manage_notices") == "on"
         real_name = (request.POST.get("real_name") or "").strip()
         phone = (request.POST.get("phone") or "").strip()
         retreat_group_id = (request.POST.get("retreat_group_id") or "").strip()
@@ -781,14 +779,14 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             return HttpResponseRedirect(redirect_url)
 
         target_division = active_division
-        if request.user.is_superuser and division_id_raw.isdigit():
+        if is_platform_admin(request.user) and division_id_raw.isdigit():
             new_division = Division.objects.filter(pk=int(division_id_raw)).first()
             if new_division is None:
                 messages.error(request, "선택한 부서를 찾을 수 없습니다.")
                 return HttpResponseRedirect(redirect_url)
             target_division = new_division
         elif division_id_raw.isdigit() and int(division_id_raw) != active_division.id:
-            messages.error(request, "부서 이동은 슈퍼유저만 가능합니다.")
+            messages.error(request, "부서 이동은 스태프(관리자)만 가능합니다.")
             return HttpResponseRedirect(redirect_url)
 
         selected_team = None
@@ -813,6 +811,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         if target_user.can_manage_accounts != manage_accounts:
             target_user.can_manage_accounts = manage_accounts
             user_updates.append("can_manage_accounts")
+        if target_user.can_manage_notices != manage_notices:
+            target_user.can_manage_notices = manage_notices
+            user_updates.append("can_manage_notices")
         new_role_level = None
         if role_level_id_raw.isdigit():
             new_role_level = RoleLevel.objects.filter(pk=int(role_level_id_raw)).first()
@@ -979,7 +980,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         active_division, allowed_divisions = self._resolve_active_division()
         can_choose_division = (
-            self.request.user.is_superuser
+            is_platform_admin(self.request.user)
             or getattr(self.request.user, "can_manage_accounts", False)
             or allowed_divisions.count() > 1
         )
@@ -1021,7 +1022,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                 "region__sort_order", "sort_order", "name"
             )
         )
-        if self.request.user.is_superuser:
+        if is_platform_admin(self.request.user):
             division_choices = list(
                 Division.objects.select_related("region").order_by(
                     "region__sort_order", "sort_order", "name"
@@ -1206,6 +1207,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                     "can_manage_accounts": bool(
                         getattr(u, "can_manage_accounts", False)
                     ),
+                    "can_manage_notices": bool(
+                        getattr(u, "can_manage_notices", False)
+                    ),
                     "assigned_role_codes": assigned_codes,
                     "memberships": memberships_detail.get(u.id, []),
                     "created_at": created_at,
@@ -1214,7 +1218,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                 }
 
         region_qs = Region.objects.all().order_by("sort_order", "name")
-        if not self.request.user.is_superuser and active_division and active_division.region_id:
+        if not is_platform_admin(self.request.user) and active_division and active_division.region_id:
             region_qs = Region.objects.filter(pk=active_division.region_id)
 
         ctx["allowed_divisions"] = division_choices
@@ -1224,7 +1228,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             active_division.code if active_division else self.ALL_DIVISIONS_CODE
         )
         ctx["can_choose_division"] = can_choose_division
-        ctx["can_move_division"] = self.request.user.is_superuser
+        ctx["can_move_division"] = is_platform_admin(self.request.user)
         ctx["users_payload"] = users_payload
         ctx["account_details_json"] = json.dumps(account_details, ensure_ascii=False)
         ctx["region_choices"] = list(region_qs)

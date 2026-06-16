@@ -28,6 +28,8 @@ dependencies = [
     "phonenumbers (>=9.0.27,<10.0.0)",
     "django-filter (>=25.2,<26.0)",
     "drf-spectacular (>=0.29.0,<0.30.0)",
+    "django-tinymce (>=5.0.0,<6.0.0)",
+    "nh3 (>=0.3.5,<0.4.0)",
 ]
 
 

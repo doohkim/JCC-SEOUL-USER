@@ -79,10 +79,43 @@ class SignupSubmittedRequiredMixin:
 
 
 class SuperuserRequiredMixin(UserPassesTestMixin):
-    """superuser 전용 (공지 작성·수정·삭제 등)."""
+    """superuser 전용."""
 
     def test_func(self):
         return bool(self.request.user.is_authenticated and self.request.user.is_superuser)
+
+
+class StaffRequiredMixin(UserPassesTestMixin):
+    """슈퍼유저 또는 플랫폼 관리자(is_staff) 전용 (공지 작성·수정·삭제 등)."""
+
+    def test_func(self):
+        user = self.request.user
+        return bool(user.is_authenticated and (user.is_superuser or user.is_staff))
+
+
+class NoticeReadAccessRequiredMixin:
+    """공지 열람 게이트 — 반려·미신청·비대상은 온보딩으로. (작성권은 별도)"""
+
+    onboarding_url = reverse_lazy("user_onboarding")
+
+    def dispatch(self, request, *args, **kwargs):
+        user = request.user
+        if user.is_authenticated:
+            from users.permissions import can_access_notices_tab
+
+            if not can_access_notices_tab(user):
+                next_qs = urlencode({"next": request.get_full_path()})
+                return HttpResponseRedirect(f"{self.onboarding_url}?{next_qs}")
+        return super().dispatch(request, *args, **kwargs)
+
+
+class NoticeManageRequiredMixin(UserPassesTestMixin):
+    """공지 작성·수정·삭제: 슈퍼유저·플랫폼 관리자(is_staff)·공지 관리 기능권한."""
+
+    def test_func(self):
+        from users.permissions import is_notice_manager
+
+        return is_notice_manager(self.request.user)
 
 
 class OnboardingRequiredMixin:

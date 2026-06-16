@@ -1,4 +1,4 @@
-{% load static %}
+{% load static permission_tags %}
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -6,38 +6,132 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ notice.title }} · 공지사항</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616j" />
   </head>
-  <body>
+  <body class="has-notice-bottom-tabs jcc-notice-detail-page">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
         <header class="app-header">
+          <a class="jcc-notice-back" href="{% url 'notice_list' %}" aria-label="뒤로">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </a>
           <div class="jcc-detail-titleWrap">
-            <h1>{{ notice.title }}</h1>
-            <p class="subtitle">
-              {{ notice.created_at|date:"Y-m-d H:i" }}
-              {% if notice.created_by %} · {{ notice.created_by.username }}{% endif %}
-            </p>
+            <h1 class="jcc-notice-detailHeaderTitle">{{ notice.title }}</h1>
           </div>
         </header>
-        <main>
-          <div class="jcc-retreat-listTop">
-            <a class="secondary" href="{% url 'notice_list' %}">목록</a>
-            {% if can_manage_notices %}
+        <main class="jcc-notice-detailMain">
+          {% if can_manage_notices %}
+            <div class="jcc-notice-detailTopActions jcc-notice-detailTopActions--desktop">
               <a class="secondary" href="{% url 'notice_edit' notice.pk %}">수정</a>
               <a class="secondary" href="{% url 'notice_delete' notice.pk %}">삭제</a>
-            {% endif %}
-          </div>
-          <div class="card">
-            <p>
-              {% if notice.is_pinned %}<span class="jcc-retreat-pill">상단 고정</span> {% endif %}
-              <span class="jcc-retreat-pill">{{ notice.target_label }}</span>
-            </p>
-            <div class="jcc-notice-body">{{ notice.body|linebreaksbr }}</div>
-          </div>
+            </div>
+          {% endif %}
+
+          <article class="jcc-notice-detailArticle card">
+            <div class="jcc-notice-detailBanner">
+              {% if notice.thumbnail %}
+                <img src="{{ notice.thumbnail.url }}" alt="" />
+              {% else %}
+                <div class="jcc-notice-detailBannerPlaceholder" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="5" width="18" height="14" rx="2" />
+                    <circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none" />
+                    <path d="M21 16l-5-5L9 18" />
+                  </svg>
+                </div>
+              {% endif %}
+              <div class="jcc-notice-detailBannerBadges">
+                {% if notice.is_pinned %}
+                  <span class="jcc-notice-detailBadge jcc-notice-detailBadge--important">중요공지</span>
+                {% endif %}
+                {% if notice.category %}
+                  <span
+                    class="jcc-notice-detailBadge"
+                    {% if notice.category.color %}style="--cat-color: {{ notice.category.color }}"{% endif %}
+                  >{{ notice.category.name }}</span>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="jcc-notice-detailContent">
+              <h1 class="jcc-notice-detailTitle">{{ notice.title }}</h1>
+              <div class="jcc-notice-detailMeta">
+                <span class="jcc-notice-detailMetaItem">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" />
+                    <path d="M16 2v4M8 2v4M3 10h18" />
+                  </svg>
+                  {{ notice.created_at|date:"Y년 m월 d일 H:i" }}
+                </span>
+                {% if notice.created_by %}
+                  <span class="jcc-notice-detailMetaItem">작성자: {{ notice.created_by|user_display_name }}</span>
+                {% endif %}
+                <span class="jcc-notice-detailMetaItem">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  조회 {{ notice.view_count }}
+                </span>
+              </div>
+
+              <div class="jcc-notice-body">{{ notice.body|safe }}</div>
+
+              {% if notice.tag_list %}
+                <div class="jcc-notice-detailTags">
+                  {% for tag in notice.tag_list %}
+                    <span class="jcc-notice-tagPill">#{{ tag }}</span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </article>
+
+          <nav class="jcc-notice-detailNav card" aria-label="이전·다음 공지">
+            <div class="jcc-notice-detailNavRow">
+              <span class="jcc-notice-detailNavLabel">이전글</span>
+              {% if prev_notice %}
+                <a href="{% url 'notice_detail' prev_notice.pk %}">{{ prev_notice.title }}</a>
+              {% else %}
+                <span class="muted">이전 글이 없습니다.</span>
+              {% endif %}
+            </div>
+            <div class="jcc-notice-detailNavRow">
+              <span class="jcc-notice-detailNavLabel">다음글</span>
+              {% if next_notice %}
+                <a href="{% url 'notice_detail' next_notice.pk %}">{{ next_notice.title }}</a>
+              {% else %}
+                <span class="muted">다음 글이 없습니다.</span>
+              {% endif %}
+            </div>
+          </nav>
         </main>
       </div>
     </div>
+
+    {% if can_manage_notices %}
+      <div class="jcc-notice-detailBottomBar">
+        <a class="jcc-notice-detailBottomDelete" href="{% url 'notice_delete' notice.pk %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M3 6h18" />
+            <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+          </svg>
+          삭제하기
+        </a>
+        <a class="jcc-notice-detailBottomEdit" href="{% url 'notice_edit' notice.pk %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+          </svg>
+          공지 수정
+        </a>
+      </div>
+    {% endif %}
+
+    {% include 'includes/notice_bottom_tabs.html' with notices_tab='notices' %}
   </body>
 </html>

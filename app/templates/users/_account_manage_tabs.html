@@ -4,7 +4,7 @@
     <a href="{% url 'user_division_account_roles' %}" class="jcc-page-tab{% if account_tab == 'roles' %} is-active{% endif %}">
       계정
     </a>
-    {% if user|can_access_registry_tab %}
+    {% if user|can_access_onboarding_approvals_tab %}
     <a href="{% url 'user_account_approvals' %}" class="jcc-page-tab{% if account_tab == 'approvals' %} is-active{% endif %}">
       승인 절차
     </a>

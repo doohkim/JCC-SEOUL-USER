@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 타임테이블 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615ab" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260616b" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -27,7 +27,14 @@
             <div class="msg" id="timetableStatus" role="status"></div>
             <div class="jcc-retreat-listTopActions">
               {% if is_retreat_council %}
-                <button type="button" class="secondary" id="ttAddBtn">+ 일정 추가</button>
+                <button type="button" class="jcc-retreat-ttAddBtn" id="ttAddBtn" aria-label="일정 추가">
+                  <svg class="jcc-retreat-ttAddBtn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+                    <path d="M3 9h18M8 2.5v4M16 2.5v4" />
+                    <path d="M12 12.5v5M9.5 15h5" />
+                  </svg>
+                  <span class="jcc-retreat-ttAddBtn-text">+ 일정 추가</span>
+                </button>
               {% endif %}
             </div>
           </div>
@@ -94,20 +101,25 @@
                 <input type="hidden" id="ttId" />
                 <div class="jcc-retreat-modalGrid">
                   <div class="field jcc-retreat-modalField--full">
-                    <label for="ttDay">날짜 *</label>
-                    <select id="ttDay" required data-cselect>
-                      {% for d in event_days %}
-                        <option value="{{ d|date:'Y-m-d' }}">{{ d|date:'n/j (D)' }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  <div class="field">
                     <label for="ttStart">시작 *</label>
-                    <input type="time" id="ttStart" data-tp data-placeholder="시작 시각" required />
+                    <input
+                      type="datetime-local"
+                      id="ttStart"
+                      required
+                      data-dtp
+                      data-dtp-max-selector="#ttEnd"
+                      data-dtp-max-message="시작은 종료보다 앞이어야 합니다."
+                    />
                   </div>
-                  <div class="field">
+                  <div class="field jcc-retreat-modalField--full">
                     <label for="ttEnd">종료</label>
-                    <input type="time" id="ttEnd" data-tp data-placeholder="종료 시각" />
+                    <input
+                      type="datetime-local"
+                      id="ttEnd"
+                      data-dtp
+                      data-dtp-min-selector="#ttStart"
+                      data-dtp-min-message="종료는 시작보다 뒤여야 합니다."
+                    />
                   </div>
                   <div class="field jcc-retreat-modalField--full">
                     <label for="ttTitle">프로그램명 *</label>
@@ -142,8 +154,7 @@
         apiDetailBase: "/api/v1/retreat/events/{{ event.id }}/timetable/"
       };
     </script>
-    <script src="{% static 'retreat/time_picker.js' %}?v=20260609b" defer></script>
-    <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_timetable.js' %}?v=20260613a" defer></script>
+    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260613a" defer></script>
+    <script src="{% static 'retreat/retreat_timetable.js' %}?v=20260616a" defer></script>
   </body>
 </html>

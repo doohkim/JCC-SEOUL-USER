@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import OrderedDict
 
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import F, Q
 from django.urls import reverse_lazy
 from django.views.generic import (
     CreateView,
@@ -17,8 +18,14 @@ from django.views.generic import (
 
 from notices.forms import NoticeForm
 from notices.models import Notice
-from users.mixins import SuperuserRequiredMixin
+from users.mixins import NoticeManageRequiredMixin, NoticeReadAccessRequiredMixin
 from users.models import Division, Region
+from users.permissions import is_notice_manager
+
+
+def _can_manage_notices(user) -> bool:
+    """공지 작성·수정·삭제 권한: 슈퍼유저·플랫폼 관리자(is_staff)·공지 관리 기능권한."""
+    return is_notice_manager(user)
 
 
 def _org_context():
@@ -35,12 +42,18 @@ def _org_context():
     }
 
 
+def _categories_context():
+    categories = list(Notice.active_categories())
+    return {"categories": categories}
+
+
 class NoticeFormContextMixin:
-    """작성/수정 폼에서 지역·부서 선택에 필요한 컨텍스트."""
+    """작성/수정 폼에서 지역·부서·카테고리 선택에 필요한 컨텍스트."""
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx.update(_org_context())
+        ctx.update(_categories_context())
         ctx["notices_tab"] = "create"
         instance = getattr(self, "object", None)
         ctx["selected_region_id"] = (
@@ -51,36 +64,39 @@ class NoticeFormContextMixin:
         return ctx
 
 
-class NoticeListView(SuperuserRequiredMixin, LoginRequiredMixin, ListView):
+class NoticeListView(LoginRequiredMixin, NoticeReadAccessRequiredMixin, ListView):
     model = Notice
     template_name = "notices/notice_list.html"
     context_object_name = "notices"
     login_url = reverse_lazy("user_login")
-    paginate_by = 20
+    paginate_by = 12
 
-    def _filter_ids(self):
-        region_raw = (self.request.GET.get("region") or "").strip()
-        division_raw = (self.request.GET.get("division") or "").strip()
-        region_id = int(region_raw) if region_raw.isdigit() else None
-        division_id = int(division_raw) if division_raw.isdigit() else None
-        return region_id, division_id
+    def _list_filters(self):
+        q = (self.request.GET.get("q") or "").strip()
+        category_slug = (self.request.GET.get("category") or "").strip()
+        return q, category_slug
 
     def get_queryset(self):
-        region_id, division_id = self._filter_ids()
-        return Notice.visible_queryset(region_id=region_id, division_id=division_id)
+        qs = Notice.visible_queryset()
+        q, category_slug = self._list_filters()
+        if q:
+            qs = qs.filter(Q(title__icontains=q) | Q(body__icontains=q))
+        if category_slug:
+            qs = qs.filter(category__slug=category_slug, category__is_active=True)
+        return qs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["can_manage_notices"] = self.request.user.is_superuser
+        ctx["can_manage_notices"] = _can_manage_notices(self.request.user)
         ctx["notices_tab"] = "notices"
-        region_id, division_id = self._filter_ids()
-        ctx["selected_region_id"] = region_id or ""
-        ctx["selected_division_id"] = division_id or ""
-        ctx.update(_org_context())
+        q, category_slug = self._list_filters()
+        ctx["q"] = q
+        ctx["selected_category"] = category_slug
+        ctx.update(_categories_context())
         return ctx
 
 
-class NoticeDetailView(SuperuserRequiredMixin, LoginRequiredMixin, DetailView):
+class NoticeDetailView(LoginRequiredMixin, NoticeReadAccessRequiredMixin, DetailView):
     model = Notice
     template_name = "notices/notice_detail.html"
     context_object_name = "notice"
@@ -88,18 +104,59 @@ class NoticeDetailView(SuperuserRequiredMixin, LoginRequiredMixin, DetailView):
 
     def get_queryset(self):
         return Notice.objects.select_related(
-            "created_by", "division", "division__region"
+            "created_by", "division", "division__region", "category"
         )
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        Notice.objects.filter(pk=obj.pk).update(view_count=F("view_count") + 1)
+        obj.view_count += 1
+        return obj
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx["can_manage_notices"] = self.request.user.is_superuser
+        notice = self.object
+        ctx["can_manage_notices"] = _can_manage_notices(self.request.user)
         ctx["notices_tab"] = "notices"
+        base_qs = Notice.visible_queryset().order_by("-is_pinned", "-created_at", "-id")
+        # 목록 정렬(-고정, -작성일) 기준: 다음글=위쪽(더 최신), 이전글=아래쪽(더 오래됨)
+        ctx["next_notice"] = (
+            base_qs.filter(
+                Q(is_pinned__gt=notice.is_pinned)
+                | Q(
+                    is_pinned=notice.is_pinned,
+                    created_at__gt=notice.created_at,
+                )
+                | Q(
+                    is_pinned=notice.is_pinned,
+                    created_at=notice.created_at,
+                    pk__gt=notice.pk,
+                )
+            )
+            .order_by("is_pinned", "created_at", "id")
+            .first()
+        )
+        ctx["prev_notice"] = (
+            base_qs.filter(
+                Q(is_pinned__lt=notice.is_pinned)
+                | Q(
+                    is_pinned=notice.is_pinned,
+                    created_at__lt=notice.created_at,
+                )
+                | Q(
+                    is_pinned=notice.is_pinned,
+                    created_at=notice.created_at,
+                    pk__lt=notice.pk,
+                )
+            )
+            .order_by("-is_pinned", "-created_at", "-id")
+            .first()
+        )
         return ctx
 
 
 class NoticeCreateView(
-    SuperuserRequiredMixin, LoginRequiredMixin, NoticeFormContextMixin, CreateView
+    NoticeManageRequiredMixin, LoginRequiredMixin, NoticeFormContextMixin, CreateView
 ):
     model = Notice
     form_class = NoticeForm
@@ -113,7 +170,7 @@ class NoticeCreateView(
 
 
 class NoticeUpdateView(
-    SuperuserRequiredMixin, LoginRequiredMixin, NoticeFormContextMixin, UpdateView
+    NoticeManageRequiredMixin, LoginRequiredMixin, NoticeFormContextMixin, UpdateView
 ):
     model = Notice
     form_class = NoticeForm
@@ -122,14 +179,14 @@ class NoticeUpdateView(
     success_url = reverse_lazy("notice_list")
 
 
-class NoticeDeleteView(SuperuserRequiredMixin, LoginRequiredMixin, DeleteView):
+class NoticeDeleteView(NoticeManageRequiredMixin, LoginRequiredMixin, DeleteView):
     model = Notice
     template_name = "notices/notice_confirm_delete.html"
     login_url = reverse_lazy("user_login")
     success_url = reverse_lazy("notice_list")
 
 
-class TimetableView(SuperuserRequiredMixin, LoginRequiredMixin, TemplateView):
+class TimetableView(LoginRequiredMixin, NoticeReadAccessRequiredMixin, TemplateView):
     """수련회 타임테이블을 행사별로 보여주는 읽기 전용 화면.
 
     행사(RetreatEvent) 단위로 작성된 타임테이블을 드롭다운으로 선택해 조회한다.
