@@ -308,52 +308,34 @@ def onboarding_approval_divisions_for(user: User, *, region=None):
     """
     가입 승인 탭에서 다룰 수 있는 부서.
 
-    - 슈퍼유저: 전체
-    - 목사·전도사: 목회 담당 부서
-    - 활성 수련회 회장단: 본인 ``UserDivisionTeam`` 소속 부서
+    - 스태프(슈퍼유저·is_staff): 전체
+    - 계정 관리 기능권한(can_manage_accounts): 본인 소속 부서만
     """
     if not user.is_authenticated:
         return Division.objects.none()
-    if user.is_superuser:
+    if is_platform_admin(user):
         qs = Division.objects.all()
+    elif getattr(user, "can_manage_accounts", False):
+        qs = membership_divisions_for(user)
     else:
-        div_ids: set[int] = set()
-        role_code = getattr(getattr(user, "role_level", None), "code", None)
-        if role_code in ("pastor", "evangelist"):
-            div_ids.update(
-                _pastoral_assigned_divisions(user).values_list("pk", flat=True)
-            )
-        from retreat.models import RetreatCouncilMembership, RetreatEvent
-
-        active_event_ids = list(
-            RetreatEvent.objects.filter(is_active=True).values_list("id", flat=True)
-        )
-        if active_event_ids and RetreatCouncilMembership.objects.filter(
-            user=user, event_id__in=active_event_ids
-        ).exists():
-            div_ids.update(
-                user.division_teams.values_list("division_id", flat=True).distinct()
-            )
-        if not div_ids:
-            return Division.objects.none()
-        qs = Division.objects.filter(pk__in=div_ids)
+        return Division.objects.none()
     return _apply_region_filter(qs, region)
 
 
 def can_access_onboarding_approvals(user: User) -> bool:
-    """가입 승인 탭 — 슈퍼유저·목사·전도사·활성 수련회 회장단(소속 부서)."""
+    """가입 승인 탭 — 스태프(슈퍼유저·is_staff) 또는 계정 관리 기능권한(소속 부서)."""
     if not user.is_authenticated or not user.is_active:
         return False
-    if user.is_superuser:
+    if is_platform_admin(user):
         return True
     return onboarding_approval_divisions_for(user).exists()
 
 
 def can_manage_division_accounts(user: User) -> bool:
-    """부서 계정(통합 편집) 탭: 슈퍼유저 또는 can_manage_accounts 기능권한만."""
+    """부서 계정(통합 편집) 탭: 스태프(슈퍼유저·is_staff) 또는 can_manage_accounts 기능권한."""
     if not user.is_authenticated or not user.is_active:
         return False
-    if user.is_superuser:
+    if is_platform_admin(user):
         return True
     return bool(getattr(user, "can_manage_accounts", False))
 
@@ -373,6 +355,39 @@ def is_parking_manager(user: User) -> bool:
         return True
     role_codes = _functional_role_codes_for(user)
     return bool(role_codes & _PARKING_MANAGER_ROLE_CODES)
+
+
+def can_access_notices_tab(user: User) -> bool:
+    """공지 열람 — 공지관리자/스태프/슈퍼유저 또는 가입신청 제출(승인대기·승인완료) 계정."""
+    if not user.is_authenticated or not user.is_active:
+        return False
+    if is_notice_manager(user):
+        return True
+    from users.mixins import has_submitted_signup
+
+    return has_submitted_signup(user)
+
+
+def is_notice_manager(user: User) -> bool:
+    """공지사항 작성·수정·삭제 권한.
+
+    - 슈퍼유저·플랫폼 관리자(is_staff)
+    - 공지 관리 기능권한(can_manage_notices)
+    """
+    if not user.is_authenticated or not user.is_active:
+        return False
+    if is_platform_admin(user):
+        return True
+    return bool(getattr(user, "can_manage_notices", False))
+
+
+def can_access_pastoral_tab(user: User) -> bool:
+    """대시보드·출석부·교적부 좌측 메뉴 노출 — 슈퍼유저 또는 목사·전도사."""
+    if not user.is_authenticated or not user.is_active:
+        return False
+    if user.is_superuser:
+        return True
+    return _is_pastoral(user)
 
 
 def is_account_manager(user: User) -> bool:

@@ -34,6 +34,7 @@ api_urlpatterns = [
     path("", include("counseling.urls")),
     path("", include("retreat.urls")),
     path("", include("notices.urls")),
+    path("tinymce/", include("tinymce.urls")),
 
 ]
 urlpatterns = base_urlpatterns + api_urlpatterns

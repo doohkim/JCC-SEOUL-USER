@@ -11,7 +11,6 @@
   const form = document.getElementById("ttForm");
   const titleEl = document.getElementById("ttModalTitle");
   const idEl = document.getElementById("ttId");
-  const dayEl = document.getElementById("ttDay");
   const startEl = document.getElementById("ttStart");
   const endEl = document.getElementById("ttEnd");
   const titleInput = document.getElementById("ttTitle");
@@ -31,6 +30,18 @@
     statusEl.style.color = isError ? "var(--err, #fda4af)" : "";
   }
 
+  // "YYYY-MM-DD" + "HH:mm" → "YYYY-MM-DDTHH:mm" (커스텀 달력 피커 값 포맷)
+  function joinDateTime(day, time) {
+    if (!day || !time) return "";
+    return `${day}T${time.slice(0, 5)}`;
+  }
+
+  // "YYYY-MM-DDTHH:mm" → { date: "YYYY-MM-DD", time: "HH:mm" }
+  function splitDateTime(value) {
+    const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value || "");
+    return m ? { date: m[1], time: m[2] } : { date: null, time: null };
+  }
+
   function openModal(mode, data) {
     if (!overlay) return;
     data = data || {};
@@ -38,21 +49,12 @@
     titleEl.textContent = isEdit ? "일정 수정" : "일정 추가";
     idEl.value = isEdit ? data.id || "" : "";
 
-    if (data.day) {
-      dayEl.value = data.day;
-      // 행사 일자 범위 밖이면 첫 옵션으로
-      if (dayEl.value !== data.day && dayEl.options.length) {
-        dayEl.selectedIndex = 0;
-      }
-    } else if (dayEl.options.length) {
-      dayEl.selectedIndex = 0;
-    }
-    startEl.value = data.start || "";
-    endEl.value = data.end || "";
+    // 시작/종료는 "날짜+시간" 달력 피커. 수정 시 day + 시각을 합쳐 채운다.
+    startEl.value = joinDateTime(data.day, data.start);
+    endEl.value = joinDateTime(data.day, data.end);
     titleInput.value = data.title || "";
     locationEl.value = data.location || "";
     descEl.value = data.description || "";
-    if (window.JccCustomSelect) window.JccCustomSelect.refresh(document);
 
     deleteBtn.hidden = !isEdit;
 
@@ -70,10 +72,13 @@
   }
 
   function gatherBody() {
+    // 시작 달력값에서 day 를 파생하고, 시작/종료의 시각만 전송한다.
+    const start = splitDateTime(startEl.value);
+    const end = splitDateTime(endEl.value);
     return {
-      day: dayEl.value,
-      start_time: startEl.value || null,
-      end_time: endEl.value || null,
+      day: start.date,
+      start_time: start.time,
+      end_time: end.time,
       title: titleInput.value.trim(),
       location: locationEl.value.trim(),
       description: descEl.value.trim(),
@@ -83,7 +88,7 @@
   async function save() {
     const body = gatherBody();
     if (!body.day || !body.start_time || !body.title) {
-      showStatus("날짜·시작 시각·프로그램명은 필수입니다.", true);
+      showStatus("시작 일시·프로그램명은 필수입니다.", true);
       return;
     }
     const id = idEl.value;

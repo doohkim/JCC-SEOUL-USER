@@ -41,7 +41,35 @@
   <div class="jcc-leftNav-sectionLabel">메뉴</div>
 
   <div class="jcc-leftNav-tabs">
-    {% if user.is_superuser %}
+    {% if user|can_access_retreat_tab %}
+      <a class="jcc-leftNav-item" href="{% url 'retreat_home' %}" data-tab="retreat">
+        <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <path d="M3 21l3-9 6 6-9 3z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+          <path d="M14 4l6 6-7 7-6-6 7-7z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+          <circle cx="17" cy="7" r="1.2" fill="currentColor"/>
+        </svg>
+        <span>수련회</span>
+      </a>
+    {% endif %}
+    {% if user|can_access_notices_tab %}
+      <a class="jcc-leftNav-item" href="{% url 'notice_list' %}" data-tab="notices">
+        <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <path d="M4 6h16v12H4V6z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+          <path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+        </svg>
+        <span>공지사항</span>
+      </a>
+    {% endif %}
+    {% if user|can_manage_division_accounts_tab %}
+      <a class="jcc-leftNav-item" href="{% url 'user_division_account_roles' %}" data-tab="accounts">
+        <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h0a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v0a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>계정관리</span>
+      </a>
+    {% endif %}
+    {% if user|can_access_pastoral_tab %}
     <a class="jcc-leftNav-item" href="{% url 'attendance_dashboard' %}" data-tab="dashboard">
       <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
         <path d="M4 11h6v9H4v-9zm10 0h6v9h-6v-9zM4 4h6v5H4V4zm10 0h6v5h-6V4z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
@@ -49,7 +77,7 @@
       <span>대시보드</span>
     </a>
     {% endif %}
-    {% if user.is_superuser %}
+    {% if user|can_access_pastoral_tab %}
       <a class="jcc-leftNav-item" href="{% url 'attendance_team_roster_check' %}" data-tab="attendance">
         <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
           <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
@@ -71,7 +99,7 @@
       </a>
     {% endif %}
     {% endcomment %}
-    {% if user.is_superuser %}
+    {% if user|can_access_pastoral_tab %}
       <a class="jcc-leftNav-item" href="{% url 'registry_member_list' %}" data-tab="registry">
         <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
           <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
@@ -79,15 +107,6 @@
           <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
         </svg>
         <span>교적부</span>
-      </a>
-    {% endif %}
-    {% if user.is_superuser and user|can_manage_division_accounts_tab %}
-      <a class="jcc-leftNav-item" href="{% url 'user_division_account_roles' %}" data-tab="accounts">
-        <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/>
-          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h0a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v0a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span>계정관리</span>
       </a>
     {% endif %}
     {% comment %}상담 탭 숨김 처리 (요청에 따라 비노출){% endcomment %}
@@ -101,25 +120,6 @@
       </a>
     {% endif %}
     {% endcomment %}
-    {% if user|can_access_retreat_tab %}
-      <a class="jcc-leftNav-item" href="{% url 'retreat_home' %}" data-tab="retreat">
-        <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-          <path d="M3 21l3-9 6 6-9 3z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
-          <path d="M14 4l6 6-7 7-6-6 7-7z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
-          <circle cx="17" cy="7" r="1.2" fill="currentColor"/>
-        </svg>
-        <span>수련회</span>
-      </a>
-    {% endif %}
-    {% if user.is_superuser and user|can_access_notices_tab %}
-      <a class="jcc-leftNav-item" href="{% url 'notice_list' %}" data-tab="notices">
-        <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-          <path d="M4 6h16v12H4V6z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
-          <path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
-        </svg>
-        <span>공지사항</span>
-      </a>
-    {% endif %}
   </div>
 
   <div class="jcc-leftNav-bottom">
@@ -148,7 +148,7 @@
 <script src="{% static 'attendance/jcc-theme.js' %}?v=20260615a" defer></script>
 
 <nav class="jcc-bottomTabs" id="jccBottomTabs" aria-label="모바일 주요 메뉴">
-  {% if user.is_superuser %}
+  {% if user|can_access_pastoral_tab %}
   <a class="jcc-bottomTab" href="{% url 'attendance_dashboard' %}" data-tab="dashboard">
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
       <path d="M4 11h6v9H4v-9zm10 0h6v9h-6v-9zM4 4h6v5H4V4zm10 0h6v5h-6V4z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
@@ -156,7 +156,7 @@
     <span>대시보드</span>
   </a>
   {% endif %}
-  {% if user.is_superuser %}
+  {% if user|can_access_pastoral_tab %}
     <a class="jcc-bottomTab" href="{% url 'attendance_team_roster_check' %}" data-tab="attendance">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
         <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
@@ -166,7 +166,7 @@
       <span>출석부</span>
     </a>
   {% endif %}
-  {% if user.is_superuser %}
+  {% if user|can_access_pastoral_tab %}
     <a class="jcc-bottomTab" href="{% url 'registry_member_list' %}" data-tab="registry">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
         <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>

@@ -19,6 +19,7 @@ from .logging import *
 from .subdomain import *
 from .attendance import *
 from .templates import *
+from .tinymce import *
 
 IS_RUNSERVER = len(sys.argv) > 1 and sys.argv[1] == "runserver"
 IS_LOCAL = IS_RUNSERVER or os.environ.get("IS_LOCAL") == "1"

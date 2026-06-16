@@ -2,52 +2,61 @@ from __future__ import annotations
 
 from django import template
 
-from users.permissions import (
-    can_access_counseling_manage_tab,
-    can_access_counseling_tab,
-    can_access_member_registry,
-    can_access_parking_tab,
-    can_access_retreat_tab,
-    can_access_team_roster_tab,
-    can_manage_division_accounts,
-    is_parking_manager,
-    is_retreat_council_any,
-)
-from users.services.user_display import user_display_name as resolve_user_display_name
-
 register = template.Library()
 
 
 @register.filter(name="can_access_registry_tab")
 def can_access_registry_tab(user):
     """좌측 '교적부' 탭 — 목사·전도사(및 슈퍼유저)만."""
+    from users.permissions import can_access_member_registry
+
     return can_access_member_registry(user)
 
 
 @register.filter(name="can_manage_division_accounts_tab")
 def can_manage_division_accounts_tab(user):
-    """좌측 '계정관리' 탭 — 운영자·목회 담당·기능권한 등 (교적부와 별도)."""
+    """좌측 '계정관리' 탭 — 스태프·계정 관리 기능권한."""
+    from users.permissions import can_manage_division_accounts
+
     return bool(user and can_manage_division_accounts(user))
+
+
+@register.filter(name="can_access_onboarding_approvals_tab")
+def can_access_onboarding_approvals_tab(user):
+    """계정관리 내 '승인 절차' 탭 — 스태프·계정 관리 기능권한."""
+    from users.permissions import can_access_onboarding_approvals
+
+    return bool(user and can_access_onboarding_approvals(user))
 
 
 @register.filter(name="can_access_attendance_tab")
 def can_access_attendance_tab(user):
     """탭 출석부: 팀장·셀장(직급 또는 기능 직책) 또는 목사·전도사·회장·부회장·총무·출석관리·운영."""
+    from users.permissions import can_access_team_roster_tab
+
     return bool(user and can_access_team_roster_tab(user))
 
 
 @register.filter(name="can_access_parking_tab")
 def can_access_parking_tab_filter(user):
+    from users.permissions import can_access_parking_tab
+
     return can_access_parking_tab(user)
 
 
 @register.filter(name="can_access_parking_admin_tab")
 def can_access_parking_admin_tab(user):
+    from users.permissions import is_parking_manager
+
     return is_parking_manager(user)
 
 
 @register.filter(name="user_display_name")
 def user_display_name(user):
+    from users.services.user_display import (
+        user_display_name as resolve_user_display_name,
+    )
+
     return resolve_user_display_name(user)
 
 
@@ -85,30 +94,48 @@ def user_org_summary(user):
 
 @register.filter(name="can_access_counseling_tab")
 def can_access_counseling_tab_filter(user):
+    from users.permissions import can_access_counseling_tab
+
     return can_access_counseling_tab(user)
 
 
 @register.filter(name="can_access_counseling_manage_tab")
 def can_access_counseling_manage_tab_filter(user):
+    from users.permissions import can_access_counseling_manage_tab
+
     return can_access_counseling_manage_tab(user)
 
 
 @register.filter(name="can_access_retreat_tab")
 def can_access_retreat_tab_filter(user):
     """좌측 '수련회' 탭 — 조장/부조장 또는 운영진(staff)·회장단·슈퍼유저."""
+    from users.permissions import can_access_retreat_tab
+
     return can_access_retreat_tab(user)
 
 
 @register.filter(name="is_retreat_council_any")
 def is_retreat_council_any_filter(user):
     """수련회 회장단(어떤 행사든) 여부 — 좌측 탭/UI 노출용."""
+    from users.permissions import is_retreat_council_any
+
     return is_retreat_council_any(user)
 
 
 @register.filter(name="can_access_notices_tab")
 def can_access_notices_tab(user):
-    """좌측 '공지사항'(하위 타임테이블 포함) — 개발 단계: superuser 전용."""
-    return bool(user and user.is_authenticated and user.is_superuser)
+    """좌측 '공지사항'(하위 타임테이블 포함) — 로그인한 모든 참가자."""
+    from users.permissions import can_access_notices_tab as can_access_notices
+
+    return bool(user and can_access_notices(user))
+
+
+@register.filter(name="can_access_pastoral_tab")
+def can_access_pastoral_tab(user):
+    """좌측 '대시보드·출석부·교적부' 탭 — 슈퍼유저 또는 목사·전도사."""
+    from users.permissions import can_access_pastoral_tab as can_access_pastoral
+
+    return bool(user and can_access_pastoral(user))
 
 
 @register.filter(name="lookup_user_label")
