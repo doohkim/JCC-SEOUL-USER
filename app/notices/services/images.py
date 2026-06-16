@@ -1,8 +1,7 @@
-"""공지 썸네일 이미지 리사이즈/압축.
+"""공지 이미지 리사이즈/압축.
 
 업로드된 원본을 그대로 저장하면 목록·상세에서 수 MB 이미지를 그대로 내려받아
-로딩이 느려진다. 업로드 시점에 최대 폭으로 축소하고 JPEG로 재인코딩해
-전송량을 줄인다.
+로딩이 느려진다. 업로드·일괄 재처리 시 최대 폭으로 축소하고 JPEG로 재인코딩한다.
 """
 
 from __future__ import annotations
@@ -13,21 +12,18 @@ import os
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from PIL import Image, ImageOps
 
-MAX_WIDTH = 1200  # 카드·배너 표시에 충분한 폭
+THUMBNAIL_MAX_WIDTH = 1200  # 카드·배너 표시에 충분한 폭
+INLINE_MAX_WIDTH = 1600  # 본문 인라인 이미지
 JPEG_QUALITY = 82
 
 
-def compress_thumbnail(upload):
-    """업로드 이미지를 리사이즈/압축한 새 파일로 반환한다.
-
-    실패하거나 처리할 필요가 없으면 원본 `upload`을 그대로 돌려준다.
-    """
+def compress_image_bytes(data: bytes, *, max_width: int) -> bytes | None:
+    """이미지 바이트를 JPEG로 리사이즈/압축한다. GIF·실패 시 None."""
     try:
-        upload.seek(0)
-        image = Image.open(upload)
-        # EXIF 방향 보정 (휴대폰 사진 회전 문제 방지)
+        image = Image.open(io.BytesIO(data))
+        if image.format == "GIF":
+            return None
         image = ImageOps.exif_transpose(image)
-        # 투명도/팔레트는 흰 배경으로 평탄화 후 RGB 변환
         if image.mode in ("RGBA", "LA", "P"):
             background = Image.new("RGB", image.size, (255, 255, 255))
             rgba = image.convert("RGBA")
@@ -36,25 +32,69 @@ def compress_thumbnail(upload):
         else:
             image = image.convert("RGB")
 
-        if image.width > MAX_WIDTH:
-            ratio = MAX_WIDTH / float(image.width)
-            new_size = (MAX_WIDTH, int(image.height * ratio))
+        if image.width > max_width:
+            ratio = max_width / float(image.width)
+            new_size = (max_width, int(image.height * ratio))
             image = image.resize(new_size, Image.LANCZOS)
 
         buffer = io.BytesIO()
         image.save(buffer, format="JPEG", quality=JPEG_QUALITY, optimize=True)
-        buffer.seek(0)
+        return buffer.getvalue()
+    except Exception:
+        return None
+
+
+def _as_uploaded_file(
+    upload,
+    compressed: bytes,
+    *,
+    field_name: str,
+    default_stem: str,
+) -> InMemoryUploadedFile:
+    base, _ = os.path.splitext(os.path.basename(getattr(upload, "name", default_stem)))
+    new_name = f"{base or default_stem}.jpg"
+    buffer = io.BytesIO(compressed)
+    return InMemoryUploadedFile(
+        buffer,
+        field_name=field_name,
+        name=new_name,
+        content_type="image/jpeg",
+        size=len(compressed),
+        charset=None,
+    )
+
+
+def _compress_upload(upload, *, max_width: int, field_name: str, default_stem: str):
+    try:
+        upload.seek(0)
+        original = upload.read()
+        compressed = compress_image_bytes(original, max_width=max_width)
+        if compressed is None or len(compressed) >= len(original):
+            upload.seek(0)
+            return upload
+        return _as_uploaded_file(
+            upload, compressed, field_name=field_name, default_stem=default_stem
+        )
     except Exception:
         upload.seek(0)
         return upload
 
-    base, _ = os.path.splitext(os.path.basename(getattr(upload, "name", "thumbnail")))
-    new_name = f"{base or 'thumbnail'}.jpg"
-    return InMemoryUploadedFile(
-        buffer,
+
+def compress_thumbnail(upload):
+    """썸네일 업로드 파일을 리사이즈/압축한다."""
+    return _compress_upload(
+        upload,
+        max_width=THUMBNAIL_MAX_WIDTH,
         field_name=getattr(upload, "field_name", "thumbnail"),
-        name=new_name,
-        content_type="image/jpeg",
-        size=buffer.getbuffer().nbytes,
-        charset=None,
+        default_stem="thumbnail",
+    )
+
+
+def compress_inline_image(upload):
+    """본문 인라인 이미지 업로드 파일을 리사이즈/압축한다."""
+    return _compress_upload(
+        upload,
+        max_width=INLINE_MAX_WIDTH,
+        field_name=getattr(upload, "field_name", "file"),
+        default_stem="inline",
     )

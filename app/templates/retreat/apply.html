@@ -6,17 +6,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 참여 신청</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614l" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617g" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        <header class="app-header">
-          <h1>수련회 참여 신청</h1>
-          <p class="subtitle">{{ event.name }}</p>
-        </header>
+        {% include 'includes/jcc_page_header.html' with page_title='수련회 참여 신청' subtitle=event.name %}
         <main>
           <div class="card">
             <form method="post">

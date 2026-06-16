@@ -57,7 +57,17 @@ class NoticeImageUploadTests(TestCase):
         self.assertEqual(r.status_code, 200)
         location = r.json()["location"]
         self.assertTrue(location.startswith("/media/notices/inline/"))
-        self.assertTrue(location.endswith(".png"))
+        self.assertTrue(location.endswith((".png", ".jpg")))
+
+    def test_large_inline_png_is_reencoded_to_jpeg(self):
+        self.client.force_login(self.superuser)
+        upload = SimpleUploadedFile(
+            "wide.png", _large_png_bytes(), content_type="image/png"
+        )
+        r = self.client.post(reverse("notice_image_upload"), {"file": upload})
+        self.assertEqual(r.status_code, 200)
+        location = r.json()["location"]
+        self.assertTrue(location.endswith(".jpg"))
 
     def test_anonymous_cannot_upload(self):
         upload = SimpleUploadedFile("a.png", _png_bytes(), content_type="image/png")

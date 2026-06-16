@@ -6,20 +6,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ event.name }} · 방배정</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615ab" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617g" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        <header class="app-header">
-          <div class="jcc-detail-titleWrap">
-            <h1>방배정</h1>
-            <p class="subtitle">{{ event.name }} · 호실을 지역·부서에 배정합니다.</p>
-          </div>
-          {% include 'includes/retreat_event_tabs.html' with retreat_tab='lodging_assign' hide_event_picker=True %}
-        </header>
+        {% with la_subtitle=event.name|add:' · 호실을 지역·부서에 배정합니다.' %}
+          {% include 'includes/jcc_page_header.html' with page_title='방배정' subtitle=la_subtitle tabs_template='includes/retreat_event_tabs.html' retreat_tab='lodging_assign' hide_event_picker=True %}
+        {% endwith %}
         <main>
           <div class="jcc-retreat-subTabsRow">
             {% include 'includes/retreat_event_picker.html' %}

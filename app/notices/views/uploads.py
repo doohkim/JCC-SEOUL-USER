@@ -13,6 +13,7 @@ from django.core.files.storage import default_storage
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
+from notices.services import compress_inline_image
 from users.permissions import is_notice_manager
 
 _ALLOWED_CONTENT_TYPES = {
@@ -48,6 +49,10 @@ def notice_image_upload(request):
     except Exception:
         return JsonResponse({"error": "올바른 이미지 파일이 아닙니다."}, status=400)
     upload.seek(0)
+
+    if upload.content_type != "image/gif":
+        upload = compress_inline_image(upload)
+        ext = "jpg"
 
     name = f"notices/inline/{uuid.uuid4().hex}.{ext}"
     saved = default_storage.save(name, upload)

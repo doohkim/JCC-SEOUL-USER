@@ -1,4 +1,4 @@
-{% load static permission_tags %}
+{% load static permission_tags notice_extras %}
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -6,14 +6,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ notice.title }} · 공지사항</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617e" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
   </head>
   <body class="has-notice-bottom-tabs jcc-notice-detail-page">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
         {% url 'notice_list' as notice_back_url %}
-        {% include 'notices/_page_header.html' with title=notice.title notices_tab='notices' back_url=notice_back_url title_class='jcc-notice-detailHeaderTitle' %}
+        {% include 'includes/jcc_page_header.html' with page_title=notice.title tabs_template='notices/_subtabs.html' notices_tab='notices' back_url=notice_back_url title_class='jcc-notice-detailHeaderTitle' %}
         <main class="jcc-notice-detailMain">
           {% if can_manage_notices %}
             <div class="jcc-notice-detailTopActions jcc-notice-detailTopActions--desktop">
@@ -70,7 +70,7 @@
                 </span>
               </div>
 
-              <div class="jcc-notice-body">{{ notice.body|safe }}</div>
+              <div class="jcc-notice-body">{{ notice.body|lazy_images }}</div>
 
               {% if notice.tag_list %}
                 <div class="jcc-notice-detailTags">

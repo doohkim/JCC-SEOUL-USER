@@ -14,94 +14,11 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   display: none !important;
 }
 
-/* ── 수련회 상단 탭: Toss 스타일 가로 내비게이션 바 ── */
-.jcc-retreat-pageTabs {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 0.6rem;
-  align-items: stretch;
-  margin-bottom: 0.9rem;
-  border-bottom: 1px solid var(--border);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.jcc-retreat-pageTabs::-webkit-scrollbar {
-  display: none;
-}
-.jcc-retreat-pageTabs .jcc-page-tab {
-  position: relative;
-  min-width: auto;
-  flex: 0 0 auto;
-  border: none;
-  border-radius: 10px 10px 0 0;
-  background: transparent;
-  color: var(--muted);
-  font-weight: 700;
-  font-size: 0.95rem;
-  padding: 0.6rem 0.95rem 0.72rem;
-  white-space: nowrap;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-.jcc-retreat-pageTabs .jcc-page-tab::after {
-  content: "";
-  position: absolute;
-  left: 0.7rem;
-  right: 0.7rem;
-  bottom: -1px;
-  height: 2.5px;
-  border-radius: 3px;
-  background: transparent;
-  transition: background 0.15s ease;
-}
-.jcc-retreat-pageTabs .jcc-page-tab:hover {
-  color: var(--text);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-}
-.jcc-retreat-pageTabs .jcc-page-tab.is-active {
-  color: var(--accent);
-  background: transparent;
-  border-color: transparent;
-}
-.jcc-retreat-pageTabs .jcc-page-tab.is-active::after {
-  background: var(--accent);
-}
-
-.jcc-retreat-pageTabsRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-  margin-bottom: 0.75rem;
-}
-.jcc-retreat-pageTabsRow .jcc-retreat-pageTabs {
-  margin-bottom: 0;
-  flex: 1 1 auto;
-}
-
-/* PC: 메인 탭(대시보드·조관리·픽업·숙소·관리)을 상단 헤더(app-header) 안에 배치.
-   헤더 제목 아래 한 줄을 차지하며, 탭 밑줄이 헤더 하단 경계선 위에 붙는다. */
-@media (min-width: 901px) {
-  body.has-retreat-bottom-tabs header.app-header {
-    align-items: flex-start;
-    /* main(max-width:1400; margin:auto)과 동일한 가운데 정렬 박스에 헤더 내용(h1·탭)을
-       맞춘다. 배경/하단 보더는 전체 폭을 유지하고, 내용만 main 콘텐츠 좌측선
-       (= 행사선택 드롭다운 위치)에 정렬되도록 좌우 패딩을 반응형으로 계산. */
-    padding-left: max(1.5rem, calc((100% - 1400px) / 2 + 1.5rem));
-    padding-right: max(1.5rem, calc((100% - 1400px) / 2 + 1.5rem));
-  }
-  header.app-header > .jcc-retreat-pageTabsRow {
-    flex-basis: 100%;
-    width: 100%;
-    margin: 0.45rem 0 -1rem;
-  }
-  header.app-header > .jcc-retreat-pageTabsRow .jcc-retreat-pageTabs {
-    margin-bottom: 0;
-    border-bottom: none;
-    /* 첫 탭의 좌측 패딩만큼 당겨 헤더 제목(h1)과 탭 글씨 시작점을 정렬 */
-    margin-left: -0.95rem;
-  }
-}
+/* ── 수련회 상단 탭 + PC 헤더 정렬 ──
+   공통 규칙(밑줄 탭 톤·레이아웃, PC 1400 중앙 정렬)은 attendance/app.css 의
+   공통 페이지 헤더 블록(.jcc-pageHeader / .jcc-pageHeader-tabs / -tabsRow)으로 일원화했다.
+   수련회 템플릿도 includes/jcc_page_header.html + 공통 클래스를 사용한다.
+   여기에는 수련회 전용(모바일 하단 탭 대체 시 상단 탭 숨김, 행사 선택 등)만 남긴다. */
 
 /* 대시보드 컨트롤 줄: [행사선택] [통계/조참석현황 토글] ……… [현재시각·새로고침]
    탭은 윗줄 단독, 이 줄에서 행사선택+토글은 왼쪽, 새로고침 카드는 오른쪽으로 정렬 */

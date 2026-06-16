@@ -6,20 +6,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>출석부 · {{ event.name }}</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615ab" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617g" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        <header class="app-header">
-          <div class="jcc-detail-titleWrap">
-            <h1>출석부</h1>
-            <p class="subtitle">{{ event.name }}</p>
-          </div>
-          {% include 'includes/retreat_event_tabs.html' with retreat_tab='rosters' %}
-        </header>
+        {% include 'includes/jcc_page_header.html' with page_title='출석부' subtitle=event.name tabs_template='includes/retreat_event_tabs.html' retreat_tab='rosters' %}
         <main>
           <div class="card">
             <div class="jcc-table-scroll">

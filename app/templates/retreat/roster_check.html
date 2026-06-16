@@ -6,20 +6,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ session.name }} · {{ group.name }}</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615ab" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617g" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        <header class="app-header">
-          <div class="jcc-detail-titleWrap">
-            <h1>{{ session.name }}</h1>
-            <p class="subtitle">{{ group.name }} · {{ event.name }}</p>
-          </div>
-          {% include 'includes/retreat_event_tabs.html' with retreat_tab='rosters' %}
-        </header>
+        {% with rc_subtitle=group.name|add:' · '|add:event.name %}
+          {% include 'includes/jcc_page_header.html' with page_title=session.name subtitle=rc_subtitle tabs_template='includes/retreat_event_tabs.html' retreat_tab='rosters' %}
+        {% endwith %}
         <main>
           <div class="card jcc-retreat-sessionBar" role="tablist">
             {% for s in sessions %}

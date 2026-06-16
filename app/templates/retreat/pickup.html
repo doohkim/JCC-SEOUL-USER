@@ -6,19 +6,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>픽업 · {{ event.name }}</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260615bb" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617g" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        <header class="app-header">
-          <div class="jcc-detail-titleWrap">
-            <h1>픽업</h1>
-          </div>
-          {% include 'includes/retreat_event_tabs.html' with retreat_tab='pickup' hide_event_picker=True %}
-        </header>
+        {% include 'includes/jcc_page_header.html' with page_title='픽업' tabs_template='includes/retreat_event_tabs.html' retreat_tab='pickup' hide_event_picker=True %}
         <main>
 
           <div class="jcc-retreat-subTabsRow">

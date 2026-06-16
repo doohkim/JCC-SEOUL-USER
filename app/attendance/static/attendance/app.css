@@ -84,11 +84,6 @@ header.app-header h1 {
   font-weight: 600;
   letter-spacing: -0.02em;
 }
-/* 공지 영역 헤더 제목: 모든 공지 페이지에서 동일 크기로 통일하고 굵기를 없앤다. */
-body.has-notice-bottom-tabs header.app-header h1 {
-  font-size: 1.35rem;
-  font-weight: 400;
-}
 
 header.app-header .subtitle {
   color: var(--muted);
@@ -203,16 +198,27 @@ body.has-notice-bottom-tabs header.app-header {
     stroke-width: 2.2;
   }
 }
-/* 공지 하위 탭(공지사항·타임테이블): 수련회 메인 탭(대시보드·조관리…)과 동일한 밑줄 탭 톤·레이아웃.
-   PC 에서는 헤더(app-header) 안 제목 아래 한 줄로 배치한다. */
-body.has-notice-bottom-tabs .jcc-notice-pageTabsRow {
+/* ============================================================
+   공통 페이지 헤더(수련회·공지 공용) — 단일 소스.
+   app.css 는 수련회/공지 양쪽 페이지에서 모두 로드되므로 여기에 한 번만 정의한다.
+   템플릿은 includes/jcc_page_header.html + 공통 클래스
+   (.jcc-pageHeader / .jcc-pageHeader-tabsRow / .jcc-pageHeader-tabs)를 사용한다.
+   ============================================================ */
+/* 헤더 제목: 두 영역 동일 크기·굵기 */
+header.app-header.jcc-pageHeader h1 {
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+/* 하위 탭 줄 */
+.jcc-pageHeader-tabsRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 0.75rem;
   margin-bottom: 0.75rem;
 }
-body.has-notice-bottom-tabs .jcc-notice-pageTabs {
+/* 하위 탭 바(밑줄형) */
+.jcc-pageHeader-tabs {
   display: flex;
   flex-wrap: nowrap;
   gap: 0.6rem;
@@ -224,10 +230,10 @@ body.has-notice-bottom-tabs .jcc-notice-pageTabs {
   scrollbar-width: none;
   flex: 1 1 auto;
 }
-body.has-notice-bottom-tabs .jcc-notice-pageTabs::-webkit-scrollbar {
+.jcc-pageHeader-tabs::-webkit-scrollbar {
   display: none;
 }
-body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab {
+.jcc-pageHeader-tabs .jcc-page-tab {
   position: relative;
   min-width: auto;
   flex: 0 0 auto;
@@ -238,9 +244,11 @@ body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab {
   font-weight: 700;
   font-size: 0.95rem;
   padding: 0.6rem 0.95rem 0.72rem;
+  white-space: nowrap;
   box-shadow: none;
+  transition: color 0.15s ease, background 0.15s ease;
 }
-body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab::after {
+.jcc-pageHeader-tabs .jcc-page-tab::after {
   content: "";
   position: absolute;
   left: 0.7rem;
@@ -251,39 +259,36 @@ body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab::after {
   background: transparent;
   transition: background 0.15s ease;
 }
-body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab:hover {
+.jcc-pageHeader-tabs .jcc-page-tab:hover {
   color: var(--text);
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
-body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab.is-active {
+.jcc-pageHeader-tabs .jcc-page-tab.is-active {
   color: var(--accent);
   background: transparent;
+  border-color: transparent;
 }
-body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab.is-active::after {
+.jcc-pageHeader-tabs .jcc-page-tab.is-active::after {
   background: var(--accent);
 }
-
-/* PC: 메인 탭을 헤더 안 제목 아래 한 줄로 배치하고, 헤더 내용은 main 콘텐츠 좌측선에 정렬한다(수련회와 동일). */
+/* PC: 탭을 헤더 안 제목 아래 한 줄로 배치, 헤더 내용은 main(1400) 좌측선에 정렬 */
 @media (min-width: 901px) {
-  body.has-notice-bottom-tabs header.app-header {
+  header.app-header.jcc-pageHeader {
     align-items: flex-start;
     padding-left: max(1.5rem, calc((100% - 1400px) / 2 + 1.5rem));
     padding-right: max(1.5rem, calc((100% - 1400px) / 2 + 1.5rem));
   }
-  body.has-notice-bottom-tabs header.app-header > .jcc-notice-pageTabsRow {
+  header.app-header.jcc-pageHeader > .jcc-pageHeader-tabsRow {
     flex-basis: 100%;
     width: 100%;
     margin: 0.45rem 0 -1rem;
   }
-  body.has-notice-bottom-tabs
-    header.app-header
-    > .jcc-notice-pageTabsRow
-    .jcc-notice-pageTabs {
+  header.app-header.jcc-pageHeader > .jcc-pageHeader-tabsRow .jcc-pageHeader-tabs {
     margin-bottom: 0;
     border-bottom: none;
     margin-left: -0.95rem;
   }
-  /* 필터(지역·부서 select)·적용·공지작성 버튼을 같은 높이로 통일해 한 행에 정렬 */
+  /* 공지 목록: 필터(지역·부서 select)·적용·공지작성 버튼을 같은 높이로 한 행 정렬 */
   body.has-notice-bottom-tabs #noticeFilter {
     align-items: center;
   }
@@ -294,9 +299,9 @@ body.has-notice-bottom-tabs .jcc-notice-pageTabs .jcc-page-tab.is-active::after 
     border-radius: 10px;
   }
 }
-/* 모바일: 헤더 안 하위 탭은 숨기고 하단 탭바로 대체 */
+/* 모바일: 헤더 안 하위 탭은 숨기고 하단 탭바로 대체(공지) */
 @media (max-width: 900px) {
-  body.has-notice-bottom-tabs .jcc-notice-pageTabsRow {
+  body.has-notice-bottom-tabs .jcc-pageHeader-tabsRow {
     display: none;
   }
 }

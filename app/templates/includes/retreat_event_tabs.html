@@ -1,10 +1,10 @@
 {% comment %}행사 단위 상단 탭 — event, can_view_retreat_all, is_retreat_staff, available_events, retreat_tab 필요.
   hide_event_picker=True 로 호출하면 행사 선택 드롭다운을 탭 줄에 렌더링하지 않는다(페이지가 직접 배치).{% endcomment %}
-<div class="jcc-retreat-pageTabsRow">
+<div class="jcc-retreat-pageTabsRow jcc-pageHeader-tabsRow">
   {% if not hide_event_picker %}
     {% include 'includes/retreat_event_picker.html' %}
   {% endif %}
-  <nav class="jcc-page-tabs jcc-retreat-pageTabs" aria-label="수련회 메뉴">
+  <nav class="jcc-page-tabs jcc-retreat-pageTabs jcc-pageHeader-tabs" aria-label="수련회 메뉴">
     <a
       class="jcc-page-tab{% if retreat_tab == 'dashboard' %} is-active{% endif %}"
       href="{% url 'retreat_dashboard' event.id %}"

@@ -12,19 +12,14 @@
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260614l" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617g" />
   </head>
   <body>
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        <header class="app-header">
-          <div class="jcc-detail-titleWrap">
-            <h1>수련회</h1>
-            <p class="subtitle">행사·내 조 바로가기</p>
-          </div>
-        </header>
+        {% include 'includes/jcc_page_header.html' with page_title='수련회' subtitle='행사·내 조 바로가기' %}
         <main>
           {% if not event_cards %}
             <div class="card jcc-retreat-emptyCard">
