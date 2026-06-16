@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ notice.title }} · 공지사항</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616p" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616x" />
   </head>
   <body class="has-notice-bottom-tabs jcc-notice-detail-page">
     <div class="jcc-layout">
@@ -26,8 +26,8 @@
         <main class="jcc-notice-detailMain">
           {% if can_manage_notices %}
             <div class="jcc-notice-detailTopActions jcc-notice-detailTopActions--desktop">
-              <a class="secondary" href="{% url 'notice_edit' notice.pk %}">수정</a>
-              <a class="secondary" href="{% url 'notice_delete' notice.pk %}">삭제</a>
+              <a class="jcc-notice-detailActionBtn jcc-notice-detailActionBtn--edit" href="{% url 'notice_edit' notice.pk %}">수정</a>
+              <a class="jcc-notice-detailActionBtn jcc-notice-detailActionBtn--delete" href="{% url 'notice_delete' notice.pk %}">삭제</a>
             </div>
           {% endif %}
 
