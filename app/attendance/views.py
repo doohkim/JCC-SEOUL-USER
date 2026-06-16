@@ -22,6 +22,7 @@ from users.mixins import OnboardingRequiredMixin
 from users.models import Team, User
 from users.services.user_display import kakao_nickname_map_for_user_ids, user_display_name
 from users.permissions import (
+    can_access_pastoral_tab,
     can_access_team_roster_tab,
     can_change_dashboard_division,
     is_parking_manager,
@@ -73,6 +74,11 @@ class AttendanceDashboardView(OnboardingRequiredMixin, LoginRequiredMixin, Templ
 
     template_name = "attendance/app.html"
     login_url = reverse_lazy("user_login")
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not can_access_pastoral_tab(request.user):
+            return HttpResponseRedirect(reverse_lazy("notice_list"))
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
