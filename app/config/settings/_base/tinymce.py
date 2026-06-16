@@ -10,6 +10,7 @@ TINYMCE_DEFAULT_CONFIG = {
     ),
     "branding": False,
     "statusbar": True,
+    "elementpath": False,
     "language": "ko_KR",
     "convert_urls": False,
     # 본문 인라인 이미지 업로드 (notice_form.html 에서 window.jccNoticeImageUpload 정의)

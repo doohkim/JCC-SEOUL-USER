@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% if object %}공지사항 수정{% else %}공지 작성{% endif %}</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616j" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616o" />
   </head>
   <body class="has-notice-bottom-tabs jcc-notice-form-page">
     <div class="jcc-layout">
@@ -22,14 +22,10 @@
             <div class="jcc-detail-titleWrap">
               <h1>{% if object %}공지사항 수정{% else %}공지 작성{% endif %}</h1>
             </div>
-            <div class="jcc-notice-formHeaderActions">
-              <a class="jcc-notice-headerCancel" href="{% if object %}{% url 'notice_detail' object.pk %}{% else %}{% url 'notice_list' %}{% endif %}">취소</a>
-              <button type="submit" form="noticeForm" class="jcc-notice-headerSave">{% if object %}수정 완료{% else %}작성 완료{% endif %}</button>
-            </div>
           </div>
+          {% include 'notices/_subtabs.html' with notices_tab='notices' %}
         </header>
         <main>
-          {% include 'notices/_subtabs.html' with notices_tab='notices' %}
           <form id="noticeForm" method="post" enctype="multipart/form-data" class="jcc-notice-formBody">
             {% csrf_token %}
             {% if form.non_field_errors %}
@@ -113,9 +109,23 @@
 
                 <section class="jcc-notice-formCard">
                   <div class="jcc-notice-field">
-                    <label for="{{ form.tags.id_for_label }}">태그</label>
-                    {{ form.tags }}
-                    <p class="muted jcc-notice-fieldHint">쉼표로 구분 (예: 수련회, 청년부)</p>
+                    <label for="noticeTagEntry">태그</label>
+                    <div class="jcc-tagInput" id="noticeTagInput">
+                      <div class="jcc-tagInput-row">
+                        <input
+                          type="text"
+                          id="noticeTagEntry"
+                          class="jcc-tagInput-entry"
+                          placeholder="태그를 입력하고 Enter"
+                          autocomplete="off"
+                          maxlength="50"
+                        />
+                        <button type="button" class="jcc-tagInput-addBtn" id="noticeTagAddBtn">+ 추가</button>
+                      </div>
+                      <div class="jcc-tagInput-list" id="noticeTagList" aria-live="polite"></div>
+                    </div>
+                    <p class="muted jcc-notice-fieldHint">Enter 또는 “+ 추가”로 여러 태그를 등록할 수 있어요.</p>
+                    <div class="jcc-tagInput-hidden">{{ form.tags }}</div>
                     {{ form.tags.errors }}
                   </div>
                 </section>
@@ -161,6 +171,11 @@
                     {{ form.body.errors }}
                   </div>
                 </section>
+
+                <div class="jcc-notice-formActions">
+                  <a class="jcc-notice-cancel" href="{% if object %}{% url 'notice_detail' object.pk %}{% else %}{% url 'notice_list' %}{% endif %}">취소</a>
+                  <button type="submit" class="jcc-notice-saveBtn">{% if object %}수정 완료{% else %}작성 완료{% endif %}</button>
+                </div>
               </div>
 
               <aside class="jcc-notice-formSide">
@@ -196,11 +211,6 @@
                   </p>
                 </section>
               </aside>
-            </div>
-
-            <div class="jcc-notice-actions jcc-notice-actions--mobile">
-              <button type="submit" class="jcc-notice-saveBtn">{% if object %}수정 완료{% else %}작성 완료{% endif %}</button>
-              <a class="jcc-notice-cancel" href="{% if object %}{% url 'notice_detail' object.pk %}{% else %}{% url 'notice_list' %}{% endif %}">취소</a>
             </div>
           </form>
         </main>
@@ -303,6 +313,104 @@
             clearImage();
           });
         }
+      })();
+
+      // 태그 칩 입력: Enter/추가 버튼으로 다중 태그 등록, 콤마 구분 문자열로 폼 저장
+      (function () {
+        var hidden = document.getElementById('id_tags');
+        var entry = document.getElementById('noticeTagEntry');
+        var addBtn = document.getElementById('noticeTagAddBtn');
+        var list = document.getElementById('noticeTagList');
+        if (!hidden || !entry || !list) return;
+        var MAX_LEN = 500;
+        var tags = [];
+        var isComposing = false;
+
+        function parse(value) {
+          return (value || '')
+            .split(',')
+            .map(function (t) { return t.trim(); })
+            .filter(Boolean);
+        }
+
+        function sync() {
+          hidden.value = tags.join(',');
+        }
+
+        function render() {
+          list.innerHTML = '';
+          tags.forEach(function (tag, idx) {
+            var chip = document.createElement('span');
+            chip.className = 'jcc-tagChip';
+
+            var label = document.createElement('span');
+            label.className = 'jcc-tagChip-label';
+            label.textContent = '#' + tag;
+            chip.appendChild(label);
+
+            var rm = document.createElement('button');
+            rm.type = 'button';
+            rm.className = 'jcc-tagChip-remove';
+            rm.setAttribute('aria-label', tag + ' 삭제');
+            rm.innerHTML = '&times;';
+            rm.addEventListener('click', function () {
+              tags.splice(idx, 1);
+              sync();
+              render();
+            });
+            chip.appendChild(rm);
+
+            list.appendChild(chip);
+          });
+        }
+
+        function addRaw(raw) {
+          if (!raw) return;
+          raw.split(',').forEach(function (part) {
+            var tag = part.trim().replace(/^#+/, '').trim();
+            if (!tag) return;
+            var dup = tags.some(function (t) {
+              return t.toLowerCase() === tag.toLowerCase();
+            });
+            if (dup) return;
+            if (tags.join(',').length + tag.length + 1 > MAX_LEN) return;
+            tags.push(tag);
+          });
+          sync();
+          render();
+        }
+
+        tags = parse(hidden.value);
+        render();
+
+        if (addBtn) {
+          addBtn.addEventListener('click', function () {
+            addRaw(entry.value);
+            entry.value = '';
+            entry.focus();
+          });
+        }
+
+        entry.addEventListener('compositionstart', function () {
+          isComposing = true;
+        });
+
+        entry.addEventListener('compositionend', function () {
+          isComposing = false;
+        });
+
+        entry.addEventListener('keydown', function (e) {
+          if (isComposing || e.isComposing || e.keyCode === 229) return;
+          if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            addRaw(entry.value);
+            entry.value = '';
+          } else if (e.key === 'Backspace' && !entry.value && tags.length) {
+            tags.pop();
+            sync();
+            render();
+          }
+        });
       })();
     </script>
     <script>

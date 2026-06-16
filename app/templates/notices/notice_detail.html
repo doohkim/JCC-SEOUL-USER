@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ notice.title }} · 공지사항</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616j" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260616p" />
   </head>
   <body class="has-notice-bottom-tabs jcc-notice-detail-page">
     <div class="jcc-layout">
@@ -21,6 +21,7 @@
           <div class="jcc-detail-titleWrap">
             <h1 class="jcc-notice-detailHeaderTitle">{{ notice.title }}</h1>
           </div>
+          {% include 'notices/_subtabs.html' with notices_tab='notices' %}
         </header>
         <main class="jcc-notice-detailMain">
           {% if can_manage_notices %}
