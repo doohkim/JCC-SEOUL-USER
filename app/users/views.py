@@ -32,7 +32,7 @@ from users.permissions import (
     membership_divisions_for,
     onboarding_approval_divisions_for,
 )
-from users.validators import validate_korea_mobile_phone
+from users.validators import normalize_korea_mobile_phone, validate_korea_mobile_phone
 from retreat.models import RetreatGroup
 from users.services.user_display import kakao_nickname_map_for_user_ids, user_display_name
 
@@ -42,6 +42,14 @@ def prefer_own_division(user, divisions):
     own_ids = membership_divisions_for(user).values_list("id", flat=True)
     preferred = divisions.filter(id__in=own_ids).first()
     return preferred or divisions.first()
+
+
+def _phone_for_display(phone: str) -> str:
+    raw = (phone or "").strip()
+    if not raw:
+        return ""
+    normalized = normalize_korea_mobile_phone(raw)
+    return normalized if normalized is not None else raw
 
 
 class KakaoAuthEntryView(TemplateView):
@@ -872,13 +880,12 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             profile.real_name = real_name
             prof_updates.append("real_name")
         if phone:
-            try:
-                validate_korea_mobile_phone(phone)
-                profile.phone = phone
-                prof_updates.append("phone")
-            except Exception:
+            normalized = normalize_korea_mobile_phone(phone)
+            if normalized is None:
                 messages.error(request, "휴대폰 번호 형식이 올바르지 않습니다.")
                 return HttpResponseRedirect(redirect_url)
+            profile.phone = normalized
+            prof_updates.append("phone")
 
         profile.requested_division = target_division
         profile.requested_team = selected_team
@@ -1151,7 +1158,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                         "id": u.id,
                         "username": u.username,
                         "real_name": (getattr(prof, "real_name", "") or "").strip(),
-                        "phone": getattr(prof, "phone", "") or "",
+                        "phone": _phone_for_display(getattr(prof, "phone", "") or ""),
                         "kakao_uid": u.username[6:]
                         if u.username.startswith("kakao_")
                         else "",
@@ -1189,7 +1196,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                     "display_name": (getattr(prof, "display_name", "") or "").strip()
                     or kakao_nickname_by_user.get(u.id, ""),
                     "real_name": (getattr(prof, "real_name", "") or "").strip(),
-                    "phone": getattr(prof, "phone", "") or "",
+                    "phone": _phone_for_display(getattr(prof, "phone", "") or ""),
                     "region_id": region_id,
                     "region_name": region_name,
                     "division_id": division_id,

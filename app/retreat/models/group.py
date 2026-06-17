@@ -20,13 +20,13 @@ def _derive_order_from_name(name: str) -> int:
 
 
 class RetreatGroup(models.Model):
-    """행사·지역·부서별 조(예: 서울 청년부 1조)."""
+    """집회·지역·부서별 조(예: 서울 청년부 1조)."""
 
     event = models.ForeignKey(
         RetreatEvent,
         on_delete=models.CASCADE,
         related_name="groups",
-        verbose_name="행사",
+        verbose_name="집회",
     )
     region = models.ForeignKey(
         "users.Region",

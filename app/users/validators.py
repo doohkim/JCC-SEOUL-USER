@@ -7,6 +7,29 @@ import re
 from django.core.exceptions import ValidationError
 
 
+def _korea_mobile_digits(value: str) -> str:
+    digits = re.sub(r"\D", "", value or "")
+    if digits.startswith("82") and len(digits) >= 10:
+        body = digits[2:]
+        if not body.startswith("0"):
+            body = "0" + body
+        digits = body
+    return digits
+
+
+def normalize_korea_mobile_phone(value: str) -> str | None:
+    """휴대폰 번호 검증·정규화. 빈 값은 ``""``, 유효하면 ``010-1234-5678`` 형태, 아니면 ``None``."""
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    digits = _korea_mobile_digits(raw)
+    if not re.fullmatch(r"01[016789]\d{7,8}", digits):
+        return None
+    if len(digits) == 11:
+        return f"{digits[:3]}-{digits[3:7]}-{digits[7:]}"
+    return f"{digits[:3]}-{digits[3:6]}-{digits[6:]}"
+
+
 def validate_korea_mobile_phone(value: str) -> None:
     """
     한국 **휴대전화** 번호 형식 검증.
@@ -17,18 +40,7 @@ def validate_korea_mobile_phone(value: str) -> None:
     if value is None or not str(value).strip():
         return
 
-    raw = str(value).strip()
-    digits = re.sub(r"\D", "", raw)
-
-    # +82 / 82 국가번호 → 국내 0으로 시작하도록
-    if digits.startswith("82") and len(digits) >= 10:
-        body = digits[2:]
-        if not body.startswith("0"):
-            body = "0" + body
-        digits = body
-
-    # 10xxxxxxxx (지역번호 등) 은 휴대폰이 아니므로 거절
-    if not re.fullmatch(r"01[016789]\d{7,8}", digits):
+    if normalize_korea_mobile_phone(str(value).strip()) is None:
         raise ValidationError(
             "휴대전화 형식이 아닙니다. 예: 010-1234-5678 또는 01012345678",
             code="invalid_mobile_phone",

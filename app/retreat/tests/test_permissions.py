@@ -392,7 +392,7 @@ class RetreatGroupAttendeesApiTests(_BaseFixture):
 
 
 class RetreatAttendeeDeletePermissionTests(_BaseFixture):
-    """조원 삭제는 관리자(슈퍼유저·회장단)만 가능."""
+    """조원 삭제 — 슈퍼유저·회장단·본인 조 조장/부조장."""
 
     def setUp(self):
         super().setUp()
@@ -409,11 +409,11 @@ class RetreatAttendeeDeletePermissionTests(_BaseFixture):
         self.assertEqual(r.status_code, 403, r.content)
         self.assertTrue(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())
 
-    def test_leader_cannot_delete_attendee(self):
+    def test_leader_can_delete_attendee(self):
         self.client.force_authenticate(self.leader_seoul_1)
         r = self.client.delete(self.url)
-        self.assertEqual(r.status_code, 403, r.content)
-        self.assertTrue(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())
+        self.assertEqual(r.status_code, 204, r.content)
+        self.assertFalse(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())
 
     def test_council_can_delete_attendee(self):
         council = User.objects.create_user(username="council_seoul", password="x")

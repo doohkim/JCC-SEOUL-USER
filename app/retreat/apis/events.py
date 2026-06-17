@@ -1,4 +1,4 @@
-"""행사·그룹 목록 API."""
+"""집회·그룹 목록 API."""
 
 from __future__ import annotations
 
@@ -92,7 +92,7 @@ def _create_single_group(
     *,
     reserved_names: set[str] | None = None,
 ) -> RetreatGroup:
-    """행사에 조 1개 생성. reserved_names에 같은 요청 배치 내 이름 중복 검사."""
+    """집회에 조 1개 생성. reserved_names에 같은 요청 배치 내 이름 중복 검사."""
     region_id = data.get("region")
     division_id = data.get("division")
     name = (data.get("name") or "").strip()
@@ -123,7 +123,7 @@ def _create_single_group(
 
     if RetreatGroup.objects.filter(event=event, name=name).exists():
         raise ValidationError(
-            {"name": "이 행사에 이미 같은 이름의 조가 있습니다."}
+            {"name": "이 집회에 이미 같은 이름의 조가 있습니다."}
         )
 
     if reserved_names is not None:
@@ -199,9 +199,9 @@ def _create_single_group(
 
 
 class RetreatEventListView(APIView):
-    """현재 사용자에게 노출 가능한 활성 행사 목록.
+    """현재 사용자에게 노출 가능한 활성 집회 목록.
 
-    - 활성 행사 중, 본인이 1개 이상 그룹을 볼 수 있거나 슈퍼유저인 행사만.
+    - 활성 집회 중, 본인이 1개 이상 그룹을 볼 수 있거나 슈퍼유저인 집회만.
     """
 
     permission_classes = [IsAuthenticated]
@@ -224,7 +224,7 @@ class RetreatEventListView(APIView):
 
 
 class RetreatEventGroupListView(APIView):
-    """특정 행사에서 본인이 볼 수 있는 조 목록."""
+    """특정 집회에서 본인이 볼 수 있는 조 목록."""
 
     permission_classes = [IsAuthenticated]
 
@@ -243,7 +243,7 @@ class RetreatEventGroupListView(APIView):
         return Response(RetreatGroupSerializer(groups, many=True).data)
 
     def post(self, request, event_id: int):
-        """행사에 조 추가 (회장단·슈퍼유저). 단건 또는 groups 일괄."""
+        """집회에 조 추가 (회장단·슈퍼유저). 단건 또는 groups 일괄."""
         event = get_object_or_404(RetreatEvent, pk=event_id)
         assert_can_add_group(request.user, event)
 
@@ -327,7 +327,7 @@ def _update_group(group: RetreatGroup, user, data: dict) -> RetreatGroup:
         .exists()
     ):
         raise ValidationError(
-            {"name": "이 행사에 이미 같은 이름의 조가 있습니다."}
+            {"name": "이 집회에 이미 같은 이름의 조가 있습니다."}
         )
 
     before_scopes = list(

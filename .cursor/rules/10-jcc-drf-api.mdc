@@ -1,10 +1,13 @@
 ---
-description: DRF API 뷰·시리얼라이저·URL 규칙 (registry, attendance)
+description: DRF — apis/·serializers/·URL·permission 패턴
 globs: app/**/apis/**/*.py,app/**/serializers/**/*.py,app/**/services/**/*.py,app/**/admin/**/*.py
 alwaysApply: false
 ---
 
-# DRF (이 프로젝트)
+# DRF API 규칙
+
+> **적용**: `apis/`, `serializers/`, `services/`, `admin/` 편집 시  
+> **권한 상세**: [11-jcc-permissions.mdc](11-jcc-permissions.mdc)
 
 - **폴더 구조 (앱별)**  
   - **`apis/`**: DRF 뷰만 (`APIView` 등). 모듈 분리 시 `apis/common.py`, `apis/weeks.py` 처럼 나누고 `apis/__init__.py`에서 re-export 가능.  

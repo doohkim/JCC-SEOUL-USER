@@ -23,6 +23,55 @@
 
   const GENDER_LABELS = { male: "남성", female: "여성", "": "-" };
 
+  const STAMP_LOCK_MSG =
+    "자동 퇴실 처리된 조원은 입·퇴실 시각을 수정할 수 없습니다.";
+
+  function isExpectedTimestampsLocked(source) {
+    if (!source) return false;
+    if (source instanceof HTMLElement) {
+      return source.dataset.expectedTimestampsLocked === "true";
+    }
+    return !!source.expected_timestamps_locked;
+  }
+
+  function syncRowExpectedInputs(tr) {
+    if (!tr) return;
+    const locked = isExpectedTimestampsLocked(tr);
+    tr.querySelectorAll("[data-expected-field]").forEach((input) => {
+      input.disabled = locked;
+      input.classList.toggle("is-locked", locked);
+      if (locked) input.title = STAMP_LOCK_MSG;
+      else input.removeAttribute("title");
+    });
+  }
+
+  function syncModalExpectedInputs(locked) {
+    [expectedInInput, expectedOutInput].forEach((input) => {
+      if (!input) return;
+      input.disabled = !!locked;
+      input.classList.toggle("is-locked", !!locked);
+      if (locked) input.title = STAMP_LOCK_MSG;
+      else input.removeAttribute("title");
+    });
+  }
+
+  function formatPhoneDisplay(phone) {
+    if (window.JccPhoneFormat) return JccPhoneFormat.formatDisplay(phone);
+    const s = String(phone ?? "").trim();
+    return s || "-";
+  }
+
+  function phoneInputValue(phone) {
+    if (!phone || phone === "-") return "";
+    if (window.JccPhoneFormat) return JccPhoneFormat.formatMobilePhone(phone);
+    return phone;
+  }
+
+  function phoneSubmitValue(raw) {
+    if (window.JccPhoneFormat) return JccPhoneFormat.normalizeForSubmit(raw);
+    return String(raw ?? "").trim();
+  }
+
   const toastEl = document.getElementById("retreatToast");
   const statusLineEl = document.getElementById("retreatStatus");
   const attBody = document.getElementById("retreatAttBody");
@@ -96,6 +145,11 @@
   function init() {
     renderStatusBadges();
     recomputeSummary();
+    if (attBody) {
+      attBody
+        .querySelectorAll("tr[data-attendee-id]")
+        .forEach(syncRowExpectedInputs);
+    }
     bindConfirm();
     bindHistory();
     bindSorting();
@@ -271,6 +325,11 @@
     }
     tr.dataset.expectedInAt = data.expected_check_in_at || "";
     tr.dataset.expectedOutAt = data.expected_check_out_at || "";
+    if ("expected_timestamps_locked" in data) {
+      tr.dataset.expectedTimestampsLocked = data.expected_timestamps_locked
+        ? "true"
+        : "false";
+    }
 
     if (data.member_role) {
       tr.dataset.memberRole = data.member_role;
@@ -314,7 +373,7 @@
     tr.dataset.gender = data.gender || "";
 
     const phoneEl = tr.querySelector("[data-phone]");
-    if (phoneEl) phoneEl.textContent = data.phone ? data.phone : "-";
+    if (phoneEl) phoneEl.textContent = data.phone ? formatPhoneDisplay(data.phone) : "-";
 
     const memoEl = tr.querySelector("[data-memo]");
     if (memoEl) {
@@ -347,6 +406,7 @@
       }
     }
 
+    syncRowExpectedInputs(tr);
     updateStatusBadge(tr);
     recomputeSummary();
   }
@@ -410,6 +470,7 @@
       if (!input) return;
       const tr = input.closest("tr[data-attendee-id]");
       if (!tr) return;
+      if (isExpectedTimestampsLocked(tr)) return;
       const field = input.dataset.expectedField;
       if (!field) return;
       const aid = Number(tr.dataset.attendeeId);
@@ -432,7 +493,7 @@
       } catch (err) {
         showToast(err.message || "저장 실패", true);
       } finally {
-        input.disabled = false;
+        syncRowExpectedInputs(tr);
       }
     });
   }
@@ -554,6 +615,12 @@
       if (e.key === "Escape" && !overlay.hidden) closeModal();
     });
     if (form) form.addEventListener("submit", onSubmit);
+    if (phoneInput && window.JccPhoneFormat) JccPhoneFormat.bindInput(phoneInput);
+    if (genderInput) {
+      genderInput.addEventListener("change", () => {
+        refreshLodgingOptions(lodgingInput?.value || "");
+      });
+    }
   }
 
   function openEditForRow(tr) {
@@ -572,6 +639,7 @@
       gender: tr.dataset.gender || "",
       expectedIn: tr.dataset.expectedInAt || "",
       expectedOut: tr.dataset.expectedOutAt || "",
+      expectedTimestampsLocked: tr.dataset.expectedTimestampsLocked === "true",
       memberRole: tr.dataset.memberRole || "member",
       userId: tr.dataset.userId || "",
       userLabel: tr.dataset.userLabel || "",
@@ -804,6 +872,16 @@
       .replace(/"/g, "&quot;");
   }
 
+  function refreshLodgingOptions(selectedId) {
+    if (!lodgingInput || !window.JccLodgingAssignOptions) return;
+    const gender = genderInput?.value || "";
+    window.JccLodgingAssignOptions.applyToSelect(
+      lodgingInput,
+      ctx.eventRooms || [],
+      { gender, selectedId: selectedId || "", refreshRoot: overlay }
+    );
+  }
+
   function openModal(mode, payload) {
     if (!overlay) return;
     modalMode = mode;
@@ -822,7 +900,7 @@
       submitBtn.disabled = false;
     }
     if (nameInput) nameInput.value = payload?.name || "";
-    if (phoneInput) phoneInput.value = payload?.phone === "-" ? "" : payload?.phone || "";
+    if (phoneInput) phoneInput.value = phoneInputValue(payload?.phone);
     if (genderInput) genderInput.value = payload?.gender || "";
     if (memoInput) memoInput.value = payload?.memo || "";
     if (expectedInInput)
@@ -832,7 +910,14 @@
     markStampInvalid(expectedInInput, false);
     markStampInvalid(expectedOutInput, false);
     setFieldError(expectedOutInput, "");
-    if (lodgingInput) lodgingInput.value = payload?.lodgingRoom || "";
+    const timestampsLocked =
+      isExpectedTimestampsLocked(payload) ||
+      (modalAttendeeId &&
+        isExpectedTimestampsLocked(
+          attBody?.querySelector(`tr[data-attendee-id="${modalAttendeeId}"]`)
+        ));
+    syncModalExpectedInputs(timestampsLocked);
+    refreshLodgingOptions(payload?.lodgingRoom || "");
     if (roleInput) roleInput.value = payload?.memberRole || "member";
     if (checkInInput) {
       checkInInput.value = checkIn;
@@ -886,14 +971,29 @@
     if (includeProfile) {
       payload.name = (nameInput?.value || "").trim();
       payload.gender = genderInput?.value || "";
-      payload.phone = (phoneInput?.value || "").trim();
+      payload.phone = phoneSubmitValue(phoneInput?.value || "");
     }
     if (ctx.canEditAttendee) {
       payload.memo = (memoInput?.value || "").trim();
       payload.member_role = roleInput?.value || "member";
       payload.user = linkedUserId ? Number(linkedUserId) : null;
-      payload.expected_check_in_at = isoFromDatetimeLocal(expectedInInput?.value || "");
-      payload.expected_check_out_at = isoFromDatetimeLocal(expectedOutInput?.value || "");
+      const timestampsLocked =
+        modalMode === "edit" &&
+        (isExpectedTimestampsLocked({
+          expected_timestamps_locked:
+            attBody
+              ?.querySelector(`tr[data-attendee-id="${modalAttendeeId}"]`)
+              ?.dataset.expectedTimestampsLocked === "true",
+        }) ||
+          expectedInInput?.disabled);
+      if (!timestampsLocked) {
+        payload.expected_check_in_at = isoFromDatetimeLocal(
+          expectedInInput?.value || ""
+        );
+        payload.expected_check_out_at = isoFromDatetimeLocal(
+          expectedOutInput?.value || ""
+        );
+      }
       payload.lodging_room =
         lodgingInput && lodgingInput.value ? Number(lodgingInput.value) : null;
     }
@@ -913,7 +1013,17 @@
       markStampInvalid(expectedInInput, false);
       markStampInvalid(expectedOutInput, false);
       setFieldError(expectedOutInput, "");
+      const timestampsLocked =
+        modalMode === "edit" &&
+        (isExpectedTimestampsLocked({
+          expected_timestamps_locked:
+            attBody
+              ?.querySelector(`tr[data-attendee-id="${modalAttendeeId}"]`)
+              ?.dataset.expectedTimestampsLocked === "true",
+        }) ||
+          expectedInInput?.disabled);
       if (
+        !timestampsLocked &&
         !isCheckOutAfterCheckIn(
           expectedInInput?.value || "",
           expectedOutInput?.value || ""

@@ -212,6 +212,14 @@ class AccountManagePostTests(AccountManageFixture):
         )
         self.assertEqual(membership.team_id, self.team_a2.id)
 
+    def test_manager_phone_digits_normalized_on_save(self):
+        self.client.force_login(self.manager)
+        r = self._post_row(self.manager, {"phone": "01044442222"})
+        self.assertEqual(r.status_code, 302)
+        profile = ensure_user_profile(self.member)
+        profile.refresh_from_db()
+        self.assertEqual(profile.phone, "010-4444-2222")
+
     def test_manager_cannot_move_division(self):
         self.client.force_login(self.manager)
         r = self._post_row(

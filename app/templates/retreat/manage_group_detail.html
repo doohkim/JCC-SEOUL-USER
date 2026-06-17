@@ -1,4 +1,4 @@
-{% load static permission_tags %}
+{% load static permission_tags phone_tags %}
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ group.name }} · 조 관리</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617o" />
   </head>
   <body class="has-retreat-bottom-tabs jcc-retreat-detail">
     <div class="jcc-layout">
@@ -51,24 +51,7 @@
               </button>
             {% endif %}
           </div>
-          <div class="jcc-retreat-summaryBar" id="retreatSummaryBar">
-            <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending">
-              <span class="jcc-retreat-summaryItem-label">입실전</span>
-              <span class="jcc-retreat-summaryItem-value"><strong data-summary-pending>{{ count_pending }}</strong> 명</span>
-            </div>
-            <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in">
-              <span class="jcc-retreat-summaryItem-label">입실</span>
-              <span class="jcc-retreat-summaryItem-value"><strong data-summary-in>{{ count_checked_in }}</strong> 명</span>
-            </div>
-            <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--out">
-              <span class="jcc-retreat-summaryItem-label">퇴실</span>
-              <span class="jcc-retreat-summaryItem-value"><strong data-summary-out>{{ count_checked_out }}</strong> 명</span>
-            </div>
-            <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--total">
-              <span class="jcc-retreat-summaryItem-label">총</span>
-              <span class="jcc-retreat-summaryItem-value"><strong data-summary-total>{{ count_total }}</strong> 명</span>
-            </div>
-          </div>
+          {% include 'includes/retreat_attendance_summary_bar.html' %}
           <div class="jcc-retreat-listTop">
             <div class="msg" id="retreatStatus" role="status"></div>
             {% if not can_edit_attendee %}
@@ -108,6 +91,7 @@
                       data-checked-out-at="{% if a.checked_out_at %}{{ a.checked_out_at|date:'c' }}{% endif %}"
                       data-expected-in-at="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'c' }}{% endif %}"
                       data-expected-out-at="{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'c' }}{% endif %}"
+                      data-expected-timestamps-locked="{% if a.expected_timestamps_locked %}true{% else %}false{% endif %}"
                       data-member-role="{{ a.member_role }}"
                       data-user-id="{% if a.user_id %}{{ a.user_id }}{% endif %}"
                       data-user-label="{% if a.user_id %}{{ a.user.profile.real_name|default:a.user.username }}{% endif %}"
@@ -133,11 +117,11 @@
                         >{{ a.get_check_in_status_display }}</span>
                       </td>
                       <td class="jcc-retreat-attCol-gender" data-gender-cell>{{ a.get_gender_display|default:"-" }}</td>
-                      <td class="jcc-retreat-attCol-phone" data-phone>{{ a.phone|default:"-" }}</td>
+                      <td class="jcc-retreat-attCol-phone" data-phone>{{ a.phone|format_korea_phone }}</td>
                       <td class="jcc-retreat-attCol-expected" data-expected-cell>
                         <span class="jcc-retreat-stampInlineLabel" aria-hidden="true">입실</span>
                         {% if can_edit_attendee %}
-                          <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_in_at" data-dtp-format="ymdampm" data-dtp-max-selector="[data-expected-field='expected_check_out_at']" data-dtp-max-message="입실은 퇴실 시각보다 앞이어야 합니다." value="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 입실 시각">
+                          <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_in_at" data-dtp-format="ymdampm" data-dtp-max-selector="[data-expected-field='expected_check_out_at']" data-dtp-max-message="입실은 퇴실 시각보다 앞이어야 합니다." value="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 입실 시각"{% if a.expected_timestamps_locked %} disabled title="자동 퇴실 처리된 조원은 입·퇴실 시각을 수정할 수 없습니다."{% endif %}>
                         {% else %}
                           <span class="jcc-retreat-stampLabel{% if not a.expected_check_in_at %} muted{% endif %}" data-expected-in-label>{% if a.expected_check_in_at %}<span class="jcc-stamp-date"><span class="jcc-stamp-y4">{{ a.expected_check_in_at|date:'Y' }}</span><span class="jcc-stamp-y2">{{ a.expected_check_in_at|date:'y' }}</span>-{{ a.expected_check_in_at|date:'m-d' }}</span> <span class="jcc-stamp-time">{{ a.expected_check_in_at|date:'A g:i' }}</span>{% else %}-{% endif %}</span>
                         {% endif %}
@@ -145,7 +129,7 @@
                       <td class="jcc-retreat-attCol-expected" data-expected-cell>
                         <span class="jcc-retreat-stampInlineLabel" aria-hidden="true">퇴실</span>
                         {% if can_edit_attendee %}
-                          <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_out_at" data-dtp-format="ymdampm" data-dtp-min-selector="[data-expected-field='expected_check_in_at']" data-dtp-min-message="퇴실은 입실 시각보다 뒤여야 합니다." value="{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 퇴실 시각">
+                          <input type="datetime-local" class="jcc-retreat-stampInput" data-expected-field="expected_check_out_at" data-dtp-format="ymdampm" data-dtp-min-selector="[data-expected-field='expected_check_in_at']" data-dtp-min-message="퇴실은 입실 시각보다 뒤여야 합니다." value="{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'Y-m-d\TH:i' }}{% endif %}" aria-label="{{ a.name }} 퇴실 시각"{% if a.expected_timestamps_locked %} disabled title="자동 퇴실 처리된 조원은 입·퇴실 시각을 수정할 수 없습니다."{% endif %}>
                         {% else %}
                           <span class="jcc-retreat-stampLabel{% if not a.expected_check_out_at %} muted{% endif %}" data-expected-out-label>{% if a.expected_check_out_at %}<span class="jcc-stamp-date"><span class="jcc-stamp-y4">{{ a.expected_check_out_at|date:'Y' }}</span><span class="jcc-stamp-y2">{{ a.expected_check_out_at|date:'y' }}</span>-{{ a.expected_check_out_at|date:'m-d' }}</span> <span class="jcc-stamp-time">{{ a.expected_check_out_at|date:'A g:i' }}</span>{% else %}-{% endif %}</span>
                         {% endif %}
@@ -272,7 +256,7 @@
                     </div>
                     <div class="field" data-modal-profile-field>
                       <label for="retreatAttPhone">핸드폰 번호</label>
-                      <input type="tel" id="retreatAttPhone" name="phone" maxlength="30" autocomplete="off">
+                      <input type="tel" id="retreatAttPhone" name="phone" maxlength="13" autocomplete="tel" inputmode="numeric" placeholder="010-1234-5678">
                     </div>
                   {% endif %}
                   {% if can_edit_attendee %}
@@ -288,9 +272,6 @@
                       <label for="retreatAttLodging">숙소 배정</label>
                       <select id="retreatAttLodging" name="lodging_room" data-cselect>
                         <option value="">(미배정)</option>
-                        {% for room in event_rooms %}
-                          <option value="{{ room.id }}">{{ room.lodging.name }} {{ room.number }}</option>
-                        {% endfor %}
                       </select>
                     </div>
                   {% endif %}
@@ -329,6 +310,7 @@
         canDeleteAttendee: {{ can_delete_attendee|yesno:"true,false" }},
         canManageLeaders: {{ can_manage_leaders|yesno:"true,false" }},
         csrfToken: "{{ csrf_token }}",
+        eventRooms: {{ event_rooms_json|safe }},
         roleLabels: {
           {% for code, label in group_role_choices %}"{{ code }}": "{{ label }}"{% if not forloop.last %}, {% endif %}{% endfor %}
         },
@@ -348,7 +330,9 @@
       <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260613a" defer></script>
     {% endif %}
     <script src="{% static 'retreat/datetime_picker.js' %}?v=20260615g" defer></script>
-    <script src="{% static 'retreat/manage_group.js' %}?v=20260615h" defer></script>
+    <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
+    <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618a" defer></script>
+    <script src="{% static 'retreat/manage_group.js' %}?v=20260617a" defer></script>
     <script>
       // 조원 수정 모달은 열릴 때 select 값을 프로그램으로 채우므로, 표시될 때 커스텀 드롭다운 라벨을 다시 동기화한다.
       document.addEventListener("DOMContentLoaded", function () {

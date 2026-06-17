@@ -63,13 +63,12 @@
     if (el) el.textContent = val;
   }
 
-  // 상단 요약 카드: 실시간 참석(입실/총참석, 전체 대비 %)·숙소 배정·오늘 차량 지원
+  // 상단 요약 카드: 실시간 참석(입실/총참석, 전체 대비 %)·미배정·차량 지원
   function renderSummary(s) {
     setText("sumAttendIn", s.checked_in ?? 0);
     setText("sumAttendTotal", s.attended ?? 0);
     setText("sumAttendPct", `${s.attend_percent ?? 0}%`);
-    setText("sumLodging", s.lodging_assigned ?? 0);
-    setText("sumRoomsRemaining", s.rooms_remaining ?? 0);
+    setText("sumLodging", s.lodging_unassigned ?? 0);
     setText("sumCarToday", s.car_today ?? 0);
   }
 

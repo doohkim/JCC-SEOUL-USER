@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 대시보드 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617m" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -54,21 +54,20 @@
               </div>
             </a>
 
-            {% if can_view_retreat_all %}<a class="jcc-retreat-summaryCard jcc-retreat-summaryCard--link" href="{% url 'retreat_lodging' event.id %}">{% else %}<div class="jcc-retreat-summaryCard">{% endif %}
+            {% if can_view_retreat_all %}<a class="jcc-retreat-summaryCard jcc-retreat-summaryCard--link" href="{% url 'retreat_lodging_roster' event.id %}?assign=unassigned">{% else %}<div class="jcc-retreat-summaryCard">{% endif %}
               <div class="jcc-retreat-summaryCard-head">
                 <span class="jcc-retreat-summaryCard-icon jcc-retreat-summaryCard-icon--bed" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" focusable="false">
                     <path d="M3 18v-5a2 2 0 012-2h14a2 2 0 012 2v5M3 14h18M5 11V8a2 2 0 012-2h3a2 2 0 012 2v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
                 </span>
-                <span class="jcc-retreat-summaryCard-label">숙소 배정</span>
+                <span class="jcc-retreat-summaryCard-label">미배정</span>
               </div>
               <div class="jcc-retreat-summaryCard-body">
                 <span class="jcc-retreat-summaryCard-num">
                   <strong id="sumLodging">0</strong>
                   <span class="jcc-retreat-summaryCard-unit">명</span>
                 </span>
-                <span class="jcc-retreat-summaryCard-tag jcc-retreat-summaryCard-tag--bed">잔여객실 <span id="sumRoomsRemaining">0</span>개</span>
               </div>
             {% if can_view_retreat_all %}</a>{% else %}</div>{% endif %}
 
@@ -81,7 +80,7 @@
                     <circle cx="14.5" cy="17.5" r="1.4" fill="currentColor"/>
                   </svg>
                 </span>
-                <span class="jcc-retreat-summaryCard-label">차량 지원 (오늘)</span>
+                <span class="jcc-retreat-summaryCard-label">차량 지원</span>
               </div>
               <div class="jcc-retreat-summaryCard-body">
                 <span class="jcc-retreat-summaryCard-num">
@@ -178,6 +177,6 @@
       };
     </script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260615h" defer></script>
+    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260617a" defer></script>
   </body>
 </html>

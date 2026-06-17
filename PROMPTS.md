@@ -1,13 +1,13 @@
 # 프롬프트 템플릿 (JCC Seoul User)
 
 이 파일은 Cursor에게 지시할 때 **복붙해서 채우는** 템플릿 모음입니다.  
-표준 규칙은 `.cursor/rules/`에 있으며, 아래 `@` 태그는 해당 규칙을 가리킵니다.
+표준 규칙은 [`.cursor/rules/`](.cursor/rules/)에 있으며, 전체 목차는 [`.cursor/README.md`](.cursor/README.md)를 참고하세요.
 
 | 태그 | 규칙 파일 |
 |------|-----------|
-| `@UI` `@RESPONSIVE` `@STATIC` | `.cursor/rules/jcc-frontend-ui.mdc` |
-| `@TEST` | `.cursor/rules/jcc-testing.mdc` |
-| `@PERM` | `.cursor/rules/jcc-permissions.mdc` |
+| `@UI` `@RESPONSIVE` `@STATIC` | `.cursor/rules/13-jcc-frontend-ui.mdc` |
+| `@TEST` | `.cursor/rules/14-jcc-testing.mdc` |
+| `@PERM` | `.cursor/rules/11-jcc-permissions.mdc` |
 
 **사용법**: 작업 유형 템플릿(A~F)을 복사 → `[]` 안을 채움 → 적용 표준에 필요한 `@` 태그를 명시 → 전송.
 

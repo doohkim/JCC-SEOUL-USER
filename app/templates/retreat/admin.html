@@ -199,7 +199,7 @@
         <form method="dialog" class="jcc-retreat-modalInner" id="rosterForm">
           <h2>출석부 만들기</h2>
           <div class="field">
-            <label for="rosterEvent">연결할 행사</label>
+            <label for="rosterEvent">연결할 집회</label>
             <select id="rosterEvent" required data-cselect>
               {% for ev in creatable_events %}
                 <option value="{{ ev.id }}" {% if ev.id == event.id %}selected{% endif %}>

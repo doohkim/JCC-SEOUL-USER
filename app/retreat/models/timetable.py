@@ -1,4 +1,4 @@
-"""수련회 타임테이블 (행사 일정표)."""
+"""수련회 타임테이블 (집회 일정표)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from .event import RetreatEvent
 
 
 class RetreatTimetableEntry(models.Model):
-    """행사별 일정표 항목.
+    """집회별 일정표 항목.
 
     일자 + 시작/종료 시각 + 프로그램명으로 구성되며, 회장단(또는 슈퍼유저)이
     추가·수정·삭제한다.
@@ -19,7 +19,7 @@ class RetreatTimetableEntry(models.Model):
         RetreatEvent,
         on_delete=models.CASCADE,
         related_name="timetable_entries",
-        verbose_name="행사",
+        verbose_name="집회",
     )
     day = models.DateField("일자")
     start_time = models.TimeField("시작 시각")

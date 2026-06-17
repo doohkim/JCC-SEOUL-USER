@@ -30,7 +30,7 @@ def _serialize_location(loc: RetreatPickupLocation) -> dict:
 
 
 class RetreatEventPickupLocationListCreateView(APIView):
-    """행사별 탑승장소 목록 조회·추가 (회장단·슈퍼유저)."""
+    """집회별 탑승장소 목록 조회·추가 (회장단·슈퍼유저)."""
 
     permission_classes = [IsAuthenticated]
 

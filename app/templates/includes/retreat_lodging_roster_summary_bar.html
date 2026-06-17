@@ -1,0 +1,27 @@
+{% comment %}전체 명단 6칸 요약 — roster_summary (LodgingRosterSummary){% endcomment %}
+<div class="jcc-retreat-summaryBar jcc-retreat-summaryBar--lodgingRoster" id="lodgingRosterSummaryBar">
+  <button type="button" class="jcc-retreat-summaryItem jcc-retreat-summaryItem--total jcc-retreat-summaryItem--clickable" data-summary-preset="all">
+    <span class="jcc-retreat-summaryItem-label">총인원</span>
+    <span class="jcc-retreat-summaryItem-value"><strong data-summary-total>{{ roster_summary.count_total }}</strong> 명</span>
+  </button>
+  <button type="button" class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending jcc-retreat-summaryItem--clickable" data-summary-preset="status:pending">
+    <span class="jcc-retreat-summaryItem-label">입실전</span>
+    <span class="jcc-retreat-summaryItem-value"><strong data-summary-pending>{{ roster_summary.count_pending }}</strong> 명</span>
+  </button>
+  <button type="button" class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in jcc-retreat-summaryItem--clickable" data-summary-preset="status:checked_in">
+    <span class="jcc-retreat-summaryItem-label">입실</span>
+    <span class="jcc-retreat-summaryItem-value"><strong data-summary-in>{{ roster_summary.count_checked_in }}</strong> 명</span>
+  </button>
+  <button type="button" class="jcc-retreat-summaryItem jcc-retreat-summaryItem--out jcc-retreat-summaryItem--clickable" data-summary-preset="status:checked_out">
+    <span class="jcc-retreat-summaryItem-label">퇴실</span>
+    <span class="jcc-retreat-summaryItem-value"><strong data-summary-out>{{ roster_summary.count_checked_out }}</strong> 명</span>
+  </button>
+  <button type="button" class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in jcc-retreat-summaryItem--clickable" data-summary-preset="stay:eligible">
+    <span class="jcc-retreat-summaryItem-label">숙박 대상</span>
+    <span class="jcc-retreat-summaryItem-value"><strong data-summary-eligible>{{ roster_summary.count_lodging_eligible }}</strong> 명</span>
+  </button>
+  <button type="button" class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending jcc-retreat-summaryItem--clickable" data-summary-preset="assign:unassigned">
+    <span class="jcc-retreat-summaryItem-label">숙소 미배정</span>
+    <span class="jcc-retreat-summaryItem-value"><strong data-summary-unassigned>{{ roster_summary.count_lodging_unassigned }}</strong> 명</span>
+  </button>
+</div>

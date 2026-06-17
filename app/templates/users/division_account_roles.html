@@ -1,12 +1,12 @@
-{% load static %}
+{% load static phone_tags %}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   {% include 'includes/jcc_theme_head.html' %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>부서 계정 직책 관리</title>
-  <link rel="stylesheet" href="{% static 'attendance/app.css' %}">
+  <title>계정 관리</title>
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617p">
   <style>
     .jcc-division-roles-table th {
       vertical-align: bottom;
@@ -430,19 +430,12 @@
     }
   </style>
 </head>
-<body>
+<body class="has-account-bottom-tabs">
   <div class="jcc-layout">
     {% include 'includes/jcc_left_nav.html' %}
     <div class="jcc-layout-content">
-      <header class="app-header">
-        <div class="jcc-detail-titleWrap">
-          <h1>부서 계정 직책 관리</h1>
-          <p class="subtitle">계정을 선택하면 상세 정보를 확인하고 수정할 수 있습니다.</p>
-        </div>
-      </header>
+      {% include 'includes/jcc_page_header.html' with page_title='계정 관리' subtitle='계정을 선택하면 상세 정보를 확인하고 수정할 수 있습니다.' tabs_template='users/_account_manage_tabs.html' %}
       <main>
-        {% include 'users/_account_manage_tabs.html' %}
-
         {% if messages %}
           <div class="card" style="margin-bottom: 1rem;">
             {% for message in messages %}
@@ -508,7 +501,7 @@
                       aria-label="{{ u.real_name|default:u.username }} 계정 상세"
                     >
                       <td class="jcc-account-name">{{ u.real_name|default:"-" }}</td>
-                      <td>{{ u.phone|default:"-" }}</td>
+                      <td>{{ u.phone|format_korea_phone }}</td>
                       <td>{{ u.kakao_uid|default:"-" }}</td>
                       <td>{{ u.region_name|default:"-" }}</td>
                       <td>{{ u.division_name|default:"-" }}</td>
@@ -548,7 +541,7 @@
           </div>
           <div class="jcc-account-editField">
             <label for="accountEditPhone">휴대폰 번호</label>
-            <input type="tel" id="accountEditPhone" name="phone" maxlength="30" autocomplete="off">
+            <input type="tel" id="accountEditPhone" name="phone" maxlength="13" autocomplete="tel" inputmode="numeric" placeholder="010-1234-5678">
           </div>
         </section>
 
@@ -584,7 +577,7 @@
         <section class="jcc-account-editSection">
           <h3 class="jcc-account-editSection__title">수련회</h3>
           <div class="jcc-account-editField">
-            <label>수련회 행사</label>
+            <label>수련회 집회</label>
             <div class="jcc-account-editReadonly" id="accountEditEventName">{{ active_retreat_event.name }}</div>
           </div>
           <div class="jcc-account-editField">
@@ -675,6 +668,7 @@
   <script id="jccAccountTeamsMapJson" type="application/json">{{ teams_map_json|safe }}</script>
   {% if active_retreat_event %}<script id="jccAccountRetreatGroupsJson" type="application/json">{{ retreat_groups_json|safe }}</script>{% endif %}
   <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c"></script>
+  <script src="{% static 'retreat/phone_format.js' %}?v=20260617a"></script>
   <script>
     (function () {
       const overlay = document.getElementById("accountEditOverlay");
@@ -704,6 +698,10 @@
       const teamSel = document.getElementById("accountEditTeam");
       const retreatSel = document.getElementById("accountEditRetreatGroup");
       const rolePickerEl = document.getElementById("accountEditRolePicker");
+      const phoneInput = document.getElementById("accountEditPhone");
+      if (phoneInput && window.JccPhoneFormat) {
+        JccPhoneFormat.bindInput(phoneInput);
+      }
 
       let cachedRoles = [];
       let selectedRoleCodes = [];
@@ -931,7 +929,11 @@
 
         document.getElementById("accountEditUserId").value = userId;
         document.getElementById("accountEditRealName").value = d.real_name || "";
-        document.getElementById("accountEditPhone").value = d.phone || "";
+        if (phoneInput) {
+          phoneInput.value = window.JccPhoneFormat
+            ? JccPhoneFormat.formatMobilePhone(d.phone || "")
+            : (d.phone || "");
+        }
 
         if (regionSel) {
           regionSel.value = d.region_id ? String(d.region_id) : "";
@@ -996,6 +998,9 @@
       });
 
       form.addEventListener("submit", () => {
+        if (phoneInput && window.JccPhoneFormat) {
+          phoneInput.value = JccPhoneFormat.normalizeForSubmit(phoneInput.value);
+        }
         const hiddenMount = rolePickerEl.querySelector(".jcc-role-hidden-inputs");
         if (hiddenMount) {
           hiddenMount.innerHTML = "";
@@ -1010,5 +1015,6 @@
       });
     })();
   </script>
+  {% include 'includes/account_bottom_tabs.html' %}
 </body>
 </html>

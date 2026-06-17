@@ -31,7 +31,7 @@ class RetreatChangeLog(models.Model):
         RetreatEvent,
         on_delete=models.CASCADE,
         related_name="change_logs",
-        verbose_name="행사",
+        verbose_name="집회",
     )
     action = models.CharField("동작", max_length=10, choices=Action.choices)
     target_type = models.CharField(

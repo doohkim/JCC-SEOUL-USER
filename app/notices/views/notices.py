@@ -187,9 +187,9 @@ class NoticeDeleteView(NoticeManageRequiredMixin, LoginRequiredMixin, DeleteView
 
 
 class TimetableView(LoginRequiredMixin, NoticeReadAccessRequiredMixin, TemplateView):
-    """수련회 타임테이블을 행사별로 보여주는 읽기 전용 화면.
+    """수련회 타임테이블을 집회별로 보여주는 읽기 전용 화면.
 
-    행사(RetreatEvent) 단위로 작성된 타임테이블을 드롭다운으로 선택해 조회한다.
+    집회(RetreatEvent) 단위로 작성된 타임테이블을 드롭다운으로 선택해 조회한다.
     편집은 수련회 > 관리 > 타임테이블 화면에서 한다.
     """
 

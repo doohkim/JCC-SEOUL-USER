@@ -1,13 +1,18 @@
+{% comment %}계정 관리 하위 탭 — account_tab('roles'|'approvals') 필요{% endcomment %}
 {% load permission_tags %}
-<div class="card" style="margin-bottom: 1rem;">
-  <div class="jcc-page-tabs">
-    <a href="{% url 'user_division_account_roles' %}" class="jcc-page-tab{% if account_tab == 'roles' %} is-active{% endif %}">
-      계정
-    </a>
-    {% if user|can_access_onboarding_approvals_tab %}
-    <a href="{% url 'user_account_approvals' %}" class="jcc-page-tab{% if account_tab == 'approvals' %} is-active{% endif %}">
-      승인 절차
-    </a>
+<div class="jcc-account-pageTabsRow jcc-pageHeader-tabsRow">
+  <nav class="jcc-page-tabs jcc-account-pageTabs jcc-pageHeader-tabs" aria-label="계정 관리 메뉴">
+    {% if user|can_manage_division_accounts_tab %}
+      <a
+        class="jcc-page-tab{% if account_tab == 'roles' %} is-active{% endif %}"
+        href="{% url 'user_division_account_roles' %}"
+      >계정</a>
     {% endif %}
-  </div>
+    {% if user|can_access_onboarding_approvals_tab %}
+      <a
+        class="jcc-page-tab{% if account_tab == 'approvals' %} is-active{% endif %}"
+        href="{% url 'user_onboarding_approvals' %}"
+      >승인절차</a>
+    {% endif %}
+  </nav>
 </div>

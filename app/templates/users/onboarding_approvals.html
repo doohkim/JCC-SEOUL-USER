@@ -5,8 +5,8 @@
   {% include 'includes/jcc_theme_head.html' %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>가입 승인</title>
-  <link rel="stylesheet" href="{% static 'attendance/app.css' %}">
+  <title>계정 관리 · 승인절차</title>
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617p">
   <style>
     /* 사용자 이름 셀: 테두리 없는 깔끔한 텍스트형 (기본은 파랑 아님, hover 시 은은한 밑줄) */
     .jcc-user-detail-link {
@@ -274,20 +274,12 @@
     }
   </style>
 </head>
-<body>
+<body class="has-account-bottom-tabs">
   <div class="jcc-layout">
     {% include 'includes/jcc_left_nav.html' %}
     <div class="jcc-layout-content">
-      <header class="app-header">
-        <div class="jcc-detail-titleWrap">
-          <h1>가입 승인 관리</h1>
-          <p class="subtitle">신청 부서가 본인 담당 부서인 건만 표시됩니다. 처리일시 기준으로 기간을 좁힐 수 있습니다.</p>
-        </div>
-      </header>
-
+      {% include 'includes/jcc_page_header.html' with page_title='계정 관리' subtitle='신청 부서가 본인 담당 부서인 건만 표시됩니다. 처리일시 기준으로 기간을 좁힐 수 있습니다.' tabs_template='users/_account_manage_tabs.html' %}
       <main>
-        {% include 'users/_account_manage_tabs.html' %}
-
         <div class="card" style="margin-bottom: 1rem;">
           <h2>조회 조건</h2>
           <form method="get" class="toolbar" style="padding:0; border:none; background:transparent; flex-wrap:wrap;">
@@ -656,7 +648,7 @@
         html += row("승인 상태", d.status);
         if (d.retreat_participation) {
           html += row("수련회 참여", "참여");
-          html += row("수련회 행사", d.retreat_event);
+          html += row("수련회 집회", d.retreat_event);
           html += row("수련회 조", d.retreat_group);
           html += row("수련회 역할", d.retreat_role);
         }
@@ -734,5 +726,6 @@
       sel.addEventListener("change", () => syncOnboardingNoteHints(row));
     });
   </script>
+  {% include 'includes/account_bottom_tabs.html' %}
 </body>
 </html>

@@ -1,4 +1,4 @@
-"""수련회 회장단 (행사 단위 운영 위원회)."""
+"""수련회 회장단 (집회 단위 운영 위원회)."""
 
 from __future__ import annotations
 
@@ -9,10 +9,10 @@ from .event import RetreatEvent
 
 
 class RetreatCouncilMembership(models.Model):
-    """행사별 회장단 구성원.
+    """집회별 회장단 구성원.
 
     회장단은 출석부(세션) 생성/수정/삭제, 회장단 명단 관리, 변경 이력 조회 등
-    행사 운영의 최상위 권한을 가진다.
+    집회 운영의 최상위 권한을 가진다.
     """
 
     class Role(models.TextChoices):
@@ -25,7 +25,7 @@ class RetreatCouncilMembership(models.Model):
         RetreatEvent,
         on_delete=models.CASCADE,
         related_name="council_memberships",
-        verbose_name="행사",
+        verbose_name="집회",
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

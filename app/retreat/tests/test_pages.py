@@ -228,6 +228,9 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertContains(r, 'data-sort-key="role"')
         # 실제 입·퇴실 시각 수정 권한은 여전히 없다.
         self.assertFalse(r.context["can_edit_timestamps"])
+        # 조장은 조원 삭제(제거) 버튼을 볼 수 있다.
+        self.assertTrue(r.context["can_delete_attendee"])
+        self.assertContains(r, "data-del")
 
     def test_manage_group_detail_staff_can_edit_timestamps(self):
         RetreatAttendee.objects.create(group=self.group, name="시각수정")
@@ -258,7 +261,7 @@ class RetreatPageAccessTests(_PageFixture):
 
     def test_event_switcher_dropdown_lists_accessible_events(self):
         other_event = RetreatEvent.objects.create(
-            name="다른 행사",
+            name="다른 집회",
             start_date=date(2026, 5, 1),
             end_date=date(2026, 5, 2),
         )
@@ -271,7 +274,7 @@ class RetreatPageAccessTests(_PageFixture):
         RetreatGroupMembership.objects.create(user=self.leader, group=other_group)
 
         hidden_event = RetreatEvent.objects.create(
-            name="비활성 행사",
+            name="비활성 집회",
             start_date=date(2025, 9, 1),
             end_date=date(2025, 9, 2),
             is_active=False,
@@ -292,7 +295,7 @@ class RetreatPageAccessTests(_PageFixture):
 
     def test_event_switcher_dropdown_options_match_current_tab(self):
         other_event = RetreatEvent.objects.create(
-            name="다른 행사",
+            name="다른 집회",
             start_date=date(2026, 5, 1),
             end_date=date(2026, 5, 2),
         )
@@ -403,14 +406,14 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertNotContains(r, "출석부 만들기")
 
     def test_admin_create_modal_exposes_extended_fields(self):
-        # 회장단/슈퍼유저 모달에 행사·상태·마감일시 필드가 함께 노출된다.
+        # 회장단/슈퍼유저 모달에 집회·상태·마감일시 필드가 함께 노출된다.
         self.client.force_login(self.council)
         r = self.client.get(reverse("retreat_admin", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'id="rosterEvent"')
         self.assertContains(r, 'id="rosterStatus"')
         self.assertContains(r, 'id="rosterClosedAt"')
-        # creatable_events에 본인이 회장단인 행사가 들어 있다.
+        # creatable_events에 본인이 회장단인 집회가 들어 있다.
         self.assertIn(
             self.event.id,
             [e.id for e in r.context["creatable_events"]],

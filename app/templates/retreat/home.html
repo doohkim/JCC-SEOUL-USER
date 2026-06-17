@@ -19,12 +19,12 @@
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        {% include 'includes/jcc_page_header.html' with page_title='수련회' subtitle='행사·내 조 바로가기' %}
+        {% include 'includes/jcc_page_header.html' with page_title='수련회' subtitle='집회·내 조 바로가기' %}
         <main>
           {% if not event_cards %}
             <div class="card jcc-retreat-emptyCard">
-              <h2>표시할 수련회 행사가 없습니다.</h2>
-              <p class="subtitle">활성 행사가 생성되면 이곳에 표시됩니다.</p>
+              <h2>표시할 수련회 집회가 없습니다.</h2>
+              <p class="subtitle">활성 집회가 생성되면 이곳에 표시됩니다.</p>
             </div>
           {% else %}
             {% for c in event_cards %}

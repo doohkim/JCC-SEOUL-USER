@@ -1,10 +1,15 @@
 ---
-description: 유저 타입별 권한 매트릭스·Plan 모드 질문 프로토콜·함수 색인
+description: "@PERM — 유저 타입별 권한 매트릭스·Plan 모드 질문·함수 색인"
 globs: app/users/permissions.py,app/**/apis/**/*.py,app/**/views.py,app/**/views/**/*.py
 alwaysApply: false
 ---
 
-# @PERM — Plan 모드 권한 질문 (구현 전 필수)
+# @PERM — 권한 규칙
+
+> **적용**: `permissions.py`, `apis/`, `views/` 편집 시 · 프롬프트 `@PERM`  
+> **구조·라우팅**: [01-jcc-seoul-django.mdc](01-jcc-seoul-django.mdc), [10-jcc-drf-api.mdc](10-jcc-drf-api.mdc)
+
+## Plan 모드 권한 질문 (구현 전 필수)
 
 권한·노출·조회 범위·버튼 표시·API 접근·탭 노출이 **조금이라도** 관련되면, **구현 전 Plan 모드**에서 유저 타입별 권한을 **전체 매트릭스**로 질문한다.
 
@@ -16,7 +21,7 @@ alwaysApply: false
 
 각 타입별로 **조회 가능 범위**와 **변경(쓰기) 가능 여부**를 구분해 확인한다.
 
-# 유저 타입 × 동작 (출처: `app/users/permissions.py`)
+## 유저 타입 × 동작 (출처: `app/users/permissions.py`)
 
 - **슈퍼유저**: 전부.
 - **플랫폼 관리자(`is_staff`)**: 출석 broad, 주차/계정 관리, 부서=소속(UDT).
@@ -27,7 +32,7 @@ alwaysApply: false
 - **수련회 회장단(event)**: 조 생성/세션 관리/체크인 변경/픽업 조 선택/전체 조.
 - **조장/부조장(group)**: 픽업(본인 조 자동)/본인 조 운영진/본인 조만/진행중 세션만.
 
-# 함수 색인
+## 함수 색인
 
 - 출석: `visible_divisions_for`, `dashboard_divisions_for`
 - 드롭다운: `membership_divisions_for`, `visible_teams_for`
@@ -35,4 +40,4 @@ alwaysApply: false
 - 수련회: `is_retreat_council`, `can_manage_retreat_pickup`, `visible_retreat_groups_for`, `can_change_retreat_check_in`
 - 상담: `can_access_counseling_manage_tab`, `IsCounselingParticipant`
 
-구조/라우팅은 `jcc-seoul-django.mdc`·`jcc-drf-api.mdc` 참고. 여기서는 매트릭스+함수 색인만.
+여기서는 **매트릭스 + 함수 색인**만 다룹니다.

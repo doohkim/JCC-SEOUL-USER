@@ -10,6 +10,19 @@ from django.utils import timezone
 from retreat.models import RetreatAttendee
 
 
+def is_expected_timestamps_locked(
+    attendee: RetreatAttendee, *, now: datetime | None = None
+) -> bool:
+    """예상 퇴실 시각이 지나 자동 퇴실된 조원은 입·퇴실 시각 수정 불가."""
+    if attendee.check_in_status != RetreatAttendee.CheckInStatus.CHECKED_OUT:
+        return False
+    out_at = attendee.expected_check_out_at
+    if out_at is None:
+        return False
+    ts = now or timezone.now()
+    return out_at <= ts
+
+
 def ensure_stamps_for_status(
     attendee: RetreatAttendee, *, now: datetime | None = None
 ) -> None:

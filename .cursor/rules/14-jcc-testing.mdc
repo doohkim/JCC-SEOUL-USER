@@ -1,10 +1,12 @@
 ---
-description: 기능·버그·권한 변경 시 테스트 필수 규칙
+description: "@TEST — 기능·버그·권한 변경 시 테스트 필수"
 globs: app/**/*.py
 alwaysApply: false
 ---
 
-# @TEST — 테스트 필수
+# @TEST — 테스트 규칙
+
+> **적용**: `app/**/*.py` 편집 시 · 프롬프트 `@TEST`
 
 - 기능/버그/권한 변경에는 **테스트 추가·수정**을 기본으로 한다. 위치: `app/<app>/tests/`.
 - 기존 패턴 참고: `app/retreat/tests/test_permissions.py`, `app/users/tests/test_account_manage.py`.

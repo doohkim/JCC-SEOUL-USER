@@ -40,7 +40,7 @@ def _lodgings_with_rooms(event: RetreatEvent):
 
 
 class RetreatEventLodgingsView(APIView):
-    """행사별 숙소 목록 / 추가."""
+    """집회별 숙소 목록 / 추가."""
 
     permission_classes = [IsAuthenticated]
 

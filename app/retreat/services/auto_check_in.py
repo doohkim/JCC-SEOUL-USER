@@ -49,8 +49,8 @@ def apply_due_auto_transitions(
 ) -> dict:
     """예상 시각이 지난 조원을 입실/퇴실로 자동 전환한다. 처리 건수를 반환.
 
-    event_id 가 주어지면 해당 행사 조원만 처리한다(대시보드·조 관리 온디맨드).
-    생략하면 전체 행사 대상(Celery 매분 작업).
+    event_id 가 주어지면 해당 집회 조원만 처리한다(대시보드·조 관리 온디맨드).
+    생략하면 전체 집회 대상(Celery 매분 작업).
     """
     now = now or timezone.now()
     checked_in = 0

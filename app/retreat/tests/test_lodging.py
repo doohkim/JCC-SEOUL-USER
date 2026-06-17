@@ -8,12 +8,14 @@ from django.contrib.auth import get_user_model
 from django.db.utils import IntegrityError
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from retreat.models import (
     Lodging,
     LodgingRoom,
     RetreatAttendee,
+    RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
     RetreatGroupMembership,
@@ -52,12 +54,12 @@ class _LodgingFixture(TestCase):
             region=cls.seoul, code="lodging_youth", name="청년부"
         )
         cls.event = RetreatEvent.objects.create(
-            name="숙소 행사",
+            name="숙소 집회",
             start_date=date(2026, 7, 1),
             end_date=date(2026, 7, 3),
         )
         cls.other_event = RetreatEvent.objects.create(
-            name="다른 행사",
+            name="다른 집회",
             start_date=date(2025, 1, 1),
             end_date=date(2025, 1, 2),
         )
@@ -89,6 +91,11 @@ class _LodgingFixture(TestCase):
         cls.staff.save()
         UserDivisionTeam.objects.create(
             user=cls.staff, division=cls.div, is_primary=True
+        )
+        RetreatCouncilMembership.objects.create(
+            event=cls.event,
+            user=cls.staff,
+            role=RetreatCouncilMembership.Role.CHAIRPERSON,
         )
 
         cls.outsider = User.objects.create_user(
@@ -258,6 +265,64 @@ class LodgingRoomAssignmentTests(_LodgingFixture):
         self.assertEqual(r.status_code, 400, r.content)
 
 
+class LodgingAssignmentPickerTests(LodgingRoomAssignmentTests):
+    """배정 드롭다운 노출 필터."""
+
+    def test_room_visible_hides_full_and_gender_mismatch(self):
+        from retreat.services.lodging import (
+            room_visible_in_assignment_picker,
+            rooms_for_group_with_counts,
+        )
+
+        self.male_attendee.lodging_room = self.room
+        self.male_attendee.save(update_fields=["lodging_room"])
+        self.male_attendee_b.lodging_room = self.room
+        self.male_attendee_b.save(update_fields=["lodging_room"])
+
+        rooms = list(rooms_for_group_with_counts(self.group))
+        room_by_number = {r.number: r for r in rooms}
+
+        self.assertFalse(
+            room_visible_in_assignment_picker(
+                room_by_number["101"],
+                gender=RetreatAttendee.Gender.MALE,
+            )
+        )
+        self.assertTrue(
+            room_visible_in_assignment_picker(
+                room_by_number["101"],
+                gender=RetreatAttendee.Gender.MALE,
+                current_room_id=self.room.id,
+            )
+        )
+        self.assertFalse(
+            room_visible_in_assignment_picker(
+                room_by_number["201"],
+                gender=RetreatAttendee.Gender.MALE,
+            )
+        )
+        self.assertTrue(
+            room_visible_in_assignment_picker(
+                room_by_number["102"],
+                gender=RetreatAttendee.Gender.MALE,
+            )
+        )
+
+    def test_room_assignment_option_includes_counts(self):
+        from retreat.services.lodging import (
+            room_assignment_option,
+            rooms_for_group_with_counts,
+        )
+
+        self.male_attendee.lodging_room = self.male_room
+        self.male_attendee.save(update_fields=["lodging_room"])
+        room = rooms_for_group_with_counts(self.group).get(pk=self.male_room.id)
+        opt = room_assignment_option(room)
+        self.assertEqual(opt["assigned_count"], 1)
+        self.assertEqual(opt["recommended_gender"], "male")
+        self.assertEqual(opt["capacity"], 2)
+
+
 class LodgingRoomScopeTests(_LodgingFixture):
     """LodgingRoom 의 region/division 매칭: 조의 region+division 과 같은 호실만 허용."""
 
@@ -389,19 +454,12 @@ class ManageGroupRoomOptionsTests(_LodgingFixture):
         self.assertNotIn(self.unassigned_room.id, room_ids)
 
 
-class LodgingAssignPageTests(_LodgingFixture):
-    """방배정 페이지 GET + 권한 분기.
-
-    이 페이지는 호실 → 지역·부서 매핑 관리용이다. 카드 본문에는 (region, division)
-    조합이 노출되고, 미배정 호실은 별도 섹션으로 묶인다.
-    """
+class LodgingAssignRedirectTests(_LodgingFixture):
+    """구 방배정 URL → 숙소·호수 관리 리다이렉트."""
 
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.other_div = Division.objects.create(
-            region=cls.seoul, code="lodging_assign_other", name="대학부"
-        )
         cls.lodging = Lodging.objects.create(
             event=cls.event, name="본관", region=cls.seoul
         )
@@ -411,90 +469,145 @@ class LodgingAssignPageTests(_LodgingFixture):
             region=cls.seoul,
             division=cls.div,
         )
-        cls.unassigned_room = LodgingRoom.objects.create(
-            lodging=cls.lodging, number="Z"
+
+    def setUp(self):
+        self.client = APIClient()
+
+    def _lodging_url(self):
+        return reverse("retreat_lodging", args=[self.event.id])
+
+    def test_assign_url_redirects_to_lodging_page(self):
+        self.client.force_login(self.staff)
+        r = self.client.get(
+            reverse("retreat_lodging_assign", args=[self.event.id])
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(r["Location"], self._lodging_url())
+
+    def test_lodging_page_lists_rooms_by_lodging(self):
+        self.client.force_login(self.staff)
+        r = self.client.get(self._lodging_url())
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "본관")
+        self.assertContains(r, self.matching_room.number)
+        self.assertNotContains(r, "숙소별")
+        self.assertNotContains(r, "지역·부서별")
+        self.assertNotContains(r, "방배정")
+        self.assertContains(r, 'id="lodgingManageFilterBar"')
+        self.assertContains(r, "잔여 객실")
+        self.assertContains(r, 'data-lodging-filter-preset="vacancy"')
+        self.assertContains(r, 'id="lodgingVacancyFilterEmpty"')
+        self.assertContains(r, "lodging_manage_filter.js")
+
+    def test_leader_blocked_from_lodging_page(self):
+        self.client.force_login(self.leader)
+        r = self.client.get(self._lodging_url())
+        self.assertEqual(r.status_code, 403)
+
+
+class LodgingVacancyAttributeTests(_LodgingFixture):
+    """호실 행 data-room-has-vacancy 속성."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.lodging = Lodging.objects.create(event=cls.event, name="본관")
+        cls.vacant_room = LodgingRoom.objects.create(
+            lodging=cls.lodging,
+            number="101",
+            capacity=2,
+            region=cls.seoul,
+            division=cls.div,
+        )
+        cls.full_room = LodgingRoom.objects.create(
+            lodging=cls.lodging,
+            number="102",
+            capacity=1,
+            region=cls.seoul,
+            division=cls.div,
+        )
+        attendee = RetreatAttendee.objects.create(
+            group=cls.group,
+            name="배정자",
+            expected_check_in_at=timezone.now(),
+        )
+        attendee.lodging_room = cls.full_room
+        attendee.save(update_fields=["lodging_room"])
+
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_room_has_vacancy_data_attributes(self):
+        self.client.force_login(self.staff)
+        r = self.client.get(reverse("retreat_lodging", args=[self.event.id]))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(
+            r,
+            f'data-room-id="{self.vacant_room.id}"',
+        )
+        self.assertContains(
+            r,
+            f'data-room-id="{self.vacant_room.id}" data-lodging-id="{self.lodging.id}"',
+        )
+        content = r.content.decode()
+        vacant_idx = content.find(f'data-room-id="{self.vacant_room.id}"')
+        full_idx = content.find(f'data-room-id="{self.full_room.id}"')
+        self.assertGreater(vacant_idx, -1)
+        self.assertGreater(full_idx, -1)
+        vacant_snippet = content[vacant_idx : vacant_idx + 280]
+        full_snippet = content[full_idx : full_idx + 280]
+        self.assertIn('data-room-has-vacancy="1"', vacant_snippet)
+        self.assertIn('data-room-has-vacancy="0"', full_snippet)
+
+
+class LodgingRoomMappingApiTests(_LodgingFixture):
+    """호실 region/division PATCH — 조회 전용 뷰와 별도 API 권한."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.other_div = Division.objects.create(
+            region=cls.seoul, code="lodging_map_other", name="대학부"
+        )
+        cls.lodging = Lodging.objects.create(event=cls.event, name="본관")
+        cls.room = LodgingRoom.objects.create(
+            lodging=cls.lodging,
+            number="A",
+            region=cls.seoul,
+            division=cls.div,
         )
 
     def setUp(self):
         self.client = APIClient()
 
-    def _url(self):
-        return reverse("retreat_lodging_assign", args=[self.event.id])
-
-    def test_staff_sees_assign_page(self):
-        self.client.force_login(self.staff)
-        r = self.client.get(self._url())
-        self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "방배정")
-        self.assertTrue(r.context["is_staff_like"])
-        self.assertTrue(r.context["can_manage_lodging"])
-
-    def test_leader_blocked_from_assign_page(self):
-        # 숙소(방배정)는 회장단·운영진·슈퍼유저 전용. 조장/부조장은 접근 불가.
-        self.client.force_login(self.leader)
-        r = self.client.get(self._url())
-        self.assertEqual(r.status_code, 403)
-
-    def test_outsider_blocked(self):
-        self.client.force_login(self.outsider)
-        r = self.client.get(self._url())
-        self.assertEqual(r.status_code, 403)
-
-    def test_regions_grouped_with_assigned_room(self):
-        self.client.force_login(self.staff)
-        r = self.client.get(self._url())
-        self.assertEqual(r.status_code, 200)
-        region_ids = {b["region"].id for b in r.context["regions"]}
-        self.assertIn(self.seoul.id, region_ids)
-        # 서울 카드 안에 div 부서가 있고, 호실 A 가 들어있어야 함.
-        seoul_bucket = next(
-            b for b in r.context["regions"] if b["region"].id == self.seoul.id
-        )
-        div_ids = {d["division"].id for d in seoul_bucket["divisions"]}
-        self.assertIn(self.div.id, div_ids)
-        target = next(
-            d for d in seoul_bucket["divisions"] if d["division"].id == self.div.id
-        )
-        room_ids = {room.id for room in target["rooms"]}
-        self.assertIn(self.matching_room.id, room_ids)
-        self.assertNotIn(self.unassigned_room.id, room_ids)
-        unassigned_ids = {room.id for room in r.context["unassigned_rooms"]}
-        self.assertIn(self.unassigned_room.id, unassigned_ids)
-
     def test_staff_can_remap_room_to_other_division(self):
-        self.client.force_login(self.staff)
-        room_detail = reverse(
-            "api_retreat_lodging_room_detail", args=[self.matching_room.id]
-        )
+        self.client.force_authenticate(self.staff)
+        room_detail = reverse("api_retreat_lodging_room_detail", args=[self.room.id])
         r = self.client.patch(
             room_detail,
             {"division": self.other_div.id},
             format="json",
         )
         self.assertEqual(r.status_code, 200, r.content)
-        self.matching_room.refresh_from_db()
-        self.assertEqual(self.matching_room.division_id, self.other_div.id)
+        self.room.refresh_from_db()
+        self.assertEqual(self.room.division_id, self.other_div.id)
 
     def test_staff_can_unassign_room(self):
-        self.client.force_login(self.staff)
-        room_detail = reverse(
-            "api_retreat_lodging_room_detail", args=[self.matching_room.id]
-        )
+        self.client.force_authenticate(self.staff)
+        room_detail = reverse("api_retreat_lodging_room_detail", args=[self.room.id])
         r = self.client.patch(
             room_detail,
             {"region": None, "division": None},
             format="json",
         )
         self.assertEqual(r.status_code, 200, r.content)
-        self.matching_room.refresh_from_db()
-        self.assertIsNone(self.matching_room.region_id)
-        self.assertIsNone(self.matching_room.division_id)
+        self.room.refresh_from_db()
+        self.assertIsNone(self.room.region_id)
+        self.assertIsNone(self.room.division_id)
 
     def test_leader_cannot_remap_room(self):
-        self.client.force_login(self.leader)
-        room_detail = reverse(
-            "api_retreat_lodging_room_detail", args=[self.matching_room.id]
-        )
+        self.client.force_authenticate(self.leader)
+        room_detail = reverse("api_retreat_lodging_room_detail", args=[self.room.id])
         r = self.client.patch(
             room_detail,
             {"division": self.other_div.id},
@@ -517,8 +630,7 @@ class LodgingCrudPageRedirectTests(_LodgingFixture):
         r = self.client.get(self._url())
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.context["can_manage_lodging"])
-        # 서브탭 링크 노출 — 방배정.
-        self.assertContains(r, reverse("retreat_lodging_assign", args=[self.event.id]))
+        self.assertNotContains(r, "방배정")
 
     def test_leader_blocked(self):
         # 숙소 탭은 회장단·운영진·슈퍼유저 전용. 조장/부조장은 접근 불가.

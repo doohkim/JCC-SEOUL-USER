@@ -18,10 +18,10 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
    공통 규칙(밑줄 탭 톤·레이아웃, PC 1400 중앙 정렬)은 attendance/app.css 의
    공통 페이지 헤더 블록(.jcc-pageHeader / .jcc-pageHeader-tabs / -tabsRow)으로 일원화했다.
    수련회 템플릿도 includes/jcc_page_header.html + 공통 클래스를 사용한다.
-   여기에는 수련회 전용(모바일 하단 탭 대체 시 상단 탭 숨김, 행사 선택 등)만 남긴다. */
+   여기에는 수련회 전용(모바일 하단 탭 대체 시 상단 탭 숨김, 집회 선택 등)만 남긴다. */
 
-/* 대시보드 컨트롤 줄: [행사선택] [통계/조참석현황 토글] ……… [현재시각·새로고침]
-   탭은 윗줄 단독, 이 줄에서 행사선택+토글은 왼쪽, 새로고침 카드는 오른쪽으로 정렬 */
+/* 대시보드 컨트롤 줄: [집회선택] [통계/조참석현황 토글] ……… [현재시각·새로고침]
+   탭은 윗줄 단독, 이 줄에서 집회선택+토글은 왼쪽, 새로고침 카드는 오른쪽으로 정렬 */
 .jcc-retreat-dashControls {
   display: flex;
   flex-wrap: wrap;
@@ -48,7 +48,7 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   }
 }
 
-/* 모바일: 상단 행사 내비는 하단 탭바로 대체하므로 숨김 (행사 선택은 유지) */
+/* 모바일: 상단 집회 내비는 하단 탭바로 대체하므로 숨김 (집회 선택은 유지) */
 @media (max-width: 900px) {
   .jcc-retreat-pageTabsRow > .jcc-retreat-pageTabs {
     display: none;
@@ -97,7 +97,7 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   max-width: 100%;
 }
 
-/* ── 행사 선택: Toss 스타일 커스텀 드롭다운 ── */
+/* ── 집회 선택: Toss 스타일 커스텀 드롭다운 ── */
 .jcc-retreat-eventPicker {
   position: relative;
   display: inline-block;
@@ -198,7 +198,7 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 .jcc-retreat-eventPickerItem.is-selected .jcc-retreat-eventPickerCheck {
   opacity: 1;
 }
-/* PC: 행사명이 길어도 버튼·드롭다운 모두 한 줄로 (행 바꿈 방지, 영역 확장) */
+/* PC: 집회명이 길어도 버튼·드롭다운 모두 한 줄로 (행 바꿈 방지, 영역 확장) */
 @media (min-width: 901px) {
   .jcc-retreat-eventPicker {
     min-width: 17rem;
@@ -408,6 +408,12 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   padding: 0.35rem 0.45rem;
   border-radius: 6px;
   font-size: 0.8rem;
+}
+.jcc-retreat-stampInput:disabled,
+.jcc-retreat-stampInput.is-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--bg);
 }
 .jcc-retreat-checkInBtn.is-active[data-check-in-status="checked_in"] {
   background: rgba(34, 197, 94, 0.32);
@@ -940,7 +946,7 @@ a.jcc-retreat-summaryCard--link:active {
   border-bottom: none;
 }
 .jcc-retreat-dashGrid tbody tr:hover td {
-  background: var(--accent-tint, rgba(99, 102, 241, 0.08));
+  background: color-mix(in srgb, #1d64d8 8%, transparent);
 }
 /* 숫자 컬럼 등폭 숫자: 시간대별·미니표는 우측 정렬 유지 */
 #hourlyTable th:nth-child(n + 2),
@@ -1252,7 +1258,7 @@ a.jcc-retreat-summaryCard--link:active {
   margin: 0 0 0.5rem 0;
 }
 
-/* 행사 선택을 탭 줄에서 빼서 컨트롤 줄 왼쪽에 두고, 액션 버튼은 오른쪽 유지 */
+/* 집회 선택을 탭 줄에서 빼서 컨트롤 줄 왼쪽에 두고, 액션 버튼은 오른쪽 유지 */
 .jcc-retreat-listTop--withPicker {
   flex-wrap: wrap;
   gap: 0.6rem;
@@ -1598,7 +1604,7 @@ a.jcc-retreat-summaryCard--link:active {
   }
 }
 
-/* 하위탭 줄: [행사선택] + [하위탭] 한 줄 (대시보드 컨트롤 줄과 동일 톤) */
+/* 하위탭 줄: [집회선택] + [하위탭] 한 줄 (대시보드 컨트롤 줄과 동일 톤) */
 .jcc-retreat-subTabsRow {
   display: flex;
   flex-wrap: wrap;
@@ -1609,8 +1615,7 @@ a.jcc-retreat-summaryCard--link:active {
 .jcc-retreat-subTabsRow > .jcc-page-tabs {
   margin-bottom: 0;
 }
-/* 픽업 액션: 행사 드롭다운·하위탭과 같은 행 우측에 [날짜] [+ 차량 요청].
-   "총 N건"은 그 아래 줄 우측에 두기 위해 PC에서는 absolute 로 배치한다. */
+/* 픽업·숙소 액션: 집회 드롭다운·하위탭과 같은 행 우측에 [+ 추가] 버튼 */
 .jcc-retreat-pickupActions {
   position: relative;
   margin-left: auto;
@@ -1618,6 +1623,7 @@ a.jcc-retreat-summaryCard--link:active {
   align-items: center;
   gap: 0.5rem;
 }
+
 /* PC: 카운트는 액션 바로 아래·우측에 단독 배치 (행 높이에는 영향 X) */
 .jcc-retreat-pickupCount {
   position: absolute;
@@ -1629,7 +1635,7 @@ a.jcc-retreat-summaryCard--link:active {
   white-space: nowrap;
 }
 /* 카운트 한 줄을 위한 여유 공간 확보 (픽업 행만) */
-.jcc-retreat-subTabsRow:has(.jcc-retreat-pickupActions) {
+.jcc-retreat-subTabsRow:has(.jcc-retreat-pickupCount) {
   margin-bottom: 2.4rem;
 }
 
@@ -1714,12 +1720,12 @@ a.jcc-retreat-summaryCard--link:active {
     text-align: right;
     min-width: 0;
   }
-  .jcc-retreat-subTabsRow:has(.jcc-retreat-pickupActions) {
+  .jcc-retreat-subTabsRow:has(.jcc-retreat-pickupCount) {
     margin-bottom: 1.1rem;
   }
 }
 
-/* PC: 행사 드롭다운은 키우고(.eventPickerBtn 패딩↑), 우측 하위탭(세그먼트)은
+/* PC: 집회 드롭다운은 키우고(.eventPickerBtn 패딩↑), 우측 하위탭(세그먼트)은
    높이를 더 낮춰서 드롭다운 세로 중앙선에 맞춘다. (행 자체는 align-items:center) */
 @media (min-width: 901px) {
   .jcc-retreat-subTabsRow,
@@ -1758,7 +1764,8 @@ a.jcc-retreat-summaryCard--link:active {
 .jcc-retreat-summaryItem {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  text-align: center;
   gap: 0.3rem;
   padding: 0.8rem 0.95rem;
   border-radius: 14px;
@@ -1768,18 +1775,23 @@ a.jcc-retreat-summaryCard--link:active {
 }
 
 .jcc-retreat-summaryItem-label {
+  display: block;
+  width: 100%;
   font-size: 0.8rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .jcc-retreat-summaryItem-value {
+  display: block;
+  width: 100%;
   font-size: 0.85rem;
   color: var(--muted, #868e96);
   white-space: nowrap;
 }
 
 .jcc-retreat-summaryItem-value strong {
+  display: inline-block;
   font-size: 1.35rem;
   font-weight: 800;
   color: var(--text, #212529);
@@ -1813,6 +1825,471 @@ a.jcc-retreat-summaryCard--link:active {
 }
 .jcc-retreat-summaryItem--total .jcc-retreat-summaryItem-label {
   color: #475569;
+}
+
+.jcc-retreat-summaryItem-sub {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.jcc-retreat-summaryItem--warning {
+  background: #fff1f2;
+  border-color: rgba(240, 68, 82, 0.2);
+}
+.jcc-retreat-summaryItem--warning .jcc-retreat-summaryItem-label {
+  color: #e03131;
+}
+
+.jcc-retreat-summaryBar--lodgingFacility {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto auto;
+  margin-bottom: 0.55rem;
+}
+
+.jcc-retreat-summaryBar--lodgingFacility .jcc-retreat-summaryItem {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 3;
+  align-items: stretch;
+  gap: 0.2rem;
+}
+
+.jcc-retreat-summaryBar--lodgingFacility .jcc-retreat-summaryItem-label {
+  align-self: end;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  line-height: 1.25;
+}
+
+.jcc-retreat-summaryBar--lodgingFacility .jcc-retreat-summaryItem-value {
+  align-self: center;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  width: auto;
+}
+
+.jcc-retreat-summaryBar--lodgingFacility .jcc-retreat-summaryItem-value strong {
+  line-height: 1;
+}
+
+.jcc-retreat-summaryBar--lodgingFacility .jcc-retreat-summaryItem-link {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.jcc-retreat-summaryBar--lodgingFacility .jcc-retreat-summaryItem-sub,
+.jcc-retreat-summaryBar--lodgingFacility .jcc-retreat-summaryItem-meta {
+  align-self: start;
+  margin-top: 0;
+  min-height: 1rem;
+}
+
+.jcc-retreat-summaryBar--lodgingFacility .jcc-retreat-summaryItem--clickable {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 3;
+  align-items: stretch;
+  gap: 0.2rem;
+}
+
+.jcc-retreat-summaryBar--compact {
+  margin: 0 0 0.75rem 0;
+  gap: 0.4rem;
+}
+.jcc-retreat-summaryBar--compact .jcc-retreat-summaryItem {
+  padding: 0.55rem 0.45rem;
+}
+.jcc-retreat-summaryBar--compact .jcc-retreat-summaryItem-label {
+  font-size: 0.68rem;
+}
+.jcc-retreat-summaryBar--compact .jcc-retreat-summaryItem-value strong {
+  font-size: 1.05rem;
+}
+.jcc-retreat-summaryBar--lodgingCardFacility {
+  margin-top: 0.15rem;
+}
+
+@media (min-width: 900px) {
+  .jcc-retreat-summaryBar--lodgingFacility {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .jcc-retreat-summaryBar--lodgingFacility {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 전체 명단 — 6칸 요약 + 필터·테이블 */
+.jcc-retreat-summaryBar--lodgingRoster {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 0.85rem;
+}
+@media (min-width: 900px) {
+  .jcc-retreat-summaryBar--lodgingRoster {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+@media (min-width: 640px) and (max-width: 899px) {
+  .jcc-retreat-summaryBar--lodgingRoster {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.jcc-retreat-summaryItem--clickable {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  font: inherit;
+  width: 100%;
+  min-width: 0;
+  transition: background 0.12s ease;
+}
+.jcc-retreat-summaryItem--clickable:hover {
+  background: var(--jcc-surface-muted, #f1f3f5);
+}
+.jcc-retreat-summaryItem--clickable.is-active,
+.jcc-retreat-summaryItem--clickable.is-active:hover {
+  background: color-mix(in srgb, var(--accent, #3182f6) 12%, var(--card));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #3182f6) 35%, transparent);
+}
+.jcc-retreat-summaryItem-link {
+  color: inherit;
+  text-decoration: none;
+}
+.jcc-retreat-summaryItem-link:hover strong {
+  text-decoration: underline;
+}
+.jcc-retreat-subTabsRow > .jcc-retreat-lodgingSubTabs {
+  margin-bottom: 0;
+}
+.jcc-retreat-filterBar--lodgingManage {
+  margin-bottom: 1rem;
+  gap: 0.35rem;
+  padding: 0.95rem 1rem 0.85rem;
+}
+.jcc-retreat-filterBar--lodgingManage .jcc-retreat-filterRow {
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0;
+  padding: 0.2rem 0;
+}
+.jcc-retreat-filterBar--lodgingManage .jcc-retreat-filterLabel {
+  flex: 0 0 2.5rem;
+  min-width: 2.5rem;
+  padding-top: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.25;
+}
+.jcc-retreat-filterBar--lodgingManage .jcc-retreat-filterChips {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.jcc-retreat-filterBar--lodgingManage .jcc-retreat-filterBarFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.35rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--border);
+}
+.jcc-retreat-lodgingCard[hidden] {
+  display: none;
+}
+.jcc-retreat-filterBar--roster {
+  margin-bottom: 1rem;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem 0.75rem;
+}
+.jcc-retreat-rosterSearchBlock {
+  margin-bottom: 0.35rem;
+}
+.jcc-retreat-rosterSearchWrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.jcc-retreat-rosterSearchWrap .jcc-retreat-rosterSearchIcon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 1;
+}
+.jcc-retreat-rosterSearchWrap .jcc-retreat-rosterSearch {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0.62rem 0.85rem 0.62rem 2.75rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  appearance: none;
+  -webkit-appearance: none;
+}
+.jcc-retreat-rosterSearchWrap .jcc-retreat-rosterSearch::-webkit-search-decoration,
+.jcc-retreat-rosterSearchWrap .jcc-retreat-rosterSearch::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.jcc-retreat-rosterSearchWrap .jcc-retreat-rosterSearch::placeholder {
+  color: var(--muted);
+}
+.jcc-retreat-rosterSearchWrap .jcc-retreat-rosterSearch:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.jcc-retreat-filterBar--roster .jcc-retreat-filterRow {
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-bottom: 0.15rem;
+}
+.jcc-retreat-filterBar--roster .jcc-retreat-filterRow:last-of-type {
+  margin-bottom: 0;
+}
+.jcc-retreat-filterBar--roster .jcc-retreat-filterLabel {
+  flex: 0 0 4.5rem;
+  min-width: 4.5rem;
+  padding-top: 0.38rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--text);
+}
+.jcc-retreat-filterBar--roster .jcc-retreat-filterChips {
+  flex: 1;
+  min-width: 0;
+  gap: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+.jcc-retreat-filterBar--roster .jcc-retreat-filterChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.75rem;
+  padding: 0.28rem 0.72rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+.jcc-retreat-filterBar--roster .jcc-retreat-filterBarFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.35rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+}
+.jcc-retreat-filterReset--roster {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.jcc-retreat-filterReset--roster:hover {
+  color: var(--text);
+  border-color: transparent;
+}
+.jcc-retreat-filterReset--roster:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.jcc-retreat-filterReset--roster:disabled:hover {
+  color: var(--muted);
+}
+.jcc-retreat-filterResetIcon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+.jcc-retreat-rosterCard {
+  margin-bottom: 1rem;
+}
+.jcc-retreat-rosterTable {
+  table-layout: fixed;
+  font-size: 0.8rem;
+}
+.jcc-retreat-rosterTable th,
+.jcc-retreat-rosterTable td {
+  padding: 0.4rem 0.3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jcc-retreat-rosterTable .jcc-retreat-attCol-num {
+  width: 2rem;
+  padding-left: 0.15rem;
+  padding-right: 0.15rem;
+}
+.jcc-retreat-rosterTable .jcc-retreat-attCol-group {
+  width: 2.6rem;
+}
+.jcc-retreat-rosterTable .jcc-retreat-attCol-scope {
+  width: 5.2rem;
+}
+.jcc-retreat-rosterTable .jcc-retreat-attCol-name {
+  width: 3.6rem;
+}
+.jcc-retreat-rosterTable .jcc-retreat-attCol-role {
+  width: 3rem;
+  text-align: center;
+}
+.jcc-retreat-rosterTable .jcc-retreat-attCol-status {
+  width: 3.6rem;
+}
+.jcc-retreat-rosterTable .jcc-retreat-attCol-expected-in,
+.jcc-retreat-rosterTable .jcc-retreat-attCol-expected-out {
+  width: 5rem;
+}
+.jcc-retreat-rosterTable .jcc-retreat-attCol-lodging {
+  width: 5rem;
+}
+.jcc-retreat-rosterTable .jcc-retreat-attCol-actions {
+  width: 2rem;
+  text-align: center;
+  padding-left: 0.15rem;
+  padding-right: 0.15rem;
+}
+.jcc-retreat-rosterTable .jcc-retreat-attCol-expected .jcc-retreat-stampLabel {
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+.jcc-retreat-rosterTable .jcc-retreat-attCol-role .jcc-retreat-roleTag {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.35rem;
+}
+.jcc-retreat-rosterTable .jcc-retreat-checkInBadge {
+  font-size: 0.72rem;
+  padding: 0.12rem 0.35rem;
+}
+.jcc-retreat-rosterRow--unassigned .jcc-retreat-rosterUnassigned {
+  color: #e03131;
+  font-weight: 600;
+}
+.jcc-retreat-rosterIneligible {
+  color: var(--jcc-text-muted, #868e96);
+  font-size: 0.875em;
+}
+.jcc-retreat-rosterGroupLink {
+  color: var(--jcc-link, #228be6);
+  text-decoration: none;
+  font-weight: 600;
+}
+.jcc-retreat-rosterGroupLink:hover {
+  text-decoration: underline;
+}
+.jcc-retreat-rosterHeadLong,
+.jcc-retreat-rosterActionsHead {
+  display: none;
+}
+@media (max-width: 900px) {
+  .jcc-retreat-rosterCard .jcc-retreat-tableWrap {
+    overflow-x: visible;
+  }
+  .jcc-retreat-rosterTable {
+    width: 100%;
+    table-layout: fixed;
+    font-size: 0.74rem;
+  }
+  .jcc-retreat-rosterTable th,
+  .jcc-retreat-rosterTable td {
+    padding: 0.38rem 0.18rem;
+  }
+  .jcc-retreat-rosterTable th.jcc-retreat-attCol-num,
+  .jcc-retreat-rosterTable td.jcc-retreat-attCol-num,
+  .jcc-retreat-rosterTable th.jcc-retreat-attCol-group,
+  .jcc-retreat-rosterTable td.jcc-retreat-attCol-group,
+  .jcc-retreat-rosterTable th.jcc-retreat-attCol-scope,
+  .jcc-retreat-rosterTable td.jcc-retreat-attCol-scope,
+  .jcc-retreat-rosterTable th.jcc-retreat-attCol-role,
+  .jcc-retreat-rosterTable td.jcc-retreat-attCol-role {
+    display: none;
+  }
+  .jcc-retreat-rosterHeadShort {
+    display: none;
+  }
+  .jcc-retreat-rosterHeadLong,
+  .jcc-retreat-rosterActionsHead {
+    display: inline;
+    font-size: 0.72rem;
+  }
+  .jcc-retreat-rosterTable .jcc-retreat-attCol-name {
+    width: 17%;
+  }
+  .jcc-retreat-rosterTable .jcc-retreat-attCol-status {
+    width: 14%;
+    text-align: center;
+  }
+  .jcc-retreat-rosterTable .jcc-retreat-attCol-expected-in,
+  .jcc-retreat-rosterTable .jcc-retreat-attCol-expected-out {
+    width: 19%;
+  }
+  .jcc-retreat-rosterTable .jcc-retreat-attCol-lodging {
+    width: 19%;
+  }
+  .jcc-retreat-rosterTable .jcc-retreat-attCol-actions {
+    width: 12%;
+  }
+  .jcc-retreat-rosterTable:not(:has(.jcc-retreat-attCol-actions)) .jcc-retreat-attCol-name {
+    width: 20%;
+  }
+  .jcc-retreat-rosterTable:not(:has(.jcc-retreat-attCol-actions)) .jcc-retreat-attCol-status {
+    width: 16%;
+  }
+  .jcc-retreat-rosterTable:not(:has(.jcc-retreat-attCol-actions)) .jcc-retreat-attCol-expected-in,
+  .jcc-retreat-rosterTable:not(:has(.jcc-retreat-attCol-actions)) .jcc-retreat-attCol-expected-out {
+    width: 22%;
+  }
+  .jcc-retreat-rosterTable:not(:has(.jcc-retreat-attCol-actions)) .jcc-retreat-attCol-lodging {
+    width: 20%;
+  }
+  .jcc-retreat-rosterTable .jcc-retreat-attCol-expected .jcc-retreat-stampLabel {
+    display: block;
+    white-space: normal;
+    font-size: 0.68rem;
+    line-height: 1.25;
+    word-break: keep-all;
+  }
+  .jcc-retreat-rosterTable .jcc-retreat-attCol-expected .jcc-stamp-date,
+  .jcc-retreat-rosterTable .jcc-retreat-attCol-expected .jcc-stamp-time {
+    display: block;
+    white-space: nowrap;
+  }
+  .jcc-retreat-rosterTable .jcc-retreat-checkInBadge {
+    font-size: 0.66rem;
+    padding: 0.1rem 0.28rem;
+  }
+  .jcc-retreat-rosterTable .jcc-retreat-rowIconBtn {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+  .jcc-retreat-rosterTable .jcc-retreat-rowIconBtn svg {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
 }
 
 .jcc-retreat-attCol-num {
@@ -2253,7 +2730,7 @@ a.jcc-retreat-summaryCard--link:active {
   width: 1.15rem;
   height: 1.15rem;
 }
-/* 조 상세: '조원 추가' 버튼을 행사 드롭다운 줄 우측에 배치 (PC) */
+/* 조 상세: '조원 추가' 버튼을 집회 드롭다운 줄 우측에 배치 (PC) */
 .jcc-retreat-subTabsRow > .jcc-retreat-addMemberBtn {
   margin-left: auto;
 }
@@ -2872,6 +3349,19 @@ dialog.jcc-retreat-modal::backdrop {
   font-weight: 400;
   color: var(--muted);
 }
+.jcc-retreat-modalOverlay .jcc-retreat-modal--lodging {
+  max-width: 520px;
+  padding: 1.35rem 1.5rem 1.45rem;
+}
+.jcc-retreat-modal--lodging .jcc-retreat-modalTitle {
+  margin-bottom: 1rem;
+}
+.jcc-retreat-modal--lodging .jcc-retreat-modalGrid {
+  gap: 0.85rem 0.9rem;
+}
+.jcc-retreat-modal--lodging .jcc-retreat-modalFooter {
+  margin-top: 1.15rem;
+}
 .jcc-retreat-regionSection {
   margin: 0 0 1rem 0;
   padding: 0.9rem 1rem;
@@ -2915,19 +3405,44 @@ dialog.jcc-retreat-modal::backdrop {
   gap: 1rem;
 }
 .jcc-retreat-lodgingCard {
-  padding: 1rem 1.1rem;
+  padding: 1.1rem 1.2rem 1rem;
+  border-radius: 14px;
 }
 .jcc-retreat-lodgingHeader {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.75rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.jcc-retreat-lodgingHeaderMain {
+  min-width: 0;
 }
 .jcc-retreat-lodgingName {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.12rem;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  line-height: 1.35;
+}
+.jcc-retreat-lodgingRegionPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(148, 163, 184, 0.14);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.jcc-retreat-lodgingRegionPill--global {
+  color: var(--muted);
+  font-weight: 500;
 }
 .jcc-retreat-lodgingMeta {
   margin: 0.15rem 0 0 0;
@@ -2936,13 +3451,165 @@ dialog.jcc-retreat-modal::backdrop {
 }
 .jcc-retreat-lodgingActions {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.375rem;
   flex-shrink: 0;
 }
 .jcc-retreat-lodgingFooter {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 0.6rem;
+  margin-top: 0.75rem;
+}
+.jcc-retreat-lodgingAddRoom {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.7rem 1rem;
+  border: 1px dashed color-mix(in srgb, var(--border) 80%, var(--muted));
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.jcc-retreat-lodgingAddRoom svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+.jcc-retreat-lodgingAddRoom:hover {
+  border-color: var(--accent, #3182f6);
+  color: var(--accent, #3182f6);
+  background: color-mix(in srgb, var(--accent, #3182f6) 6%, transparent);
+}
+.jcc-retreat-roomTable--manage th,
+.jcc-retreat-roomTable--manage td {
+  vertical-align: middle;
+  padding: 0.45rem 0.4rem;
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+/* 숙소 카드 안 표: 가로 스크롤 없이 카드 너비에 맞춤 */
+.jcc-retreat-lodgingCard .jcc-retreat-tableWrap {
+  overflow-x: hidden;
+}
+.jcc-retreat-roomTable--manage th {
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+/* 컬럼 너비: 짧은 열은 동일 비율, 지역·부서·배정 조원이 나머지 */
+.jcc-retreat-roomTable--manage th:nth-child(1),
+.jcc-retreat-roomTable--manage td:nth-child(1),
+.jcc-retreat-roomTable--manage th:nth-child(3),
+.jcc-retreat-roomTable--manage td:nth-child(3),
+.jcc-retreat-roomTable--manage th:nth-child(4),
+.jcc-retreat-roomTable--manage td:nth-child(4),
+.jcc-retreat-roomTable--manage th:nth-child(5),
+.jcc-retreat-roomTable--manage td:nth-child(5) {
+  width: 10%;
+  text-align: center;
+  white-space: nowrap;
+}
+.jcc-retreat-roomTable--manage th:nth-child(2),
+.jcc-retreat-roomTable--manage td:nth-child(2) {
+  width: 22%;
+  text-align: center;
+}
+.jcc-retreat-roomTable--manage [data-room-number] {
+  font-weight: 700;
+}
+.jcc-retreat-roomRow--clickable {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.jcc-retreat-roomRow--clickable:hover {
+  background: color-mix(in srgb, var(--accent, #3182f6) 6%, transparent);
+}
+.jcc-retreat-roomRow--clickable:hover td.jcc-retreat-attCol-actions {
+  background: color-mix(in srgb, var(--accent, #3182f6) 6%, var(--card));
+}
+.jcc-retreat-roomRow--clickable:focus-visible {
+  outline: 2px solid var(--accent, #3182f6);
+  outline-offset: -2px;
+}
+.jcc-retreat-roomRow--clickable .jcc-retreat-rowIconBtn {
+  cursor: pointer;
+}
+.jcc-retreat-roomCount--active {
+  color: var(--accent, #3182f6);
+  font-weight: 700;
+}
+.jcc-retreat-roomAssigneeAvatars {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.65rem;
+}
+.jcc-retreat-roomAssigneeAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 50%;
+  margin-left: -0.35rem;
+  border: 2px solid var(--card);
+  background: color-mix(in srgb, var(--accent, #3182f6) 16%, var(--card));
+  color: var(--text);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.jcc-retreat-roomAssigneeAvatars > *:first-child {
+  margin-left: 0;
+}
+.jcc-retreat-roomAssigneeMore {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.65rem;
+  height: 1.65rem;
+  margin-left: -0.35rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  border: 2px solid var(--card);
+  background: rgba(148, 163, 184, 0.22);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.jcc-retreat-roomIconActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+}
+.jcc-retreat-rowIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.jcc-retreat-rowIconBtn svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+.jcc-retreat-rowIconBtn:hover {
+  color: var(--accent, #3182f6);
+  background: color-mix(in srgb, var(--accent, #3182f6) 10%, transparent);
+}
+.jcc-retreat-rowIconBtn--danger:hover {
+  color: #f04452;
+  background: color-mix(in srgb, #f04452 12%, transparent);
 }
 .jcc-retreat-roomTable th,
 .jcc-retreat-roomTable td {
@@ -2989,6 +3656,12 @@ dialog.jcc-retreat-modal::backdrop {
   border: 1px solid rgba(96, 165, 250, 0.35);
   white-space: nowrap;
 }
+.jcc-retreat-roomScope--unassigned {
+  color: var(--muted);
+  font-weight: 500;
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.35);
+}
 .jcc-retreat-divisionBlock {
   margin-top: 1rem;
   padding-top: 0.5rem;
@@ -3010,11 +3683,64 @@ dialog.jcc-retreat-modal::backdrop {
   font-size: 0.82rem;
   margin-left: 0.35rem;
 }
-/* 매핑 변경 컬럼: 지역·부서·적용을 한 행으로 넓게 배치 */
-.jcc-retreat-roomTable th.jcc-retreat-attCol-actions,
-.jcc-retreat-roomTable td.jcc-retreat-attCol-actions {
+/* 매핑 변경 컬럼(방배정): 지역·부서·적용을 한 행으로 넓게 배치 */
+.jcc-retreat-roomTable:not(.jcc-retreat-roomTable--manage) th.jcc-retreat-attCol-actions,
+.jcc-retreat-roomTable:not(.jcc-retreat-roomTable--manage) td.jcc-retreat-attCol-actions {
   width: 24rem;
   white-space: normal;
+}
+/* 숙소·호수 관리 표: 배정된 조원이 나머지 너비, 관리 컬럼은 오른쪽에 좁게 */
+.jcc-retreat-roomTable--manage {
+  table-layout: fixed;
+  width: 100%;
+}
+.jcc-retreat-roomTable--manage th.jcc-retreat-attCol-assignees,
+.jcc-retreat-roomTable--manage td.jcc-retreat-attCol-assignees {
+  width: 28%;
+  overflow: hidden;
+  text-align: center;
+}
+.jcc-retreat-roomTable--manage th.jcc-retreat-attCol-actions,
+.jcc-retreat-roomTable--manage td.jcc-retreat-attCol-actions {
+  width: 10%;
+  min-width: 2.5rem;
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+  white-space: nowrap;
+  text-align: center;
+}
+.jcc-retreat-roomTable--manage thead th.jcc-retreat-attCol-actions {
+  z-index: auto;
+}
+/* --manage 표: 공통 roomTable 규칙보다 뒤에 두어 밀도·줄바꿈 우선 */
+.jcc-retreat-roomTable--manage th,
+.jcc-retreat-roomTable--manage td {
+  font-size: 0.82rem;
+}
+.jcc-retreat-roomTable--manage th {
+  font-size: 0.75rem;
+}
+.jcc-retreat-roomTable--manage .jcc-retreat-roomGenderPill {
+  font-size: 0.65rem;
+  padding: 0.08rem 0.35rem;
+  vertical-align: middle;
+}
+.jcc-retreat-roomTable--manage [data-room-scope] {
+  text-align: center;
+}
+.jcc-retreat-roomTable--manage [data-room-scope] .jcc-retreat-roomScope {
+  white-space: normal;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  padding: 0.05rem 0.35rem;
+}
+.jcc-retreat-roomTable--manage [data-room-scope] .jcc-retreat-roomScope--unassigned {
+  white-space: nowrap;
+}
+.jcc-retreat-roomTable--manage td[data-room-number],
+.jcc-retreat-roomTable--manage td[data-room-capacity],
+.jcc-retreat-roomTable--manage .jcc-retreat-roomCount {
+  line-height: 1.5rem;
 }
 .jcc-retreat-roomScopeEdit {
   display: flex;
@@ -3037,35 +3763,72 @@ dialog.jcc-retreat-modal::backdrop {
   font-size: 0.72rem;
 }
 
-/* 숙소·호실 관리 표(lodging.html): 모바일은 핵심 컬럼만, 한 행으로 정렬하고
-   수정·삭제 버튼은 PC처럼 작은 인라인 버튼으로. (방배정 표에는 영향 없음) */
+/* 숙소·호실 관리 표(lodging.html): 모바일은 핵심 컬럼만, 줄바꿈·간격 조정으로 가로 스크롤 없음 */
 @media (max-width: 640px) {
+  .jcc-retreat-lodgingCard {
+    padding-left: 0.65rem;
+    padding-right: 0.65rem;
+  }
   .jcc-retreat-roomTable--manage th,
   .jcc-retreat-roomTable--manage td {
-    white-space: nowrap;
-    padding: 0.5rem 0.4rem;
-    font-size: 0.82rem;
+    padding: 0.4rem 0.3rem;
+    font-size: 0.78rem;
   }
-  /* 정원(3번째)·배정된 조원(6번째) 숨김 → 호수·지역부서·성별·현재인원·수정·삭제만 */
-  .jcc-retreat-roomTable--manage th:nth-child(3),
-  .jcc-retreat-roomTable--manage td:nth-child(3),
+  .jcc-retreat-roomTable--manage th {
+    font-size: 0.68rem;
+    white-space: normal;
+  }
+  /* 배정된 조원(6번째)만 숨김 → 호수·지역부서·정원·성별·현재인원·삭제 */
   .jcc-retreat-roomTable--manage th:nth-child(6),
   .jcc-retreat-roomTable--manage td:nth-child(6) {
     display: none;
   }
-  .jcc-retreat-roomTable--manage th.jcc-retreat-attCol-actions,
-  .jcc-retreat-roomTable--manage td.jcc-retreat-attCol-actions {
-    width: auto;
-    text-align: right;
+  /* 모바일: 짧은 열 4개 동일 너비 + 지역·부서·관리 */
+  .jcc-retreat-roomTable--manage th:nth-child(1),
+  .jcc-retreat-roomTable--manage td:nth-child(1),
+  .jcc-retreat-roomTable--manage th:nth-child(3),
+  .jcc-retreat-roomTable--manage td:nth-child(3),
+  .jcc-retreat-roomTable--manage th:nth-child(4),
+  .jcc-retreat-roomTable--manage td:nth-child(4),
+  .jcc-retreat-roomTable--manage th:nth-child(5),
+  .jcc-retreat-roomTable--manage td:nth-child(5) {
+    width: 14%;
+    text-align: center;
     white-space: nowrap;
   }
-  .jcc-retreat-roomTable--manage .jcc-retreat-attCol-actions .jcc-retreat-rowEdit,
-  .jcc-retreat-roomTable--manage .jcc-retreat-attCol-actions .jcc-retreat-rowDel {
-    display: inline-block;
-    width: auto;
-    margin: 0 0 0 0.25rem;
-    padding: 0.25rem 0.45rem;
-    font-size: 0.72rem;
+  .jcc-retreat-roomTable--manage th:nth-child(2),
+  .jcc-retreat-roomTable--manage td:nth-child(2) {
+    width: 26%;
+    text-align: center;
+  }
+  .jcc-retreat-roomTable--manage [data-room-scope] .jcc-retreat-roomScope {
+    font-size: 0.62rem;
+    padding: 0.04rem 0.28rem;
+  }
+  .jcc-retreat-roomTable--manage [data-room-scope] .jcc-retreat-roomScope--unassigned {
+    white-space: nowrap;
+  }
+  .jcc-retreat-roomTable--manage .jcc-retreat-roomGenderPill {
+    font-size: 0.6rem;
+    padding: 0.06rem 0.28rem;
+  }
+  .jcc-retreat-roomTable--manage th.jcc-retreat-attCol-actions,
+  .jcc-retreat-roomTable--manage td.jcc-retreat-attCol-actions {
+    width: 14%;
+    min-width: 2.25rem;
+    padding-left: 0.3rem;
+    padding-right: 0.3rem;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .jcc-retreat-roomTable--manage .jcc-retreat-attCol-actions .jcc-retreat-rowIconBtn {
+    display: inline-flex;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin: 0;
+  }
+  .jcc-retreat-roomTable--manage .jcc-retreat-roomIconActions {
+    gap: 0.1rem;
   }
 }
 
@@ -3471,10 +4234,65 @@ dialog.jcc-retreat-modal::backdrop {
   flex-wrap: wrap;
   gap: 0.35rem;
 }
+@media (max-width: 900px) {
+  .jcc-retreat-modal--attendeeEdit {
+    width: 100%;
+    max-width: none;
+    max-height: min(calc(100dvh - 1.5rem), calc(100vh - 1.5rem));
+    margin: 0;
+    border-radius: 18px;
+  }
+  .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalTitle {
+    padding: 1rem 1rem 0;
+    font-size: 1.05rem;
+    margin-bottom: 0.65rem;
+  }
+  .jcc-retreat-modal--attendeeEdit > form {
+    min-height: 0;
+  }
+  .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalBody {
+    padding: 0 1rem 0.85rem;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalGrid {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+  .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalGrid .field {
+    min-width: 0;
+  }
+  .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalGrid .field label {
+    font-size: 0.78rem;
+  }
+  .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalGrid .field input,
+  .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalGrid .field select,
+  .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalGrid .field .jcc-dtp-field,
+  .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalGrid .field .jcc-cselect-btn {
+    font-size: 1rem;
+    padding: 0.55rem 0.7rem;
+  }
+  .jcc-retreat-modal--attendeeEdit .jcc-retreat-userPickerInput {
+    font-size: 1rem;
+  }
+  .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalFooter {
+    padding: 0.75rem 1rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    gap: 0.5rem;
+  }
+  .jcc-retreat-modal--attendeeEdit .jcc-retreat-modalFooter button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.92rem;
+  }
+}
 @media (max-width: 640px) {
   .jcc-retreat-modal--attendeeEdit {
-    width: min(96vw, 100%);
-    margin: 0.5rem;
+    max-height: min(calc(100dvh - 4.5rem), calc(100vh - 4.5rem));
+    border-radius: 16px;
   }
 }
 /* 본문만 스크롤하고 푸터(취소·저장)는 분리해 항상 바닥에 고정.
@@ -4612,9 +5430,9 @@ body.has-retreat-bottom-tabs .toolbar {
 }
 
 /* 버튼 → Toss 톤: 둥근 라운드, 살짝 넉넉한 패딩
-   (커스텀 달력 [jcc-dtp*]·탭·행사선택 등 자체 스타일 버튼은 제외) */
+   (커스텀 달력 [jcc-dtp*]·탭·집회선택 등 자체 스타일 버튼은 제외) */
 body.has-retreat-bottom-tabs
-  button:not([class*="jcc-dtp"]):not([class*="jcc-tp-"]):not(.jcc-page-tab):not(.jcc-retreat-eventPickerBtn):not(.jcc-pickup-locBtn):not(.jcc-leftNav-close):not(.jcc-theme-toggle):not(.jcc-mobile-menu-btn):not(.jcc-cselect-btn):not(.jcc-retreat-filterChip):not(.jcc-retreat-groupCardEdit):not(.jcc-retreat-filterReset):not(.jcc-retreat-pickupNameBtn):not(.jcc-retreat-addGroupBtn):not(.jcc-retreat-pickupAddBtn):not(.jcc-retreat-ttAddBtn):not(.jcc-retreat-dateField):not(.jcc-retreat-pickupDelete):not(.jcc-retreat-groupEditIcon),
+  button:not([class*="jcc-dtp"]):not([class*="jcc-tp-"]):not(.jcc-page-tab):not(.jcc-retreat-eventPickerBtn):not(.jcc-pickup-locBtn):not(.jcc-leftNav-close):not(.jcc-theme-toggle):not(.jcc-mobile-menu-btn):not(.jcc-cselect-btn):not(.jcc-retreat-filterChip):not(.jcc-retreat-groupCardEdit):not(.jcc-retreat-filterReset):not(.jcc-retreat-pickupNameBtn):not(.jcc-retreat-addGroupBtn):not(.jcc-retreat-pickupAddBtn):not(.jcc-retreat-ttAddBtn):not(.jcc-retreat-dateField):not(.jcc-retreat-pickupDelete):not(.jcc-retreat-groupEditIcon):not(.jcc-retreat-rowIconBtn):not(.jcc-retreat-lodgingAddRoom),
 body.has-retreat-bottom-tabs .btn {
   border-radius: 11px;
   padding: 0.58rem 1.05rem;
@@ -4763,24 +5581,50 @@ body.has-retreat-bottom-tabs main {
 }
 
 /* 조원 추가·수정 모달: Toss 팝업 톤 (화면 중앙 + 둥근 카드 + 입력 통일) */
-#retreatModalOverlay {
+#retreatModalOverlay,
+#rosterEditOverlay {
   align-items: center;
   padding: 1rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
-#retreatModalOverlay .jcc-retreat-modal--attendeeEdit {
+#retreatModalOverlay .jcc-retreat-modal--attendeeEdit,
+#rosterEditOverlay .jcc-retreat-modal--attendeeEdit {
   border-radius: 22px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 #retreatModalOverlay .jcc-retreat-modalGrid .field input,
 #retreatModalOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field,
-#retreatModalOverlay .jcc-retreat-modal--attendeeEdit textarea {
+#retreatModalOverlay .jcc-retreat-modal--attendeeEdit textarea,
+#rosterEditOverlay .jcc-retreat-modalGrid .field input,
+#rosterEditOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field,
+#rosterEditOverlay .jcc-retreat-modalGrid .field .jcc-cselect-btn {
   border-radius: 12px;
   padding: 0.62rem 0.8rem;
 }
-#retreatModalOverlay .jcc-retreat-modalFooter button {
+#retreatModalOverlay .jcc-retreat-modalFooter button,
+#rosterEditOverlay .jcc-retreat-modalFooter button {
   border-radius: 12px;
   padding: 0.7rem 1.3rem;
   font-weight: 700;
+}
+@media (max-width: 900px) {
+  #retreatModalOverlay,
+  #rosterEditOverlay {
+    padding: 0.65rem;
+    padding-bottom: max(0.65rem, env(safe-area-inset-bottom));
+  }
+  #retreatModalOverlay .jcc-retreat-modalGrid .field input,
+  #retreatModalOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field,
+  #retreatModalOverlay .jcc-retreat-modal--attendeeEdit textarea,
+  #rosterEditOverlay .jcc-retreat-modalGrid .field input,
+  #rosterEditOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field,
+  #rosterEditOverlay .jcc-retreat-modalGrid .field .jcc-cselect-btn {
+    border-radius: 10px;
+  }
+  #retreatModalOverlay .jcc-retreat-modalFooter button,
+  #rosterEditOverlay .jcc-retreat-modalFooter button {
+    padding: 0.65rem 0.85rem;
+  }
 }
 
 /* 조 추가 모달: Toss 팝업 톤 (화면 중앙 + 둥근 카드 + 입력 통일) */
@@ -4901,4 +5745,100 @@ body.has-retreat-bottom-tabs main {
   font-size: 1rem;
   font-weight: 700;
   border-radius: 12px;
+}
+
+/* ── 조장·부조장 사용 가이드 (/retreat/guide/) ── */
+body.jcc-retreat-guidePage header.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+@media (max-width: 900px) {
+  /* 햄버거·전역 하단 탭 숨김 — 왼쪽 가장자리 스와이프로 사이드 메뉴 */
+  body.jcc-retreat-guidePage .jcc-mobile-menu-btn,
+  body.jcc-retreat-guidePage #jccBottomTabs {
+    display: none !important;
+  }
+}
+.jcc-retreat-guideLink {
+  flex-shrink: 0;
+  align-self: center;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--accent, #1d64d8);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.jcc-retreat-guideLink:hover {
+  text-decoration: underline;
+}
+.jcc-retreat-subTabsRow .jcc-retreat-guideLink {
+  margin-left: auto;
+  margin-right: 0.5rem;
+}
+.jcc-retreat-listTop--withPicker .jcc-retreat-guideLink {
+  margin-left: 0.25rem;
+}
+.jcc-retreat-guideArticle {
+  max-width: 920px;
+}
+.jcc-retreat-guideMain {
+  padding-top: 0.25rem;
+}
+.jcc-retreat-guideLead {
+  max-width: 920px;
+  margin: 0 0 1rem;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.jcc-retreat-guideTabsRow {
+  border-top: none;
+}
+.jcc-retreat-guideTabsRow .jcc-page-tabs {
+  flex-wrap: wrap;
+}
+.jcc-retreat-guideSection {
+  scroll-margin-top: 7.5rem;
+}
+.jcc-retreat-guideBody h2 {
+  margin: 2rem 0 0.75rem;
+  font-size: 1.15rem;
+}
+.jcc-retreat-guideBody h2:first-child {
+  margin-top: 0;
+}
+.jcc-retreat-guideBody p,
+.jcc-retreat-guideBody li {
+  line-height: 1.65;
+  color: var(--text);
+}
+.jcc-retreat-guideBody ol,
+.jcc-retreat-guideBody ul {
+  margin: 0.5rem 0 1rem;
+  padding-left: 1.25rem;
+}
+.jcc-retreat-guideBody hr {
+  margin: 2rem 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+.jcc-retreat-guideFigure {
+  margin: 1rem 0 1.5rem;
+  text-align: center;
+}
+.jcc-retreat-guideImg {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+.jcc-retreat-guideCaption {
+  margin-top: 0.45rem;
+  font-size: 0.82rem;
+  color: var(--muted);
 }

@@ -77,7 +77,7 @@
         body.closed_at = new Date(closedAtValue).toISOString();
       }
 
-      // 선택한 행사 기준으로 API URL을 동적 구성. fallback은 현재 행사.
+      // 선택한 집회 기준으로 API URL을 동적 구성. fallback은 현재 집회.
       let url = ctx.apiSessions;
       if (eventSel && eventSel.value && ctx.apiSessionsTemplate) {
         url = ctx.apiSessionsTemplate.replace("__id__", eventSel.value);

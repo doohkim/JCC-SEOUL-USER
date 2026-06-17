@@ -6,16 +6,20 @@
 
 from __future__ import annotations
 
-from django.db.models import Q, QuerySet
+from collections import defaultdict
+from typing import Iterable
+
+from django.db.models import Count, Q, QuerySet
 from rest_framework.exceptions import ValidationError
 
 from retreat.models import LodgingRoom, RetreatAttendee, RetreatEvent, RetreatGroup
+from users.models import Division, Region
 
 
 def assert_room_can_accept(room: LodgingRoom, attendee: RetreatAttendee) -> None:
     """호실이 해당 조원을 받을 수 있는지 검증한다.
 
-    - 행사 일치 (room.lodging.event_id == attendee.group.event_id)
+    - 집회 일치 (room.lodging.event_id == attendee.group.event_id)
     - 지역·부서 일치 — room.region 과 attendee.group.region 이 같고,
       room.division 과 attendee.group.division 도 같아야 함.
       둘 중 하나라도 비어있는 호실은 어떤 조에도 배정 불가.
@@ -26,7 +30,7 @@ def assert_room_can_accept(room: LodgingRoom, attendee: RetreatAttendee) -> None
 
     if room.lodging.event_id != attendee.group.event_id:
         raise ValidationError(
-            {"lodging_room": "이 호실은 조원이 속한 행사의 숙소가 아닙니다."}
+            {"lodging_room": "이 호실은 조원이 속한 집회의 숙소가 아닙니다."}
         )
 
     if room.region_id is None or room.division_id is None:
@@ -95,12 +99,57 @@ def rooms_for_group(group: RetreatGroup) -> QuerySet[LodgingRoom]:
     )
 
 
+def rooms_for_group_with_counts(group: RetreatGroup) -> QuerySet[LodgingRoom]:
+    """배정 드롭다운용 — 조 범위 호실 + 현재 배정 인원 수."""
+    return rooms_for_group(group).annotate(
+        assigned_count=Count("attendees", distinct=True),
+    )
+
+
+def room_assignment_option(room: LodgingRoom) -> dict:
+    """조원 수정 모달 숙소 옵션 JSON."""
+    assigned = getattr(room, "assigned_count", None)
+    if assigned is None:
+        assigned = room.attendees.count()
+    return {
+        "id": room.id,
+        "label": f"{room.lodging.name} {room.number}",
+        "capacity": int(room.capacity or 0),
+        "assigned_count": assigned,
+        "recommended_gender": room.recommended_gender or "",
+    }
+
+
+def room_visible_in_assignment_picker(
+    room: LodgingRoom,
+    *,
+    gender: str,
+    current_room_id: int | None = None,
+) -> bool:
+    """배정 드롭다운 노출 여부 — 만실·성별 불일치 호실 제외 (현재 배정 호실은 유지)."""
+    rg = room.recommended_gender or ""
+    if rg in (LodgingRoom.Gender.MALE, LodgingRoom.Gender.FEMALE):
+        if gender != rg:
+            return False
+
+    capacity = int(room.capacity or 0)
+    if capacity == 0:
+        return True
+    if current_room_id is not None and room.id == current_room_id:
+        return True
+
+    assigned = getattr(room, "assigned_count", None)
+    if assigned is None:
+        assigned = room.attendees.count()
+    return assigned < capacity
+
+
 def rooms_for_event_region_division(
     event: RetreatEvent,
     region_id: int | None,
     division_id: int | None,
 ) -> QuerySet[LodgingRoom]:
-    """행사 + 조의 region/division 에 매칭되는 호실 queryset.
+    """집회 + 조의 region/division 에 매칭되는 호실 queryset.
 
     region 또는 division 이 비어 있으면 빈 queryset 을 돌려준다 (미배정 호실은
     어떤 조에도 노출되지 않으며, region/division 이 없는 조는 호실을 받을 수 없다).
@@ -118,10 +167,9 @@ def rooms_for_event_region_division(
 def rooms_for_event_and_region(
     event: RetreatEvent, region_id: int | None
 ) -> QuerySet[LodgingRoom]:
-    """방배정 페이지에서 region 별 호실을 그룹화하기 위한 헬퍼.
+    """집회·지역에 속한 호실 queryset (division 무관).
 
-    region 이 일치하는 호실(division 무관)을 모두 반환한다. 미배정 호실
-    (region IS NULL) 은 region 컬럼이 None 인 호출에서만 보인다.
+    region 이 None 이면 region 이 비어 있는 미배정 호실만 반환한다.
     """
 
     if region_id is None:
@@ -131,3 +179,75 @@ def rooms_for_event_and_region(
     return _base_rooms_qs(event).filter(region_id=region_id).order_by(
         "lodging__sort_order", "lodging__name", "sort_order", "number", "id"
     )
+
+
+def room_has_vacancy(room: LodgingRoom) -> bool:
+    """잔여 객실 여부 — 정원 0(무제한)이거나 활성 배정 인원이 정원 미만."""
+    assigned = getattr(room, "assigned_count", None)
+    if assigned is None:
+        assigned = room.attendees.exclude(
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT
+        ).count()
+    return room.capacity == 0 or assigned < room.capacity
+
+
+def build_lodging_region_tree(
+    *,
+    all_rooms: Iterable[LodgingRoom],
+    visible_groups: Iterable[RetreatGroup],
+) -> tuple[list[dict], list[LodgingRoom]]:
+    """(region → divisions → rooms) 트리와 미배정 호실 목록을 만든다."""
+
+    rooms_by_key: dict[tuple[int, int], list[LodgingRoom]] = defaultdict(list)
+    unassigned_rooms: list[LodgingRoom] = []
+    for room in all_rooms:
+        if room.region_id is None or room.division_id is None:
+            unassigned_rooms.append(room)
+        else:
+            rooms_by_key[(room.region_id, room.division_id)].append(room)
+
+    group_combos = {
+        (g.region_id, g.division_id)
+        for g in visible_groups
+        if g.region_id is not None and g.division_id is not None
+    }
+    combo_keys = group_combos | set(rooms_by_key.keys())
+
+    region_ids = {rid for rid, _ in combo_keys}
+    division_ids = {did for _, did in combo_keys}
+    region_map = {r.id: r for r in Region.objects.filter(id__in=region_ids)}
+    division_map = {
+        d.id: d
+        for d in Division.objects.select_related("region").filter(id__in=division_ids)
+    }
+
+    region_buckets: dict[int, dict] = {}
+    for region_id, division_id in combo_keys:
+        region_obj = region_map.get(region_id)
+        division_obj = division_map.get(division_id)
+        if region_obj is None or division_obj is None:
+            continue
+        bucket = region_buckets.setdefault(
+            region_id,
+            {"region": region_obj, "divisions": []},
+        )
+        bucket["divisions"].append(
+            {
+                "division": division_obj,
+                "rooms": rooms_by_key.get((region_id, division_id), []),
+            }
+        )
+
+    for bucket in region_buckets.values():
+        bucket["divisions"].sort(
+            key=lambda d: (
+                d["division"].sort_order or 0,
+                d["division"].name,
+                d["division"].id,
+            )
+        )
+    regions = sorted(
+        region_buckets.values(),
+        key=lambda b: (b["region"].sort_order or 0, b["region"].name, b["region"].id),
+    )
+    return regions, unassigned_rooms

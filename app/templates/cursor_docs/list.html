@@ -1,0 +1,75 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page_heading }} · Cursor Docs</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617h" />
+    <link rel="stylesheet" href="{% static 'cursor_docs/cursor_docs.css' %}?v=20260617e" />
+  </head>
+  <body class="jcc-cursorDocs-page">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        {% include 'includes/jcc_page_header.html' with page_title='Cursor Docs' subtitle=page_heading tabs_template='cursor_docs/_subtabs.html' %}
+        <main class="jcc-notice-listMain jcc-cursorDocs-main">
+          <div class="jcc-cursorDocs-listIntro">
+            <h2 class="jcc-cursorDocs-listHeading">{{ page_heading }}</h2>
+            <p class="jcc-cursorDocs-listDesc">
+              {% if cursor_docs_tab == 'policy' %}
+                `.cursor/` 아래 Cursor AI 규칙·정책 파일입니다. 항목을 누르면 전문을 볼 수 있습니다.
+              {% else %}
+                프롬프트 복붙용 템플릿 문서입니다. Cursor에 지시할 때 참고하세요.
+              {% endif %}
+            </p>
+          </div>
+
+          {% if docs %}
+            <div class="jcc-cursorDocs-list">
+              {% for doc in docs %}
+                <article class="jcc-cursorDocs-card jcc-cursorDocs-card--text">
+                  <a
+                    class="jcc-cursorDocs-cardLink"
+                    href="{% if cursor_docs_tab == 'policy' %}{% url 'cursor_docs_policy_detail' doc.slug %}{% else %}{% url 'cursor_docs_template_detail' doc.slug %}{% endif %}"
+                  >
+                    <div class="jcc-cursorDocs-cardBody">
+                      <div class="jcc-cursorDocs-cardMeta">
+                        <span class="jcc-cursorDocs-cardCat">{{ doc.badge }}</span>
+                        {% if doc.modified_at %}
+                          <span class="jcc-cursorDocs-cardDate">{{ doc.modified_at|date:"Y.m.d" }}</span>
+                        {% endif %}
+                      </div>
+                      <h3 class="jcc-cursorDocs-cardTitle">{{ doc.title }}</h3>
+                      <p class="jcc-cursorDocs-cardPath">{{ doc.relative_path }}</p>
+                      {% if doc.excerpt %}
+                        <p class="jcc-cursorDocs-cardExcerpt">{{ doc.excerpt }}</p>
+                      {% endif %}
+                    </div>
+                  </a>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="jcc-cursorDocs-empty card">
+              <p>표시할 문서가 없습니다.</p>
+            </div>
+          {% endif %}
+
+          {% if is_paginated %}
+            <nav class="jcc-cursorDocs-pagination" aria-label="페이지">
+              {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}">이전</a>
+              {% endif %}
+              <span>{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+              {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">다음</a>
+              {% endif %}
+            </nav>
+          {% endif %}
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

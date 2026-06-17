@@ -1,13 +1,11 @@
 /**
  * 숙소 관리 페이지 — 숙소/호실 CRUD 모달
- * 새로고침은 단순히 location.reload() 로 처리한다 (목록 일관성 우선).
  */
 (function () {
   "use strict";
 
   const ctx = window.RETREAT_LODGING_CTX;
   if (!ctx) return;
-  if (!ctx.canManage) return;
 
   const toastEl = document.getElementById("retreatToast");
   const statusLineEl = document.getElementById("retreatStatus");
@@ -122,8 +120,11 @@
     if (roomTitle) roomTitle.textContent = mode === "edit" ? "호실 수정" : "호실 추가";
     if (roomSubmit) roomSubmit.textContent = mode === "edit" ? "수정" : "저장";
     if (roomNumberInput) roomNumberInput.value = payload?.number || "";
-    if (roomCapacityInput)
-      roomCapacityInput.value = payload?.capacity != null ? payload.capacity : 0;
+    if (roomCapacityInput) {
+      const capDefault = mode === "create" ? 1 : 0;
+      roomCapacityInput.value =
+        payload?.capacity != null ? payload.capacity : capDefault;
+    }
     if (roomRegionInput)
       roomRegionInput.value = payload?.region != null ? String(payload.region) : "";
     refreshDivisionOptions(payload?.division != null ? payload.division : null);
@@ -169,29 +170,63 @@
     return r.json();
   }
 
+  function bindOverlayDismiss(overlay, closeFn) {
+    if (!overlay) return;
+    let downOnOverlay = false;
+    overlay.addEventListener("pointerdown", (e) => {
+      downOnOverlay = e.target === overlay;
+    });
+    overlay.addEventListener("click", (e) => {
+      if (downOnOverlay && e.target === overlay) closeFn();
+      downOnOverlay = false;
+    });
+  }
+
   function bindLodgingModal() {
     const addBtn = document.getElementById("btnAddLodging");
     if (addBtn) addBtn.addEventListener("click", () => openLodgingModal("create"));
     if (lodgingCancel) lodgingCancel.addEventListener("click", closeLodgingModal);
-    if (lodgingOverlay) {
-      lodgingOverlay.addEventListener("click", (e) => {
-        if (e.target === lodgingOverlay) closeLodgingModal();
-      });
-    }
+    bindOverlayDismiss(lodgingOverlay, closeLodgingModal);
     if (lodgingForm) lodgingForm.addEventListener("submit", onLodgingSubmit);
   }
 
   function bindRoomModal() {
     if (roomCancel) roomCancel.addEventListener("click", closeRoomModal);
-    if (roomOverlay) {
-      roomOverlay.addEventListener("click", (e) => {
-        if (e.target === roomOverlay) closeRoomModal();
-      });
-    }
+    bindOverlayDismiss(roomOverlay, closeRoomModal);
     if (roomRegionInput) {
       roomRegionInput.addEventListener("change", () => refreshDivisionOptions());
     }
     if (roomForm) roomForm.addEventListener("submit", onRoomSubmit);
+  }
+
+  function getRoomPayloadFromRow(tr) {
+    const number =
+      tr.dataset.roomNumber ||
+      tr.querySelector("[data-room-number]")?.textContent?.trim() ||
+      "";
+    const capTxt = tr.querySelector("[data-room-capacity]")?.textContent?.trim() || "0";
+    const cap = capTxt === "무제한" ? 0 : Number(capTxt);
+    const genderText =
+      tr.querySelector("[data-room-gender]")?.textContent?.trim() || "";
+    const genderCode =
+      {
+        남성: "male",
+        여성: "female",
+      }[genderText] || "";
+    const roomRegionId = tr.dataset.roomRegionId
+      ? Number(tr.dataset.roomRegionId)
+      : null;
+    const roomDivisionId = tr.dataset.roomDivisionId
+      ? Number(tr.dataset.roomDivisionId)
+      : null;
+    return {
+      id: Number(tr.dataset.roomId),
+      number,
+      capacity: cap,
+      recommended_gender: genderCode,
+      region: roomRegionId,
+      division: roomDivisionId,
+    };
   }
 
   function bindLodgingActions() {
@@ -206,7 +241,7 @@
       const memo = card.querySelector("[data-lodging-memo]")?.textContent?.trim() || "";
 
       const regionEl = card.querySelector("[data-lodging-region-id]");
-      const regionId = regionEl?.dataset?.lodgingRegionId || "";
+      const regionId = (regionEl?.dataset?.lodgingRegionId || "").trim();
       if (editLodging) {
         editLodging.addEventListener("click", () =>
           openLodgingModal("edit", {
@@ -224,44 +259,36 @@
       if (addRoom) {
         addRoom.addEventListener("click", () => openRoomModal("create", lid));
       }
-
-      card.querySelectorAll("tr[data-room-id]").forEach((tr) => {
-        const rid = Number(tr.dataset.roomId);
-        const editBtn = tr.querySelector("[data-edit-room]");
-        const delBtn = tr.querySelector("[data-del-room]");
-        const number = tr.querySelector("[data-room-number]")?.textContent?.trim() || "";
-        const capTxt = tr.querySelector("[data-room-capacity]")?.textContent?.trim() || "0";
-        const cap = capTxt === "무제한" ? 0 : Number(capTxt);
-        const genderText =
-          tr.querySelector("[data-room-gender]")?.textContent?.trim() || "";
-        const genderCode =
-          {
-            남성: "male",
-            여성: "female",
-          }[genderText] || "";
-        const roomRegionId = tr.dataset.roomRegionId
-          ? Number(tr.dataset.roomRegionId)
-          : null;
-        const roomDivisionId = tr.dataset.roomDivisionId
-          ? Number(tr.dataset.roomDivisionId)
-          : null;
-        if (editBtn) {
-          editBtn.addEventListener("click", () =>
-            openRoomModal("edit", lid, {
-              id: rid,
-              number,
-              capacity: cap,
-              recommended_gender: genderCode,
-              region: roomRegionId,
-              division: roomDivisionId,
-            })
-          );
-        }
-        if (delBtn) {
-          delBtn.addEventListener("click", () => confirmDeleteRoom(rid));
-        }
-      });
     });
+    bindRoomRowClicks();
+  }
+
+  function bindRoomRowClicks() {
+    if (!ctx.canManage) return;
+    document
+      .querySelectorAll("tr.jcc-retreat-roomRow--clickable[data-room-id]")
+      .forEach((tr) => {
+        const lid = Number(tr.dataset.lodgingId);
+        const rid = Number(tr.dataset.roomId);
+        const delBtn = tr.querySelector("[data-del-room]");
+        if (delBtn) {
+          delBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            confirmDeleteRoom(rid);
+          });
+        }
+        const openEdit = () => {
+          const sel = window.getSelection?.();
+          if (sel && sel.toString().trim()) return;
+          openRoomModal("edit", lid, getRoomPayloadFromRow(tr));
+        };
+        tr.addEventListener("click", openEdit);
+        tr.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          openEdit();
+        });
+      });
   }
 
   async function onLodgingSubmit(e) {
@@ -376,6 +403,7 @@
   }
 
   function init() {
+    if (!ctx.canManage) return;
     bindLodgingModal();
     bindRoomModal();
     bindLodgingActions();

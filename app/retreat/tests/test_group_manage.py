@@ -33,7 +33,7 @@ class _GroupManageFixture(TestCase):
             region=cls.seoul, code="gm_youth", name="청년부"
         )
         cls.event = RetreatEvent.objects.create(
-            name="조관리 행사",
+            name="조관리 집회",
             start_date=date(2026, 7, 1),
             end_date=date(2026, 7, 3),
         )
@@ -421,7 +421,20 @@ class AttendeeEditPermissionTests(_GroupManageFixture):
         self.assertEqual(r.status_code, 200, r.content)
         self.attendee.refresh_from_db()
         self.assertEqual(self.attendee.name, "이름변경")
+        self.assertEqual(self.attendee.phone, "010-9999-8888")
         self.assertEqual(self.attendee.memo, "조장메모")
+
+    def test_phone_digits_only_normalized_on_save(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.patch(
+            self.url,
+            {"phone": "01044442222"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.phone, "010-4444-2222")
+        self.assertEqual(r.data["phone"], "010-4444-2222")
 
     def test_leader_cannot_patch_check_in_status(self):
         self.client.force_authenticate(self.leader)
@@ -432,10 +445,13 @@ class AttendeeEditPermissionTests(_GroupManageFixture):
         )
         self.assertEqual(r.status_code, 403, r.content)
 
-    def test_leader_cannot_delete_attendee(self):
+    def test_leader_can_delete_attendee(self):
+        victim = RetreatAttendee.objects.create(group=self.group, name="삭제대상")
+        url = reverse("api_retreat_attendee_detail", args=[victim.id])
         self.client.force_authenticate(self.leader)
-        r = self.client.delete(self.url)
-        self.assertEqual(r.status_code, 403, r.content)
+        r = self.client.delete(url)
+        self.assertEqual(r.status_code, 204, r.content)
+        self.assertFalse(RetreatAttendee.objects.filter(pk=victim.id).exists())
 
     def test_pastor_cannot_patch_attendee(self):
         self.client.force_authenticate(self.pastor)
@@ -507,6 +523,55 @@ class AttendeeExpectedTimeValidationTests(_GroupManageFixture):
         )
         self.assertEqual(r.status_code, 400, r.content)
         self.assertIn("expected_check_out_at", r.json())
+
+    def test_auto_checked_out_cannot_patch_expected_timestamps(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        now = timezone.now()
+        self.attendee.check_in_status = RetreatAttendee.CheckInStatus.CHECKED_OUT
+        self.attendee.expected_check_in_at = now - timedelta(hours=2)
+        self.attendee.expected_check_out_at = now - timedelta(hours=1)
+        self.attendee.checked_out_at = now
+        self.attendee.save(
+            update_fields=[
+                "check_in_status",
+                "expected_check_in_at",
+                "expected_check_out_at",
+                "checked_out_at",
+            ]
+        )
+        r = self.client.patch(
+            self.url,
+            {"expected_check_in_at": "2026-07-01T10:00:00+09:00"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("expected_check_in_at", r.json())
+
+    def test_manual_early_checkout_can_still_patch_expected_timestamps(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        now = timezone.now()
+        self.attendee.check_in_status = RetreatAttendee.CheckInStatus.CHECKED_OUT
+        self.attendee.expected_check_out_at = now + timedelta(hours=2)
+        self.attendee.save(
+            update_fields=["check_in_status", "expected_check_out_at"]
+        )
+        r = self.client.patch(
+            self.url,
+            {
+                "expected_check_in_at": "2026-07-01T10:00:00+09:00",
+                "expected_check_out_at": "2026-07-01T18:00:00+09:00",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.attendee.refresh_from_db()
+        self.assertIsNotNone(self.attendee.expected_check_in_at)
 
 
 class AttendeeCheckInStatusEditTests(_GroupManageFixture):

@@ -49,7 +49,7 @@ class BulkUpsertTests(TestCase):
         )
         cls.session_other_event = RetreatSession.objects.create(
             event=RetreatEvent.objects.create(
-                name="다른 행사",
+                name="다른 집회",
                 start_date=date(2025, 1, 1),
                 end_date=date(2025, 1, 2),
             ),
@@ -200,7 +200,7 @@ class BulkUpsertTests(TestCase):
         self.assertEqual(RetreatAttendance.objects.count(), 0)
 
     def test_attendee_from_other_event_rejected_and_rolled_back(self):
-        # 다른 행사 세션에 우리 attendee 를 넣으면 400 (event 불일치).
+        # 다른 집회 세션에 우리 attendee 를 넣으면 400 (event 불일치).
         r = self.client.post(
             URL,
             {

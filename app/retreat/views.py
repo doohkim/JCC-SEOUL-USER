@@ -7,14 +7,14 @@ from datetime import date, timedelta
 from urllib.parse import urlparse
 
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
-from django.views.generic import FormView, TemplateView
+from django.views.generic import FormView, TemplateView, View
 
 from retreat.forms import RetreatApplyForm
 from retreat.models import (
@@ -33,6 +33,7 @@ from retreat.models import (
 )
 from retreat.services.changelog_format import humanize_change_logs
 from users.permissions import (
+    can_access_retreat_leader_guide,
     can_access_retreat_tab,
     can_change_retreat_check_in,
     can_manage_retreat_pickup,
@@ -88,10 +89,10 @@ class _RetreatAccessMixin(LoginRequiredMixin):
 
 
 def _retreat_dropdown_events(user) -> list[RetreatEvent]:
-    """수련회 상단 행사 드롭다운에 노출할 행사 목록.
+    """수련회 상단 집회 드롭다운에 노출할 집회 목록.
 
-    `home` 카드 노출 기준과 동일: 활성 행사 중 사용자가 staff/회장단/슈퍼유저이거나
-    소속 조가 보이는 행사만 포함한다.
+    `home` 카드 노출 기준과 동일: 활성 집회 중 사용자가 staff/회장단/슈퍼유저이거나
+    소속 조가 보이는 집회만 포함한다.
     """
     candidates = list(
         RetreatEvent.objects.filter(is_active=True).order_by("-created_at", "-id")
@@ -107,7 +108,7 @@ def _retreat_dropdown_events(user) -> list[RetreatEvent]:
 
 
 class _RetreatEventMixin(_RetreatAccessMixin):
-    """행사 컨텍스트 공통."""
+    """집회 컨텍스트 공통."""
 
     def get_event(self) -> RetreatEvent:
         return get_object_or_404(RetreatEvent, pk=self.kwargs["event_id"])
@@ -131,7 +132,7 @@ class _RetreatEventMixin(_RetreatAccessMixin):
 
 
 class RetreatHomeView(_RetreatAccessMixin, TemplateView):
-    """`/retreat/` — 접근 가능한 최신 생성 행사 대시보드로, 없으면 빈 홈."""
+    """`/retreat/` — 접근 가능한 최신 생성 집회 대시보드로, 없으면 빈 홈."""
 
     template_name = "retreat/home.html"
 
@@ -158,7 +159,7 @@ class RetreatHomeView(_RetreatAccessMixin, TemplateView):
             )
             groups = list(groups_qs)
             is_staff_or_council = can_view_retreat_all(user, ev)
-            # 조가 없어도 staff/회장단/슈퍼유저면 행사 카드 노출.
+            # 조가 없어도 staff/회장단/슈퍼유저면 집회 카드 노출.
             if not groups and not is_staff_or_council:
                 continue
             cards.append(
@@ -315,7 +316,7 @@ class RetreatTimetableView(_RetreatEventMixin, TemplateView):
             for day, items in groupby(entries, key=lambda e: e.day)
         ]
 
-        # 작성 폼 일자 옵션: 행사 시작~종료일.
+        # 작성 폼 일자 옵션: 집회 시작~종료일.
         days = []
         cursor = event.start_date
         while cursor <= event.end_date:
@@ -622,6 +623,34 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
         for g in groups:
             g.leader_names = ", ".join(leaders_map.get(g.id, []))
 
+        group_ids = [g.id for g in groups]
+        if group_ids:
+            status_counts = RetreatAttendee.objects.filter(
+                group_id__in=group_ids
+            ).aggregate(
+                count_total=Count("id"),
+                count_pending=Count(
+                    "id",
+                    filter=Q(check_in_status=RetreatAttendee.CheckInStatus.PENDING),
+                ),
+                count_checked_in=Count(
+                    "id",
+                    filter=Q(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN),
+                ),
+                count_checked_out=Count(
+                    "id",
+                    filter=Q(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT),
+                ),
+            )
+        else:
+            status_counts = {
+                "count_total": 0,
+                "count_pending": 0,
+                "count_checked_in": 0,
+                "count_checked_out": 0,
+            }
+        ctx.update(status_counts)
+
         ctx["groups"] = groups
         ctx["can_add_group"] = can_add_retreat_group(user, event)
         ctx["region_choices"] = list(Region.objects.order_by("sort_order", "name"))
@@ -718,10 +747,14 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
             output_field=IntegerField(),
         )
 
+        from retreat.services.check_in_stamps import is_expected_timestamps_locked
+
         attendees = list(
             group.attendees.select_related("lodging_room", "lodging_room__lodging", "user")
             .order_by(role_order, check_in_order, "sort_order", "name", "id")
         )
+        for attendee in attendees:
+            attendee.expected_timestamps_locked = is_expected_timestamps_locked(attendee)
         ctx["attendees"] = attendees
         ctx["count_total"] = len(attendees)
         ctx["count_pending"] = sum(
@@ -744,16 +777,19 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         ctx["can_delete_attendee"] = user_can_delete_attendee(user, group)
         ctx["back_url"] = reverse("retreat_group_manage_list", args=[event.id])
         ctx["back_label"] = "조 목록"
-        # 숙소 배정 드롭다운 옵션 — 조의 region+division 과 모두 일치하는 호실만.
-        from retreat.services.lodging import rooms_for_group
+        from retreat.services.lodging import room_assignment_option, rooms_for_group_with_counts
 
-        event_rooms = list(rooms_for_group(group))
+        event_rooms = [
+            room_assignment_option(room)
+            for room in rooms_for_group_with_counts(group)
+        ]
         ctx["event_rooms"] = event_rooms
+        ctx["event_rooms_json"] = json.dumps(event_rooms)
         return ctx
 
 
 class RetreatLodgingView(_RetreatEventMixin, TemplateView):
-    """행사별 숙소·호실 CRUD 페이지."""
+    """집회별 숙소·호실 CRUD 페이지."""
 
     template_name = "retreat/lodging.html"
 
@@ -763,22 +799,30 @@ class RetreatLodgingView(_RetreatEventMixin, TemplateView):
         event = ctx["event"]
 
         if not can_view_retreat_all(user, event):
-            raise PermissionDenied("이 행사의 숙소를 볼 권한이 없습니다.")
+            raise PermissionDenied("이 집회의 숙소를 볼 권한이 없습니다.")
 
-        from django.db.models import Prefetch
+        from django.db.models import Count, Prefetch, Q
+
+        from retreat.services.auto_check_in import apply_due_auto_transitions
+        from retreat.services.lodging import room_has_vacancy
+        from retreat.services.lodging_stats import build_lodging_page_summary
+
+        apply_due_auto_transitions(event_id=event.id)
 
         from users.models import Division, Region
 
+        active_attendee_filter = ~Q(
+            attendees__check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT
+        )
+        active_attendees_qs = (
+            RetreatAttendee.objects.select_related("group")
+            .exclude(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT)
+            .order_by("name", "id")
+        )
         rooms_qs = (
-            LodgingRoom.objects.select_related("region", "division")
-            .prefetch_related(
-                Prefetch(
-                    "attendees",
-                    queryset=RetreatAttendee.objects.select_related("group").order_by(
-                        "name", "id"
-                    ),
-                )
-            )
+            LodgingRoom.objects.select_related("region", "division", "lodging")
+            .annotate(assigned_count=Count("attendees", filter=active_attendee_filter))
+            .prefetch_related(Prefetch("attendees", queryset=active_attendees_qs))
             .order_by("sort_order", "number", "id")
         )
         lodgings = list(
@@ -787,9 +831,14 @@ class RetreatLodgingView(_RetreatEventMixin, TemplateView):
             .prefetch_related(Prefetch("rooms", queryset=rooms_qs))
             .order_by("sort_order", "name", "id")
         )
+        for lodging in lodgings:
+            for room in lodging.rooms.all():
+                room.has_vacancy = room_has_vacancy(room)
 
         ctx["lodgings"] = lodgings
+        ctx["lodging_summary"] = build_lodging_page_summary(event)
         ctx["can_manage_lodging"] = is_retreat_staff(user, event)
+        ctx["lodging_subtab"] = "manage"
         ctx["room_gender_choices"] = LodgingRoom.Gender.choices
         ctx["region_choices"] = list(Region.objects.order_by("sort_order", "name"))
         ctx["division_choices"] = list(
@@ -800,136 +849,57 @@ class RetreatLodgingView(_RetreatEventMixin, TemplateView):
         return ctx
 
 
-class RetreatLodgingAssignView(_RetreatEventMixin, TemplateView):
-    """호실 → 지역·부서 배정 페이지.
+class RetreatLodgingRosterView(_RetreatEventMixin, TemplateView):
+    """집회 전체 조원 명단 — 입실·숙소 배정 필터 조회."""
 
-    각 호실의 `region`/`division` 을 지역·부서 카드 안에서 인라인으로 수정·해제할 수 있다.
-    - 운영진(staff/council/superuser): 모든 호실 매핑을 변경 가능.
-    - 조장/일반 조회자: 읽기 전용.
-
-    조원 → 호실 직접 배정은 별도(조 관리) 페이지에서 처리한다.
-    """
-
-    template_name = "retreat/lodging_assign.html"
+    template_name = "retreat/lodging_roster.html"
 
     def get_context_data(self, **kwargs):
-        from collections import defaultdict
-
-        from django.db.models import Prefetch
-
-        from users.models import Division, Region
-
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
         event = ctx["event"]
 
         if not can_view_retreat_all(user, event):
-            raise PermissionDenied("이 행사의 방배정 페이지 권한이 없습니다.")
-        can_manage_assign = is_retreat_staff(user, event)
-        visible_groups_qs = visible_retreat_groups_for(user, event).select_related(
-            "region", "division"
-        )
+            raise PermissionDenied("이 집회의 숙소를 볼 권한이 없습니다.")
 
-        all_rooms = list(
-            LodgingRoom.objects.filter(lodging__event=event)
-            .select_related("lodging", "region", "division")
-            .prefetch_related(
-                Prefetch(
-                    "attendees",
-                    queryset=RetreatAttendee.objects.select_related("group").order_by(
-                        "name", "id"
-                    ),
-                )
-            )
-            .order_by(
-                "lodging__sort_order",
-                "lodging__name",
-                "sort_order",
-                "number",
-                "id",
-            )
-        )
+        from retreat.services.auto_check_in import apply_due_auto_transitions
+        from retreat.services.lodging_roster import build_lodging_roster_context
 
-        # (region_id, division_id) 별로 호실을 묶고, 둘 중 하나라도 비어있는 호실은
-        # "미배정" 섹션으로 모은다.
-        rooms_by_key: dict[tuple[int, int], list[LodgingRoom]] = defaultdict(list)
-        unassigned_rooms: list[LodgingRoom] = []
-        for room in all_rooms:
-            if room.region_id is None or room.division_id is None:
-                unassigned_rooms.append(room)
-            else:
-                rooms_by_key[(room.region_id, room.division_id)].append(room)
+        apply_due_auto_transitions(event_id=event.id)
+        ctx.update(build_lodging_roster_context(event, user))
+        from retreat.apis._common import user_can_edit_attendee_details
+        from retreat.services.lodging import room_assignment_option, rooms_for_group_with_counts
 
-        # 행사에 존재하는 조의 (region, division) 조합은 호실이 0개여도 카드를
-        # 노출한다 (운영진이 호실을 추가 배정할 수 있어야 하기 때문).
-        group_combos = set(
-            (g.region_id, g.division_id)
-            for g in visible_groups_qs
-            if g.region_id is not None and g.division_id is not None
-        )
-
-        # 호실의 기존 매핑도 빠짐없이 노출.
-        room_combos = set(rooms_by_key.keys())
-        combo_keys = group_combos | room_combos
-
-        # region/division 객체 lookup.
-        region_ids = {rid for rid, _ in combo_keys}
-        division_ids = {did for _, did in combo_keys}
-        region_map = {r.id: r for r in Region.objects.filter(id__in=region_ids)}
-        division_map = {
-            d.id: d
-            for d in Division.objects.select_related("region").filter(
-                id__in=division_ids
-            )
-        }
-
-        # 지역 → 부서 카드 트리.
-        region_buckets: dict[int, dict] = {}
-        for region_id, division_id in combo_keys:
-            region_obj = region_map.get(region_id)
-            division_obj = division_map.get(division_id)
-            if region_obj is None or division_obj is None:
-                continue
-            bucket = region_buckets.setdefault(
-                region_id,
-                {"region": region_obj, "divisions": []},
-            )
-            bucket["divisions"].append(
-                {
-                    "division": division_obj,
-                    "rooms": rooms_by_key.get((region_id, division_id), []),
-                }
-            )
-
-        # 정렬.
-        for bucket in region_buckets.values():
-            bucket["divisions"].sort(
-                key=lambda d: (
-                    d["division"].sort_order or 0,
-                    d["division"].name,
-                    d["division"].id,
-                )
-            )
-        regions = sorted(
-            region_buckets.values(),
-            key=lambda b: (b["region"].sort_order or 0, b["region"].name, b["region"].id),
-        )
-
-        # 행사 외 지역/부서 모든 후보 — 미배정 호실에 지역/부서 지정용 select.
-        all_regions = list(Region.objects.order_by("sort_order", "name"))
-        all_divisions = list(
-            Division.objects.select_related("region").order_by(
-                "region__sort_order", "sort_order", "name"
-            )
-        )
-
-        ctx["regions"] = regions
-        ctx["unassigned_rooms"] = unassigned_rooms
-        ctx["all_regions"] = all_regions
-        ctx["all_divisions"] = all_divisions
-        ctx["is_staff_like"] = can_manage_assign
-        ctx["can_manage_lodging"] = can_manage_assign
+        attendees = ctx["roster_attendees"]
+        group_rooms: dict[int, list[dict]] = {}
+        roster_any_can_edit = False
+        for attendee in attendees:
+            can_edit = user_can_edit_attendee_details(user, attendee.group)
+            attendee.can_edit_roster = can_edit
+            if can_edit:
+                roster_any_can_edit = True
+            if attendee.group_id not in group_rooms:
+                group_rooms[attendee.group_id] = [
+                    room_assignment_option(room)
+                    for room in rooms_for_group_with_counts(attendee.group)
+                ]
+        ctx["roster_any_can_edit"] = roster_any_can_edit
+        ctx["roster_group_rooms_json"] = json.dumps(group_rooms)
+        ctx["can_change_status"] = can_change_retreat_check_in(user, event)
+        ctx["attendee_role_choices"] = RetreatAttendee.MemberRole.choices
+        ctx["lodging_subtab"] = "roster"
+        ctx["can_manage_lodging"] = is_retreat_staff(user, event)
         return ctx
+
+
+class RetreatLodgingAssignRedirectView(_RetreatEventMixin, View):
+    """구 방배정 URL → 숙소·호수 관리 리다이렉트."""
+
+    def get(self, request, *args, **kwargs):
+        event = self.get_event()
+        if not can_view_retreat_all(request.user, event):
+            raise PermissionDenied("이 집회의 숙소를 볼 권한이 없습니다.")
+        return redirect(reverse("retreat_lodging", kwargs={"event_id": event.id}))
 
 
 class RetreatApplyView(_RetreatEventMixin, FormView):
@@ -1288,7 +1258,7 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
         ctx["can_manage_sessions"] = ctx["is_retreat_council"]
         ctx["session_status_choices"] = RetreatSession.Status.choices
 
-        # 출석부 생성 모달의 '연결할 행사' 후보 — 본인이 관리 권한을 가진 활성 행사.
+        # 출석부 생성 모달의 '연결할 집회' 후보 — 본인이 관리 권한을 가진 활성 집회.
         if ctx["can_manage_sessions"]:
             base = RetreatEvent.objects.filter(is_active=True)
             if user.is_superuser:
@@ -1298,6 +1268,37 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
             ctx["creatable_events"] = list(
                 creatable.order_by("-start_date", "-id")
             )
+        return ctx
+
+
+class RetreatLeaderGuideView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """조장·부조장 전용 수련회 앱 사용 가이드."""
+
+    template_name = "retreat/leader_guide.html"
+    login_url = reverse_lazy("user_login")
+
+    def test_func(self) -> bool:
+        return can_access_retreat_leader_guide(self.request.user)
+
+    def handle_no_permission(self):
+        raise PermissionDenied("이 가이드를 볼 권한이 없습니다.")
+
+    def get_context_data(self, **kwargs):
+        from retreat.services.guide import load_leader_guide_markdown, render_leader_guide
+
+        user = self.request.user
+        events = _retreat_dropdown_events(user)
+
+        ctx = super().get_context_data(**kwargs)
+        ctx["page_title"] = "사용 가이드"
+        ctx["page_subtitle"] = "조장 부조장 수련회 앱 이용 가이드"
+        ctx["rendered_body"] = render_leader_guide(load_leader_guide_markdown())
+        event = events[0] if events else None
+        ctx["event"] = event
+        if event:
+            ctx["can_view_retreat_all"] = can_view_retreat_all(user, event)
+            ctx["is_retreat_staff"] = is_retreat_staff(user, event)
         else:
-            ctx["creatable_events"] = []
+            ctx["can_view_retreat_all"] = False
+            ctx["is_retreat_staff"] = False
         return ctx

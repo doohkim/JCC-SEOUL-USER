@@ -1,0 +1,44 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ page_title }} · 수련회</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617l" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617l" />
+  </head>
+  <body class="jcc-retreat-guidePage{% if event %} has-retreat-bottom-tabs{% endif %}">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        {% if event %}
+          {% url 'retreat_group_manage_list' event.id as guide_back_url %}
+        {% else %}
+          {% url 'retreat_home' as guide_back_url %}
+        {% endif %}
+        {% if event %}
+          {% include 'includes/jcc_page_header.html' with page_title=page_title subtitle=page_subtitle tabs_template='includes/retreat_event_tabs.html' hide_event_picker=True back_url=guide_back_url %}
+        {% else %}
+          {% include 'includes/jcc_page_header.html' with page_title=page_title subtitle=page_subtitle back_url=guide_back_url %}
+        {% endif %}
+        <main class="jcc-notice-detailMain jcc-retreat-guideMain">
+          <p class="jcc-retreat-guideLead">
+            스크린샷과 번호는 실제 화면과 동일한 순서로 안내합니다.
+          </p>
+          <article class="jcc-notice-detailArticle card jcc-retreat-guideArticle">
+            <div class="jcc-notice-detailContent">
+              <div class="jcc-notice-body jcc-retreat-guideBody">
+                {{ rendered_body }}
+              </div>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+    {% if event %}
+      {% include 'includes/retreat_bottom_tabs.html' %}
+    {% endif %}
+  </body>
+</html>

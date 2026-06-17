@@ -26,7 +26,7 @@
   const selectedDivisions = new Set();
 
   // 선택 상태를 sessionStorage에 저장/복원 (조 생성·수정 시 location.reload() 후에도 유지).
-  // 키에 location.pathname(=event_id 포함)을 넣어 행사별로 분리한다.
+  // 키에 location.pathname(=event_id 포함)을 넣어 집회별로 분리한다.
   const STORAGE_KEY = "retreatGroupFilter:" + location.pathname;
 
   function loadStored() {

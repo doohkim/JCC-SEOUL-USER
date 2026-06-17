@@ -116,7 +116,7 @@ def can_access_retreat_tab_filter(user):
 
 @register.filter(name="is_retreat_council_any")
 def is_retreat_council_any_filter(user):
-    """수련회 회장단(어떤 행사든) 여부 — 좌측 탭/UI 노출용."""
+    """수련회 회장단(어떤 집회든) 여부 — 좌측 탭/UI 노출용."""
     from users.permissions import is_retreat_council_any
 
     return is_retreat_council_any(user)
@@ -128,6 +128,20 @@ def can_access_notices_tab(user):
     from users.permissions import can_access_notices_tab as can_access_notices
 
     return bool(user and can_access_notices(user))
+
+
+@register.filter(name="can_access_cursor_docs_tab")
+def can_access_cursor_docs_tab(user):
+    """좌측 'Cursor Docs' — superuser 전용."""
+    return bool(user and getattr(user, "is_authenticated", False) and user.is_superuser)
+
+
+@register.filter(name="can_access_retreat_leader_guide")
+def can_access_retreat_leader_guide(user):
+    """조장·부조장 사용 가이드 링크 노출."""
+    from users.permissions import can_access_retreat_leader_guide as can_access_guide
+
+    return bool(user and can_access_guide(user))
 
 
 @register.filter(name="can_access_pastoral_tab")

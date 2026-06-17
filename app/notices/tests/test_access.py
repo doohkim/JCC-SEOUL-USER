@@ -132,7 +132,7 @@ class NoticeAccessTests(_NoticeAccessFixture):
 
 
 class TimetableEventTests(_NoticeAccessFixture):
-    """타임테이블 탭이 수련회 행사별 일정을 행사 드롭다운으로 보여준다."""
+    """타임테이블 탭이 수련회 집회별 일정을 집회 드롭다운으로 보여준다."""
 
     @classmethod
     def setUpTestData(cls):

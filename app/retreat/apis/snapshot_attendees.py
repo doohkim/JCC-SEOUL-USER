@@ -52,7 +52,7 @@ class RetreatSessionGroupSnapshotAttendeesView(APIView):
             pk=group_id,
         )
         if session.event_id != group.event_id:
-            raise ValidationError({"detail": "출석부와 조가 같은 행사에 속해야 합니다."})
+            raise ValidationError({"detail": "출석부와 조가 같은 집회에 속해야 합니다."})
         get_group_or_403(request.user, group_id)
         _assert_can_manage_snapshot(request.user, session.event)
         if session.status != RetreatSession.Status.CLOSED:

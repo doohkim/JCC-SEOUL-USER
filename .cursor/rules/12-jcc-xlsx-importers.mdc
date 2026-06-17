@@ -1,10 +1,13 @@
 ---
-description: 엑셀(명단·출석) 파싱·임포트 — openpyxl, management commands
+description: 엑셀 명단·출석 임포트 — openpyxl, management commands
 globs: app/**/importers/**/*.py,app/**/management/commands/import*.py
 alwaysApply: false
 ---
 
 # 엑셀 임포트 (registry / attendance)
+
+> **적용**: `importers/`, `management/commands/import*.py` 편집 시  
+> **파싱 단일 진실**: `app/registry/importers/`, `app/attendance/importers/`
 
 - **라이브러리**: `openpyxl`. 시트/헤더 형식은 현장 명단·부서 회장단 열 구조에 맞춰져 있으므로, **기존 `importers/*.py`의 헤더 탐지·`clean_cell`류 로직**을 우선 참고하고 중복 매직 스트링을 늘리지 않는다.
 - **배치 진입점**: `management/commands/` 아래 `import_*`, `*roster*`, `*xlsx*` 명령이 있다. 파싱 핵심은 `importers/`에 두고, 커맨드는 경로 인자·트랜잭션·로그·idempotent 여부를 담당하는 식으로 맞춘다.

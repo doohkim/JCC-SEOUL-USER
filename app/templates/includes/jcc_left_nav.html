@@ -109,6 +109,15 @@
         <span>교적부</span>
       </a>
     {% endif %}
+    {% if user|can_access_cursor_docs_tab %}
+      <a class="jcc-leftNav-item" href="{% url 'cursor_docs_home' %}" data-tab="cursor_docs">
+        <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+          <path d="M6 4h9l3 3v13a1 1 0 01-1 1H6a1 1 0 01-1-1V5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+          <path d="M15 4v4h4M8 11h8M8 15h8" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+        </svg>
+        <span>Cursor Docs</span>
+      </a>
+    {% endif %}
     {% comment %}상담 탭 숨김 처리 (요청에 따라 비노출){% endcomment %}
     {% comment %}
     {% if user|can_access_counseling_tab %}
@@ -408,6 +417,7 @@
         /\/retreat\/\d+\/roster\//.test(p),
       retreat_results: (p) => /\/retreat\/\d+\/results\//.test(p),
       notices: (p) => p.startsWith("/notices/") || p.startsWith("/timetable/"),
+      cursor_docs: (p) => p.startsWith("/cursor-docs/"),
     };
 
     function applyActive(selector) {

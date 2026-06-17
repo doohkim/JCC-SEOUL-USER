@@ -1,11 +1,19 @@
 ---
-description: AI 사용·비용 관리 정책 — 토큰 낭비, 광범위 변경, 위험한 자동 수정을 방지하는 작업 규칙
+description: AI 사용·비용 관리 — 토큰·범위·안전 (항상 적용)
 alwaysApply: true
 ---
 
-# AI Usage and Cost Control Policy
+# AI 사용·비용 관리 정책
 
-이 정책은 본 저장소에서 Cursor AI (Agent / Edit / Ask 모드 및 서브에이전트 포함) 가 따라야 하는 비용·안전 규칙입니다. 항상 적용되며, 사용자 지시가 이 정책과 명시적으로 충돌할 때만 사용자 지시를 우선합니다. 기존 도메인 규칙([jcc-seoul-django.mdc](.cursor/rules/jcc-seoul-django.mdc), [jcc-drf-api.mdc](.cursor/rules/jcc-drf-api.mdc), [jcc-xlsx-importers.mdc](.cursor/rules/jcc-xlsx-importers.mdc)) 과 함께 적용됩니다.
+> **적용**: 모든 Cursor 대화 (`alwaysApply: true`)  
+> **함께 적용**: [01-jcc-seoul-django.mdc](01-jcc-seoul-django.mdc), [10-jcc-drf-api.mdc](10-jcc-drf-api.mdc), [12-jcc-xlsx-importers.mdc](12-jcc-xlsx-importers.mdc)  
+> **사람용 목차**: [../README.md](../README.md)
+
+Cursor AI(Agent / Edit / Ask, 서브에이전트 포함)의 비용·안전 규칙입니다. 사용자 지시가 이 정책과 **명시적으로 충돌할 때만** 사용자 지시를 우선합니다.
+
+## 목차
+
+1. [기본 동작](#1-default-behavior) · 2. [편집 전 워크플로](#2-required-workflow-before-edits) · 3. [컨텍스트 최소화](#3-context-minimization-rules) · 4. [프롬프트](#4-cost-aware-prompting-behavior) · 5. [Plan 모드](#5-planning-mode) · 6. [편집 규칙](#6-editing-rules) · 7. [테스트·검증](#7-testing-and-validation) · 8. [로깅](#8-logging-and-observability) · 9. [보안](#9-security-rules) · 10. [의존성](#10-dependency-and-package-rules) · 11. [대규모 변경](#11-large-change-policy) · 12. [프로덕션 장애](#12-emergency-production-issue-mode) · 13. [Cursor 사용](#13-cursor-usage-policy) · 14. [응답 형식](#14-response-format-for-ai-assistants) · 15. [금지 행동](#15-forbidden-behaviors) · [일상 워크플로](#practical-daily-workflow)
 
 ## 1. Default behavior
 

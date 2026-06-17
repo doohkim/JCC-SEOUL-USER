@@ -86,7 +86,7 @@ def snapshot_session_enrollments(
     *,
     actor,
 ) -> list[RetreatSessionAttendee]:
-    """출석부 생성 시점의 행사 전체 조원 명단을 복사한다."""
+    """출석부 생성 시점의 집회 전체 조원 명단을 복사한다."""
 
     attendees = (
         RetreatAttendee.objects.filter(group__event=session.event)

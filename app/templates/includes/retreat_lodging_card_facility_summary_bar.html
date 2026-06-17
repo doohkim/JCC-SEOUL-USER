@@ -1,0 +1,28 @@
+{% comment %}
+숙소 카드 내부 compact KPI 4칸 — lodging.card_summary.facility
+{% endcomment %}
+{% with f=lodging.card_summary.facility %}
+<div class="jcc-retreat-summaryBar jcc-retreat-summaryBar--compact jcc-retreat-summaryBar--lodgingCardFacility" aria-label="{{ lodging.name }} 요약">
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--total">
+    <span class="jcc-retreat-summaryItem-label">호실</span>
+    <span class="jcc-retreat-summaryItem-value"><strong>{{ f.room_count }}</strong> 실</span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in">
+    <span class="jcc-retreat-summaryItem-label">정원</span>
+    <span class="jcc-retreat-summaryItem-value">
+      <strong>{{ f.capacity_finite_total }}</strong> 명
+      {% if f.rooms_unlimited_count %}
+        <small class="jcc-retreat-summaryItem-sub muted">+무제한 {{ f.rooms_unlimited_count }}</small>
+      {% endif %}
+    </span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in">
+    <span class="jcc-retreat-summaryItem-label">배정</span>
+    <span class="jcc-retreat-summaryItem-value"><strong>{{ f.assigned_eligible }}</strong> 명</span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--out">
+    <span class="jcc-retreat-summaryItem-label">잔여</span>
+    <span class="jcc-retreat-summaryItem-value"><strong>{{ f.remaining_capacity }}</strong> 명</span>
+  </div>
+</div>
+{% endwith %}

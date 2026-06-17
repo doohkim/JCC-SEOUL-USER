@@ -1,0 +1,38 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ doc.title }} · Cursor Docs</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617h" />
+    <link rel="stylesheet" href="{% static 'cursor_docs/cursor_docs.css' %}?v=20260617e" />
+  </head>
+  <body class="jcc-cursorDocs-page jcc-cursorDocs-detailPage">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        {% url list_url_name as cursor_docs_back_url %}
+        {% include 'includes/jcc_page_header.html' with page_title=doc.title tabs_template='cursor_docs/_subtabs.html' back_url=cursor_docs_back_url title_class='jcc-notice-detailHeaderTitle' %}
+        <main class="jcc-notice-detailMain">
+          <article class="jcc-notice-detailArticle card">
+            <div class="jcc-notice-detailContent">
+              <div class="jcc-notice-detailMeta jcc-cursorDocs-articleMeta">
+                <span class="jcc-cursorDocs-cardCat">{{ doc.badge }}</span>
+                <span class="jcc-cursorDocs-articlePath">{{ doc.relative_path }}</span>
+                {% if doc.modified_at %}
+                  <span class="jcc-cursorDocs-cardDate">수정 {{ doc.modified_at|date:"Y.m.d H:i" }}</span>
+                {% endif %}
+              </div>
+              <h1 class="jcc-notice-detailTitle">{{ doc.title }}</h1>
+              <div class="jcc-notice-body jcc-cursorDocs-body">
+                {{ rendered_body }}
+              </div>
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

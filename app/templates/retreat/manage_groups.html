@@ -1,4 +1,4 @@
-{% load static %}
+{% load static permission_tags %}
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>조 관리 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617n" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -17,6 +17,9 @@
         <main>
           <div class="jcc-retreat-listTop jcc-retreat-listTop--withPicker">
             {% include 'includes/retreat_event_picker.html' %}
+            {% if user|can_access_retreat_leader_guide %}
+              <a class="jcc-retreat-guideLink" href="{% url 'retreat_leader_guide' %}">사용 가이드</a>
+            {% endif %}
             <div class="msg" id="retreatStatus" role="status"></div>
             {% if can_add_group %}
               <button type="button" class="jcc-retreat-addGroupBtn" id="btnAddGroup" aria-label="조 추가">
@@ -29,6 +32,8 @@
               </button>
             {% endif %}
           </div>
+
+          {% include 'includes/retreat_attendance_summary_bar.html' %}
 
           <div class="jcc-retreat-filterBar" id="groupFilterBar" hidden>
             <div class="jcc-retreat-filterRow" data-filter-row="region">
@@ -95,7 +100,7 @@
                 <div class="jcc-retreat-modalBody">
                 <div class="jcc-retreat-modalGrid">
                   <div class="field jcc-retreat-modalField--full">
-                    <label for="groupEventInput">행사 *</label>
+                    <label for="groupEventInput">집회 *</label>
                     <select id="groupEventInput" name="event" required data-cselect>
                       {% for ev in available_events %}
                         <option value="{{ ev.id }}" {% if ev.id == event.id %}selected{% endif %}>{{ ev.name }}</option>

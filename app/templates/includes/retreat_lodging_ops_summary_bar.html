@@ -1,0 +1,47 @@
+{% comment %}
+숙소 배정×입퇴실 운영 4칸 — lodging_summary.ops 또는 card_summary.ops
+compact=1 이면 숙소 카드 내부 compact 스타일
+{% endcomment %}
+{% if card_summary %}
+  {% with o=card_summary.ops %}
+<div class="jcc-retreat-summaryBar jcc-retreat-summaryBar--compact" aria-label="숙소 운영 현황">
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in">
+    <span class="jcc-retreat-summaryItem-label">배정·입실</span>
+    <span class="jcc-retreat-summaryItem-value"><strong>{{ o.assigned_checked_in }}</strong> 명</span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending">
+    <span class="jcc-retreat-summaryItem-label">배정·입실전</span>
+    <span class="jcc-retreat-summaryItem-value"><strong>{{ o.assigned_pending_ok }}</strong> 명</span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--warning">
+    <span class="jcc-retreat-summaryItem-label">입실 지연</span>
+    <span class="jcc-retreat-summaryItem-value"><strong>{{ o.assigned_pending_overdue }}</strong> 명</span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--warning">
+    <span class="jcc-retreat-summaryItem-label">퇴실·배정잔존</span>
+    <span class="jcc-retreat-summaryItem-value"><strong>{{ o.assigned_checked_out_stale }}</strong> 명</span>
+  </div>
+</div>
+  {% endwith %}
+{% else %}
+  {% with o=lodging_summary.ops %}
+<div class="jcc-retreat-summaryBar" id="lodgingOpsSummaryBar" aria-label="숙소 배정·입퇴실 운영 현황">
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in">
+    <span class="jcc-retreat-summaryItem-label">배정·입실</span>
+    <span class="jcc-retreat-summaryItem-value"><strong>{{ o.assigned_checked_in }}</strong> 명</span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending">
+    <span class="jcc-retreat-summaryItem-label">배정·입실전</span>
+    <span class="jcc-retreat-summaryItem-value"><strong>{{ o.assigned_pending_ok }}</strong> 명</span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--warning">
+    <span class="jcc-retreat-summaryItem-label">입실 지연</span>
+    <span class="jcc-retreat-summaryItem-value"><strong>{{ o.assigned_pending_overdue }}</strong> 명</span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--warning">
+    <span class="jcc-retreat-summaryItem-label">퇴실·배정잔존</span>
+    <span class="jcc-retreat-summaryItem-value"><strong>{{ o.assigned_checked_out_stale }}</strong> 명</span>
+  </div>
+</div>
+  {% endwith %}
+{% endif %}

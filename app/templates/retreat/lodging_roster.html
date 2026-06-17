@@ -1,0 +1,308 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ event.name }} · 전체 명단</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617o" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        {% include 'includes/jcc_page_header.html' with page_title='숙소' tabs_template='includes/retreat_event_tabs.html' retreat_tab='lodging' hide_event_picker=True %}
+        <main>
+          <div class="jcc-retreat-subTabsRow">
+            {% include 'includes/retreat_event_picker.html' with retreat_tab='lodging_roster' %}
+            {% include 'includes/retreat_lodging_subtabs.html' with lodging_subtab='roster' %}
+          </div>
+
+          {% include 'includes/retreat_lodging_roster_summary_bar.html' %}
+
+          <div class="jcc-retreat-filterBar jcc-retreat-filterBar--roster" id="lodgingRosterFilterBar">
+            <div class="jcc-retreat-rosterSearchBlock">
+              <label class="jcc-retreat-rosterSearchWrap" for="rosterNameSearch">
+                <svg class="jcc-retreat-rosterSearchIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/>
+                  <path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                <input
+                  type="search"
+                  class="jcc-retreat-rosterSearch"
+                  id="rosterNameSearch"
+                  placeholder="이름 또는 전화번호로 검색..."
+                  autocomplete="off"
+                  aria-label="이름 또는 전화번호로 검색"
+                />
+              </label>
+            </div>
+            <div class="jcc-retreat-filterRow" data-filter-row="status">
+              <span class="jcc-retreat-filterLabel">입실 상태</span>
+              <div class="jcc-retreat-filterChips" id="rosterFilterStatus">
+                <button type="button" class="jcc-retreat-filterChip" data-filter-kind="status" data-filter-value="pending">입실전</button>
+                <button type="button" class="jcc-retreat-filterChip" data-filter-kind="status" data-filter-value="checked_in">입실</button>
+                <button type="button" class="jcc-retreat-filterChip" data-filter-kind="status" data-filter-value="checked_out">퇴실</button>
+              </div>
+            </div>
+            <div class="jcc-retreat-filterRow" data-filter-row="stay">
+              <span class="jcc-retreat-filterLabel">숙박 여부</span>
+              <div class="jcc-retreat-filterChips" id="rosterFilterStay">
+                <button type="button" class="jcc-retreat-filterChip" data-filter-kind="stay" data-filter-value="eligible">숙박 대상</button>
+                <button type="button" class="jcc-retreat-filterChip" data-filter-kind="stay" data-filter-value="ineligible">숙박 비대상</button>
+              </div>
+            </div>
+            <div class="jcc-retreat-filterRow" data-filter-row="assign">
+              <span class="jcc-retreat-filterLabel">호실 배정</span>
+              <div class="jcc-retreat-filterChips" id="rosterFilterAssign">
+                <button type="button" class="jcc-retreat-filterChip" data-filter-kind="assign" data-filter-value="assigned">배정됨</button>
+                <button type="button" class="jcc-retreat-filterChip" data-filter-kind="assign" data-filter-value="unassigned">미배정</button>
+              </div>
+            </div>
+            <div class="jcc-retreat-filterRow" data-filter-row="region" hidden>
+              <span class="jcc-retreat-filterLabel">지역</span>
+              <div class="jcc-retreat-filterChips" id="rosterFilterRegions"></div>
+            </div>
+            <div class="jcc-retreat-filterRow" data-filter-row="division" hidden>
+              <span class="jcc-retreat-filterLabel">부서</span>
+              <div class="jcc-retreat-filterChips" id="rosterFilterDivisions"></div>
+            </div>
+            <div class="jcc-retreat-filterBarFooter">
+              <button type="button" class="jcc-retreat-filterReset jcc-retreat-filterReset--roster" id="rosterFilterReset">
+                <svg class="jcc-retreat-filterResetIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M4 12a8 8 0 0113.66-5.66M20 12a8 8 0 01-13.66 5.66" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                  <path d="M20 4v5h-5M4 20v-5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                초기화
+              </button>
+            </div>
+          </div>
+
+          {% if roster_attendees %}
+            <div class="card jcc-retreat-rosterCard">
+              <div class="jcc-retreat-tableWrap">
+                <table class="jcc-retreat-attendeeTable jcc-retreat-rosterTable" id="lodgingRosterTable">
+                  <thead>
+                    <tr>
+                      <th class="jcc-retreat-attCol-num">NO.</th>
+                      <th class="jcc-retreat-attCol-group">조</th>
+                      <th class="jcc-retreat-attCol-scope">지역 · 부서</th>
+                      <th class="jcc-retreat-attCol-name">이름</th>
+                      <th class="jcc-retreat-attCol-role">역할</th>
+                      <th class="jcc-retreat-attCol-status">입실 상태</th>
+                      <th class="jcc-retreat-attCol-expected-in">
+                        <span class="jcc-retreat-rosterHeadShort">입실</span>
+                        <span class="jcc-retreat-rosterHeadLong">입실 시각</span>
+                      </th>
+                      <th class="jcc-retreat-attCol-expected-out">
+                        <span class="jcc-retreat-rosterHeadShort">퇴실</span>
+                        <span class="jcc-retreat-rosterHeadLong">퇴실 시각</span>
+                      </th>
+                      <th class="jcc-retreat-attCol-lodging">
+                        <span class="jcc-retreat-rosterHeadShort">숙소 · 호수</span>
+                        <span class="jcc-retreat-rosterHeadLong">숙소 호수</span>
+                      </th>
+                      {% if roster_any_can_edit %}
+                        <th class="jcc-retreat-attCol-actions">
+                          <span class="jcc-retreat-rosterActionsHead">관리</span>
+                        </th>
+                      {% endif %}
+                    </tr>
+                  </thead>
+                  <tbody id="lodgingRosterBody">
+                    {% for a in roster_attendees %}
+                      <tr
+                        class="jcc-retreat-rosterRow{% if a.lodging_scope == 'unassigned' %} jcc-retreat-rosterRow--unassigned{% endif %}"
+                        data-attendee-id="{{ a.id }}"
+                        data-group-id="{{ a.group_id }}"
+                        data-group-region-id="{{ a.group.region_id }}"
+                        data-group-division-id="{{ a.group.division_id }}"
+                        data-check-in-status="{{ a.check_in_status }}"
+                        data-check-in="{{ a.check_in_status }}"
+                        data-gender="{{ a.gender }}"
+                        data-memo="{{ a.memo|escapejs }}"
+                        data-member-role="{{ a.member_role }}"
+                        data-expected-in-at="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'c' }}{% endif %}"
+                        data-expected-out-at="{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'c' }}{% endif %}"
+                        data-expected-timestamps-locked="{% if a.expected_timestamps_locked %}true{% else %}false{% endif %}"
+                        data-lodging-scope="{{ a.lodging_scope }}"
+                        data-lodging-eligible="{{ a.lodging_eligible_key }}"
+                        data-lodging-assignment="{{ a.lodging_assignment_key }}"
+                        data-region-name="{{ a.group.region.name }}"
+                        data-division-name="{{ a.group.division.name }}"
+                        data-name="{{ a.name }}"
+                        data-phone="{{ a.phone }}"
+                        data-user-id="{% if a.user_id %}{{ a.user_id }}{% endif %}"
+                        data-user-label="{% if a.user %}{{ a.user.profile.real_name|default:a.user.username }}{% endif %}"
+                        data-lodging-room="{% if a.lodging_room_id %}{{ a.lodging_room_id }}{% endif %}"
+                        data-group-url="{% url 'retreat_group_manage' event.id a.group_id %}"
+                      >
+                        <td class="jcc-retreat-attCol-num" data-row-num>{{ forloop.counter }}</td>
+                        <td class="jcc-retreat-attCol-group">
+                          <a class="jcc-retreat-rosterGroupLink" href="{% url 'retreat_group_manage' event.id a.group_id %}">{{ a.group.name }}</a>
+                        </td>
+                        <td class="jcc-retreat-attCol-scope">{{ a.group.region.name }} · {{ a.group.division.name }}</td>
+                        <td class="jcc-retreat-attCol-name" data-name>{{ a.name }}</td>
+                        <td class="jcc-retreat-attCol-role">
+                          <span class="jcc-retreat-roleTag jcc-retreat-roleTag--{{ a.member_role }}" data-role-tag>{{ a.get_member_role_display }}</span>
+                        </td>
+                        <td class="jcc-retreat-attCol-status" data-status-cell>
+                          <span class="jcc-retreat-checkInBadge jcc-retreat-checkInBadge--{{ a.check_in_status }}" data-status-badge>{{ a.get_check_in_status_display }}</span>
+                        </td>
+                        <td class="jcc-retreat-attCol-expected jcc-retreat-attCol-expected-in" data-expected-in-cell>
+                          <span class="jcc-retreat-stampLabel{% if not a.expected_check_in_at %} muted{% endif %}" data-expected-in-label>
+                            {% if a.expected_check_in_at %}
+                              <span class="jcc-stamp-date">{{ a.expected_check_in_at|date:"y-m-d" }}</span>
+                              <span class="jcc-stamp-time">{{ a.expected_check_in_at|date:"A g:i" }}</span>
+                            {% else %}-{% endif %}
+                          </span>
+                        </td>
+                        <td class="jcc-retreat-attCol-expected jcc-retreat-attCol-expected-out" data-expected-out-cell>
+                          <span class="jcc-retreat-stampLabel{% if not a.expected_check_out_at %} muted{% endif %}" data-expected-out-label>
+                            {% if a.expected_check_out_at %}
+                              <span class="jcc-stamp-date">{{ a.expected_check_out_at|date:"y-m-d" }}</span>
+                              <span class="jcc-stamp-time">{{ a.expected_check_out_at|date:"A g:i" }}</span>
+                            {% else %}-{% endif %}
+                          </span>
+                        </td>
+                        <td class="jcc-retreat-attCol-lodging" data-lodging-cell>
+                          {% if a.lodging_cell_label is None %}
+                            {{ a.lodging_room.lodging.name }} {{ a.lodging_room.number }}
+                          {% elif a.lodging_cell_label == '미배정' %}
+                            <span class="jcc-retreat-rosterUnassigned">미배정</span>
+                          {% else %}
+                            <span class="jcc-retreat-rosterIneligible">{{ a.lodging_cell_label }}</span>
+                          {% endif %}
+                        </td>
+                        {% if roster_any_can_edit %}
+                          <td class="jcc-retreat-attCol-actions">
+                            {% if a.can_edit_roster %}
+                              <button type="button" class="jcc-retreat-rowIconBtn" data-roster-edit aria-label="{{ a.name }} 수정" title="수정">
+                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                  <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+                                </svg>
+                              </button>
+                            {% endif %}
+                          </td>
+                        {% endif %}
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% else %}
+            <div class="card">
+              <div class="msg">등록된 조원이 없습니다.</div>
+            </div>
+          {% endif %}
+
+          <p class="msg jcc-retreat-filterEmpty" id="lodgingRosterFilterEmpty" hidden>선택한 조건에 맞는 조원이 없습니다.</p>
+        </main>
+      </div>
+    </div>
+
+    {% if roster_any_can_edit %}
+      <div class="jcc-retreat-modalOverlay" id="rosterEditOverlay" hidden aria-hidden="true">
+        <div class="jcc-retreat-modal jcc-retreat-modal--attendeeEdit card" role="dialog" aria-modal="true" aria-labelledby="rosterEditTitle">
+          <h2 id="rosterEditTitle" class="jcc-retreat-modalTitle">조원 수정</h2>
+          <form id="rosterEditForm" novalidate>
+            <div class="jcc-retreat-modalBody">
+              <div class="jcc-retreat-modalGrid">
+                {% if can_change_status %}
+                  <div class="field jcc-retreat-modalField--full">
+                    <label for="rosterEditCheckIn">입·퇴실 상태</label>
+                    <select id="rosterEditCheckIn" name="check_in_status" data-cselect>
+                      <option value="pending">입실전</option>
+                      <option value="checked_in">입실</option>
+                      <option value="checked_out">퇴실</option>
+                    </select>
+                  </div>
+                {% endif %}
+                <div class="field">
+                  <label for="rosterEditRole">구분</label>
+                  <select id="rosterEditRole" name="member_role" data-cselect>
+                    {% for code, label in attendee_role_choices %}
+                      <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="field jcc-retreat-userPickerField">
+                  <label for="rosterEditUserInput">사용자 계정 연결 (선택)</label>
+                  <div class="jcc-retreat-userPicker" data-user-picker>
+                    <input type="text" id="rosterEditUserInput" class="jcc-retreat-userPickerInput" placeholder="이름 또는 username 검색" maxlength="150" autocomplete="off" data-user-picker-input data-bwignore data-1p-ignore data-lpignore="true" data-form-type="other">
+                    <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
+                    <input type="hidden" data-user-picker-id>
+                  </div>
+                </div>
+                <div class="field jcc-retreat-modalField--full">
+                  <label for="rosterEditName">실명 *</label>
+                  <input type="text" id="rosterEditName" name="name" required maxlength="60" autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="rosterEditGender">성별 *</label>
+                  <select id="rosterEditGender" name="gender" data-cselect>
+                    <option value="">미지정</option>
+                    <option value="male">남성</option>
+                    <option value="female">여성</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="rosterEditPhone">핸드폰 번호</label>
+                  <input type="tel" id="rosterEditPhone" name="phone" maxlength="13" autocomplete="tel" inputmode="numeric" placeholder="010-1234-5678">
+                </div>
+                <div class="field">
+                  <label for="rosterEditExpectedIn">입실 시각</label>
+                  <input type="datetime-local" id="rosterEditExpectedIn" name="expected_check_in_at" data-dtp-max-selector="#rosterEditExpectedOut" data-dtp-max-message="입실은 퇴실 시각보다 앞이어야 합니다." autocomplete="off">
+                </div>
+                <div class="field">
+                  <label for="rosterEditExpectedOut">퇴실 시각</label>
+                  <input type="datetime-local" id="rosterEditExpectedOut" name="expected_check_out_at" data-dtp-min-selector="#rosterEditExpectedIn" data-dtp-min-message="퇴실은 입실 시각보다 뒤여야 합니다." autocomplete="off">
+                </div>
+                <div class="field jcc-retreat-modalField--full">
+                  <label for="rosterEditLodging">숙소 배정</label>
+                  <select id="rosterEditLodging" name="lodging_room" data-cselect>
+                    <option value="">(미배정)</option>
+                  </select>
+                </div>
+                <div class="field jcc-retreat-modalField--full">
+                  <label for="rosterEditMemo">메모</label>
+                  <input type="text" id="rosterEditMemo" name="memo" maxlength="200" autocomplete="off">
+                </div>
+              </div>
+            </div>
+            <div class="jcc-retreat-modalFooter">
+              <button type="button" class="secondary" id="rosterEditCancel">취소</button>
+              <button type="submit" id="rosterEditSubmit">수정</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="jcc-retreat-toast" id="rosterEditToast" role="alert" aria-live="polite" hidden></div>
+    {% endif %}
+
+    {% include 'includes/retreat_bottom_tabs.html' %}
+    <script src="{% static 'retreat/lodging_roster_filter.js' %}?v=20260618c" defer></script>
+    {% if roster_any_can_edit %}
+      <script>
+        window.LODGING_ROSTER_CTX = {
+          eventId: {{ event.id }},
+          canChangeStatus: {{ can_change_status|yesno:"true,false" }},
+          csrfToken: "{{ csrf_token }}",
+          groupRooms: {{ roster_group_rooms_json|safe }},
+          urls: {
+            attendeeDetailTemplate: "/api/v1/retreat/attendees/__id__/",
+            userSearchUrl: "{% url 'api_retreat_user_search' %}",
+          },
+        };
+      </script>
+      <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
+      <script src="{% static 'retreat/datetime_picker.js' %}?v=20260615g" defer></script>
+      <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
+      <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618a" defer></script>
+      <script src="{% static 'retreat/lodging_roster_edit.js' %}?v=20260617a" defer></script>
+    {% endif %}
+  </body>
+</html>

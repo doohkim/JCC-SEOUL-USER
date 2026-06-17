@@ -1,4 +1,4 @@
-{% comment %}행사 선택 드롭다운 — event, available_events, retreat_tab 필요. 페이지당 1회만 include.{% endcomment %}
+{% comment %}집회 선택 드롭다운 — event, available_events, retreat_tab 필요. 페이지당 1회만 include.{% endcomment %}
 {% if available_events %}
   <div class="jcc-retreat-eventPicker" id="retreatEventPicker">
     <button
@@ -7,21 +7,21 @@
       id="retreatEventPickerBtn"
       aria-haspopup="listbox"
       aria-expanded="false"
-      aria-label="행사 선택"
+      aria-label="집회 선택"
     >
       <span class="jcc-retreat-eventPickerLabel">{{ event.name }}</span>
       <svg class="jcc-retreat-eventPickerCaret" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
         <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </button>
-    <ul class="jcc-retreat-eventPickerMenu" id="retreatEventPickerMenu" role="listbox" aria-label="행사 목록" hidden>
+    <ul class="jcc-retreat-eventPickerMenu" id="retreatEventPickerMenu" role="listbox" aria-label="집회 목록" hidden>
       {% for ev in available_events %}
         {% if retreat_tab == 'manage_groups' %}
           {% url 'retreat_group_manage_list' ev.id as ev_url %}
         {% elif retreat_tab == 'lodging' %}
           {% url 'retreat_lodging' ev.id as ev_url %}
-        {% elif retreat_tab == 'lodging_assign' %}
-          {% url 'retreat_lodging_assign' ev.id as ev_url %}
+        {% elif retreat_tab == 'lodging_roster' %}
+          {% url 'retreat_lodging_roster' ev.id as ev_url %}
         {% elif retreat_tab == 'admin' %}
           {% url 'retreat_admin' ev.id as ev_url %}
         {% elif retreat_tab == 'council' %}

@@ -1,9 +1,12 @@
 ---
-description: JCC Seoul User — Django 프로젝트 루트 컨텍스트 (앱 구조, 실행 경로)
+description: JCC Seoul User — Django 스택·앱 구조·실행·핵심 보안 (항상 적용)
 alwaysApply: true
 ---
 
 # JCC Seoul User (Django)
+
+> **적용**: 모든 Cursor 대화 (`alwaysApply: true`)  
+> **상세 권한 매트릭스**: [11-jcc-permissions.mdc](11-jcc-permissions.mdc) · **사람용 목차**: [../README.md](../README.md)
 
 - **스택**: Python 3.13+, Django 6, djangorestframework, Poetry (`pyproject.toml`). 엑셀은 `openpyxl`.
 - **Django 프로젝트 루트**: `app/` (설정 모듈은 `config`). 관리 명령은 **`app/manage.py`** 기준으로 실행한다.

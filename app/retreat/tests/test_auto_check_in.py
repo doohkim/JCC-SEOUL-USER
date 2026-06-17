@@ -98,7 +98,7 @@ class AutoCheckInTests(TestCase):
     def test_event_id_scopes_transitions(self):
         now = timezone.now()
         other_event = RetreatEvent.objects.create(
-            name="다른 행사",
+            name="다른 집회",
             start_date=date(2026, 8, 1),
             end_date=date(2026, 8, 2),
         )
@@ -116,7 +116,7 @@ class AutoCheckInTests(TestCase):
         )
         other = RetreatAttendee.objects.create(
             group=other_group,
-            name="다른행사",
+            name="다른집회",
             check_in_status=RetreatAttendee.CheckInStatus.PENDING,
             expected_check_in_at=now - timedelta(minutes=5),
         )

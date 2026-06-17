@@ -1,4 +1,4 @@
-"""수련회 행사·세션(출석부)."""
+"""수련회 집회·세션(출석부)."""
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ from django.utils import timezone
 
 
 class RetreatEvent(models.Model):
-    """수련회 행사. 예) '2026 여름 전국 수련회'."""
+    """수련회 집회. 예) '2026 여름 전국 수련회'."""
 
-    name = models.CharField("행사명", max_length=120)
+    name = models.CharField("집회명", max_length=120)
     start_date = models.DateField("시작일")
     end_date = models.DateField("종료일")
     is_active = models.BooleanField(
@@ -22,8 +22,8 @@ class RetreatEvent(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "수련회 행사"
-        verbose_name_plural = "수련회 행사"
+        verbose_name = "수련회 집회"
+        verbose_name_plural = "수련회 집회"
         ordering = ["-start_date", "-id"]
 
     def __str__(self) -> str:
@@ -31,7 +31,7 @@ class RetreatEvent(models.Model):
 
 
 class RetreatSession(models.Model):
-    """행사 내 출석부(시간대별 체크 단위)."""
+    """집회 내 출석부(시간대별 체크 단위)."""
 
     class Status(models.TextChoices):
         ACTIVE = "active", "진행중"
@@ -41,7 +41,7 @@ class RetreatSession(models.Model):
         RetreatEvent,
         on_delete=models.CASCADE,
         related_name="sessions",
-        verbose_name="행사",
+        verbose_name="집회",
     )
     name = models.CharField("출석부 제목", max_length=120)
     occurs_at = models.DateTimeField("진행 일시", null=True, blank=True)

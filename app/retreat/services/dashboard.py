@@ -10,7 +10,6 @@ from django.db.models.functions import TruncHour
 from django.utils import timezone
 
 from retreat.models import (
-    LodgingRoom,
     RetreatAttendance,
     RetreatAttendee,
     RetreatEvent,
@@ -295,7 +294,7 @@ def _build_dashboard_summary(
     """상단 요약 카드용 집계.
 
     - 실시간 참석: 입실 인원 / 총 참석인원, 전체 인원 대비 입실 비율(%)
-    - 숙소 배정: 호실이 배정된 조원 수 + 여유 있는(잔여) 객실 수
+    - 미배정: 호실이 배정되지 않은 조원 수
     - 차량 지원: 오늘 열차 시각이 잡힌 픽업 인원 수
 
     staff_view 가 아니면 사용자가 볼 수 있는 조(group_ids)·지역(region_ids)으로
@@ -303,18 +302,9 @@ def _build_dashboard_summary(
     """
     attend_percent = round(checked_in / total * 100) if total else 0
 
-    lodging_assigned = RetreatAttendee.objects.filter(
-        group_id__in=group_ids, lodging_room__isnull=False
+    lodging_unassigned = RetreatAttendee.objects.filter(
+        group_id__in=group_ids, lodging_room__isnull=True
     ).count()
-
-    rooms = LodgingRoom.objects.filter(lodging__event=event)
-    if not staff_view:
-        rooms = rooms.filter(region_id__in=region_ids)
-    rooms = rooms.annotate(occ=Count("attendees"))
-    # capacity 0 = 정원 무제한 → 항상 여유 있음으로 간주
-    rooms_remaining = sum(
-        1 for r in rooms if r.capacity == 0 or r.occ < r.capacity
-    )
 
     today = timezone.localdate(now)
     pickups = RetreatPickup.objects.filter(event=event, train_time__date=today)
@@ -327,8 +317,7 @@ def _build_dashboard_summary(
         "attended": attended,
         "total": total,
         "attend_percent": attend_percent,
-        "lodging_assigned": lodging_assigned,
-        "rooms_remaining": rooms_remaining,
+        "lodging_unassigned": lodging_unassigned,
         "car_today": car_today,
     }
 

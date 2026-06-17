@@ -46,7 +46,9 @@ from retreat.views import (
     RetreatGroupManageListView,
     RetreatGroupManageView,
     RetreatHomeView,
-    RetreatLodgingAssignView,
+    RetreatLeaderGuideView,
+    RetreatLodgingAssignRedirectView,
+    RetreatLodgingRosterView,
     RetreatLodgingView,
     RetreatPickupView,
     RetreatResultsView,
@@ -57,6 +59,11 @@ from retreat.views import (
 
 urlpatterns = [
     path("retreat/", RetreatHomeView.as_view(), name="retreat_home"),
+    path(
+        "retreat/guide/",
+        RetreatLeaderGuideView.as_view(),
+        name="retreat_leader_guide",
+    ),
     path(
         "retreat/<int:event_id>/dashboard/",
         RetreatDashboardView.as_view(),
@@ -93,8 +100,13 @@ urlpatterns = [
         name="retreat_lodging",
     ),
     path(
+        "retreat/<int:event_id>/lodgings/roster/",
+        RetreatLodgingRosterView.as_view(),
+        name="retreat_lodging_roster",
+    ),
+    path(
         "retreat/<int:event_id>/lodgings/assign/",
-        RetreatLodgingAssignView.as_view(),
+        RetreatLodgingAssignRedirectView.as_view(),
         name="retreat_lodging_assign",
     ),
     path(

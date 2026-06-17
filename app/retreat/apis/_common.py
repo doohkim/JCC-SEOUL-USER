@@ -64,7 +64,7 @@ def assert_can_manage_lodging(user, event: RetreatEvent) -> None:
 
 
 def user_can_view_event(user, event: RetreatEvent) -> bool:
-    """행사 가시 권한 — 본인이 볼 수 있는 그룹이 하나라도 이 행사에 속하면 OK."""
+    """집회 가시 권한 — 본인이 볼 수 있는 그룹이 하나라도 이 집회에 속하면 OK."""
     if user.is_superuser:
         return True
     return visible_retreat_groups_for(user, event).exists()
@@ -72,7 +72,7 @@ def user_can_view_event(user, event: RetreatEvent) -> bool:
 
 def assert_can_view_event(user, event: RetreatEvent) -> None:
     if not user_can_view_event(user, event):
-        raise PermissionDenied("이 행사를 볼 권한이 없습니다.")
+        raise PermissionDenied("이 집회를 볼 권한이 없습니다.")
 
 
 def assert_can_add_group(user, event: RetreatEvent) -> None:
@@ -105,12 +105,14 @@ def assert_can_change_check_in_status(user, group: RetreatGroup) -> None:
 
 
 def user_can_delete_attendee(user, group: RetreatGroup) -> bool:
-    """조원 삭제 — 관리자(슈퍼유저·회장단)만. 조장 제외."""
+    """조원 삭제 — 슈퍼유저·회장단·본인 조 조장/부조장."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if user.is_superuser:
         return True
-    return is_retreat_council(user, group.event)
+    if is_retreat_council(user, group.event):
+        return True
+    return is_retreat_group_leader(user, group)
 
 
 def assert_can_delete_attendee(user, group: RetreatGroup) -> None:

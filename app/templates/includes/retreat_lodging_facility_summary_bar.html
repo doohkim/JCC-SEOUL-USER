@@ -1,0 +1,39 @@
+{% comment %}
+집회 전체 숙소 요약 — 입실전·입실 대상만 (퇴실 제외)
+{% endcomment %}
+{% with f=lodging_summary.facility %}
+<div class="jcc-retreat-summaryBar jcc-retreat-summaryBar--lodgingFacility" id="lodgingFacilitySummaryBar">
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in">
+    <span class="jcc-retreat-summaryItem-label">배정률</span>
+    <span class="jcc-retreat-summaryItem-value">
+      {% if f.assignment_rate_pct is not None %}
+        <strong>{{ f.assignment_rate_pct }}</strong>%
+      {% else %}
+        <strong>-</strong>
+      {% endif %}
+    </span>
+    {% if f.assignment_rate_pct is not None %}
+      <small class="jcc-retreat-summaryItem-sub muted">정원 {{ f.capacity_finite_total }}명</small>
+    {% else %}
+      <span class="jcc-retreat-summaryItem-meta" aria-hidden="true"></span>
+    {% endif %}
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending">
+    <span class="jcc-retreat-summaryItem-label">미배정</span>
+    <span class="jcc-retreat-summaryItem-value">
+      <a class="jcc-retreat-summaryItem-link" href="{% url 'retreat_lodging_roster' event.id %}?assign=unassigned"><strong>{{ f.unassigned_eligible }}</strong> 명</a>
+    </span>
+    <span class="jcc-retreat-summaryItem-meta" aria-hidden="true"></span>
+  </div>
+  <button type="button" class="jcc-retreat-summaryItem jcc-retreat-summaryItem--out jcc-retreat-summaryItem--clickable" data-lodging-filter-preset="vacancy" id="lodgingSummaryVacancy">
+    <span class="jcc-retreat-summaryItem-label">잔여 객실</span>
+    <span class="jcc-retreat-summaryItem-value"><strong>{{ f.rooms_remaining }}</strong> 개</span>
+    <span class="jcc-retreat-summaryItem-meta" aria-hidden="true"></span>
+  </button>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending">
+    <span class="jcc-retreat-summaryItem-label">배정·입실전</span>
+    <span class="jcc-retreat-summaryItem-value"><strong>{{ f.assigned_pending }}</strong> 명</span>
+    <span class="jcc-retreat-summaryItem-meta" aria-hidden="true"></span>
+  </div>
+</div>
+{% endwith %}

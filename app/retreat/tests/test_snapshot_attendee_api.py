@@ -68,7 +68,7 @@ class SnapshotAttendeeApiTests(TestCase):
         )
 
         cls.other_event = RetreatEvent.objects.create(
-            name="다른 행사",
+            name="다른 집회",
             start_date=date(2025, 1, 1),
             end_date=date(2025, 1, 2),
         )

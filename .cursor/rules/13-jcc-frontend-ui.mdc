@@ -1,17 +1,22 @@
 ---
-description: 프론트엔드 UI(토스풍)·반응형·정적파일 캐시 규칙
+description: "@UI @RESPONSIVE @STATIC — 토스풍 UI·반응형·캐시 버스팅"
 globs: app/templates/**/*.html,app/**/static/**/*.css,app/**/static/**/*.js
 alwaysApply: false
 ---
 
-# @UI — 토스풍 UI
+# 프론트엔드 UI 규칙
+
+> **적용**: `templates/`, `static/**/*.css`, `static/**/*.js` 편집 시  
+> **프롬프트 태그**: `@UI` `@RESPONSIVE` `@STATIC`
+
+## @UI — 토스풍 UI
 
 - 팝업/alert 대신 **인라인 표시**: 빨간 테두리(`is-invalid`) + 필드별 안내문구 + 첫 오류 필드 포커스 (픽업 폼 `pickup.js` 패턴).
 - 설명 없이 본능적으로 조작 가능하게: 빈/오류/로딩/완료 피드백을 명시.
 - 선택 표시: 꽉 찬 원형, 여백 넉넉, 둥근 모서리, 단일 accent.
 - 모달 내 드롭다운·피커는 `overflow` 잘림 방지: `position:fixed` 또는 스크롤 컨테이너 기준 위/아래 자동 배치.
 
-# @RESPONSIVE — PC / 모바일 / 카카오 인앱
+## @RESPONSIVE — PC / 모바일 / 카카오 인앱
 
 - 브레이크포인트: 모바일 `<=640px`(필요 시 `<=480px`), 그 외 PC (`retreat.css` 관례).
 - **PC(관리자)**: 표·다열, 정보 밀도 높게.
@@ -19,6 +24,6 @@ alwaysApply: false
 - **카카오 인앱 웹뷰**: `dvh`+`vh` 폴백, `env(safe-area-inset-*)`, 풀폭 하단 시트, 스크롤 잠금·깨짐 주의.
 - PC 전용 스타일은 `:not(.--sheet)` 등으로 모바일 시트와 격리 (달력 피커 `datetime_picker.js` 관례).
 
-# @STATIC — 캐시 버스팅
+## @STATIC — 캐시 버스팅
 
 - css/js 편집 시 참조 템플릿의 `?v=YYYYMMDD<letter>` 버전을 **사용처 전부** 올린다.

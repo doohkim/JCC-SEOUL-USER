@@ -1,0 +1,21 @@
+{% comment %}
+조·조원 입퇴실 요약 4칸 — count_total, count_pending, count_checked_in, count_checked_out
+{% endcomment %}
+<div class="jcc-retreat-summaryBar" id="retreatSummaryBar">
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--total">
+    <span class="jcc-retreat-summaryItem-label">총인원</span>
+    <span class="jcc-retreat-summaryItem-value"><strong data-summary-total>{{ count_total }}</strong> 명</span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending">
+    <span class="jcc-retreat-summaryItem-label">입실전</span>
+    <span class="jcc-retreat-summaryItem-value"><strong data-summary-pending>{{ count_pending }}</strong> 명</span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in">
+    <span class="jcc-retreat-summaryItem-label">입실</span>
+    <span class="jcc-retreat-summaryItem-value"><strong data-summary-in>{{ count_checked_in }}</strong> 명</span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--out">
+    <span class="jcc-retreat-summaryItem-label">퇴실</span>
+    <span class="jcc-retreat-summaryItem-value"><strong data-summary-out>{{ count_checked_out }}</strong> 명</span>
+  </div>
+</div>

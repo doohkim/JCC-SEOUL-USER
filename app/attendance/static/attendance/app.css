@@ -178,23 +178,34 @@ body.has-notice-bottom-tabs #jccBottomTabs {
 body:not(.has-notice-bottom-tabs) .jcc-noticeBottomTabs {
   display: none !important;
 }
-/* 헤더: 수련회 페이지와 동일하게 스크롤 시 상단 고정 */
-body.has-notice-bottom-tabs header.app-header {
+/* 계정 관리 섹션: 모바일 하단 탭(계정·승인절차)으로 교체, 상단 하위 탭은 모바일에서 숨김 */
+body.has-account-bottom-tabs #jccBottomTabs {
+  display: none !important;
+}
+body:not(.has-account-bottom-tabs) .jcc-accountBottomTabs {
+  display: none !important;
+}
+/* 헤더: 수련회·공지·계정 관리 페이지 — 스크롤 시 상단 고정 */
+body.has-notice-bottom-tabs header.app-header,
+body.has-account-bottom-tabs header.app-header {
   position: sticky;
   top: 0;
   z-index: 100;
 }
-/* 모바일 햄버거: 수련회 페이지와 동일한 크기·굵기 */
+/* 모바일 햄버거: 수련회·공지·계정 관리 페이지와 동일한 크기·굵기 */
 @media (max-width: 900px) {
-  body.has-notice-bottom-tabs .jcc-mobile-menu-btn {
+  body.has-notice-bottom-tabs .jcc-mobile-menu-btn,
+  body.has-account-bottom-tabs .jcc-mobile-menu-btn {
     width: 48px;
     height: 48px;
   }
-  body.has-notice-bottom-tabs .jcc-mobile-menu-btn svg {
+  body.has-notice-bottom-tabs .jcc-mobile-menu-btn svg,
+  body.has-account-bottom-tabs .jcc-mobile-menu-btn svg {
     width: 32px;
     height: 32px;
   }
-  body.has-notice-bottom-tabs .jcc-mobile-menu-btn svg path {
+  body.has-notice-bottom-tabs .jcc-mobile-menu-btn svg path,
+  body.has-account-bottom-tabs .jcc-mobile-menu-btn svg path {
     stroke-width: 2.2;
   }
 }
@@ -299,9 +310,10 @@ header.app-header.jcc-pageHeader h1 {
     border-radius: 10px;
   }
 }
-/* 모바일: 헤더 안 하위 탭은 숨기고 하단 탭바로 대체(공지) */
+/* 모바일: 헤더 안 하위 탭은 숨기고 하단 탭바로 대체(공지·계정 관리) */
 @media (max-width: 900px) {
-  body.has-notice-bottom-tabs .jcc-pageHeader-tabsRow {
+  body.has-notice-bottom-tabs .jcc-pageHeader-tabsRow,
+  body.has-account-bottom-tabs .jcc-pageHeader-tabsRow {
     display: none;
   }
 }

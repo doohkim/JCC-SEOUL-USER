@@ -34,6 +34,7 @@ api_urlpatterns = [
     path("", include("counseling.urls")),
     path("", include("retreat.urls")),
     path("", include("notices.urls")),
+    path("", include("cursor_docs.urls")),
     path("tinymce/", include("tinymce.urls")),
 
 ]

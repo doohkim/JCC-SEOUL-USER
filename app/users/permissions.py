@@ -612,7 +612,7 @@ def can_access_retreat_tab(user: User) -> bool:
     """좌측/모바일 '수련회' 메뉴 노출 여부 (event 단위가 아닌 일반 가시 체크).
 
     - 슈퍼유저
-    - 수련회 회장단(어떤 행사의 회장단이든 1개 이상)
+    - 수련회 회장단(어떤 집회의 회장단이든 1개 이상)
     - 목사·전도사 (RoleLevel)
     - 조장/부조장(어떤 그룹이든 멤버십 1개 이상)
     """
@@ -631,8 +631,17 @@ def can_access_retreat_tab(user: User) -> bool:
     return False
 
 
+def can_access_retreat_leader_guide(user: User) -> bool:
+    """조장·부조장 사용 가이드 — RetreatGroupMembership 보유자(슈퍼유저 포함)."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_superuser:
+        return True
+    return user.retreat_group_memberships.exists()
+
+
 def is_retreat_council(user: User, event) -> bool:
-    """해당 행사의 회장단(임원·총무·부회장·회장)인지."""
+    """해당 집회의 회장단(임원·총무·부회장·회장)인지."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if user.is_superuser:
@@ -643,7 +652,7 @@ def is_retreat_council(user: User, event) -> bool:
 
 
 def can_add_retreat_group(user: User, event) -> bool:
-    """조 생성 권한 — 슈퍼유저·해당 행사 회장단만 (목사·전도사·조장 제외)."""
+    """조 생성 권한 — 슈퍼유저·해당 집회 회장단만 (목사·전도사·조장 제외)."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if user.is_superuser:
@@ -654,7 +663,7 @@ def can_add_retreat_group(user: User, event) -> bool:
 
 
 def can_manage_retreat_pickup(user: User, event) -> bool:
-    """픽업 정보 추가·삭제 — 슈퍼유저·회장단·해당 행사 조장/부조장."""
+    """픽업 정보 추가·삭제 — 슈퍼유저·회장단·해당 집회 조장/부조장."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if user.is_superuser:
@@ -667,7 +676,7 @@ def can_manage_retreat_pickup(user: User, event) -> bool:
 
 
 def can_manage_retreat_pickup_location(user: User, event) -> bool:
-    """탑승장소 목록 관리(읽기/추가/수정/삭제) — 슈퍼유저 + 해당 행사 회장단만."""
+    """탑승장소 목록 관리(읽기/추가/수정/삭제) — 슈퍼유저 + 해당 집회 회장단만."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if user.is_superuser:
@@ -678,7 +687,7 @@ def can_manage_retreat_pickup_location(user: User, event) -> bool:
 
 
 def can_select_pickup_group(user: User, event) -> bool:
-    """픽업 등록 시 '조'를 직접 선택할 수 있는지 — 슈퍼유저·해당 행사 회장단만.
+    """픽업 등록 시 '조'를 직접 선택할 수 있는지 — 슈퍼유저·해당 집회 회장단만.
 
     조장/부조장은 조를 선택하지 못하고 본인 조로 자동 지정된다.
     """
@@ -747,7 +756,7 @@ def visible_retreat_sessions_for(user: User, event):
 
 
 def is_retreat_council_any(user: User) -> bool:
-    """탭 노출용: 어떤 활성 행사의 회장단이든 1개 이상 가지는가."""
+    """탭 노출용: 어떤 활성 집회의 회장단이든 1개 이상 가지는가."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if user.is_superuser:
@@ -802,7 +811,7 @@ def is_retreat_staff(user: User, event) -> bool:
 
 
 def can_view_retreat_all(user: User, event) -> bool:
-    """행사 전체 데이터 조회(대시보드·숙소 탭 등) — 회장단·목사·전도사·슈퍼유저."""
+    """집회 전체 데이터 조회(대시보드·숙소 탭 등) — 회장단·목사·전도사·슈퍼유저."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if user.is_superuser:
@@ -827,7 +836,7 @@ def can_change_retreat_check_in(user: User, event) -> bool:
 def visible_retreat_groups_for(user: User, event):
     """현재 사용자가 볼 수 있는 RetreatGroup 쿼리셋.
 
-    전체 보기 (행사 내 모든 조):
+    전체 보기 (집회 내 모든 조):
       - 슈퍼유저
       - 수련회 회장단(회장·부회장·총무·임원) — event 단위 등록
       - 목사·전도사 (RoleLevel)

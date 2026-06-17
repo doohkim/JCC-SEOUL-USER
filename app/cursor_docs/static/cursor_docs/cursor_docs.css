@@ -1,0 +1,259 @@
+/* Cursor Docs — PC 읽기 전용 (superuser) */
+
+.jcc-cursorDocs-page .jcc-layout-content {
+  min-width: 0;
+}
+
+/* main·article: 공지 상세(jcc-notice-detailMain / jcc-notice-detailArticle)와 동일 폭(1400px) */
+
+.jcc-cursorDocs-main {
+  /* jcc-notice-listMain 과 함께 사용 — 추가 제약 없음 */
+}
+
+.jcc-cursorDocs-listIntro {
+  margin-bottom: 0.25rem;
+}
+
+.jcc-cursorDocs-listHeading {
+  margin: 0 0 8px;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #191f28);
+}
+
+.jcc-cursorDocs-listDesc {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-secondary, #6b7684);
+}
+
+.jcc-cursorDocs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.jcc-cursorDocs-card {
+  border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+}
+
+.jcc-cursorDocs-card:first-child {
+  border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+}
+
+.jcc-cursorDocs-cardLink {
+  display: block;
+  padding: 22px 4px;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.jcc-cursorDocs-cardLink:hover {
+  background: var(--surface-hover, rgba(49, 130, 246, 0.04));
+}
+
+.jcc-cursorDocs-cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.jcc-cursorDocs-cardCat {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #3182f6;
+  background: rgba(49, 130, 246, 0.1);
+}
+
+.jcc-cursorDocs-cardDate,
+.jcc-cursorDocs-articlePath {
+  font-size: 0.82rem;
+  color: var(--text-secondary, #8b95a1);
+}
+
+.jcc-cursorDocs-cardTitle {
+  margin: 0 0 6px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #191f28);
+}
+
+.jcc-cursorDocs-cardPath {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--text-tertiary, #adb5bd);
+}
+
+.jcc-cursorDocs-cardExcerpt {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--text-secondary, #6b7684);
+}
+
+.jcc-cursorDocs-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-secondary, #6b7684);
+}
+
+.jcc-cursorDocs-pagination {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 28px;
+  font-size: 0.9rem;
+}
+
+.jcc-cursorDocs-pagination a {
+  color: #3182f6;
+  text-decoration: none;
+}
+
+.jcc-cursorDocs-articleMeta {
+  margin-bottom: 0;
+}
+
+.jcc-cursorDocs-articleMeta .jcc-cursorDocs-cardCat {
+  margin-right: 0.25rem;
+}
+
+@media (min-width: 901px) {
+  body.jcc-cursorDocs-detailPage .app-header .jcc-notice-back {
+    display: none;
+  }
+}
+
+.jcc-cursorDocs-body {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.jcc-cursorDocs-body h1,
+.jcc-cursorDocs-body h2,
+.jcc-cursorDocs-body h3 {
+  margin: 1.6em 0 0.65em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  color: var(--text-primary, #191f28);
+}
+
+.jcc-cursorDocs-body h1 { font-size: 1.5rem; }
+.jcc-cursorDocs-body h2 { font-size: 1.28rem; }
+.jcc-cursorDocs-body h3 { font-size: 1.08rem; }
+
+.jcc-cursorDocs-body p {
+  margin: 0 0 1em;
+}
+
+.jcc-cursorDocs-body ul {
+  margin: 0 0 1em;
+  padding-left: 1.25rem;
+}
+
+.jcc-cursorDocs-body li {
+  margin-bottom: 0.35em;
+}
+
+.jcc-cursorDocs-body a {
+  color: #3182f6;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.jcc-cursorDocs-blockquote {
+  margin: 1em 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--accent, #3182f6);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  border-radius: 0 8px 8px 0;
+  color: var(--muted);
+}
+
+.jcc-cursorDocs-blockquote p {
+  margin: 0;
+}
+
+.jcc-cursorDocs-hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5rem 0;
+}
+
+.jcc-cursorDocs-pre {
+  margin: 1em 0;
+  padding: 16px 18px;
+  overflow-x: auto;
+  border-radius: 12px;
+  background: var(--code-bg, #f2f4f6);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+}
+
+.jcc-cursorDocs-pre code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.jcc-cursorDocs-inlineCode {
+  padding: 0.12em 0.4em;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.88em;
+  background: var(--code-bg, #f2f4f6);
+}
+
+.jcc-cursorDocs-tableWrap {
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.jcc-cursorDocs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.jcc-cursorDocs-table th,
+.jcc-cursorDocs-table td {
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  text-align: left;
+}
+
+.jcc-cursorDocs-table th {
+  background: var(--surface-muted, #f9fafb);
+  font-weight: 600;
+}
+
+[data-theme="dark"] .jcc-cursorDocs-cardCat {
+  background: rgba(49, 130, 246, 0.18);
+}
+
+[data-theme="dark"] .jcc-cursorDocs-pre,
+[data-theme="dark"] .jcc-cursorDocs-inlineCode {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 900px) {
+  .jcc-cursorDocs-page .jcc-notice-back {
+    display: none;
+  }
+}

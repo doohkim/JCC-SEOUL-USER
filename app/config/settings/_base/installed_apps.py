@@ -24,6 +24,7 @@ LOCAL_APPS = [
     "counseling",
     "retreat",
     "notices",
+    "cursor_docs",
     "utils",
 ]
 

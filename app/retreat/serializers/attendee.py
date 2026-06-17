@@ -3,6 +3,8 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from retreat.models import RetreatAttendee
+from retreat.services.check_in_stamps import is_expected_timestamps_locked
+from users.validators import normalize_korea_mobile_phone
 
 
 class RetreatAttendeeSerializer(serializers.ModelSerializer):
@@ -15,6 +17,7 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
     )
     user_label = serializers.SerializerMethodField()
     lodging_room_label = serializers.SerializerMethodField()
+    expected_timestamps_locked = serializers.SerializerMethodField()
 
     class Meta:
         model = RetreatAttendee
@@ -39,6 +42,7 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
             "source_member",
             "lodging_room",
             "lodging_room_label",
+            "expected_timestamps_locked",
             "sort_order",
         ]
         read_only_fields = [
@@ -48,6 +52,7 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
             "member_role_display",
             "user_label",
             "lodging_room_label",
+            "expected_timestamps_locked",
         ]
 
     def get_user_label(self, attendee: RetreatAttendee) -> str:
@@ -66,7 +71,29 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("이름은 비워둘 수 없습니다.")
         return v
 
+    def validate_phone(self, value: str) -> str:
+        v = (value or "").strip()
+        if not v:
+            return ""
+        normalized = normalize_korea_mobile_phone(v)
+        if normalized is None:
+            raise serializers.ValidationError(
+                "휴대전화 형식이 아닙니다. 예: 010-1234-5678"
+            )
+        return normalized
+
+    def get_expected_timestamps_locked(self, attendee: RetreatAttendee) -> bool:
+        return is_expected_timestamps_locked(attendee)
+
     def validate(self, attrs):
+        if self.instance and is_expected_timestamps_locked(self.instance):
+            for key in ("expected_check_in_at", "expected_check_out_at"):
+                if key in attrs:
+                    raise serializers.ValidationError(
+                        {
+                            key: "자동 퇴실 처리된 조원의 입·퇴실 시각은 수정할 수 없습니다."
+                        }
+                    )
         # 부분 수정(PATCH)에서 한쪽만 들어와도 인스턴스 값과 합쳐 비교한다.
         sentinel = object()
         in_at = attrs.get("expected_check_in_at", sentinel)
@@ -80,6 +107,15 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
                 {"expected_check_out_at": "퇴실 시각은 입실 시각보다 뒤여야 합니다."}
             )
         return attrs
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        phone = data.get("phone")
+        if phone:
+            normalized = normalize_korea_mobile_phone(phone)
+            if normalized:
+                data["phone"] = normalized
+        return data
 
     def get_lodging_room_label(self, attendee: RetreatAttendee) -> str:
         room = attendee.lodging_room

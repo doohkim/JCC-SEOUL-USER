@@ -17,7 +17,7 @@
 
           {% if events %}
             <div class="card" style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-              <label for="ttEventSelect" style="font-weight: 600;">행사</label>
+              <label for="ttEventSelect" style="font-weight: 600;">집회</label>
               <select id="ttEventSelect" style="min-width: 220px;">
                 {% for ev in events %}
                   <option value="{% url 'timetable' %}?event={{ ev.id }}"{% if selected_event and ev.id == selected_event.id %} selected{% endif %}>{{ ev.name }}</option>
@@ -68,9 +68,9 @@
           {% else %}
             <div class="card">
               {% if not events %}
-                <p class="msg">등록된 수련회 행사가 없습니다.</p>
+                <p class="msg">등록된 수련회 집회가 없습니다.</p>
               {% else %}
-                <p class="msg">선택한 행사에 등록된 일정이 없습니다. 수련회 &gt; 관리 &gt; 타임테이블에서 추가하세요.</p>
+                <p class="msg">선택한 집회에 등록된 일정이 없습니다. 수련회 &gt; 관리 &gt; 타임테이블에서 추가하세요.</p>
               {% endif %}
             </div>
           {% endif %}

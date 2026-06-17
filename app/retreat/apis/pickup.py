@@ -51,17 +51,15 @@ def _parse_direction(value) -> str:
     return direction
 
 
-_PHONE_RE = re.compile(r"^01[016789]\d{7,8}$")
+from users.validators import normalize_korea_mobile_phone
 
 
 def normalize_phone(raw: str) -> str | None:
     """휴대폰 번호 형식 검증·정규화. 유효하면 '010-1234-5678' 형태, 아니면 None."""
-    digits = re.sub(r"\D", "", raw or "")
-    if not _PHONE_RE.match(digits):
+    result = normalize_korea_mobile_phone(raw or "")
+    if result == "":
         return None
-    if len(digits) == 11:
-        return f"{digits[:3]}-{digits[3:7]}-{digits[7:]}"
-    return f"{digits[:3]}-{digits[3:6]}-{digits[6:]}"
+    return result
 
 
 def _applicant_name(user) -> str:

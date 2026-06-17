@@ -9,7 +9,7 @@ from .event import RetreatEvent
 
 
 class RetreatPickup(models.Model):
-    """행사별 입회/출회 픽업 정보."""
+    """집회별 입회/출회 픽업 정보."""
 
     class Direction(models.TextChoices):
         ARRIVAL = "arrival", "입회"
@@ -19,7 +19,7 @@ class RetreatPickup(models.Model):
         RetreatEvent,
         on_delete=models.CASCADE,
         related_name="pickups",
-        verbose_name="행사",
+        verbose_name="집회",
     )
     direction = models.CharField(
         "구분",
@@ -91,13 +91,13 @@ class RetreatPickup(models.Model):
 
 
 class RetreatPickupLocation(models.Model):
-    """행사 공통 탑승장소 목록 — 지역·부서 구분 없이 픽업 등록 시 드롭다운 선택용."""
+    """집회 공통 탑승장소 목록 — 지역·부서 구분 없이 픽업 등록 시 드롭다운 선택용."""
 
     event = models.ForeignKey(
         RetreatEvent,
         on_delete=models.CASCADE,
         related_name="pickup_locations",
-        verbose_name="행사",
+        verbose_name="집회",
     )
     name = models.CharField("탑승장소", max_length=120)
     sort_order = models.PositiveIntegerField("정렬", default=0)

@@ -8,13 +8,13 @@ from .event import RetreatEvent
 
 
 class Lodging(models.Model):
-    """행사별 숙소(건물/장소)."""
+    """집회별 숙소(건물/장소)."""
 
     event = models.ForeignKey(
         RetreatEvent,
         on_delete=models.CASCADE,
         related_name="lodgings",
-        verbose_name="행사",
+        verbose_name="집회",
     )
     region = models.ForeignKey(
         "users.Region",
