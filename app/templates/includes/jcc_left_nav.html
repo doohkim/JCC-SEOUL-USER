@@ -13,24 +13,29 @@
 </button>
 
 <aside class="jcc-leftNav collapsed" id="jcc-leftNav" aria-label="주 메뉴">
-  <div class="jcc-leftNav-profile">
-    {% if user.is_authenticated %}
-      <div class="jcc-leftNav-avatar" aria-hidden="true">{{ user|user_display_name|slice:":1" }}</div>
-      <div class="jcc-leftNav-profileInfo">
-        <div class="jcc-leftNav-profileName">{{ user|user_display_name }}</div>
-        {% with org=user|user_org_summary %}
-          <div class="jcc-leftNav-profileSub" title="{{ org|default:'JCC Seoul' }}">
-            {{ org|default:"JCC Seoul" }}
-          </div>
-        {% endwith %}
-      </div>
-    {% else %}
-      <div class="jcc-leftNav-avatar jcc-leftNav-avatar--guest" aria-hidden="true">?</div>
-      <div class="jcc-leftNav-profileInfo">
-        <div class="jcc-leftNav-profileName">방문자</div>
-        <div class="jcc-leftNav-profileSub">로그인이 필요합니다</div>
-      </div>
-    {% endif %}
+  <div class="jcc-leftNav-topBar">
+    <span class="jcc-leftNav-topIconCol">
+      <button
+        type="button"
+        class="jcc-leftNav-desktopToggle"
+        id="jccLeftNavDesktopToggle"
+        aria-label="사이드바 펼치기"
+        aria-expanded="false"
+      >
+        <span class="jcc-leftNav-iconSlot" aria-hidden="true">
+        <svg class="jcc-leftNav-toggleIcon jcc-leftNav-toggleIcon--menu" viewBox="0 0 24 24" fill="none" focusable="false">
+          <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+        </svg>
+          <svg class="jcc-leftNav-toggleIcon jcc-leftNav-toggleIcon--collapse" viewBox="0 0 24 24" fill="none" focusable="false">
+            <path d="M3 7h11" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+            <path d="M3 12h11" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+            <path d="M3 17h11" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+            <path d="M17 8.5L14 12l3 3.5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+      </button>
+    </span>
+    <span class="jcc-leftNav-brand">JIPA</span>
     <button type="button" class="jcc-leftNav-close" id="jccLeftNavClose" aria-label="메뉴 닫기">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
         <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -132,29 +137,17 @@
   </div>
 
   <div class="jcc-leftNav-bottom">
-    <button
-      type="button"
-      class="jcc-theme-toggle"
-      id="jccThemeToggle"
-      aria-label="밝은 모드로 전환"
-      title="밝은 모드"
-      aria-pressed="true"
-    >
-      {# 다크 모드 중: 노란 태양 → 클릭하면 밝은 화면으로 전환 #}
-      <svg class="jcc-theme-icon jcc-theme-icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-        <circle cx="12" cy="12" r="4.2" fill="currentColor" />
-        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 2.5v2.6M12 18.9v2.6M21.5 12h-2.6M5.1 12H2.5M18.36 5.64l-1.84 1.84M7.48 16.52l-1.84 1.84M18.36 18.36l-1.84-1.84M7.48 7.48 5.64 5.64" />
-      </svg>
-      {# 라이트 모드 중: 초승달 → 클릭하면 어두운 화면으로 전환 #}
-      <svg class="jcc-theme-icon jcc-theme-icon--moon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-      </svg>
-    </button>
-    <a class="jcc-leftNav-logout" href="{% url 'user_logout' %}">로그아웃</a>
+    <div class="jcc-leftNav-userChip">
+      {% if user.is_authenticated %}
+        <div class="jcc-leftNav-avatar jcc-leftNav-avatar--sm" aria-hidden="true">{{ user|user_display_name|slice:":1" }}</div>
+        <span class="jcc-leftNav-userName">{{ user|user_display_name }}</span>
+      {% else %}
+        <div class="jcc-leftNav-avatar jcc-leftNav-avatar--sm jcc-leftNav-avatar--guest" aria-hidden="true">?</div>
+        <span class="jcc-leftNav-userName">방문자</span>
+      {% endif %}
+    </div>
   </div>
 </aside>
-
-<script src="{% static 'attendance/jcc-theme.js' %}?v=20260615a" defer></script>
 
 <nav class="jcc-bottomTabs" id="jccBottomTabs" aria-label="모바일 주요 메뉴">
   {% if user|can_access_pastoral_tab %}
@@ -213,16 +206,15 @@
     const backdrop = document.getElementById("jcc-leftNavBackdrop");
     const menuBtn = document.getElementById("jccMobileMenuBtn");
     const closeBtn = document.getElementById("jccLeftNavClose");
+    const desktopToggle = document.getElementById("jccLeftNavDesktopToggle");
     const bottomTabMore = document.getElementById("jccBottomTabMore");
     const bottomTabs = document.getElementById("jccBottomTabs");
     if (!nav) return;
 
     const mqMobile = window.matchMedia("(max-width: 900px)");
-    // 마우스(정밀 포인터)가 있는 데스크톱에서만 가장자리 호버 펼침을 허용한다.
-    const mqDesktopPointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const DESKTOP_NAV_KEY = "jcc-leftNav-desktop-expanded";
 
-    // 페이지 진입 시 항상 닫힌 상태로 초기화 (탭/페이지 이동 후 드로어가 남는 현상 방지)
-    nav.classList.add("collapsed");
+    // 모바일=드로어 닫힘, PC=localStorage 에 저장된 펼침 상태 복원
     document.body.classList.remove("jcc-leftNav-drawer-open");
     if (backdrop) {
       backdrop.hidden = true;
@@ -239,6 +231,48 @@
       return mqMobile.matches;
     }
 
+    function persistDesktopNavState(expanded) {
+      if (!isMobileLayout()) {
+        try {
+          localStorage.setItem(DESKTOP_NAV_KEY, expanded ? "1" : "0");
+        } catch (_err) {
+          /* ignore quota / private mode */
+        }
+      }
+    }
+
+    function readDesktopNavExpanded() {
+      try {
+        return localStorage.getItem(DESKTOP_NAV_KEY) === "1";
+      } catch (_err) {
+        return false;
+      }
+    }
+
+    function syncDesktopToggleUi(expanded) {
+      if (!desktopToggle || isMobileLayout()) return;
+      desktopToggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+      desktopToggle.setAttribute(
+        "aria-label",
+        expanded ? "사이드바 접기" : "사이드바 펼치기"
+      );
+    }
+
+    function applyDesktopNavState() {
+      if (isMobileLayout()) return;
+      const expanded = readDesktopNavExpanded();
+      nav.classList.toggle("collapsed", !expanded);
+      syncExpanded(expanded);
+      syncDesktopToggleUi(expanded);
+    }
+
+    if (isMobileLayout()) {
+      nav.classList.add("collapsed");
+      syncExpanded(false);
+    } else {
+      applyDesktopNavState();
+    }
+
     function getDrawerFocusables() {
       return Array.from(nav.querySelectorAll(FOCUSABLE));
     }
@@ -247,6 +281,7 @@
       const val = open ? "true" : "false";
       if (menuBtn) menuBtn.setAttribute("aria-expanded", val);
       if (bottomTabMore) bottomTabMore.setAttribute("aria-expanded", val);
+      syncDesktopToggleUi(open);
     }
 
     function openNav() {
@@ -264,28 +299,41 @@
         requestAnimationFrame(() => {
           if (closeBtn) closeBtn.focus();
         });
+      } else {
+        persistDesktopNavState(true);
+        syncExpanded(true);
       }
     }
 
     function closeNav() {
       nav.classList.add("collapsed");
-      if (backdrop) {
-        backdrop.hidden = true;
-        backdrop.setAttribute("aria-hidden", "true");
+      if (isMobileLayout()) {
+        if (backdrop) {
+          backdrop.hidden = true;
+          backdrop.setAttribute("aria-hidden", "true");
+        }
+        nav.removeAttribute("role");
+        nav.removeAttribute("aria-modal");
+        document.body.classList.remove("jcc-leftNav-drawer-open");
+        syncExpanded(false);
+        if (lastFocused && typeof lastFocused.focus === "function") {
+          lastFocused.focus();
+        }
+        lastFocused = null;
+      } else {
+        persistDesktopNavState(false);
+        syncExpanded(false);
       }
-      nav.removeAttribute("role");
-      nav.removeAttribute("aria-modal");
-      document.body.classList.remove("jcc-leftNav-drawer-open");
-      syncExpanded(false);
-      if (isMobileLayout() && lastFocused && typeof lastFocused.focus === "function") {
-        lastFocused.focus();
-      }
-      lastFocused = null;
     }
 
     function toggleNav() {
       if (nav.classList.contains("collapsed")) openNav();
       else closeNav();
+    }
+
+    function toggleDesktopNav() {
+      if (isMobileLayout()) return;
+      toggleNav();
     }
 
     function trapFocus(e) {
@@ -309,6 +357,9 @@
     if (closeBtn) {
       closeBtn.addEventListener("click", closeNav);
     }
+    if (desktopToggle) {
+      desktopToggle.addEventListener("click", toggleDesktopNav);
+    }
     if (bottomTabMore) {
       bottomTabMore.addEventListener("click", () => {
         if (nav.classList.contains("collapsed")) openNav();
@@ -329,21 +380,19 @@
       trapFocus(e);
     });
 
-    /** 데스크톱: 왼쪽 가장자리 호버로 펼침 (기존 동작) */
-    const LEFT_EDGE_PX = 28;
-    window.addEventListener("mousemove", (e) => {
-      if (isMobileLayout() || !mqDesktopPointer.matches) return;
-      const rect = nav.getBoundingClientRect();
-      const inside =
-        e.clientX >= rect.left &&
-        e.clientX <= rect.right &&
-        e.clientY >= rect.top &&
-        e.clientY <= rect.bottom;
-
-      if (nav.classList.contains("collapsed")) {
-        if (e.clientX <= LEFT_EDGE_PX) nav.classList.remove("collapsed");
-      } else if (!inside) {
+    mqMobile.addEventListener("change", () => {
+      if (!isMobileLayout()) {
+        if (backdrop) {
+          backdrop.hidden = true;
+          backdrop.setAttribute("aria-hidden", "true");
+        }
+        nav.removeAttribute("role");
+        nav.removeAttribute("aria-modal");
+        document.body.classList.remove("jcc-leftNav-drawer-open");
+        applyDesktopNavState();
+      } else {
         nav.classList.add("collapsed");
+        syncExpanded(false);
       }
     });
 
@@ -382,12 +431,6 @@
       el.addEventListener("click", () => {
         if (isMobileLayout()) closeNav();
       });
-    });
-
-    mqMobile.addEventListener("change", () => {
-      if (!isMobileLayout()) {
-        closeNav();
-      }
     });
 
     /** 현재 경로 기준 활성 탭 표시 (사이드 + 하단 공통) */

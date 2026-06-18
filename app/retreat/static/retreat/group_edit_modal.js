@@ -78,6 +78,22 @@
     return scopeRow;
   }
 
+  /** 대표 부서 + 추가 지역·부서 행에서 division id 목록(중복 제거). */
+  function collectDivisionIdsFromForm(divisionEl, extraScopesListEl) {
+    const ids = [];
+    const push = (raw) => {
+      const n = Number(raw);
+      if (raw && Number.isFinite(n) && !ids.includes(n)) ids.push(n);
+    };
+    push(divisionEl?.value);
+    if (extraScopesListEl) {
+      extraScopesListEl.querySelectorAll("[data-extra-scope-row]").forEach((row) => {
+        push(row.querySelector("[data-extra-division]")?.value);
+      });
+    }
+    return ids;
+  }
+
   function collectExtraScopesFromList(listEl, label) {
     const scopes = [];
     const scopeRows = listEl ? listEl.querySelectorAll("[data-extra-scope-row]") : [];
@@ -159,8 +175,9 @@
     }
 
     async function search(q) {
-      const { division, region } = filters() || {};
-      if (!q && !division && !region) {
+      const { division, region, divisions } = filters() || {};
+      const divisionList = Array.isArray(divisions) ? divisions : [];
+      if (!q && !division && !region && !divisionList.length) {
         closeList();
         return;
       }
@@ -168,8 +185,13 @@
       try {
         const params = new URLSearchParams();
         if (q) params.set("q", q);
-        if (division) params.set("division", division);
-        else if (region) params.set("region", region);
+        if (divisionList.length) {
+          divisionList.forEach((d) => params.append("division", String(d)));
+        } else if (division) {
+          params.set("division", division);
+        } else if (region) {
+          params.set("region", region);
+        }
         params.set("limit", "30");
         const url = `${editCtx.urls.userSearchUrl}?${params.toString()}`;
         const r = await fetch(url, { credentials: "same-origin" });
@@ -207,8 +229,10 @@
     }
 
     function hasFilter() {
-      const { division, region } = filters() || {};
-      return Boolean(division || region);
+      const { division, region, divisions } = filters() || {};
+      return Boolean(
+        division || region || (Array.isArray(divisions) && divisions.length)
+      );
     }
 
     input.addEventListener("input", () => {
@@ -225,6 +249,10 @@
 
     input.addEventListener("focus", () => {
       if (!input.value.trim() && hasFilter()) search("");
+    });
+
+    input.addEventListener("click", () => {
+      if (!input.value.trim() && hasFilter() && list.hidden) search("");
     });
 
     input.addEventListener("keydown", (e) => {
@@ -573,10 +601,11 @@
 
   editLeaderPicker = createUserPicker(
     document.getElementById("groupEditUserPicker"),
-    () => ({
-      division: editDivision?.value || "",
-      region: editRegion?.value || "",
-    }),
+    () => {
+      const divisions = collectDivisionIdsFromForm(editDivision, editExtraList);
+      if (divisions.length) return { divisions };
+      return { region: editRegion?.value || "" };
+    },
     (user) => addEditLeaderFor(user)
   );
 
@@ -599,6 +628,7 @@
     bindExtraScopeRow,
     appendExtraScopeRow,
     collectExtraScopesFromList,
+    collectDivisionIdsFromForm,
     createUserPicker,
     getAllDivisions: () => allDivisions,
     openEditModal,

@@ -25,8 +25,10 @@ _ALL_MAX_LIMIT = 1000
 class RetreatUserSearchView(APIView):
     """GET /api/v1/retreat/users/search/?q=...&division=..&region=..&limit=20
 
-    ``division``(또는 ``region``)을 주면 해당 소속 계정만 반환한다. ``q`` 가
-    비어 있어도 부서·지역 필터가 있으면 그 소속 전체 목록을 돌려준다.
+    ``division``(또는 ``region``)을 주면 해당 소속 계정만 반환한다.
+    ``division`` 은 ``?division=1&division=2`` 처럼 여러 번 넘기면
+    대표·추가 지역·부서 소속을 합쳐 조회한다. ``q`` 가 비어 있어도
+    부서·지역 필터가 있으면 그 소속 전체 목록을 돌려준다.
     """
 
     permission_classes = [IsAuthenticated]
@@ -36,7 +38,11 @@ class RetreatUserSearchView(APIView):
             raise PermissionDenied("수련회 화면 접근 권한이 없습니다.")
 
         q = (request.query_params.get("q") or "").strip()
-        division_id = self._as_int(request.query_params.get("division"))
+        division_ids = [
+            d
+            for raw in request.query_params.getlist("division")
+            if (d := self._as_int(raw)) is not None
+        ]
         region_id = self._as_int(request.query_params.get("region"))
         signup_source = (request.query_params.get("signup_source") or "").strip()
         all_users = (request.query_params.get("all") or "").strip().lower() in (
@@ -55,15 +61,15 @@ class RetreatUserSearchView(APIView):
         valid_sources = {c[0] for c in User.SignupSource.choices}
         if signup_source in valid_sources:
             qs = qs.filter(signup_source=signup_source)
-        if division_id:
-            qs = qs.filter(division_teams__division_id=division_id)
+        if division_ids:
+            qs = qs.filter(division_teams__division_id__in=division_ids)
         elif region_id:
             qs = qs.filter(division_teams__division__region_id=region_id)
         if q:
             qs = qs.filter(
                 Q(username__icontains=q) | Q(profile__display_name__icontains=q)
             )
-        elif not (division_id or region_id or all_users):
+        elif not (division_ids or region_id or all_users):
             # 필터도 검색어도 없고 all 플래그도 없으면 빈 목록(전체 계정 노출 방지).
             return Response([])
         qs = qs.distinct().order_by("username")[:limit]

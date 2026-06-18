@@ -1133,8 +1133,14 @@
 
     function filterParams() {
       const params = new URLSearchParams();
-      if (ctx.groupDivisionId) params.set("division", String(ctx.groupDivisionId));
-      else if (ctx.groupRegionId) params.set("region", String(ctx.groupRegionId));
+      const ids = Array.isArray(ctx.groupDivisionIds) ? ctx.groupDivisionIds : [];
+      if (ids.length) {
+        ids.forEach((id) => params.append("division", String(id)));
+      } else if (ctx.groupDivisionId) {
+        params.set("division", String(ctx.groupDivisionId));
+      } else if (ctx.groupRegionId) {
+        params.set("region", String(ctx.groupRegionId));
+      }
       return params;
     }
 

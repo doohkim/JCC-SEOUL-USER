@@ -99,3 +99,27 @@ class UserSearchApiTests(APITestCase):
         )
         self.assertEqual(r.status_code, 200)
         self.assertLessEqual(len(r.json()), 30)
+
+    def test_multiple_division_filter_includes_extra_scope_members(self):
+        div_extra = Division.objects.create(
+            region=self.seoul, code="us_univ", name="대학부"
+        )
+        user_extra = User.objects.create_user(username="us_extra_div", password="x")
+        UserDivisionTeam.objects.create(
+            user=user_extra, division=div_extra, is_primary=True
+        )
+        self.client.force_authenticate(self.leader)
+        r = self.client.get(
+            reverse("api_retreat_user_search"),
+            {"division": [self.div.id, div_extra.id]},
+        )
+        self.assertEqual(r.status_code, 200)
+        usernames = [u["username"] for u in r.json()]
+        self.assertIn(self.leader.username, usernames)
+        self.assertIn(user_extra.username, usernames)
+
+        r_single = self.client.get(
+            reverse("api_retreat_user_search"), {"division": self.div.id}
+        )
+        usernames_single = [u["username"] for u in r_single.json()]
+        self.assertNotIn(user_extra.username, usernames_single)

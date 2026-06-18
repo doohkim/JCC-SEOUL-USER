@@ -129,17 +129,17 @@ header.app-header a:hover {
 
 .jcc-leftNav {
   width: 235px;
-  padding: 1.2rem 0.9rem;
+  padding: 1rem 0.9rem 1.2rem;
   border-right: 1px solid var(--border);
   background: var(--nav-bg);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.35rem;
   position: sticky;
   top: 0;
   height: 100vh;
   height: 100dvh;
-  transition: width 0.28s ease, padding 0.28s ease, opacity 0.22s ease;
+  transition: width 0.22s ease, padding 0.22s ease;
 }
 
 .jcc-leftNav-toggle {
@@ -155,12 +155,197 @@ header.app-header a:hover {
 }
 
 .jcc-leftNav.collapsed {
-  width: 0;
-  padding: 1.2rem 0;
-  border-right: none;
-  opacity: 0;
-  pointer-events: none;
-  overflow: hidden;
+  /* PC·모바일 각각 @media 에서 정의 */
+}
+
+.jcc-leftNav-topBar,
+.jcc-leftNav-desktopToggle {
+  display: none;
+}
+
+/* PC: Home Assistant 스타일 — 기본 축소 레일, 햄버거 클릭 시 고정 펼침 */
+@media (min-width: 901px) {
+  .jcc-leftNav {
+    overflow: hidden;
+    padding-left: 0.55rem;
+    padding-right: 0.8rem;
+  }
+
+  .jcc-leftNav-topBar {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.7rem 0.85rem;
+    margin-bottom: 0;
+  }
+
+  .jcc-leftNav-topIconCol {
+    position: relative;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  .jcc-leftNav-desktopToggle {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    appearance: none;
+    transition: background 0.15s ease, width 0.15s ease, height 0.15s ease, border-radius 0.15s ease;
+  }
+
+  .jcc-leftNav-iconSlot {
+    position: relative;
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .jcc-leftNav-toggleIcon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    color: var(--muted);
+  }
+
+  .jcc-leftNav-toggleIcon--collapse {
+    display: none;
+  }
+
+  .jcc-leftNav-desktopToggle[aria-expanded="true"] .jcc-leftNav-toggleIcon--menu {
+    display: none;
+  }
+
+  .jcc-leftNav-desktopToggle[aria-expanded="true"] .jcc-leftNav-toggleIcon--collapse {
+    display: block;
+    color: var(--text);
+  }
+
+  .jcc-leftNav-desktopToggle[aria-expanded="true"] {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--text) 9%, transparent);
+  }
+
+  .jcc-leftNav-desktopToggle[aria-expanded="true"]:hover,
+  .jcc-leftNav-desktopToggle[aria-expanded="true"]:focus-visible {
+    background: color-mix(in srgb, var(--text) 13%, transparent);
+  }
+
+  .jcc-leftNav-desktopToggle:hover .jcc-leftNav-toggleIcon,
+  .jcc-leftNav-desktopToggle:focus-visible .jcc-leftNav-toggleIcon {
+    color: var(--accent);
+  }
+
+  .jcc-leftNav-desktopToggle:hover,
+  .jcc-leftNav-desktopToggle:focus-visible {
+    background: var(--nav-item-hover-bg);
+    outline: none;
+  }
+
+  .jcc-leftNav-brand {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.5;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .jcc-leftNav-item,
+  .jcc-leftNav-brand {
+    font-size: 0.95rem;
+  }
+
+  .jcc-leftNav.collapsed {
+    width: 68px;
+    padding-left: 0.45rem;
+    padding-right: 0.45rem;
+    opacity: 1;
+    pointer-events: auto;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .jcc-leftNav.collapsed .jcc-leftNav-topBar {
+    justify-content: center;
+    gap: 0;
+    padding: 0.7rem 0.45rem;
+  }
+
+  .jcc-leftNav.collapsed .jcc-leftNav-brand {
+    display: none;
+  }
+
+  .jcc-leftNav.collapsed .jcc-leftNav-desktopToggle {
+    width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    background: transparent;
+  }
+
+  .jcc-leftNav.collapsed .jcc-leftNav-sectionLabel,
+  .jcc-leftNav.collapsed .jcc-leftNav-item > span {
+    display: none;
+  }
+
+  .jcc-leftNav.collapsed .jcc-leftNav-item {
+    justify-content: center;
+    padding: 0.7rem 0.45rem;
+    gap: 0;
+  }
+
+  .jcc-leftNav-logout {
+    display: none;
+  }
+
+  .jcc-leftNav.collapsed .jcc-leftNav-userName {
+    display: none;
+  }
+
+  .jcc-leftNav.collapsed .jcc-leftNav-userChip {
+    justify-content: center;
+    padding: 0.55rem 0.45rem;
+    gap: 0;
+  }
+
+  .jcc-leftNav-sectionLabel {
+    display: none;
+  }
+
+  .jcc-leftNav-tabs {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-top: 0;
+  }
 }
 
 /* 모바일: 햄버거·하단 탭바·드로어 닫기 (jcc_left_nav.html) */
@@ -191,23 +376,6 @@ body.has-account-bottom-tabs header.app-header {
   position: sticky;
   top: 0;
   z-index: 100;
-}
-/* 모바일 햄버거: 수련회·공지·계정 관리 페이지와 동일한 크기·굵기 */
-@media (max-width: 900px) {
-  body.has-notice-bottom-tabs .jcc-mobile-menu-btn,
-  body.has-account-bottom-tabs .jcc-mobile-menu-btn {
-    width: 48px;
-    height: 48px;
-  }
-  body.has-notice-bottom-tabs .jcc-mobile-menu-btn svg,
-  body.has-account-bottom-tabs .jcc-mobile-menu-btn svg {
-    width: 32px;
-    height: 32px;
-  }
-  body.has-notice-bottom-tabs .jcc-mobile-menu-btn svg path,
-  body.has-account-bottom-tabs .jcc-mobile-menu-btn svg path {
-    stroke-width: 2.2;
-  }
 }
 /* ============================================================
    공통 페이지 헤더(수련회·공지 공용) — 단일 소스.
@@ -1848,62 +2016,9 @@ body.has-notice-bottom-tabs .jcc-retreat-listTop {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-}
-
-/* 테마 토글 (다크 ↔ 라이트) */
-.jcc-theme-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: 0.55rem 0.75rem;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--accent);
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
-}
-
-.jcc-theme-toggle:hover {
-  border-color: var(--nav-item-hover-border);
-  background: var(--nav-item-hover-bg);
-}
-
-.jcc-theme-toggle:active {
-  transform: scale(0.98);
-}
-
-.jcc-theme-toggle .jcc-theme-icon {
-  width: 1.35rem;
-  height: 1.35rem;
   flex-shrink: 0;
-}
-
-.jcc-theme-toggle .jcc-theme-icon--sun {
-  color: #fbbf24;
-}
-
-.jcc-theme-toggle .jcc-theme-icon--moon {
-  color: #475569;
-}
-
-/* 테마에 따라 아이콘 하나만 노출:
-   다크 모드 → 해(밝게 전환), 라이트 모드 → 달(어둡게 전환) */
-.jcc-theme-toggle .jcc-theme-icon--sun {
-  display: inline-block;
-}
-
-.jcc-theme-toggle .jcc-theme-icon--moon {
-  display: none;
-}
-
-html[data-theme="light"] .jcc-theme-toggle .jcc-theme-icon--sun {
-  display: none;
-}
-
-html[data-theme="light"] .jcc-theme-toggle .jcc-theme-icon--moon {
-  display: inline-block;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border);
 }
 
 .jcc-leftNav-user {
@@ -1911,6 +2026,32 @@ html[data-theme="light"] .jcc-theme-toggle .jcc-theme-icon--moon {
   font-weight: 700;
   font-size: 0.9rem;
   padding: 0 0.3rem;
+}
+
+.jcc-leftNav-userChip {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.jcc-leftNav-avatar--sm {
+  width: 32px;
+  height: 32px;
+  font-size: 0.85rem;
+}
+
+.jcc-leftNav-userName {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 1;
 }
 
 .jcc-leftNav-logout {
@@ -1977,14 +2118,63 @@ html[data-theme="light"] .jcc-theme-toggle .jcc-theme-icon--moon {
     opacity: 1 !important;
   }
 
-  .jcc-leftNav-tabs {
-    flex-direction: column;
-    gap: 0.5rem;
+  .jcc-leftNav-topBar {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-shrink: 0;
+    padding: 0.65rem 0.85rem;
+    padding-bottom: 0.35rem;
+    margin-bottom: 0.15rem;
+    border-bottom: 1px solid var(--border);
+    justify-content: flex-start;
+  }
+
+  .jcc-leftNav-topIconCol {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .jcc-leftNav-desktopToggle {
+    display: none;
+  }
+
+  .jcc-leftNav-brand {
+    font-size: 1.2rem;
+    font-weight: 800;
+    line-height: 1.5;
+    color: var(--text);
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .jcc-leftNav-close {
+    margin-left: auto;
+  }
+
+  .jcc-leftNav-sectionLabel {
+    display: none;
   }
 
   .jcc-leftNav-item {
     padding: 0.65rem 0.85rem;
     font-size: 0.95rem;
+  }
+
+  .jcc-leftNav-logout {
+    display: none;
+  }
+
+  .jcc-leftNav-tabs {
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
   .jcc-leftNav-bottom {
@@ -1993,7 +2183,9 @@ html[data-theme="light"] .jcc-theme-toggle .jcc-theme-icon--moon {
     align-items: stretch;
   }
 
-  .jcc-mobile-menu-btn {
+  /* 모바일 좌상단 네비 버튼(햄버거·뒤로가기): 전 페이지 공통 크기 */
+  .jcc-mobile-menu-btn,
+  .jcc-retreat-mobileBack {
     position: fixed;
     top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
     left: 0.35rem;
@@ -2011,23 +2203,27 @@ html[data-theme="light"] .jcc-theme-toggle .jcc-theme-icon--moon {
     cursor: pointer;
     padding: 0;
     appearance: none;
+    text-decoration: none;
     transition: background 0.15s ease;
   }
 
   .jcc-mobile-menu-btn:hover,
   .jcc-mobile-menu-btn:active,
-  .jcc-mobile-menu-btn:focus-visible {
+  .jcc-mobile-menu-btn:focus-visible,
+  .jcc-retreat-mobileBack:hover,
+  .jcc-retreat-mobileBack:active,
+  .jcc-retreat-mobileBack:focus-visible {
     background: var(--nav-item-hover-bg);
     outline: none;
   }
 
-  .jcc-mobile-menu-btn svg {
+  .jcc-mobile-menu-btn svg,
+  .jcc-retreat-mobileBack svg {
     width: 24px;
     height: 24px;
   }
 
-  /* 드로어가 열리면(=collapsed 해제/오버레이 표시) 햄버거 버튼은 숨긴다.
-     데스크톱 가장자리 호버 등으로 body 클래스 없이 열린 경우까지 커버 */
+  /* 드로어가 열리면 햄버거 버튼 숨김 */
   body.jcc-leftNav-drawer-open .jcc-mobile-menu-btn,
   body:has(.jcc-leftNav:not(.collapsed)) .jcc-mobile-menu-btn {
     display: none;

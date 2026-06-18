@@ -305,6 +305,7 @@
         groupId: {{ group.id }},
         groupRegionId: {{ group.region_id|default:"null" }},
         groupDivisionId: {{ group.division_id|default:"null" }},
+        groupDivisionIds: [{{ group.division_id }}{% for s in group.extra_scopes.all %}, {{ s.division_id }}{% endfor %}],
         canChangeStatus: {{ can_change_status|yesno:"true,false" }},
         canEditAttendee: {{ can_edit_attendee|yesno:"true,false" }},
         canDeleteAttendee: {{ can_delete_attendee|yesno:"true,false" }},
@@ -327,12 +328,12 @@
     {% include 'includes/retreat_bottom_tabs.html' %}
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
     {% if can_add_group %}
-      <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260613a" defer></script>
+      <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260618b" defer></script>
     {% endif %}
     <script src="{% static 'retreat/datetime_picker.js' %}?v=20260615g" defer></script>
     <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
-    <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618a" defer></script>
-    <script src="{% static 'retreat/manage_group.js' %}?v=20260617a" defer></script>
+    <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618b" defer></script>
+    <script src="{% static 'retreat/manage_group.js' %}?v=20260618b" defer></script>
     <script>
       // 조원 수정 모달은 열릴 때 select 값을 프로그램으로 채우므로, 표시될 때 커스텀 드롭다운 라벨을 다시 동기화한다.
       document.addEventListener("DOMContentLoaded", function () {

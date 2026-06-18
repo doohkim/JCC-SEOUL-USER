@@ -14,6 +14,7 @@
     fillDivisionSelect,
     appendExtraScopeRow,
     collectExtraScopesFromList,
+    collectDivisionIdsFromForm,
     createUserPicker,
     escapeHtml,
   } = modal;
@@ -131,10 +132,14 @@
 
     state.picker = createUserPicker(
       rowEl.querySelector("[data-user-picker]"),
-      () => ({
-        division: divisionInput?.value || "",
-        region: regionInput?.value || "",
-      }),
+      () => {
+        const divisions = collectDivisionIdsFromForm(
+          divisionInput,
+          rowEl.querySelector("[data-extra-scopes-list]")
+        );
+        if (divisions.length) return { divisions };
+        return { region: regionInput?.value || "" };
+      },
       (user) => addRowLeader(state, user)
     );
 

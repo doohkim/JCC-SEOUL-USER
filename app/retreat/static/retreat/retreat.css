@@ -2740,27 +2740,7 @@ a.jcc-retreat-summaryCard--link:active {
 }
 @media (max-width: 900px) {
   .jcc-retreat-mobileBack {
-    position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
-    left: 0.35rem;
-    z-index: 1500;
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text);
-    background: transparent;
-    transition: background 0.15s ease;
-  }
-  .jcc-retreat-mobileBack:hover,
-  .jcc-retreat-mobileBack:active {
-    background: var(--nav-item-hover-bg);
-  }
-  .jcc-retreat-mobileBack svg {
-    width: 24px;
-    height: 24px;
   }
   /* 조 상세 페이지에서는 햄버거(메뉴) 버튼을 숨기고 뒤로가기로 대체 */
   body.jcc-retreat-detail .jcc-mobile-menu-btn {
@@ -5432,7 +5412,7 @@ body.has-retreat-bottom-tabs .toolbar {
 /* 버튼 → Toss 톤: 둥근 라운드, 살짝 넉넉한 패딩
    (커스텀 달력 [jcc-dtp*]·탭·집회선택 등 자체 스타일 버튼은 제외) */
 body.has-retreat-bottom-tabs
-  button:not([class*="jcc-dtp"]):not([class*="jcc-tp-"]):not(.jcc-page-tab):not(.jcc-retreat-eventPickerBtn):not(.jcc-pickup-locBtn):not(.jcc-leftNav-close):not(.jcc-theme-toggle):not(.jcc-mobile-menu-btn):not(.jcc-cselect-btn):not(.jcc-retreat-filterChip):not(.jcc-retreat-groupCardEdit):not(.jcc-retreat-filterReset):not(.jcc-retreat-pickupNameBtn):not(.jcc-retreat-addGroupBtn):not(.jcc-retreat-pickupAddBtn):not(.jcc-retreat-ttAddBtn):not(.jcc-retreat-dateField):not(.jcc-retreat-pickupDelete):not(.jcc-retreat-groupEditIcon):not(.jcc-retreat-rowIconBtn):not(.jcc-retreat-lodgingAddRoom),
+  button:not([class*="jcc-dtp"]):not([class*="jcc-tp-"]):not(.jcc-page-tab):not(.jcc-retreat-eventPickerBtn):not(.jcc-pickup-locBtn):not(.jcc-leftNav-close):not(.jcc-leftNav-desktopToggle):not(.jcc-mobile-menu-btn):not(.jcc-cselect-btn):not(.jcc-retreat-filterChip):not(.jcc-retreat-groupCardEdit):not(.jcc-retreat-filterReset):not(.jcc-retreat-pickupNameBtn):not(.jcc-retreat-addGroupBtn):not(.jcc-retreat-pickupAddBtn):not(.jcc-retreat-ttAddBtn):not(.jcc-retreat-dateField):not(.jcc-retreat-pickupDelete):not(.jcc-retreat-groupEditIcon):not(.jcc-retreat-rowIconBtn):not(.jcc-retreat-lodgingAddRoom),
 body.has-retreat-bottom-tabs .btn {
   border-radius: 11px;
   padding: 0.58rem 1.05rem;
@@ -5449,21 +5429,6 @@ body.has-retreat-bottom-tabs button.secondary:not([class*="jcc-dtp"]):hover {
 /* 본문 여백을 조금 더 시원하게 (Toss 특유의 넉넉한 레이아웃) */
 body.has-retreat-bottom-tabs main {
   padding-top: 1.4rem;
-}
-
-/* 모바일 좌상단 햄버거 버튼: 헤더와 자연스럽게 섞이도록 배경 없이 아이콘만 키움 */
-@media (max-width: 900px) {
-  body.has-retreat-bottom-tabs .jcc-mobile-menu-btn {
-    width: 48px;
-    height: 48px;
-  }
-  body.has-retreat-bottom-tabs .jcc-mobile-menu-btn svg {
-    width: 32px;
-    height: 32px;
-  }
-  body.has-retreat-bottom-tabs .jcc-mobile-menu-btn svg path {
-    stroke-width: 2.2;
-  }
 }
 
 /* 조 운영진 관리 모달: Toss 팝업 톤 (화면 중앙 + 넉넉한 레이아웃) */
