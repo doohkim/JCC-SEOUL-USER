@@ -135,6 +135,7 @@ _ATTENDEE_DETAIL_PATCH_KEYS = frozenset(
         "expected_check_in_at",
         "expected_check_out_at",
         "lodging_room",
+        "participation_status",
     }
 )
 

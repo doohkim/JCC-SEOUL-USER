@@ -5,15 +5,16 @@
     {% include 'includes/jcc_theme_head.html' %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ notice.title }} · 공지사항</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
+    <title>{{ notice.title }} · 함께하기</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
   </head>
   <body class="has-notice-bottom-tabs jcc-notice-detail-page">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
         {% url 'notice_list' as notice_back_url %}
-        {% include 'includes/jcc_page_header.html' with page_title=notice.title tabs_template='notices/_subtabs.html' notices_tab='notices' back_url=notice_back_url title_class='jcc-notice-detailHeaderTitle' %}
+        {% include 'includes/jcc_page_header.html' with page_title='함께하기' tabs_template='notices/_subtabs.html' notices_tab='notices' back_url=notice_back_url %}
+
         <main class="jcc-notice-detailMain">
           {% if can_manage_notices %}
             <div class="jcc-notice-detailTopActions jcc-notice-detailTopActions--desktop">
@@ -22,7 +23,7 @@
             </div>
           {% endif %}
 
-          <article class="jcc-notice-detailArticle card">
+          <article class="jcc-notice-detailArticle">
             <div class="jcc-notice-detailBanner">
               {% if notice.thumbnail %}
                 <img src="{{ notice.thumbnail.url }}" alt="" />
@@ -35,70 +36,74 @@
                   </svg>
                 </div>
               {% endif %}
-              <div class="jcc-notice-detailBannerBadges">
-                {% if notice.is_pinned %}
-                  <span class="jcc-notice-detailBadge jcc-notice-detailBadge--important">중요공지</span>
-                {% endif %}
-                {% if notice.category %}
-                  <span
-                    class="jcc-notice-detailBadge"
-                    {% if notice.category.color %}style="--cat-color: {{ notice.category.color }}"{% endif %}
-                  >{{ notice.category.name }}</span>
-                {% endif %}
-              </div>
             </div>
 
             <div class="jcc-notice-detailContent">
               <h1 class="jcc-notice-detailTitle">{{ notice.title }}</h1>
-              <div class="jcc-notice-detailMeta">
-                <span class="jcc-notice-detailMetaItem">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <rect x="3" y="4" width="18" height="18" rx="2" />
-                    <path d="M16 2v4M8 2v4M3 10h18" />
-                  </svg>
-                  {{ notice.created_at|date:"Y년 m월 d일 H:i" }}
-                </span>
+              <p class="jcc-notice-detailMetaLine">
+                <span>{{ notice.created_at|date:"Y년 m월 d일" }}</span>
                 {% if notice.created_by %}
-                  <span class="jcc-notice-detailMetaItem">작성자: {{ notice.created_by|user_display_name }}</span>
+                  <span class="jcc-notice-detailMetaSep" aria-hidden="true">|</span>
+                  <span>작성자 {{ notice.created_by|user_display_name }}</span>
                 {% endif %}
-                <span class="jcc-notice-detailMetaItem">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                  조회 {{ notice.view_count }}
-                </span>
-              </div>
+                <span class="jcc-notice-detailMetaSep" aria-hidden="true">|</span>
+                <span>조회수 {{ notice.view_count|intcomma }}</span>
+              </p>
 
               <div class="jcc-notice-body">{{ notice.body|lazy_images }}</div>
 
-              {% if notice.tag_list %}
+              <div class="jcc-notice-detailFooter">
                 <div class="jcc-notice-detailTags">
-                  {% for tag in notice.tag_list %}
-                    <span class="jcc-notice-tagPill">#{{ tag }}</span>
-                  {% endfor %}
+                  {% if notice.tag_list %}
+                    {% for tag in notice.tag_list %}
+                      <span class="jcc-notice-tagPill">#{{ tag }}</span>
+                    {% endfor %}
+                  {% endif %}
                 </div>
-              {% endif %}
+                <div class="jcc-notice-detailActions">
+                  <button type="button" class="jcc-notice-detailActionLink" id="noticeShareBtn" aria-live="polite">
+                    <svg class="jcc-notice-shareIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                      <circle cx="18" cy="5" r="3" />
+                      <circle cx="6" cy="12" r="3" />
+                      <circle cx="18" cy="19" r="3" />
+                      <path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" stroke-linecap="round" />
+                    </svg>
+                    <span class="jcc-notice-shareLabel">공유</span>
+                  </button>
+                  <button type="button" class="jcc-notice-detailActionLink" id="noticeSaveBtn" data-notice-id="{{ notice.pk }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z" stroke-linejoin="round" />
+                    </svg>
+                    저장
+                  </button>
+                </div>
+              </div>
             </div>
           </article>
 
-          <nav class="jcc-notice-detailNav card" aria-label="이전·다음 공지">
-            <div class="jcc-notice-detailNavRow">
-              <span class="jcc-notice-detailNavLabel">이전글</span>
-              {% if prev_notice %}
-                <a href="{% url 'notice_detail' prev_notice.pk %}">{{ prev_notice.title }}</a>
-              {% else %}
-                <span class="muted">이전 글이 없습니다.</span>
-              {% endif %}
-            </div>
-            <div class="jcc-notice-detailNavRow">
-              <span class="jcc-notice-detailNavLabel">다음글</span>
-              {% if next_notice %}
-                <a href="{% url 'notice_detail' next_notice.pk %}">{{ next_notice.title }}</a>
-              {% else %}
-                <span class="muted">다음 글이 없습니다.</span>
-              {% endif %}
-            </div>
+          <nav class="jcc-notice-detailNavGrid" aria-label="이전·다음 글">
+            {% if prev_notice %}
+              <a class="jcc-notice-detailNavCard" href="{% url 'notice_detail' prev_notice.pk %}">
+                <span class="jcc-notice-detailNavLabel">이전 글</span>
+                <span class="jcc-notice-detailNavTitle">{{ prev_notice.title }}</span>
+              </a>
+            {% else %}
+              <div class="jcc-notice-detailNavCard is-empty">
+                <span class="jcc-notice-detailNavLabel">이전 글</span>
+                <span class="jcc-notice-detailNavTitle muted">이전 글이 없습니다.</span>
+              </div>
+            {% endif %}
+            {% if next_notice %}
+              <a class="jcc-notice-detailNavCard jcc-notice-detailNavCard--next" href="{% url 'notice_detail' next_notice.pk %}">
+                <span class="jcc-notice-detailNavLabel">다음 글</span>
+                <span class="jcc-notice-detailNavTitle">{{ next_notice.title }}</span>
+              </a>
+            {% else %}
+              <div class="jcc-notice-detailNavCard jcc-notice-detailNavCard--next is-empty">
+                <span class="jcc-notice-detailNavLabel">다음 글</span>
+                <span class="jcc-notice-detailNavTitle muted">다음 글이 없습니다.</span>
+              </div>
+            {% endif %}
           </nav>
         </main>
       </div>
@@ -119,11 +124,120 @@
             <path d="M12 20h9" />
             <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
           </svg>
-          공지 수정
+          이야기 수정
         </a>
       </div>
     {% endif %}
 
     {% include 'includes/notice_bottom_tabs.html' with notices_tab='notices' %}
+
+    <div class="jcc-copyToast" id="noticeCopyToast" role="status" aria-live="polite" aria-atomic="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" aria-hidden="true">
+        <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      링크가 복사되었습니다
+    </div>
+
+    <script>
+      (function () {
+        const shareBtn = document.getElementById("noticeShareBtn");
+        const copyToast = document.getElementById("noticeCopyToast");
+        const saveBtn = document.getElementById("noticeSaveBtn");
+        const shareLabel = shareBtn ? shareBtn.querySelector(".jcc-notice-shareLabel") : null;
+        const saveKey = "jcc-notice-saved";
+        let copyToastTimer = null;
+        let shareResetTimer = null;
+
+        function readSaved() {
+          try {
+            return JSON.parse(localStorage.getItem(saveKey) || "[]");
+          } catch (e) {
+            return [];
+          }
+        }
+
+        function writeSaved(ids) {
+          try {
+            localStorage.setItem(saveKey, JSON.stringify(ids));
+          } catch (e) {}
+        }
+
+        function syncSaveBtn() {
+          if (!saveBtn) return;
+          const id = Number(saveBtn.dataset.noticeId);
+          const saved = readSaved().includes(id);
+          saveBtn.classList.toggle("is-saved", saved);
+          saveBtn.setAttribute("aria-pressed", saved ? "true" : "false");
+        }
+
+        async function copyShareUrl(url) {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+            return;
+          }
+          const textarea = document.createElement("textarea");
+          textarea.value = url;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "fixed";
+          textarea.style.left = "-9999px";
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          document.body.removeChild(textarea);
+        }
+
+        function showCopyFeedback() {
+          if (copyToastTimer) {
+            clearTimeout(copyToastTimer);
+          }
+          if (shareResetTimer) {
+            clearTimeout(shareResetTimer);
+          }
+          if (shareBtn) {
+            shareBtn.classList.add("is-copied");
+            if (shareLabel) {
+              shareLabel.textContent = "복사됨";
+            }
+            shareResetTimer = window.setTimeout(() => {
+              shareBtn.classList.remove("is-copied");
+              if (shareLabel) {
+                shareLabel.textContent = "공유";
+              }
+            }, 2000);
+          }
+          if (copyToast) {
+            copyToast.classList.add("is-visible");
+            copyToastTimer = window.setTimeout(() => {
+              copyToast.classList.remove("is-visible");
+            }, 2200);
+          }
+        }
+
+        if (shareBtn) {
+          shareBtn.addEventListener("click", async () => {
+            const url = window.location.href;
+            try {
+              await copyShareUrl(url);
+              showCopyFeedback();
+            } catch (e) {}
+          });
+        }
+
+        if (saveBtn) {
+          syncSaveBtn();
+          saveBtn.addEventListener("click", () => {
+            const id = Number(saveBtn.dataset.noticeId);
+            let ids = readSaved();
+            if (ids.includes(id)) {
+              ids = ids.filter((v) => v !== id);
+            } else {
+              ids.push(id);
+            }
+            writeSaved(ids);
+            syncSaveBtn();
+          });
+        }
+      })();
+    </script>
   </body>
 </html>

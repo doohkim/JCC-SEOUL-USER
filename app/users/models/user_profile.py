@@ -65,7 +65,19 @@ class UserProfile(models.Model):
         null=True,
         blank=True,
     )
+    avatar_user_uploaded = models.BooleanField(
+        "사용자 업로드 프로필 이미지",
+        default=False,
+        help_text="프로필 페이지에서 직접 올린 이미지만 화면에 표시한다.",
+    )
     bio = models.TextField("소개", blank=True, default="")
+    interest_topics = models.CharField(
+        "관심 주제",
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="쉼표로 구분된 관심 주제 태그",
+    )
     onboarding_status = models.CharField(
         "온보딩 상태",
         max_length=20,
@@ -124,6 +136,12 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"Profile · {self.user.username}"
+
+    @property
+    def interest_topic_list(self) -> list[str]:
+        if not self.interest_topics:
+            return []
+        return [t.strip() for t in self.interest_topics.split(",") if t.strip()]
 
     def clean(self):
         super().clean()

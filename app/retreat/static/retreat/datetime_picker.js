@@ -35,29 +35,14 @@
     return `${s.y}-${pad(s.mo + 1)}-${pad(s.d)}T${pad(s.hh)}:${pad(s.mm)}`;
   }
 
-  function to12h(hh) {
-    const isPm = hh >= 12;
-    let h12 = hh % 12;
-    if (h12 === 0) h12 = 12;
-    return { h12: h12, mer: isPm ? "pm" : "am" };
-  }
-  function from12h(h12, mer) {
-    let h = h12 % 12; // 12 → 0
-    if (mer === "pm") h += 12; // 오후 → +12 (12pm=12)
-    return ((h % 24) + 24) % 24;
-  }
-
-  // ymdampm 전용: 날짜(연도 4자리/2자리 둘 다 포함)와 시간을 별도 span 으로 감싸
-  // PC(한 줄·4자리)·모바일(두 줄·2자리)을 CSS 로 전환할 수 있게 한다.
-  function fmtDisplayYmdAmPm(v) {
+  // ymd24: 날짜(연도 4자리/2자리) + 24h 시각을 별도 span 으로 감싼다.
+  function fmtDisplayYmd24(v) {
     const s = parseValue(v);
     if (!s) return "";
-    const t12 = to12h(s.hh);
-    const mer = t12.mer === "pm" ? "오후" : "오전";
     const y4 = String(s.y);
     const y2 = pad(s.y % 100);
     const md = `-${pad(s.mo + 1)}-${pad(s.d)}`;
-    const time = `${mer} ${t12.h12}:${pad(s.mm)}`;
+    const time = `${pad(s.hh)}:${pad(s.mm)}`;
     return (
       '<span class="jcc-stamp-date">' +
       '<span class="jcc-stamp-y4">' +
@@ -83,9 +68,12 @@
       s.y === now.getFullYear()
         ? `${pad(s.mo + 1)}/${pad(s.d)}`
         : `${s.y}.${pad(s.mo + 1)}.${pad(s.d)}`;
-    const t = to12h(s.hh);
-    const merLabel = t.mer === "pm" ? "오후" : "오전";
-    return `${datePart} ${merLabel} ${t.h12}:${pad(s.mm)}`;
+    return `${datePart} ${pad(s.hh)}:${pad(s.mm)}`;
+  }
+
+  function isYmd24Format(input) {
+    const fmt = input.dataset && input.dataset.dtpFormat;
+    return fmt === "ymd24" || fmt === "ymdampm";
   }
 
   function roundMinute(m) {
@@ -135,10 +123,8 @@
     input.insertAdjacentElement("afterend", field);
 
     function refresh() {
-      // ymdampm 포맷은 PC(4자리 연도·한 줄) / 모바일(2자리 연도·두 줄)을 CSS 로
-      // 전환하기 위해 구조화된 마크업으로 출력한다.
-      if (input.dataset && input.dataset.dtpFormat === "ymdampm") {
-        const html = fmtDisplayYmdAmPm(input.value);
+      if (isYmd24Format(input)) {
+        const html = fmtDisplayYmd24(input.value);
         if (html) {
           valSpan.innerHTML = html;
           valSpan.classList.remove("muted");
@@ -342,29 +328,19 @@
       };
     }
 
-    const HOUR_ITEMS = Array.from({ length: 12 }, function (_, i) {
-      const h = i + 1; // 1~12
-      return { value: h, label: String(h) };
+    const HOUR_ITEMS = Array.from({ length: 24 }, function (_, i) {
+      return { value: i, label: pad(i) };
     });
     const MINUTE_ITEMS = Array.from({ length: 12 }, function (_, i) {
       return { value: i * 5, label: pad(i * 5) };
     });
-    const MERIDIEM_ITEMS = [
-      { value: "am", label: "오전" },
-      { value: "pm", label: "오후" },
-    ];
 
-    const merCtl = buildSelect("오전·오후", MERIDIEM_ITEMS, {
-      readonly: true,
-      wide: true,
-    });
     const hourCtl = buildSelect("시", HOUR_ITEMS);
     const colon = document.createElement("span");
     colon.className = "jcc-dtp-colon";
     colon.textContent = ":";
     const minCtl = buildSelect("분", MINUTE_ITEMS);
     timeRow.appendChild(timeLbl);
-    timeRow.appendChild(merCtl.wrap);
     timeRow.appendChild(hourCtl.wrap);
     timeRow.appendChild(colon);
     timeRow.appendChild(minCtl.wrap);
@@ -505,29 +481,20 @@
       });
     }
 
-    // draft.hh(0~23)/draft.mm 기준으로 세 컨트롤 표시 동기화
+    // draft.hh(0~23)/draft.mm 기준으로 시·분 컨트롤 표시 동기화
     function renderTime() {
-      const t = to12h(draft.hh);
-      hourCtl.inp.value = String(t.h12);
-      hourCtl.setSelected(t.h12);
-      merCtl.inp.value = t.mer === "pm" ? "오후" : "오전";
-      merCtl.setSelected(t.mer);
+      hourCtl.inp.value = pad(draft.hh);
+      hourCtl.setSelected(draft.hh);
       minCtl.inp.value = pad(draft.mm);
       minCtl.setSelected(draft.mm);
       updateValidity();
     }
-    function setHour12(h12) {
-      h12 = Math.round(h12);
-      if (Number.isNaN(h12)) return;
-      h12 = Math.min(12, Math.max(1, h12));
-      draft.hh = from12h(h12, to12h(draft.hh).mer);
+    function setHour(h) {
+      h = Math.round(h);
+      if (Number.isNaN(h)) return;
+      draft.hh = Math.min(23, Math.max(0, h));
       renderTime();
       scrollSelIntoView(hourCtl);
-    }
-    function setMeridiem(mer) {
-      draft.hh = from12h(to12h(draft.hh).h12, mer === "pm" ? "pm" : "am");
-      renderTime();
-      scrollSelIntoView(merCtl);
     }
     function setMinute(m) {
       m = ((Math.round(m) % 60) + 60) % 60;
@@ -590,7 +557,7 @@
     hourCtl.inp.addEventListener("input", function () {
       const v = parseInt(hourCtl.inp.value.replace(/\D/g, ""), 10);
       if (!Number.isNaN(v)) {
-        draft.hh = from12h(Math.min(12, Math.max(1, v)), to12h(draft.hh).mer);
+        draft.hh = Math.min(23, Math.max(0, v));
         updateValidity();
       }
     });
@@ -608,11 +575,8 @@
       renderTime();
     });
 
-    wireStepper(merCtl, function (v) {
-      setMeridiem(v);
-    });
     wireStepper(hourCtl, function (v) {
-      setHour12(Number(v));
+      setHour(Number(v));
     });
     wireStepper(minCtl, function (v) {
       setMinute(Number(v));

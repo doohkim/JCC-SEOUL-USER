@@ -1,10 +1,19 @@
 {% comment %}
-조·조원 입퇴실 요약 4칸 — count_total, count_pending, count_checked_in, count_checked_out
+조·조원 입퇴실 요약 — count_total, count_participating, count_absent,
+count_pending, count_checked_in, count_checked_out (입·퇴실은 참석 대상만)
 {% endcomment %}
-<div class="jcc-retreat-summaryBar" id="retreatSummaryBar">
+<div class="jcc-retreat-summaryBar jcc-retreat-summaryBar--participation" id="retreatSummaryBar">
   <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--total">
-    <span class="jcc-retreat-summaryItem-label">총인원</span>
+    <span class="jcc-retreat-summaryItem-label">명단</span>
     <span class="jcc-retreat-summaryItem-value"><strong data-summary-total>{{ count_total }}</strong> 명</span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--participating">
+    <span class="jcc-retreat-summaryItem-label">참석</span>
+    <span class="jcc-retreat-summaryItem-value"><strong data-summary-participating>{{ count_participating }}</strong> 명</span>
+  </div>
+  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--absent">
+    <span class="jcc-retreat-summaryItem-label">불참</span>
+    <span class="jcc-retreat-summaryItem-value"><strong data-summary-absent>{{ count_absent }}</strong> 명</span>
   </div>
   <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending">
     <span class="jcc-retreat-summaryItem-label">입실전</span>

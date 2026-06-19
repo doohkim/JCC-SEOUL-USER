@@ -7,7 +7,6 @@
   const attendTotalEl = document.getElementById("attendTotal");
   const groupGrid = document.getElementById("groupGrid");
   const divBody = document.querySelector("#divisionTable tbody");
-  const hourlyBody = document.querySelector("#hourlyTable tbody");
   const generatedAtEl = document.getElementById("dashGeneratedAt");
   const btnRefresh = document.getElementById("btnRefresh");
   const innerTabs = document.getElementById("dashboardInnerTabs");
@@ -41,7 +40,6 @@
       renderAttendTotal(data.grand_total || {});
       renderGroups(data.by_group || []);
       renderDivisions(data.by_division || [], data.grand_total || {});
-      renderHourly(data.hourly || []);
       if (generatedAtEl) {
         generatedAtEl.textContent = data.generated_at
           ? `· ${formatStamp(data.generated_at)} 기준`
@@ -406,25 +404,6 @@
     activeTab = tab === "board" ? "board" : "stats";
     applyTab();
     refreshActive();
-  }
-
-  function renderHourly(rows) {
-    if (!hourlyBody) return;
-    hourlyBody.innerHTML = "";
-    if (!rows.length) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = '<td colspan="3" class="muted">입·퇴실 기록이 없습니다.</td>';
-      hourlyBody.appendChild(tr);
-      return;
-    }
-    rows.forEach((row) => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${escapeHtml(row.label)}</td>
-        <td>${row.checked_in}</td>
-        <td>${row.checked_out}</td>`;
-      hourlyBody.appendChild(tr);
-    });
   }
 
   function formatStamp(iso) {

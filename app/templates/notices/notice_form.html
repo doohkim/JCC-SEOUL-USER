@@ -5,8 +5,8 @@
     {% include 'includes/jcc_theme_head.html' %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% if object %}공지사항 수정{% else %}공지 작성{% endif %}</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
+    <title>{% if object %}이야기 수정{% else %}이야기 작성{% endif %}</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
   </head>
   <body class="has-notice-bottom-tabs jcc-notice-form-page">
     <div class="jcc-layout">
@@ -14,10 +14,10 @@
       <div class="jcc-layout-content">
         {% if object %}
           {% url 'notice_detail' object.pk as form_back_url %}
-          {% include 'includes/jcc_page_header.html' with page_title='공지사항 수정' tabs_template='notices/_subtabs.html' notices_tab='notices' back_url=form_back_url %}
+          {% include 'includes/jcc_page_header.html' with page_title='이야기 수정' tabs_template='notices/_subtabs.html' notices_tab='notices' back_url=form_back_url %}
         {% else %}
           {% url 'notice_list' as form_back_url %}
-          {% include 'includes/jcc_page_header.html' with page_title='공지 작성' tabs_template='notices/_subtabs.html' notices_tab='notices' back_url=form_back_url %}
+          {% include 'includes/jcc_page_header.html' with page_title='이야기 작성' tabs_template='notices/_subtabs.html' notices_tab='notices' back_url=form_back_url %}
         {% endif %}
         <main>
           <form id="noticeForm" method="post" enctype="multipart/form-data" class="jcc-notice-formBody">

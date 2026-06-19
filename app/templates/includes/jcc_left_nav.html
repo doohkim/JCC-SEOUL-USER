@@ -35,7 +35,18 @@
         </span>
       </button>
     </span>
-    <span class="jcc-leftNav-brand">JIPA</span>
+    <span class="jcc-leftNav-brand">
+      <img
+        class="jcc-leftNav-brandLogo"
+        src="{% static 'attendance/jipa-logo-icon.svg' %}"
+        alt=""
+        width="20"
+        height="20"
+        decoding="async"
+        aria-hidden="true"
+      />
+      <span class="jcc-leftNav-brandText">JIPA</span>
+    </span>
     <button type="button" class="jcc-leftNav-close" id="jccLeftNavClose" aria-label="메뉴 닫기">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
         <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -59,10 +70,12 @@
     {% if user|can_access_notices_tab %}
       <a class="jcc-leftNav-item" href="{% url 'notice_list' %}" data-tab="notices">
         <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-          <path d="M4 6h16v12H4V6z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
-          <path d="M8 10h8M8 14h5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+          <circle cx="9" cy="7" r="3.5" stroke="currentColor" stroke-width="1.75"/>
+          <path d="M3 20v-1.2a4.8 4.8 0 014.8-4.8h2.4a4.8 4.8 0 014.8 4.8V20" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+          <circle cx="17.5" cy="8" r="2.8" stroke="currentColor" stroke-width="1.75"/>
+          <path d="M14 20v-1a3.8 3.8 0 013.3-3.76" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
         </svg>
-        <span>공지사항</span>
+        <span>함께하기</span>
       </a>
     {% endif %}
     {% if user|can_manage_division_accounts_tab %}
@@ -137,15 +150,17 @@
   </div>
 
   <div class="jcc-leftNav-bottom">
-    <div class="jcc-leftNav-userChip">
-      {% if user.is_authenticated %}
-        <div class="jcc-leftNav-avatar jcc-leftNav-avatar--sm" aria-hidden="true">{{ user|user_display_name|slice:":1" }}</div>
+    {% if user.is_authenticated %}
+      <a class="jcc-leftNav-userChip" href="{% url 'user_profile' %}" aria-label="내 프로필">
+        <img class="jcc-leftNav-avatar jcc-leftNav-avatar--sm" src="{% user_profile_avatar_url user %}" alt="" />
         <span class="jcc-leftNav-userName">{{ user|user_display_name }}</span>
-      {% else %}
+      </a>
+    {% else %}
+      <div class="jcc-leftNav-userChip">
         <div class="jcc-leftNav-avatar jcc-leftNav-avatar--sm jcc-leftNav-avatar--guest" aria-hidden="true">?</div>
         <span class="jcc-leftNav-userName">방문자</span>
-      {% endif %}
-    </div>
+      </div>
+    {% endif %}
   </div>
 </aside>
 
@@ -427,7 +442,7 @@
     });
 
     /** 모바일에서 메뉴 링크 선택 시 드로어 닫기 */
-    nav.querySelectorAll(".jcc-leftNav-item, .jcc-leftNav-logout").forEach((el) => {
+    nav.querySelectorAll(".jcc-leftNav-item, .jcc-leftNav-logout, .jcc-leftNav-userChip").forEach((el) => {
       el.addEventListener("click", () => {
         if (isMobileLayout()) closeNav();
       });

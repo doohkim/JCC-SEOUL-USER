@@ -51,7 +51,7 @@
 
     // 시작/종료는 "날짜+시간" 달력 피커. 수정 시 day + 시각을 합쳐 채운다.
     startEl.value = joinDateTime(data.day, data.start);
-    endEl.value = joinDateTime(data.day, data.end);
+    endEl.value = joinDateTime(data.end_day || data.day, data.end);
     titleInput.value = data.title || "";
     locationEl.value = data.location || "";
     descEl.value = data.description || "";
@@ -72,17 +72,20 @@
   }
 
   function gatherBody() {
-    // 시작 달력값에서 day 를 파생하고, 시작/종료의 시각만 전송한다.
     const start = splitDateTime(startEl.value);
     const end = splitDateTime(endEl.value);
-    return {
+    const body = {
       day: start.date,
       start_time: start.time,
-      end_time: end.time,
       title: titleInput.value.trim(),
       location: locationEl.value.trim(),
       description: descEl.value.trim(),
     };
+    if (end.date && end.time) {
+      body.end_day = end.date;
+      body.end_time = end.time;
+    }
+    return body;
   }
 
   async function save() {
@@ -148,6 +151,7 @@
           id: btn.dataset.id,
           day: btn.dataset.day,
           start: btn.dataset.start,
+          end_day: btn.dataset.endDay || "",
           end: btn.dataset.end,
           title: btn.dataset.title,
           location: btn.dataset.location,

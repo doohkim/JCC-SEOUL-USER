@@ -1,14 +1,14 @@
-{% comment %}공지사항 모바일 하단 탭 (Toss 앱 스타일) — notices_tab('notices'|'timetable') 로 활성 표시{% endcomment %}
-<nav class="jcc-bottomTabs jcc-noticeBottomTabs" id="jccNoticeBottomTabs" aria-label="공지사항 메뉴">
+{% comment %}함께하기 모바일 하단 탭 — notices_tab('notices'|'timetable') 로 활성 표시{% endcomment %}
+<nav class="jcc-bottomTabs jcc-noticeBottomTabs" id="jccNoticeBottomTabs" aria-label="함께하기 메뉴">
   <a
     class="jcc-bottomTab{% if notices_tab == 'notices' %} is-active{% endif %}"
     href="{% url 'notice_list' %}"
     {% if notices_tab == 'notices' %}aria-current="page"{% endif %}
   >
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-      <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
     </svg>
-    <span>공지사항</span>
+    <span>이야기</span>
   </a>
   <a
     class="jcc-bottomTab{% if notices_tab == 'timetable' %} is-active{% endif %}"

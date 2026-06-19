@@ -5,10 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from django.contrib.auth import get_user_model
-from django.db.models import Case, IntegerField, Value, When
+from django.db.models import Case, IntegerField, QuerySet, Value, When
 
 from retreat.models import RetreatAttendee, RetreatEvent
 from retreat.services.check_in_stamps import is_expected_timestamps_locked
+from retreat.services.participation import is_participating, participating_filter
 from users.permissions import visible_retreat_groups_for
 
 User = get_user_model()
@@ -17,6 +18,8 @@ User = get_user_model()
 @dataclass(frozen=True)
 class LodgingRosterSummary:
     count_total: int
+    count_participating: int
+    count_absent: int
     count_pending: int
     count_checked_in: int
     count_checked_out: int
@@ -25,9 +28,18 @@ class LodgingRosterSummary:
 
 
 def is_lodging_eligible(attendee: RetreatAttendee) -> bool:
+    if not is_participating(attendee):
+        return False
     if attendee.expected_check_in_at is None:
         return False
     return attendee.check_in_status != RetreatAttendee.CheckInStatus.CHECKED_OUT
+
+
+def lodging_eligible_filter(qs: QuerySet) -> QuerySet:
+    """숙박 대상만 — 참석 + 예상 입실 시각 있음 + 퇴실 제외."""
+    return participating_filter(qs).filter(
+        expected_check_in_at__isnull=False,
+    ).exclude(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT)
 
 
 def attendee_lodging_scope(attendee: RetreatAttendee) -> str:
@@ -55,6 +67,8 @@ def attendee_lodging_assignment_key(attendee: RetreatAttendee) -> str:
 
 def attendee_lodging_cell_label(attendee: RetreatAttendee) -> str | None:
     """숙소·호수 컬럼 라벨. 호실 표시 시 None."""
+    if not is_participating(attendee):
+        return "불참"
     if attendee.lodging_room_id and is_lodging_eligible(attendee):
         return None
     if is_lodging_eligible(attendee):
@@ -116,9 +130,18 @@ def build_lodging_roster_context(
         attendee.expected_timestamps_locked = is_expected_timestamps_locked(attendee)
 
     s = RetreatAttendee.CheckInStatus
-    count_pending = sum(1 for a in attendees if a.check_in_status == s.PENDING)
-    count_checked_in = sum(1 for a in attendees if a.check_in_status == s.CHECKED_IN)
-    count_checked_out = sum(1 for a in attendees if a.check_in_status == s.CHECKED_OUT)
+    p = RetreatAttendee.ParticipationStatus
+    count_absent = sum(
+        1 for a in attendees if a.participation_status == p.ABSENT
+    )
+    participating = [a for a in attendees if is_participating(a)]
+    count_pending = sum(1 for a in participating if a.check_in_status == s.PENDING)
+    count_checked_in = sum(
+        1 for a in participating if a.check_in_status == s.CHECKED_IN
+    )
+    count_checked_out = sum(
+        1 for a in participating if a.check_in_status == s.CHECKED_OUT
+    )
     count_lodging_eligible = sum(1 for a in attendees if is_lodging_eligible(a))
     count_lodging_unassigned = sum(
         1 for a in attendees if a.lodging_scope == "unassigned"
@@ -128,6 +151,8 @@ def build_lodging_roster_context(
         "roster_attendees": attendees,
         "roster_summary": LodgingRosterSummary(
             count_total=len(attendees),
+            count_participating=len(participating),
+            count_absent=count_absent,
             count_pending=count_pending,
             count_checked_in=count_checked_in,
             count_checked_out=count_checked_out,

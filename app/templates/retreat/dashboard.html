@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 대시보드 · {{ event.name }}</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
     <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617m" />
   </head>
   <body class="has-retreat-bottom-tabs">
@@ -124,21 +124,6 @@
                 </table>
               </div>
             </section>
-            <section class="card jcc-retreat-dashFull">
-              <h2 class="jcc-retreat-sectionTitle">시간대별 입·퇴실 추이 (1시간 단위)</h2>
-              <div class="jcc-retreat-tableWrap">
-                <table class="jcc-table" id="hourlyTable">
-                  <thead>
-                    <tr>
-                      <th>시간대</th>
-                      <th>입실</th>
-                      <th>퇴실</th>
-                    </tr>
-                  </thead>
-                  <tbody></tbody>
-                </table>
-              </div>
-            </section>
           </div>
           </div>
           <div id="dashboardPanelBoard" style="display: none;">
@@ -177,6 +162,6 @@
       };
     </script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260617a" defer></script>
+    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260619c" defer></script>
   </body>
 </html>

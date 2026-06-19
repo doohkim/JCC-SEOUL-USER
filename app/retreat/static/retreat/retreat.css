@@ -1827,6 +1827,39 @@ a.jcc-retreat-summaryCard--link:active {
   color: #475569;
 }
 
+.jcc-retreat-summaryBar--participation {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.jcc-retreat-summaryItem--participating {
+  background: #f0fdf4;
+  border-color: rgba(34, 197, 94, 0.25);
+}
+.jcc-retreat-summaryItem--participating .jcc-retreat-summaryItem-label {
+  color: #15803d;
+}
+
+.jcc-retreat-summaryItem--absent {
+  background: #f8fafc;
+  border-color: rgba(100, 116, 139, 0.25);
+}
+.jcc-retreat-summaryItem--absent .jcc-retreat-summaryItem-label {
+  color: #64748b;
+}
+
+.jcc-retreat-manageTable tr.is-absent {
+  opacity: 0.62;
+}
+.jcc-retreat-manageTable tr.is-absent .jcc-retreat-attName {
+  text-decoration: line-through;
+  text-decoration-color: rgba(100, 116, 139, 0.55);
+}
+
+.jcc-retreat-participationBadge--absent {
+  color: #64748b;
+  font-weight: 600;
+}
+
 .jcc-retreat-summaryItem-sub {
   display: block;
   margin-top: 0.15rem;
@@ -2299,6 +2332,9 @@ a.jcc-retreat-summaryCard--link:active {
 }
 
 @media (max-width: 640px) {
+  .jcc-retreat-summaryBar--participation {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   .jcc-retreat-summaryBar {
     gap: 0.4rem;
   }
@@ -2810,7 +2846,7 @@ a.jcc-retreat-summaryCard--link:active {
 .jcc-retreat-attCol-expected .jcc-retreat-stampInput {
   font-size: 0.78rem;
 }
-/* 입실/퇴실 값 — PC 기본: 한 줄 표시(YYYY-MM-DD 오전 HH:MM), 연도 4자리만 노출 */
+/* 입실/퇴실 값 — PC 기본: 한 줄 표시(YYYY-MM-DD HH:mm), 연도 4자리만 노출 */
 .jcc-retreat-attCol-expected .jcc-dtp-val,
 .jcc-retreat-attCol-expected .jcc-retreat-stampLabel {
   white-space: nowrap;
@@ -2873,7 +2909,7 @@ a.jcc-retreat-summaryCard--link:active {
   .jcc-retreat-attCol-lodging {
     width: 6rem;
   }
-  /* PC: 입실/퇴실을 한 줄(YYYY-MM-DD 오전 HH:MM)로 표시하므로 컬럼 폭 확보 */
+  /* PC: 입실/퇴실을 한 줄(YYYY-MM-DD HH:mm)로 표시하므로 컬럼 폭 확보 */
   .jcc-retreat-attCol-expected {
     width: 9.5rem;
   }
@@ -5029,7 +5065,7 @@ dialog.jcc-retreat-modal::backdrop {
 .jcc-dtp-select input.jcc-dtp-num:focus {
   outline: none;
 }
-/* 오전·오후 박스: 한글 2글자 폭 */
+/* 시(00~23) 선택 박스 */
 .jcc-dtp-select--wide input.jcc-dtp-num {
   width: 3.2em;
   font-weight: 600;

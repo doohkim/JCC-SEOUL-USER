@@ -18,6 +18,12 @@ from retreat.models import (
     RetreatSession,
     RetreatSessionAttendee,
 )
+from retreat.services.lodging_roster import lodging_eligible_filter
+from retreat.services.participation import (
+    absent_attendee_keys,
+    participating_filter,
+    pickup_visible_for_participation,
+)
 from users.permissions import (
     membership_divisions_for,
     visible_retreat_groups_for,
@@ -211,9 +217,9 @@ def build_realtime_dashboard(
     groups = list(_group_queryset(event, user, restrict_to_user_groups=restrict))
     group_ids = [g.id for g in groups]
 
-    time_rows = RetreatAttendee.objects.filter(group_id__in=group_ids).values_list(
-        "group_id", "expected_check_in_at", "expected_check_out_at"
-    )
+    time_rows = participating_filter(
+        RetreatAttendee.objects.filter(group_id__in=group_ids)
+    ).values_list("group_id", "expected_check_in_at", "expected_check_out_at")
     status_by_group: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for gid, check_in_at, check_out_at in time_rows:
         eff = _effective_check_in_status(check_in_at, check_out_at, now)
@@ -251,6 +257,10 @@ def build_realtime_dashboard(
     grand_out = sum(r["checked_out"] for r in by_group)
     grand_attended = grand_in + grand_out
     grand_all = grand_pending + grand_in + grand_out
+    grand_absent = RetreatAttendee.objects.filter(
+        group_id__in=group_ids,
+        participation_status=RetreatAttendee.ParticipationStatus.ABSENT,
+    ).count()
 
     region_ids = {g.region_id for g in groups}
     summary = _build_dashboard_summary(
@@ -275,6 +285,7 @@ def build_realtime_dashboard(
             "checked_out": grand_out,
             "attended": grand_attended,
             "total": grand_all,
+            "absent": grand_absent,
         },
         "summary": summary,
     }
@@ -294,7 +305,7 @@ def _build_dashboard_summary(
     """상단 요약 카드용 집계.
 
     - 실시간 참석: 입실 인원 / 총 참석인원, 전체 인원 대비 입실 비율(%)
-    - 미배정: 호실이 배정되지 않은 조원 수
+    - 미배정: 숙박 대상(참석·입실 예정·퇴실 제외) 중 호실 미배정 조원 수
     - 차량 지원: 오늘 열차 시각이 잡힌 픽업 인원 수
 
     staff_view 가 아니면 사용자가 볼 수 있는 조(group_ids)·지역(region_ids)으로
@@ -302,15 +313,22 @@ def _build_dashboard_summary(
     """
     attend_percent = round(checked_in / total * 100) if total else 0
 
-    lodging_unassigned = RetreatAttendee.objects.filter(
-        group_id__in=group_ids, lodging_room__isnull=True
+    lodging_unassigned = lodging_eligible_filter(
+        RetreatAttendee.objects.filter(
+            group_id__in=group_ids, lodging_room__isnull=True
+        )
     ).count()
 
     today = timezone.localdate(now)
     pickups = RetreatPickup.objects.filter(event=event, train_time__date=today)
     if not staff_view:
         pickups = pickups.filter(region_id__in=region_ids)
-    car_today = pickups.count()
+    absent_keys = absent_attendee_keys(group_ids)
+    car_today = sum(
+        1
+        for p in pickups
+        if pickup_visible_for_participation(p, absent_keys=absent_keys)
+    )
 
     return {
         "checked_in": checked_in,
@@ -355,18 +373,16 @@ def build_group_attendance_board(
     status_order = {S.CHECKED_IN: 0, S.CHECKED_OUT: 1, S.PENDING: 2}
 
     members_by_group: dict[int, list[dict]] = defaultdict(list)
-    attendee_rows = (
+    attendee_rows = participating_filter(
         RetreatAttendee.objects.filter(group_id__in=group_ids)
-        .values(
-            "group_id",
-            "name",
-            "member_role",
-            "gender",
-            "expected_check_in_at",
-            "expected_check_out_at",
-        )
-        .order_by("name", "id")
-    )
+    ).values(
+        "group_id",
+        "name",
+        "member_role",
+        "gender",
+        "expected_check_in_at",
+        "expected_check_out_at",
+    ).order_by("name", "id")
     for row in attendee_rows:
         eff = _effective_check_in_status(
             row["expected_check_in_at"], row["expected_check_out_at"], now
@@ -469,10 +485,12 @@ def _hourly_check_in_out(group_ids: list[int], now) -> list[dict]:
     )
 
     in_rows = (
-        RetreatAttendee.objects.filter(
-            group_id__in=group_ids,
-            expected_check_in_at__isnull=False,
-            expected_check_in_at__lte=now,
+        participating_filter(
+            RetreatAttendee.objects.filter(
+                group_id__in=group_ids,
+                expected_check_in_at__isnull=False,
+                expected_check_in_at__lte=now,
+            )
         )
         .annotate(h=TruncHour("expected_check_in_at"))
         .values("h")
@@ -482,10 +500,12 @@ def _hourly_check_in_out(group_ids: list[int], now) -> list[dict]:
         buckets[row["h"]]["checked_in"] = row["c"]
 
     out_rows = (
-        RetreatAttendee.objects.filter(
-            group_id__in=group_ids,
-            expected_check_out_at__isnull=False,
-            expected_check_out_at__lte=now,
+        participating_filter(
+            RetreatAttendee.objects.filter(
+                group_id__in=group_ids,
+                expected_check_out_at__isnull=False,
+                expected_check_out_at__lte=now,
+            )
         )
         .annotate(h=TruncHour("expected_check_out_at"))
         .values("h")

@@ -179,7 +179,7 @@ class RetreatPageAccessTests(_PageFixture):
         self.client.force_login(self.leader)
         r = self.client.get(reverse("retreat_group_manage_list", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "조 관리")
+        self.assertContains(r, "그룹")
         self.assertContains(r, self.group.name)
 
     def test_manage_groups_list_forbidden_for_stranger(self):

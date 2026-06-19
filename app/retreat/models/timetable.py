@@ -23,6 +23,12 @@ class RetreatTimetableEntry(models.Model):
     )
     day = models.DateField("일자")
     start_time = models.TimeField("시작 시각")
+    end_day = models.DateField(
+        "종료 일자",
+        null=True,
+        blank=True,
+        help_text="종료 시각이 시작 일자와 다를 때만 설정(자정 넘김 등). 비우면 시작 일자와 동일.",
+    )
     end_time = models.TimeField("종료 시각", null=True, blank=True)
     title = models.CharField("프로그램명", max_length=120)
     location = models.CharField("장소", max_length=200, blank=True, default="")

@@ -173,15 +173,6 @@ def create_or_update_kakao_user(
             new_avatar_content_hash = content_hash
             saved_hashes.append(content_hash)
 
-        if new_avatar_content_hash:
-            latest = (
-                profile.avatar_history.order_by("-created_at")
-                .filter(content_hash=new_avatar_content_hash)
-                .first()
-            )
-            if latest and latest.image:
-                profile.avatar = latest.image
-                changed_fields.append("avatar")
         if saved_hashes:
             logger.info(
                 "kakao_auth: uid=%s avatar_history_saved=%d last_hash_prefix=%s",
@@ -226,8 +217,10 @@ def create_or_update_kakao_user(
             user=existing,
             defaults={"onboarding_status": UserProfile.OnboardingStatus.PENDING},
         )
+        profile_changed: list[str] = []
         if nickname and profile.display_name != nickname:
             profile.display_name = nickname
+            profile_changed.append("display_name")
 
         new_avatar_content_hash: str | None = None
         saved_hashes: list[str] = []
@@ -256,15 +249,6 @@ def create_or_update_kakao_user(
             new_avatar_content_hash = content_hash
             saved_hashes.append(content_hash)
 
-        if new_avatar_content_hash:
-            latest = (
-                profile.avatar_history.order_by("-created_at")
-                .filter(content_hash=new_avatar_content_hash)
-                .first()
-            )
-            if latest and latest.image:
-                profile.avatar = latest.image
-
         if saved_hashes:
             logger.info(
                 "kakao_auth: uid=%s avatar_history_saved=%d last_hash_prefix=%s",
@@ -272,7 +256,9 @@ def create_or_update_kakao_user(
                 len(saved_hashes),
                 new_avatar_content_hash[:10] if new_avatar_content_hash else "",
             )
-        profile.save(update_fields=["display_name", "avatar", "updated_at"])
+        if profile_changed:
+            profile_changed.append("updated_at")
+            profile.save(update_fields=profile_changed)
         return {"user": existing}
 
     created = UserModel.objects.create_user(
@@ -318,15 +304,6 @@ def create_or_update_kakao_user(
         new_avatar_content_hash = content_hash
         saved_hashes.append(content_hash)
 
-    if new_avatar_content_hash:
-        latest = (
-            profile.avatar_history.order_by("-created_at")
-            .filter(content_hash=new_avatar_content_hash)
-            .first()
-        )
-        if latest and latest.image:
-            profile.avatar = latest.image
-            profile.save(update_fields=["avatar", "updated_at"])
     if saved_hashes:
         logger.info(
             "kakao_auth: uid=%s avatar_history_saved=%d last_hash_prefix=%s",

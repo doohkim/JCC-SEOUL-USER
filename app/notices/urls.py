@@ -3,6 +3,7 @@
 from django.urls import path
 
 from notices.apis.categories import NoticeCategoryListAPIView
+from notices.apis.notices import NoticeDetailAPIView, NoticeListAPIView
 from notices.views import (
     NoticeCreateView,
     NoticeDeleteView,
@@ -15,6 +16,8 @@ from notices.views import (
 
 urlpatterns = [
     path("api/v1/notices/categories/", NoticeCategoryListAPIView.as_view(), name="notice_category_list_api"),
+    path("api/v1/notices/", NoticeListAPIView.as_view(), name="notice_list_api"),
+    path("api/v1/notices/<int:notice_id>/", NoticeDetailAPIView.as_view(), name="notice_detail_api"),
     path("notices/", NoticeListView.as_view(), name="notice_list"),
     path("notices/upload-image/", notice_image_upload, name="notice_image_upload"),
     path("notices/new/", NoticeCreateView.as_view(), name="notice_create"),

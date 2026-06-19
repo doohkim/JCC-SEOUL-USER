@@ -3,7 +3,7 @@
  *
  * 네이티브 <input type="time"> 를 점진적으로 강화한다.
  * - 원본 input 은 DOM 에 그대로 두고(값 보관) 시각적으로 숨긴다.
- * - 클릭하기 좋은 "필드 버튼" + 오전/오후·시·분 선택 팝업을 보여준다.
+ * - 클릭하기 좋은 "필드 버튼" + 24h 시·분 선택 팝업을 보여준다.
  * - 확인 시 원본 input.value 를 "HH:mm"(24h) 으로 채우고 change 이벤트를 발생시킨다.
  * - datetime_picker.js 의 .jcc-dtp-* 스타일을 재사용해 디자인을 일치시킨다.
  *
@@ -29,24 +29,10 @@
     return `${pad(s.hh)}:${pad(s.mm)}`;
   }
 
-  function to12h(hh) {
-    const isPm = hh >= 12;
-    let h12 = hh % 12;
-    if (h12 === 0) h12 = 12;
-    return { h12: h12, mer: isPm ? "pm" : "am" };
-  }
-  function from12h(h12, mer) {
-    let h = h12 % 12;
-    if (mer === "pm") h += 12;
-    return ((h % 24) + 24) % 24;
-  }
-
   function fmtDisplay(v) {
     const s = parseValue(v);
     if (!s) return "";
-    const t = to12h(s.hh);
-    const merLabel = t.mer === "pm" ? "오후" : "오전";
-    return `${merLabel} ${t.h12}:${pad(s.mm)}`;
+    return `${pad(s.hh)}:${pad(s.mm)}`;
   }
 
   function closeOpen() {
@@ -189,29 +175,19 @@
     timeLbl.className = "jcc-dtp-timeLbl";
     timeLbl.textContent = "시간";
 
-    const HOUR_ITEMS = Array.from({ length: 12 }, function (_, i) {
-      const h = i + 1;
-      return { value: h, label: String(h) };
+    const HOUR_ITEMS = Array.from({ length: 24 }, function (_, i) {
+      return { value: i, label: pad(i) };
     });
     const MINUTE_ITEMS = Array.from({ length: 12 }, function (_, i) {
       return { value: i * 5, label: pad(i * 5) };
     });
-    const MERIDIEM_ITEMS = [
-      { value: "am", label: "오전" },
-      { value: "pm", label: "오후" },
-    ];
 
-    const merCtl = buildSelect("오전·오후", MERIDIEM_ITEMS, {
-      readonly: true,
-      wide: true,
-    });
     const hourCtl = buildSelect("시", HOUR_ITEMS);
     const colon = document.createElement("span");
     colon.className = "jcc-dtp-colon";
     colon.textContent = ":";
     const minCtl = buildSelect("분", MINUTE_ITEMS);
     timeRow.appendChild(timeLbl);
-    timeRow.appendChild(merCtl.wrap);
     timeRow.appendChild(hourCtl.wrap);
     timeRow.appendChild(colon);
     timeRow.appendChild(minCtl.wrap);
@@ -288,26 +264,17 @@
     }
 
     function renderTime() {
-      const t = to12h(draft.hh);
-      hourCtl.inp.value = String(t.h12);
-      hourCtl.setSelected(t.h12);
-      merCtl.inp.value = t.mer === "pm" ? "오후" : "오전";
-      merCtl.setSelected(t.mer);
+      hourCtl.inp.value = pad(draft.hh);
+      hourCtl.setSelected(draft.hh);
       minCtl.inp.value = pad(draft.mm);
       minCtl.setSelected(draft.mm);
     }
-    function setHour12(h12) {
-      h12 = Math.round(h12);
-      if (Number.isNaN(h12)) return;
-      h12 = Math.min(12, Math.max(1, h12));
-      draft.hh = from12h(h12, to12h(draft.hh).mer);
+    function setHour(h) {
+      h = Math.round(h);
+      if (Number.isNaN(h)) return;
+      draft.hh = Math.min(23, Math.max(0, h));
       renderTime();
       scrollSelIntoView(hourCtl);
-    }
-    function setMeridiem(mer) {
-      draft.hh = from12h(to12h(draft.hh).h12, mer === "pm" ? "pm" : "am");
-      renderTime();
-      scrollSelIntoView(merCtl);
     }
     function setMinute(m) {
       m = ((Math.round(m) % 60) + 60) % 60;
@@ -320,7 +287,7 @@
     hourCtl.inp.addEventListener("input", function () {
       const v = parseInt(hourCtl.inp.value.replace(/\D/g, ""), 10);
       if (!Number.isNaN(v)) {
-        draft.hh = from12h(Math.min(12, Math.max(1, v)), to12h(draft.hh).mer);
+        draft.hh = Math.min(23, Math.max(0, v));
       }
     });
     hourCtl.inp.addEventListener("blur", function () {
@@ -334,11 +301,8 @@
       renderTime();
     });
 
-    wireStepper(merCtl, function (v) {
-      setMeridiem(v);
-    });
     wireStepper(hourCtl, function (v) {
-      setHour12(Number(v));
+      setHour(Number(v));
     });
     wireStepper(minCtl, function (v) {
       setMinute(Number(v));

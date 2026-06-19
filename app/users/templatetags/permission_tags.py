@@ -60,6 +60,13 @@ def user_display_name(user):
     return resolve_user_display_name(user)
 
 
+@register.simple_tag(name="user_profile_avatar_url")
+def user_profile_avatar_url(user):
+    from users.services.user_avatar import user_profile_avatar_url as resolve_url
+
+    return resolve_url(user)
+
+
 @register.filter(name="user_org_summary")
 def user_org_summary(user):
     """좌측 네비 프로필 보조 라인 — '지역 · 부서 · 팀 · 직급'.

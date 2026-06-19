@@ -13,6 +13,7 @@ from django.db.models import Count, Q, QuerySet
 from rest_framework.exceptions import ValidationError
 
 from retreat.models import LodgingRoom, RetreatAttendee, RetreatEvent, RetreatGroup
+from retreat.services.participation import is_participating
 from users.models import Division, Region
 
 
@@ -27,6 +28,10 @@ def assert_room_can_accept(room: LodgingRoom, attendee: RetreatAttendee) -> None
     - recommended_gender 가 male/female 이면 attendee.gender 가 일치해야 함
       (mixed/미지정은 통과)
     """
+    if not is_participating(attendee):
+        raise ValidationError(
+            {"lodging_room": "불참 조원에게는 숙소를 배정할 수 없습니다."}
+        )
 
     if room.lodging.event_id != attendee.group.event_id:
         raise ValidationError(

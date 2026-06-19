@@ -103,10 +103,8 @@
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
     const h24 = d.getHours();
-    const mer = h24 < 12 ? "오전" : "오후";
-    let h12 = h24 % 12;
-    if (h12 === 0) h12 = 12;
     const mi = String(d.getMinutes()).padStart(2, "0");
+    const time = `${String(h24).padStart(2, "0")}:${mi}`;
     return (
       '<span class="jcc-stamp-date">' +
       y2 +
@@ -116,11 +114,7 @@
       dd +
       "</span> " +
       '<span class="jcc-stamp-time">' +
-      mer +
-      " " +
-      h12 +
-      ":" +
-      mi +
+      time +
       "</span>"
     );
   }

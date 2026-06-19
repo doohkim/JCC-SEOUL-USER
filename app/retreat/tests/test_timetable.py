@@ -106,10 +106,61 @@ class RetreatTimetableTests(TestCase):
         self.client.force_authenticate(self.council)
         r = self.client.post(
             self.list_url,
-            self._payload(start_time="10:00", end_time="09:00"),
+            self._payload(
+                day="2026-07-01",
+                start_time="10:00",
+                end_day="2026-07-01",
+                end_time="09:00",
+            ),
             format="json",
         )
         self.assertEqual(r.status_code, 400)
+
+    def test_overnight_end_across_midnight(self):
+        self.client.force_authenticate(self.council)
+        r = self.client.post(
+            self.list_url,
+            self._payload(
+                day="2026-07-01",
+                start_time="23:00",
+                end_day="2026-07-02",
+                end_time="00:00",
+                title="야간 기도",
+            ),
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        entry = RetreatTimetableEntry.objects.get(title="야간 기도")
+        self.assertEqual(str(entry.day), "2026-07-01")
+        self.assertEqual(str(entry.end_day), "2026-07-02")
+        self.assertEqual(entry.end_time.strftime("%H:%M"), "00:00")
+
+    def test_overnight_inferred_when_end_day_omitted(self):
+        self.client.force_authenticate(self.council)
+        r = self.client.post(
+            self.list_url,
+            self._payload(
+                day="2026-07-01",
+                start_time="23:00",
+                end_time="00:00",
+                title="자정 넘김 추론",
+            ),
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        entry = RetreatTimetableEntry.objects.get(title="자정 넘김 추론")
+        self.assertEqual(str(entry.end_day), "2026-07-02")
+
+    def test_same_day_end_after_start_ok(self):
+        self.client.force_authenticate(self.council)
+        r = self.client.post(
+            self.list_url,
+            self._payload(start_time="09:00", end_time="10:00"),
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        entry = RetreatTimetableEntry.objects.get(title="개회 예배")
+        self.assertIsNone(entry.end_day)
 
     def test_council_can_delete_entry(self):
         entry = RetreatTimetableEntry.objects.create(

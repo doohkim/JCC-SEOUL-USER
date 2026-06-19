@@ -382,7 +382,7 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         if pickup_group_ids:
             for a in RetreatAttendee.objects.filter(
                 group_id__in=pickup_group_ids
-            ).only("group_id", "name", "check_in_status"):
+            ).only("group_id", "name", "check_in_status", "participation_status"):
                 attendee_map.setdefault((a.group_id, a.name), a)
         status_rank = {
             RetreatAttendee.CheckInStatus.PENDING: 0,
@@ -401,6 +401,11 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         # - 출회(departure): 입실 상태인 대상만 노출 (입실 전·퇴실 제외)
         # '전체' 탭은 숨김 없이 모든 픽업을 표시한다.
         def _visible_by_status(p) -> bool:
+            att = attendee_map.get((p.group_id, p.name)) if p.group_id else None
+            if att is not None and att.participation_status == (
+                RetreatAttendee.ParticipationStatus.ABSENT
+            ):
+                return False
             st = p.check_in_status or ""
             if p.direction == RetreatPickup.Direction.ARRIVAL:
                 return st in ("", RetreatAttendee.CheckInStatus.PENDING)
@@ -448,9 +453,11 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         )
         members_map: dict[int, list[dict]] = {}
         if group_list:
-            for a in RetreatAttendee.objects.filter(group__in=group_list).order_by(
-                "group_id", "sort_order", "name", "id"
-            ):
+            from retreat.services.participation import participating_filter
+
+            for a in participating_filter(
+                RetreatAttendee.objects.filter(group__in=group_list)
+            ).order_by("group_id", "sort_order", "name", "id"):
                 members_map.setdefault(a.group_id, []).append(
                     {
                         "name": a.name,
@@ -598,7 +605,18 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
                     ),
                 )
             )
-            .annotate(attendee_count=Count("attendees", distinct=True))
+            .annotate(
+                attendee_count=Count("attendees", distinct=True),
+                participating_count=Count(
+                    "attendees",
+                    filter=~Q(
+                        attendees__participation_status=(
+                            RetreatAttendee.ParticipationStatus.ABSENT
+                        )
+                    ),
+                    distinct=True,
+                ),
+            )
             .order_by("order", "id")
         )
 
@@ -624,27 +642,42 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
             g.leader_names = ", ".join(leaders_map.get(g.id, []))
 
         group_ids = [g.id for g in groups]
+        participating_q = ~Q(
+            participation_status=RetreatAttendee.ParticipationStatus.ABSENT
+        )
         if group_ids:
             status_counts = RetreatAttendee.objects.filter(
                 group_id__in=group_ids
             ).aggregate(
                 count_total=Count("id"),
+                count_participating=Count("id", filter=participating_q),
+                count_absent=Count(
+                    "id",
+                    filter=Q(
+                        participation_status=RetreatAttendee.ParticipationStatus.ABSENT
+                    ),
+                ),
                 count_pending=Count(
                     "id",
-                    filter=Q(check_in_status=RetreatAttendee.CheckInStatus.PENDING),
+                    filter=participating_q
+                    & Q(check_in_status=RetreatAttendee.CheckInStatus.PENDING),
                 ),
                 count_checked_in=Count(
                     "id",
-                    filter=Q(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN),
+                    filter=participating_q
+                    & Q(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN),
                 ),
                 count_checked_out=Count(
                     "id",
-                    filter=Q(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT),
+                    filter=participating_q
+                    & Q(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT),
                 ),
             )
         else:
             status_counts = {
                 "count_total": 0,
+                "count_participating": 0,
+                "count_absent": 0,
                 "count_pending": 0,
                 "count_checked_in": 0,
                 "count_checked_out": 0,
@@ -748,6 +781,7 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         )
 
         from retreat.services.check_in_stamps import is_expected_timestamps_locked
+        from retreat.services.participation import is_participating
 
         attendees = list(
             group.attendees.select_related("lodging_room", "lodging_room__lodging", "user")
@@ -757,21 +791,29 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
             attendee.expected_timestamps_locked = is_expected_timestamps_locked(attendee)
         ctx["attendees"] = attendees
         ctx["count_total"] = len(attendees)
-        ctx["count_pending"] = sum(
+        ctx["count_participating"] = sum(1 for a in attendees if is_participating(a))
+        ctx["count_absent"] = sum(
             1
             for a in attendees
+            if a.participation_status == RetreatAttendee.ParticipationStatus.ABSENT
+        )
+        participating = [a for a in attendees if is_participating(a)]
+        ctx["count_pending"] = sum(
+            1
+            for a in participating
             if a.check_in_status == RetreatAttendee.CheckInStatus.PENDING
         )
         ctx["count_checked_in"] = sum(
             1
-            for a in attendees
+            for a in participating
             if a.check_in_status == RetreatAttendee.CheckInStatus.CHECKED_IN
         )
         ctx["count_checked_out"] = sum(
             1
-            for a in attendees
+            for a in participating
             if a.check_in_status == RetreatAttendee.CheckInStatus.CHECKED_OUT
         )
+        ctx["participation_choices"] = RetreatAttendee.ParticipationStatus.choices
         ctx["can_edit_attendee"] = user_can_edit_attendee_details(user, group)
         ctx["can_change_status"] = can_change_retreat_check_in(user, event)
         ctx["can_delete_attendee"] = user_can_delete_attendee(user, group)

@@ -19,6 +19,8 @@
     checked_out: "퇴실",
   };
 
+  const PARTICIPATION_LABELS = { participating: "참석", absent: "불참" };
+
   const STATUS_LABELS = { present: "참석", absent: "결석" };
 
   const GENDER_LABELS = { male: "남성", female: "여성", "": "-" };
@@ -77,10 +79,12 @@
   const attBody = document.getElementById("retreatAttBody");
   const addBtn = document.getElementById("btnAddAttendee");
   const summaryEls = {
+    total: document.querySelector("[data-summary-total]"),
+    participating: document.querySelector("[data-summary-participating]"),
+    absent: document.querySelector("[data-summary-absent]"),
     pending: document.querySelector("[data-summary-pending]"),
     in: document.querySelector("[data-summary-in]"),
     out: document.querySelector("[data-summary-out]"),
-    total: document.querySelector("[data-summary-total]"),
   };
 
   const overlay = document.getElementById("retreatModalOverlay");
@@ -94,6 +98,7 @@
   const lodgingInput = document.getElementById("retreatAttLodging");
   const roleInput = document.getElementById("retreatAttRole");
   const checkInInput = document.getElementById("retreatAttCheckIn");
+  const participationInput = document.getElementById("retreatAttParticipation");
   const titleEl = document.getElementById("retreatModalTitle");
   const submitBtn = document.getElementById("retreatModalSubmit");
   const cancelBtn = document.getElementById("retreatModalCancel");
@@ -128,28 +133,53 @@
     let pending = 0;
     let inCount = 0;
     let outCount = 0;
-    let total = 0;
+    let roster = 0;
+    let participating = 0;
+    let absent = 0;
     attBody.querySelectorAll("tr[data-attendee-id]").forEach((tr) => {
-      total += 1;
+      roster += 1;
+      const part = tr.dataset.participation || "participating";
+      if (part === "absent") {
+        absent += 1;
+        return;
+      }
+      participating += 1;
       const s = tr.dataset.checkIn || "pending";
       if (s === "checked_in") inCount += 1;
       else if (s === "checked_out") outCount += 1;
       else pending += 1;
     });
+    if (summaryEls.total) summaryEls.total.textContent = String(roster);
+    if (summaryEls.participating)
+      summaryEls.participating.textContent = String(participating);
+    if (summaryEls.absent) summaryEls.absent.textContent = String(absent);
     if (summaryEls.pending) summaryEls.pending.textContent = String(pending);
     if (summaryEls.in) summaryEls.in.textContent = String(inCount);
     if (summaryEls.out) summaryEls.out.textContent = String(outCount);
-    if (summaryEls.total) summaryEls.total.textContent = String(total);
+  }
+
+  function syncParticipationRow(tr) {
+    if (!tr) return;
+    const isAbsent = (tr.dataset.participation || "participating") === "absent";
+    tr.classList.toggle("is-absent", isAbsent);
+    tr.querySelectorAll("[data-expected-field]").forEach((input) => {
+      const locked = isExpectedTimestampsLocked(tr);
+      input.disabled = isAbsent || locked;
+      input.classList.toggle("is-locked", isAbsent || locked);
+    });
   }
 
   function init() {
     renderStatusBadges();
-    recomputeSummary();
     if (attBody) {
       attBody
         .querySelectorAll("tr[data-attendee-id]")
-        .forEach(syncRowExpectedInputs);
+        .forEach((tr) => {
+          syncRowExpectedInputs(tr);
+          syncParticipationRow(tr);
+        });
     }
+    recomputeSummary();
     bindConfirm();
     bindHistory();
     bindSorting();
@@ -168,11 +198,8 @@
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
     const h24 = d.getHours();
-    const mer = h24 < 12 ? "오전" : "오후";
-    let h12 = h24 % 12;
-    if (h12 === 0) h12 = 12;
     const mi = String(d.getMinutes()).padStart(2, "0");
-    return `${yy}-${mm}-${dd} ${mer} ${h12}:${mi}`;
+    return `${yy}-${mm}-${dd} ${String(h24).padStart(2, "0")}:${mi}`;
   }
 
   // 입실/퇴실 라벨용: PC(4자리 연도·한 줄) / 모바일(2자리 연도·두 줄)을 CSS 로
@@ -186,10 +213,8 @@
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
     const h24 = d.getHours();
-    const mer = h24 < 12 ? "오전" : "오후";
-    let h12 = h24 % 12;
-    if (h12 === 0) h12 = 12;
     const mi = String(d.getMinutes()).padStart(2, "0");
+    const time = `${String(h24).padStart(2, "0")}:${mi}`;
     return (
       '<span class="jcc-stamp-date">' +
       '<span class="jcc-stamp-y4">' +
@@ -205,11 +230,7 @@
       "</span>" +
       " " +
       '<span class="jcc-stamp-time">' +
-      mer +
-      " " +
-      h12 +
-      ":" +
-      mi +
+      time +
       "</span>"
     );
   }
@@ -316,6 +337,10 @@
 
   function updateRowFromData(tr, data) {
     if (!tr || !data) return;
+    if (data.participation_status) {
+      tr.dataset.participation = data.participation_status;
+      syncParticipationRow(tr);
+    }
     tr.dataset.checkIn = data.check_in_status || "pending";
     if (data.checked_in_at) {
       tr.dataset.checkedInAt = data.checked_in_at;
@@ -636,6 +661,7 @@
       phone,
       memo,
       checkIn: tr.dataset.checkIn || "pending",
+      participation: tr.dataset.participation || "participating",
       gender: tr.dataset.gender || "",
       expectedIn: tr.dataset.expectedInAt || "",
       expectedOut: tr.dataset.expectedOutAt || "",
@@ -923,6 +949,9 @@
       checkInInput.value = checkIn;
       syncCheckInSelectOptions(checkIn);
     }
+    if (participationInput) {
+      participationInput.value = payload?.participation || "participating";
+    }
     if (attendeePicker) {
       if (payload?.userId) {
         attendeePicker.setSelected(payload.userId, payload.userLabel || "");
@@ -974,6 +1003,8 @@
       payload.phone = phoneSubmitValue(phoneInput?.value || "");
     }
     if (ctx.canEditAttendee) {
+      payload.participation_status =
+        participationInput?.value || "participating";
       payload.memo = (memoInput?.value || "").trim();
       payload.member_role = roleInput?.value || "member";
       payload.user = linkedUserId ? Number(linkedUserId) : null;

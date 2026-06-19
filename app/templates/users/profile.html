@@ -1,0 +1,293 @@
+{% load static permission_tags phone_tags %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>내 프로필</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
+  </head>
+  <body class="jcc-profile-page">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        {% include 'includes/jcc_page_header.html' with page_title='내 프로필' %}
+
+        <main class="jcc-profilePage">
+          <section class="jcc-profileHero card">
+            <div class="jcc-profileHero-avatarCol">
+              <div class="jcc-profileHero-avatarWrap">
+                <img
+                  class="jcc-profileHero-avatar"
+                  id="profileAvatarPreview"
+                  src="{% user_profile_avatar_url user %}"
+                  alt=""
+                />
+                <button
+                  type="button"
+                  class="jcc-profileHero-avatarEdit"
+                  id="profileAvatarEditBtn"
+                  aria-label="프로필 이미지 변경"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M4 7h4l2-2h4l2 2h4v12H4V7z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
+                    <circle cx="12" cy="13" r="3.25" stroke="currentColor" stroke-width="1.75"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="jcc-profileHero-meta">
+              <h2 class="jcc-profileHero-name">{{ display_label }}</h2>
+              {% with primary=memberships.0 %}
+                {% if primary %}
+                  <p class="jcc-profileHero-org">
+                    {% if primary.division.region %}{{ primary.division.region.name }} · {% endif %}{{ primary.division.name }}{% if primary.team %} · {{ primary.team.name }}{% endif %}
+                  </p>
+                {% endif %}
+              {% endwith %}
+              {% if role_level_name %}
+                <p class="jcc-profileHero-role">{{ role_level_name }}</p>
+              {% endif %}
+              {% if profile.interest_topic_list %}
+                <div class="jcc-profileHero-tags">
+                  {% for tag in profile.interest_topic_list %}
+                    <span class="jcc-profileHero-tag">#{{ tag }}</span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </section>
+
+          {% if not onboarding_complete %}
+            <div class="jcc-profileNotice card">
+              <p>
+                소속 승인 상태: <strong>{{ onboarding_status_label }}</strong>
+              </p>
+              <p class="muted">
+                부서·팀 신청을 변경하려면
+                <a href="{% url 'user_onboarding' %}">소속 신청</a>
+                페이지에서 수정해 주세요.
+              </p>
+            </div>
+          {% endif %}
+
+          <form class="jcc-profileForm card" method="post" enctype="multipart/form-data" id="profileForm">
+            {% csrf_token %}
+            {% if messages %}
+              {% for message in messages %}
+                <div class="jcc-profileFlash" role="status">{{ message }}</div>
+              {% endfor %}
+            {% endif %}
+            {% if form.non_field_errors %}
+              <ul class="errorlist">
+                {% for error in form.non_field_errors %}
+                  <li>{{ error }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+
+            <div class="jcc-profileCardHead">
+              <h3 class="jcc-profileSection-title">수정 가능 정보</h3>
+              {% if profile_updated_label %}
+                <span class="jcc-profileUpdated muted">{{ profile_updated_label }}</span>
+              {% endif %}
+            </div>
+
+            {{ form.avatar }}
+            {% if form.avatar.errors %}
+              <ul class="errorlist">
+                {% for e in form.avatar.errors %}
+                  <li>{{ e }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+
+            <div class="jcc-profileFieldGrid">
+              <div class="field">
+                <label for="{{ form.real_name.id_for_label }}">{{ form.real_name.label }}</label>
+                {{ form.real_name }}
+                {% if form.real_name.errors %}<ul class="errorlist">{% for e in form.real_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+              </div>
+              <div class="field">
+                <label for="{{ form.display_name.id_for_label }}">{{ form.display_name.label }}</label>
+                {{ form.display_name }}
+                {% if form.display_name.errors %}<ul class="errorlist">{% for e in form.display_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+              </div>
+              <div class="field jcc-profileField--full">
+                <label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+                <div class="jcc-profilePhoneWrap">
+                  {{ form.phone }}
+                  <svg class="jcc-profilePhoneIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <rect x="7" y="2.5" width="10" height="19" rx="2" stroke="currentColor" stroke-width="1.75"/>
+                    <path d="M10 5.5h4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                {% if form.phone.errors %}<ul class="errorlist">{% for e in form.phone.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+              </div>
+              <div class="field jcc-profileField--full">
+                <label for="profileTopicEntry">관심 주제</label>
+                <div class="jcc-tagInput" id="profileTopicInput">
+                  <div class="jcc-tagInput-row">
+                    <input
+                      type="text"
+                      id="profileTopicEntry"
+                      class="jcc-tagInput-entry jcc-profileInput"
+                      placeholder="주제를 입력하고 Enter"
+                      autocomplete="off"
+                      maxlength="30"
+                    />
+                    <button type="button" class="jcc-tagInput-addBtn" id="profileTopicAddBtn">+ 추가</button>
+                  </div>
+                  <div class="jcc-tagInput-list" id="profileTopicList" aria-live="polite"></div>
+                </div>
+                <p class="jcc-profileFieldHint muted">관심 있는 주제를 태그로 등록해 주세요.</p>
+                <div class="jcc-tagInput-hidden">{{ form.interest_topics }}</div>
+                {% if form.interest_topics.errors %}<ul class="errorlist">{% for e in form.interest_topics.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+              </div>
+              <div class="field jcc-profileField--full">
+                <label for="{{ form.bio.id_for_label }}">{{ form.bio.label }}</label>
+                {{ form.bio }}
+                {% if form.bio.errors %}<ul class="errorlist">{% for e in form.bio.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+              </div>
+            </div>
+            <div class="jcc-profileActions">
+              <button type="submit" class="jcc-profileSaveBtn">저장하기</button>
+            </div>
+          </form>
+
+          <div class="jcc-profileLogoutBar">
+            <a class="jcc-profileLogoutBtn" href="{% url 'user_logout' %}" role="button">로그아웃</a>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const form = document.getElementById("profileForm");
+        const avatarInput = form && form.querySelector(".jcc-profileAvatarInput");
+        const editBtn = document.getElementById("profileAvatarEditBtn");
+        const preview = document.getElementById("profileAvatarPreview");
+
+        function openPicker() {
+          if (avatarInput) avatarInput.click();
+        }
+
+        function previewFile(file) {
+          if (!preview || !file || !file.type.startsWith("image/")) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            preview.src = reader.result;
+          };
+          reader.readAsDataURL(file);
+        }
+
+        if (avatarInput) {
+          avatarInput.addEventListener("change", () => {
+            const file = avatarInput.files && avatarInput.files[0];
+            if (!file) return;
+            previewFile(file);
+          });
+        }
+
+        if (editBtn) {
+          editBtn.addEventListener("click", openPicker);
+        }
+      })();
+
+      (function () {
+        const hidden = document.getElementById("id_interest_topics");
+        const entry = document.getElementById("profileTopicEntry");
+        const addBtn = document.getElementById("profileTopicAddBtn");
+        const list = document.getElementById("profileTopicList");
+        if (!hidden || !entry || !list) return;
+
+        const MAX_LEN = 500;
+        let tags = [];
+        let isComposing = false;
+
+        function parse(value) {
+          return (value || "")
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean);
+        }
+
+        function sync() {
+          hidden.value = tags.join(",");
+        }
+
+        function render() {
+          list.innerHTML = "";
+          tags.forEach((tag, idx) => {
+            const chip = document.createElement("span");
+            chip.className = "jcc-tagChip";
+
+            const label = document.createElement("span");
+            label.className = "jcc-tagChip-label";
+            label.textContent = "#" + tag;
+            chip.appendChild(label);
+
+            const rm = document.createElement("button");
+            rm.type = "button";
+            rm.className = "jcc-tagChip-remove";
+            rm.setAttribute("aria-label", tag + " 삭제");
+            rm.innerHTML = "&times;";
+            rm.addEventListener("click", () => {
+              tags.splice(idx, 1);
+              sync();
+              render();
+            });
+            chip.appendChild(rm);
+
+            list.appendChild(chip);
+          });
+        }
+
+        function addRaw(raw) {
+          if (!raw) return;
+          raw.split(",").forEach((part) => {
+            const tag = part.trim().replace(/^#+/, "").trim();
+            if (!tag) return;
+            if (tags.some((t) => t.toLowerCase() === tag.toLowerCase())) return;
+            if (tags.join(",").length + tag.length + 1 > MAX_LEN) return;
+            tags.push(tag);
+          });
+          sync();
+          render();
+        }
+
+        tags = parse(hidden.value);
+        render();
+
+        if (addBtn) {
+          addBtn.addEventListener("click", () => {
+            addRaw(entry.value);
+            entry.value = "";
+            entry.focus();
+          });
+        }
+
+        entry.addEventListener("compositionstart", () => {
+          isComposing = true;
+        });
+        entry.addEventListener("compositionend", () => {
+          isComposing = false;
+        });
+        entry.addEventListener("keydown", (e) => {
+          if (isComposing || e.isComposing || e.keyCode === 229) return;
+          if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            addRaw(entry.value);
+            entry.value = "";
+          } else if (e.key === "Backspace" && !entry.value && tags.length) {
+            tags.pop();
+            sync();
+            render();
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

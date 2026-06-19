@@ -142,6 +142,30 @@ class RetreatDashboardApiTests(APITestCase):
         )
         self.assertIsNotNone(self.attendee.checked_in_at)
 
+    def test_lodging_unassigned_counts_eligible_only(self):
+        """미배정 카드는 숙박 대상(입실 예정·퇴실 제외)만 집계한다."""
+        now = timezone.now()
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="숙박미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="입실시각없음",
+        )
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="퇴실완료",
+            expected_check_in_at=now - timedelta(days=1),
+            expected_check_out_at=now - timedelta(hours=1),
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+        )
+        self.client.force_authenticate(self.leader)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(data["summary"]["lodging_unassigned"], 1)
+
     def test_results_grand_total(self):
         self.client.force_authenticate(self.leader)
         url = reverse("api_retreat_event_results", args=[self.event.id])

@@ -27,6 +27,7 @@ from registry.serializers.member_crud import (
 from attendance.choices.attendance import MidweekServiceType
 from attendance.models.weekly import MidweekAttendanceRecord, SundayAttendanceLine
 from users.models import Division, Role, Team, User
+from users.services.user_avatar import user_profile_avatar_api_value
 from users.permissions import (
     IsPastoralRegistryStaff,
     members_visible_to,
@@ -553,9 +554,7 @@ class MemberLinkUserChoicesView(APIView):
                     if getattr(u, "profile", None)
                     else "",
                     "phone": getattr(getattr(u, "profile", None), "phone", "") or "",
-                    "avatar": getattr(getattr(u, "profile", None), "avatar", None).url
-                    if getattr(getattr(u, "profile", None), "avatar", None)
-                    else "",
+                    "avatar": user_profile_avatar_api_value(u),
                 }
             )
 

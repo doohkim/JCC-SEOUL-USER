@@ -24,11 +24,16 @@ CHECK_IN_LABELS = {
     "checked_out": "퇴실",
     "pending": "입실전",
 }
+PARTICIPATION_LABELS = {
+    "participating": "참석",
+    "absent": "불참",
+}
 FIELD_LABELS = {
     "name": "이름",
     "phone": "연락처",
     "gender": "성별",
     "memo": "메모",
+    "participation_status": "참석 여부",
     "check_in_status": "입·퇴실",
     "expected_check_in_at": "예상 입실 시각",
     "expected_check_out_at": "예상 퇴실 시각",
@@ -43,6 +48,7 @@ FIELD_LABELS = {
     "title": "프로그램명",
     "day": "일자",
     "start_time": "시작 시각",
+    "end_day": "종료 일자",
     "end_time": "종료 시각",
 }
 
@@ -261,6 +267,8 @@ def _format_value(key: str, value) -> str:
         return _status(value)
     if key == "check_in_status":
         return _check_in(value)
+    if key == "participation_status":
+        return PARTICIPATION_LABELS.get(value, str(value or "-"))
     return str(value)
 
 

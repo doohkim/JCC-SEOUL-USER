@@ -34,6 +34,7 @@ from retreat.services.group_sync import (
     sync_membership_from_attendee,
 )
 from retreat.services.lodging import assert_room_can_accept
+from retreat.services.participation import apply_participation_change
 
 _ATTENDEE_FIELDS = [
     "id",
@@ -50,6 +51,7 @@ _ATTENDEE_FIELDS = [
     "checked_in_at",
     "checked_out_at",
     "lodging_room_id",
+    "participation_status",
     "sort_order",
 ]
 
@@ -175,6 +177,7 @@ class RetreatAttendeeDetailView(APIView):
 
         before = serialize_model_fields(attendee, _ATTENDEE_FIELDS)
         previous_status = attendee.check_in_status
+        previous_participation = attendee.participation_status
         ser = RetreatAttendeeSerializer(attendee, data=payload, partial=True)
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -187,9 +190,20 @@ class RetreatAttendeeDetailView(APIView):
                     group=group,
                     gender=target_gender,
                     lodging_room=target_room,
+                    participation_status=ser.validated_data.get(
+                        "participation_status", attendee.participation_status
+                    ),
                 )
                 assert_room_can_accept(target_room, tmp)
         attendee = ser.save()
+        extra_fields = apply_participation_change(
+            attendee,
+            previous=previous_participation,
+            new=attendee.participation_status,
+            actor=request.user,
+        )
+        if extra_fields:
+            attendee.save(update_fields=[*extra_fields, "updated_at"])
         manual_in = ser.validated_data.get("checked_in_at")
         manual_out = ser.validated_data.get("checked_out_at")
         apply_attendee_stamp_from_payload(

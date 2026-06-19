@@ -30,6 +30,10 @@ class RetreatAttendee(models.Model):
         LEADER = "leader", "조장"
         VICE_LEADER = "vice_leader", "부조장"
 
+    class ParticipationStatus(models.TextChoices):
+        PARTICIPATING = "participating", "참석"
+        ABSENT = "absent", "불참"
+
     group = models.ForeignKey(
         RetreatGroup,
         on_delete=models.CASCADE,
@@ -60,6 +64,13 @@ class RetreatAttendee(models.Model):
         default="",
     )
     memo = models.CharField("메모", max_length=200, blank=True, default="")
+    participation_status = models.CharField(
+        "참석 여부",
+        max_length=15,
+        choices=ParticipationStatus.choices,
+        default=ParticipationStatus.PARTICIPATING,
+        help_text="불참으로 표시된 조원은 입·퇴실·숙소·픽업 집계에서 제외됩니다.",
+    )
     check_in_status = models.CharField(
         "입·퇴실",
         max_length=15,

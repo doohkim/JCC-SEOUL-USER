@@ -110,6 +110,22 @@ class RetreatAttendanceBulkUpsertView(APIView):
                 )
             # 추가로 변경 권한도 확인 (staff/leader/superuser).
             assert_can_mutate_group(request.user, enrollment.source_group)
+            source_attendee = enrollment.source_attendee
+            if (
+                source_attendee
+                and source_attendee.participation_status
+                == RetreatAttendee.ParticipationStatus.ABSENT
+                and r["status"] == RetreatAttendance.Status.PRESENT
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            f"enrollment_id={enrollment.id} (집회 불참)는 "
+                            "참석으로 기록할 수 없습니다."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             if enrollment.check_in_status == RetreatAttendee.CheckInStatus.PENDING:
                 return Response(
                     {

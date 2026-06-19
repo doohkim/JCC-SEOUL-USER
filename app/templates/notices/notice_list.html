@@ -1,71 +1,68 @@
-{% load static permission_tags %}
+{% load static permission_tags notice_extras %}
 <!DOCTYPE html>
 <html lang="ko">
   <head>
     {% include 'includes/jcc_theme_head.html' %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>공지사항</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
+    <title>함께하기</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
   </head>
-  <body class="has-notice-bottom-tabs">
+  <body class="has-notice-bottom-tabs jcc-notice-list-page">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        {% include 'includes/jcc_page_header.html' with page_title='공지사항' tabs_template='notices/_subtabs.html' notices_tab='notices' %}
+        {% include 'includes/jcc_page_header.html' with page_title='함께하기' tabs_template='notices/_subtabs.html' notices_tab='notices' %}
         <main class="jcc-notice-listMain">
-          {% if can_manage_notices %}
-            <div class="jcc-notice-listToolbar">
-              <a class="jcc-notice-addBtn jcc-notice-addBtn--desktop" href="{% url 'notice_create' %}" aria-label="공지 작성">
-                <svg class="jcc-notice-addBtn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                  <path d="M14 3v5h5" />
-                  <path d="M9 13h6M9 17h6" />
-                </svg>
-                <span class="jcc-notice-addBtn-text">+ 공지 작성</span>
-              </a>
-            </div>
-          {% endif %}
-
           {% if notices %}
             <div class="jcc-notice-cardGrid">
               {% for notice in notices %}
-                <article class="jcc-notice-card{% if notice.is_pinned %} jcc-notice-card--featured{% endif %}{% if not notice.thumbnail %} jcc-notice-card--text{% endif %}">
+                <article class="jcc-notice-card{% if notice.is_pinned %} jcc-notice-card--featured{% endif %}">
                   <a class="jcc-notice-cardLink" href="{% url 'notice_detail' notice.pk %}">
-                    {% if notice.thumbnail %}
-                      <div class="jcc-notice-cardMedia">
+                    <div class="jcc-notice-cardMedia">
+                      {% if notice.thumbnail %}
                         <img src="{{ notice.thumbnail.url }}" alt="" loading="lazy" />
-                        {% if notice.is_pinned %}
-                          <span class="jcc-notice-cardBadge jcc-notice-cardBadge--important">중요 공지</span>
-                        {% endif %}
-                      </div>
-                    {% endif %}
-                    <div class="jcc-notice-cardBody">
-                      <div class="jcc-notice-cardMeta">
-                        {% if not notice.thumbnail and notice.is_pinned %}
-                          <span class="jcc-notice-cardCat jcc-notice-cardCat--important">중요 공지</span>
-                        {% endif %}
-                        {% if notice.category %}
-                          <span
-                            class="jcc-notice-cardCat"
-                            {% if notice.category.color %}style="--cat-color: {{ notice.category.color }}"{% endif %}
-                          >{{ notice.category.name }}</span>
-                        {% endif %}
-                        <span class="jcc-notice-cardDate">{{ notice.created_at|date:"Y.m.d" }}</span>
-                      </div>
-                      <h2 class="jcc-notice-cardTitle">{{ notice.title }}</h2>
-                      <p class="jcc-notice-cardExcerpt">{{ notice.body|striptags|truncatechars:120 }}</p>
-                      <div class="jcc-notice-cardFooter">
-                        <span class="jcc-notice-cardViews">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                            <circle cx="12" cy="12" r="3" />
+                      {% else %}
+                        <div class="jcc-notice-cardPlaceholder" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="3" y="5" width="18" height="14" rx="2" />
+                            <circle cx="8.5" cy="10.5" r="1.5" fill="currentColor" stroke="none" />
+                            <path d="M21 17l-5.5-5.5a1.5 1.5 0 00-2.12 0L7 18" />
                           </svg>
-                          {{ notice.view_count }}
+                        </div>
+                      {% endif %}
+                      {% if notice|is_notice_new %}
+                        <span class="jcc-notice-cardBadge jcc-notice-cardBadge--new">NEW</span>
+                      {% elif notice.is_pinned %}
+                        <span class="jcc-notice-cardBadge jcc-notice-cardBadge--important">중요</span>
+                      {% endif %}
+                    </div>
+                    <div class="jcc-notice-cardBody">
+                      <h2 class="jcc-notice-cardTitle">{{ notice.title }}</h2>
+                      <div class="jcc-notice-cardMetaRow">
+                        <span class="jcc-notice-cardMetaItem">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                            <rect x="4" y="5" width="16" height="16" rx="2" />
+                            <path d="M4 9h16M8 3v4M16 3v4" stroke-linecap="round" />
+                          </svg>
+                          {{ notice.created_at|date:"Y.m.d" }}
                         </span>
                         {% if notice.created_by %}
-                          <span class="jcc-notice-cardAuthor">{{ notice.created_by|user_display_name }}</span>
+                          <span class="jcc-notice-cardMetaItem">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                              <circle cx="12" cy="8" r="4" />
+                              <path d="M4 20v-1a4 4 0 014-4h8a4 4 0 014 4v1" stroke-linecap="round" />
+                            </svg>
+                            {{ notice.created_by|user_display_name }}
+                          </span>
                         {% endif %}
+                        <span class="jcc-notice-cardMetaItem">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke-linejoin="round" />
+                            <circle cx="12" cy="12" r="3" />
+                          </svg>
+                          {{ notice.view_count|intcomma }}
+                        </span>
                       </div>
                     </div>
                   </a>
@@ -92,25 +89,29 @@
             </div>
           {% else %}
             <div class="jcc-notice-empty card">
-              <p>등록된 공지가 없습니다.</p>
+              <p>등록된 이야기가 없습니다.</p>
             </div>
           {% endif %}
 
           {% if is_paginated %}
             <nav class="jcc-notice-pagination" aria-label="페이지">
-              <p class="muted">
-                전체 {{ page_obj.paginator.count }}개 항목 중
-                {{ page_obj.start_index }}-{{ page_obj.end_index }} 표시
-              </p>
               <div class="jcc-notice-paginationBtns">
                 {% if page_obj.has_previous %}
-                  <a class="jcc-notice-pageBtn" href="?page=1">«</a>
-                  <a class="jcc-notice-pageBtn" href="?page={{ page_obj.previous_page_number }}">‹</a>
+                  <a class="jcc-notice-pageBtn jcc-notice-pageBtn--arrow" href="?page={{ page_obj.previous_page_number }}" aria-label="이전 페이지">‹</a>
+                {% else %}
+                  <span class="jcc-notice-pageBtn jcc-notice-pageBtn--arrow is-disabled" aria-hidden="true">‹</span>
                 {% endif %}
-                <span class="jcc-notice-pageBtn is-active">{{ page_obj.number }}</span>
+                {% for num in page_obj.paginator.page_range %}
+                  {% if num == page_obj.number %}
+                    <span class="jcc-notice-pageBtn is-active" aria-current="page">{{ num }}</span>
+                  {% else %}
+                    <a class="jcc-notice-pageBtn" href="?page={{ num }}">{{ num }}</a>
+                  {% endif %}
+                {% endfor %}
                 {% if page_obj.has_next %}
-                  <a class="jcc-notice-pageBtn" href="?page={{ page_obj.next_page_number }}">›</a>
-                  <a class="jcc-notice-pageBtn" href="?page={{ page_obj.paginator.num_pages }}">»</a>
+                  <a class="jcc-notice-pageBtn jcc-notice-pageBtn--arrow" href="?page={{ page_obj.next_page_number }}" aria-label="다음 페이지">›</a>
+                {% else %}
+                  <span class="jcc-notice-pageBtn jcc-notice-pageBtn--arrow is-disabled" aria-hidden="true">›</span>
                 {% endif %}
               </div>
             </nav>
@@ -119,11 +120,9 @@
       </div>
     </div>
     {% if can_manage_notices %}
-      <a class="jcc-notice-addBtn jcc-notice-addBtn--mobile" href="{% url 'notice_create' %}" aria-label="공지 작성">
-        <svg class="jcc-notice-addBtn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-          <path d="M14 3v5h5" />
-          <path d="M9 13h6M9 17h6" />
+      <a class="jcc-notice-addBtn jcc-notice-addBtn--fab" href="{% url 'notice_create' %}" aria-label="이야기 작성">
+        <svg class="jcc-notice-addBtn-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" />
         </svg>
       </a>
     {% endif %}

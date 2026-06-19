@@ -12,6 +12,9 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
     check_in_status_display = serializers.CharField(
         source="get_check_in_status_display", read_only=True
     )
+    participation_status_display = serializers.CharField(
+        source="get_participation_status_display", read_only=True
+    )
     member_role_display = serializers.CharField(
         source="get_member_role_display", read_only=True
     )
@@ -33,6 +36,8 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
             "gender",
             "gender_display",
             "memo",
+            "participation_status",
+            "participation_status_display",
             "check_in_status",
             "check_in_status_display",
             "expected_check_in_at",
@@ -51,6 +56,7 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
             "check_in_status_display",
             "member_role_display",
             "user_label",
+            "participation_status_display",
             "lodging_room_label",
             "expected_timestamps_locked",
         ]
@@ -105,6 +111,17 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
         if in_at and out_at and out_at <= in_at:
             raise serializers.ValidationError(
                 {"expected_check_out_at": "퇴실 시각은 입실 시각보다 뒤여야 합니다."}
+            )
+        participation = attrs.get("participation_status")
+        if participation is None and self.instance:
+            participation = self.instance.participation_status
+        if (
+            participation == RetreatAttendee.ParticipationStatus.ABSENT
+            and "lodging_room" in attrs
+            and attrs.get("lodging_room")
+        ):
+            raise serializers.ValidationError(
+                {"lodging_room": "불참 조원에게는 숙소를 배정할 수 없습니다."}
             )
         return attrs
 

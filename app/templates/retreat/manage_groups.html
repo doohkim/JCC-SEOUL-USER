@@ -5,15 +5,15 @@
     {% include 'includes/jcc_theme_head.html' %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>조 관리 · {{ event.name }}</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
+    <title>그룹 · {{ event.name }}</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
     <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617n" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        {% include 'includes/jcc_page_header.html' with page_title='조' tabs_template='includes/retreat_event_tabs.html' retreat_tab='manage_groups' hide_event_picker=True %}
+        {% include 'includes/jcc_page_header.html' with page_title='그룹' tabs_template='includes/retreat_event_tabs.html' retreat_tab='manage_groups' hide_event_picker=True %}
         <main>
           <div class="jcc-retreat-listTop jcc-retreat-listTop--withPicker">
             {% include 'includes/retreat_event_picker.html' %}
@@ -66,7 +66,7 @@
                   </div>
                   <div class="jcc-retreat-groupName">{{ g.name }}</div>
                   <div class="jcc-retreat-groupMeta">조장 {{ g.leader_names|default:"-" }}</div>
-                  <div class="jcc-retreat-groupMeta">조원 {{ g.attendee_count }}명</div>
+                  <div class="jcc-retreat-groupMeta">참석 {{ g.participating_count }}명 · 명단 {{ g.attendee_count }}명</div>
                 </a>
                 {% if can_add_group %}
                   <button

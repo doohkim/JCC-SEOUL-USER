@@ -11,6 +11,7 @@ class RetreatAttendeeAdmin(admin.ModelAdmin):
         "phone",
         "gender",
         "check_in_status",
+        "participation_status",
         "checked_in_at",
         "checked_out_at",
         "sort_order",

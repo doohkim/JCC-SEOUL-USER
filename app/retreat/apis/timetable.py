@@ -23,6 +23,7 @@ def _log_payload(entry: RetreatTimetableEntry) -> dict:
         "id": entry.id,
         "day": str(entry.day),
         "start_time": entry.start_time.strftime("%H:%M") if entry.start_time else None,
+        "end_day": str(entry.end_day) if entry.end_day else None,
         "end_time": entry.end_time.strftime("%H:%M") if entry.end_time else None,
         "title": entry.title,
         "location": entry.location,
@@ -64,7 +65,9 @@ class RetreatEventTimetableListCreateView(APIView):
     def post(self, request, event_id: int):
         event = get_object_or_404(RetreatEvent, pk=event_id)
         _assert_can_manage(request.user, event)
-        ser = RetreatTimetableEntrySerializer(data=request.data)
+        ser = RetreatTimetableEntrySerializer(
+            data=request.data, context={"event": event}
+        )
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
         entry = ser.save(event=event, created_by=request.user)
@@ -97,7 +100,10 @@ class RetreatTimetableEntryDetailView(APIView):
         _assert_can_manage(request.user, entry.event)
         before = _log_payload(entry)
         ser = RetreatTimetableEntrySerializer(
-            entry, data=request.data, partial=True
+            entry,
+            data=request.data,
+            partial=True,
+            context={"event": entry.event},
         )
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)

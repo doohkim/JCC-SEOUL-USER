@@ -52,6 +52,18 @@ def _phone_for_display(phone: str) -> str:
     return normalized if normalized is not None else raw
 
 
+def _profile_updated_label(updated_at) -> str:
+    if not updated_at:
+        return ""
+    delta = timezone.now() - updated_at
+    days = delta.days
+    if days <= 0:
+        return "오늘 업데이트됨"
+    if days == 1:
+        return "1일 전 업데이트"
+    return f"{days}일 전 업데이트"
+
+
 class KakaoAuthEntryView(TemplateView):
     template_name = "users/signup.html"
 
@@ -263,6 +275,124 @@ class UserLogoutView(TemplateView):
     def get(self, request, *args, **kwargs):
         logout(request)
         return HttpResponseRedirect(reverse_lazy("user_login"))
+
+
+INTEREST_TOPICS_MAX_LEN = 500
+INTEREST_TOPIC_MAX_TAGS = 15
+INTEREST_TOPIC_MAX_TAG_LEN = 30
+
+
+def _normalize_interest_topics(raw: str) -> str:
+    parts: list[str] = []
+    seen: set[str] = set()
+    for chunk in (raw or "").split(","):
+        tag = chunk.strip().lstrip("#").strip()
+        if not tag or len(tag) > INTEREST_TOPIC_MAX_TAG_LEN:
+            continue
+        key = tag.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        parts.append(tag)
+        if len(parts) >= INTEREST_TOPIC_MAX_TAGS:
+            break
+    return ",".join(parts)[:INTEREST_TOPICS_MAX_LEN]
+
+
+class UserProfileForm(forms.Form):
+    display_name = forms.CharField(
+        label="표시 이름",
+        max_length=50,
+        required=False,
+    )
+    real_name = forms.CharField(label="실명", max_length=50)
+    phone = forms.CharField(
+        label="휴대폰",
+        max_length=30,
+        validators=[validate_korea_mobile_phone],
+    )
+    bio = forms.CharField(
+        label="소개",
+        required=False,
+        widget=forms.Textarea(
+            attrs={"rows": 4, "placeholder": "자신을 소개해주세요."},
+        ),
+    )
+    avatar = forms.ImageField(label="프로필 이미지", required=False)
+    interest_topics = forms.CharField(
+        label="관심 주제",
+        required=False,
+        widget=forms.HiddenInput(),
+    )
+
+    def clean_interest_topics(self):
+        return _normalize_interest_topics(self.cleaned_data.get("interest_topics") or "")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in ("real_name", "display_name", "phone"):
+            self.fields[name].widget.attrs.setdefault("class", "jcc-profileInput")
+        self.fields["bio"].widget.attrs.setdefault("class", "jcc-profileTextarea")
+        self.fields["avatar"].widget.attrs.update(
+            {
+                "class": "jcc-profileAvatarInput",
+                "accept": "image/jpeg,image/png,image/webp",
+            }
+        )
+
+
+class UserProfileView(LoginRequiredMixin, FormView):
+    """본인 프로필 조회·일부 수정."""
+
+    template_name = "users/profile.html"
+    form_class = UserProfileForm
+    login_url = reverse_lazy("user_login")
+    success_url = reverse_lazy("user_profile")
+
+    def get_initial(self):
+        profile = ensure_user_profile(self.request.user)
+        return {
+            "display_name": profile.display_name or "",
+            "real_name": profile.real_name or "",
+            "phone": profile.phone or "",
+            "bio": profile.bio or "",
+            "interest_topics": profile.interest_topics or "",
+        }
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        user = self.request.user
+        profile = ensure_user_profile(user)
+        ctx["profile"] = profile
+        ctx["display_label"] = user_display_name(user)
+        ctx["memberships"] = list(
+            user.division_teams.select_related("division", "division__region", "team")
+            .order_by("-is_primary", "sort_order", "division__sort_order", "division__name")
+        )
+        ctx["onboarding_complete"] = is_onboarding_complete(user, profile)
+        ctx["onboarding_status_label"] = profile.get_onboarding_status_display()
+        ctx["onboarding_status"] = profile.onboarding_status
+        rl = getattr(user, "role_level", None)
+        ctx["role_level_name"] = getattr(rl, "name", "") if rl else ""
+        ctx["profile_updated_label"] = _profile_updated_label(profile.updated_at)
+        return ctx
+
+    def form_valid(self, form):
+        profile = ensure_user_profile(self.request.user)
+        profile.display_name = (form.cleaned_data.get("display_name") or "").strip()
+        profile.real_name = (form.cleaned_data["real_name"] or "").strip()
+        phone_raw = (form.cleaned_data["phone"] or "").strip()
+        normalized = normalize_korea_mobile_phone(phone_raw)
+        profile.phone = normalized if normalized is not None else phone_raw
+        profile.bio = (form.cleaned_data.get("bio") or "").strip()
+        profile.interest_topics = form.cleaned_data.get("interest_topics") or ""
+        avatar = form.cleaned_data.get("avatar")
+        if avatar:
+            profile.avatar = avatar
+            profile.avatar_user_uploaded = True
+        profile.save()
+        messages.success(self.request, "프로필을 저장했습니다.")
+        return super().form_valid(form)
 
 
 class OnboardingApprovalListView(LoginRequiredMixin, TemplateView):

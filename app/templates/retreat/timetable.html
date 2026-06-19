@@ -6,8 +6,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 타임테이블 · {{ event.name }}</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260617g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260619a" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -55,7 +55,15 @@
                         {% for e in block.items %}
                           <tr data-entry-id="{{ e.id }}">
                             <td class="jcc-retreat-ttCol-time">
-                              {{ e.start_time|time:'H:i' }}{% if e.end_time %} ~ {{ e.end_time|time:'H:i' }}{% endif %}
+                              {% if e.end_time %}
+                                {% if e.end_day %}
+                                  {{ e.day|date:'n/j' }} {{ e.start_time|time:'H:i' }} ~ {{ e.end_day|date:'n/j' }} {{ e.end_time|time:'H:i' }}
+                                {% else %}
+                                  {{ e.start_time|time:'H:i' }} ~ {{ e.end_time|time:'H:i' }}
+                                {% endif %}
+                              {% else %}
+                                {{ e.start_time|time:'H:i' }}
+                              {% endif %}
                             </td>
                             <td>
                               {% if is_retreat_council %}
@@ -66,6 +74,7 @@
                                   data-id="{{ e.id }}"
                                   data-day="{{ e.day|date:'Y-m-d' }}"
                                   data-start="{{ e.start_time|time:'H:i' }}"
+                                  data-end-day="{% if e.end_day %}{{ e.end_day|date:'Y-m-d' }}{% endif %}"
                                   data-end="{% if e.end_time %}{{ e.end_time|time:'H:i' }}{% endif %}"
                                   data-title="{{ e.title }}"
                                   data-location="{{ e.location }}"
@@ -151,7 +160,7 @@
         apiDetailBase: "/api/v1/retreat/events/{{ event.id }}/timetable/"
       };
     </script>
-    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260613a" defer></script>
-    <script src="{% static 'retreat/retreat_timetable.js' %}?v=20260616a" defer></script>
+    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260619a" defer></script>
+    <script src="{% static 'retreat/retreat_timetable.js' %}?v=20260618a" defer></script>
   </body>
 </html>

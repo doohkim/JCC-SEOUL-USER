@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from retreat.models import RetreatAttendee, RetreatChangeLog
 from retreat.services.audit import log_retreat_change, serialize_model_fields
+from retreat.services.participation import participating_filter
 
 _AUTO_FIELDS = [
     "check_in_status",
@@ -57,7 +58,7 @@ def apply_due_auto_transitions(
     checked_out = 0
 
     # 1) 입실전 & 예상 입실시각 경과 → 입실
-    pending_due = (
+    pending_due = participating_filter(
         RetreatAttendee.objects.select_for_update()
         .select_related("group")
         .filter(
@@ -78,7 +79,7 @@ def apply_due_auto_transitions(
         checked_in += 1
 
     # 2) 입실 & 예상 퇴실시각 경과 → 퇴실 (방금 자동 입실된 건 포함)
-    in_due = (
+    in_due = participating_filter(
         RetreatAttendee.objects.select_for_update()
         .select_related("group")
         .filter(
