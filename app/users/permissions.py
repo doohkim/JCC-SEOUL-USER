@@ -1,14 +1,20 @@
 """
 권한/노출
 
-- **운영 데이터(출석·부서 목록 등)**: 로그인 사용자는 ``UserDivisionTeam`` 으로 연결된
-  상위 부서(Division)만 조회 가능. 타 부서 데이터는 API/쿼리에서 차단.
-- **교적(Member·registry Admin·조직 API)**: ``can_access_member_registry`` — **직급이 목사·전도사인 계정만**
-  (Django staff·기능권한만으로는 탭/API/페이지 불가). 슈퍼유저는 예외.
-  부서 범위는 ``registry_divisions_for`` — **목회 담당 부서** (``PastoralDivisionAssignment``)만.
-  담당이 없으면 빈 범위(화면에 안내 문구). **전체 부서** 조회는 ``is_superuser`` 만.
-- **탭 출석부** (``can_access_team_roster_tab``): 팀장·셀장은 기능 직책 **또는** 직급(RoleLevel)
-  ``team_leader`` / ``cell_leader`` — 본인 팀만. 목사·전도사·회장·부회장·총무 및 출석관리·운영은 부서 전체 팀.
+페이지·탭별 진입 함수 (UI ``permission_tags`` · 뷰 ``dispatch`` · DRF 와 동일하게 사용):
+
+| 화면 | 함수 | 허용 조건 요약 |
+|------|------|----------------|
+| 출석 대시보드 ``/attendance/`` | ``can_access_attendance_dashboard`` | 슈퍼유저·목사/전도사·출석관리·탭출석부 권한·소속 1개 이상 |
+| 탭 출석부 ``/attendance/team/roster/`` | ``can_access_team_roster_tab`` | 팀장/셀장(본인 팀) 또는 broad(출석관리·목사·임원·staff) |
+| 출석 명단 입력 ``/attendance/roster/`` | ``can_access_attendance_roster_input`` | broad 출석 권한 (출석관리 플래그 포함) |
+| 교적부 ``/registry/…`` | ``can_access_member_registry`` | 슈퍼유저·목사/전도사 직급만 |
+| 계정관리 | ``can_manage_division_accounts`` | 슈퍼유저·``can_manage_accounts``·staff |
+| 함께하기(공지) | ``can_access_notices_tab`` | 로그인 사용자 |
+| 수련회 | ``can_access_retreat_tab`` | 회장단·목사/전도사·조장 등 (별도 체계) |
+
+- **운영 데이터(출석·부서 목록 등)**: ``UserDivisionTeam`` 소속 부서만.
+- **교적 부서 범위**: ``registry_divisions_for`` — 목회 담당 부서만.
 """
 
 from __future__ import annotations
@@ -210,6 +216,26 @@ def can_access_attendance_roster(user: User) -> bool:
     return can_access_team_roster_tab(user)
 
 
+def can_access_attendance_dashboard(user: User) -> bool:
+    """출석 대시보드 ``/attendance/`` 페이지·탭."""
+    if not user.is_authenticated or not user.is_active:
+        return False
+    if user.is_superuser or _is_pastoral(user):
+        return True
+    if is_attendance_manager(user):
+        return True
+    if can_access_team_roster_tab(user):
+        return True
+    return bool(_primary_user_division_ids(user))
+
+
+def can_access_attendance_roster_input(user: User) -> bool:
+    """교적 연동 출석 명단 입력 ``/attendance/roster/`` (부서 전체 명단 편집)."""
+    if not user.is_authenticated or not user.is_active:
+        return False
+    return is_team_roster_broad_access(user)
+
+
 def visible_divisions_for(user: User, *, region=None):
     """
     출석·대시보드 등 **부서 단위 운영 데이터** 조회 범위.
@@ -382,12 +408,8 @@ def is_notice_manager(user: User) -> bool:
 
 
 def can_access_pastoral_tab(user: User) -> bool:
-    """대시보드·출석부·교적부 좌측 메뉴 노출 — 슈퍼유저 또는 목사·전도사."""
-    if not user.is_authenticated or not user.is_active:
-        return False
-    if user.is_superuser:
-        return True
-    return _is_pastoral(user)
+    """@deprecated UI 호환 — 교적부 탭과 동일. 신규 코드는 ``can_access_member_registry`` 사용."""
+    return can_access_member_registry(user)
 
 
 def is_account_manager(user: User) -> bool:

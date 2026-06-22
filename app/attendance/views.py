@@ -22,7 +22,8 @@ from users.mixins import OnboardingRequiredMixin
 from users.models import Team, User
 from users.services.user_display import kakao_nickname_map_for_user_ids, user_display_name
 from users.permissions import (
-    can_access_pastoral_tab,
+    can_access_attendance_dashboard,
+    can_access_attendance_roster_input,
     can_access_team_roster_tab,
     can_change_dashboard_division,
     is_parking_manager,
@@ -76,7 +77,9 @@ class AttendanceDashboardView(OnboardingRequiredMixin, LoginRequiredMixin, Templ
     login_url = reverse_lazy("user_login")
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated and not can_access_pastoral_tab(request.user):
+        if request.user.is_authenticated and not can_access_attendance_dashboard(
+            request.user
+        ):
             return HttpResponseRedirect(reverse_lazy("notice_list"))
         return super().dispatch(request, *args, **kwargs)
 
@@ -92,10 +95,24 @@ class AttendanceRosterListView(OnboardingRequiredMixin, LoginRequiredMixin, Temp
     template_name = "attendance/roster_list.html"
     login_url = reverse_lazy("user_login")
 
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not can_access_attendance_roster_input(
+            request.user
+        ):
+            raise PermissionDenied("출석 명단 입력 페이지 권한이 없습니다.")
+        return super().dispatch(request, *args, **kwargs)
+
 
 class AttendanceRosterEditView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
     template_name = "attendance/roster_edit.html"
     login_url = reverse_lazy("user_login")
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not can_access_attendance_roster_input(
+            request.user
+        ):
+            raise PermissionDenied("출석 명단 입력 페이지 권한이 없습니다.")
+        return super().dispatch(request, *args, **kwargs)
 
 
 class AttendanceTeamRosterCheckView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):

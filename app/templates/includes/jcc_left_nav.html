@@ -87,7 +87,7 @@
         <span>계정관리</span>
       </a>
     {% endif %}
-    {% if user|can_access_pastoral_tab %}
+    {% if user|can_access_attendance_dashboard_tab %}
     <a class="jcc-leftNav-item" href="{% url 'attendance_dashboard' %}" data-tab="dashboard">
       <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
         <path d="M4 11h6v9H4v-9zm10 0h6v9h-6v-9zM4 4h6v5H4V4zm10 0h6v5h-6V4z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
@@ -95,7 +95,7 @@
       <span>대시보드</span>
     </a>
     {% endif %}
-    {% if user|can_access_pastoral_tab %}
+    {% if user|can_access_attendance_tab %}
       <a class="jcc-leftNav-item" href="{% url 'attendance_team_roster_check' %}" data-tab="attendance">
         <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
           <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
@@ -117,7 +117,7 @@
       </a>
     {% endif %}
     {% endcomment %}
-    {% if user|can_access_pastoral_tab %}
+    {% if user|can_access_registry_tab %}
       <a class="jcc-leftNav-item" href="{% url 'registry_member_list' %}" data-tab="registry">
         <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
           <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
@@ -165,7 +165,7 @@
 </aside>
 
 <nav class="jcc-bottomTabs" id="jccBottomTabs" aria-label="모바일 주요 메뉴">
-  {% if user|can_access_pastoral_tab %}
+  {% if user|can_access_attendance_dashboard_tab %}
   <a class="jcc-bottomTab" href="{% url 'attendance_dashboard' %}" data-tab="dashboard">
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
       <path d="M4 11h6v9H4v-9zm10 0h6v9h-6v-9zM4 4h6v5H4V4zm10 0h6v5h-6V4z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
@@ -173,7 +173,7 @@
     <span>대시보드</span>
   </a>
   {% endif %}
-  {% if user|can_access_pastoral_tab %}
+  {% if user|can_access_attendance_tab %}
     <a class="jcc-bottomTab" href="{% url 'attendance_team_roster_check' %}" data-tab="attendance">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
         <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
@@ -183,7 +183,7 @@
       <span>출석부</span>
     </a>
   {% endif %}
-  {% if user|can_access_pastoral_tab %}
+  {% if user|can_access_registry_tab %}
     <a class="jcc-bottomTab" href="{% url 'registry_member_list' %}" data-tab="registry">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
         <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>

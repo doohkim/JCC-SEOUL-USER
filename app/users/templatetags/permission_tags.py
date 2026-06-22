@@ -31,10 +31,18 @@ def can_access_onboarding_approvals_tab(user):
 
 @register.filter(name="can_access_attendance_tab")
 def can_access_attendance_tab(user):
-    """탭 출석부: 팀장·셀장(직급 또는 기능 직책) 또는 목사·전도사·회장·부회장·총무·출석관리·운영."""
+    """탭 출석부 ``/attendance/team/roster/``."""
     from users.permissions import can_access_team_roster_tab
 
     return bool(user and can_access_team_roster_tab(user))
+
+
+@register.filter(name="can_access_attendance_dashboard_tab")
+def can_access_attendance_dashboard_tab(user):
+    """출석 대시보드 ``/attendance/``."""
+    from users.permissions import can_access_attendance_dashboard
+
+    return bool(user and can_access_attendance_dashboard(user))
 
 
 @register.filter(name="can_access_parking_tab")
@@ -153,10 +161,10 @@ def can_access_retreat_leader_guide(user):
 
 @register.filter(name="can_access_pastoral_tab")
 def can_access_pastoral_tab(user):
-    """좌측 '대시보드·출석부·교적부' 탭 — 슈퍼유저 또는 목사·전도사."""
-    from users.permissions import can_access_pastoral_tab as can_access_pastoral
+    """@deprecated — ``can_access_member_registry`` 와 동일."""
+    from users.permissions import can_access_member_registry
 
-    return bool(user and can_access_pastoral(user))
+    return bool(user and can_access_member_registry(user))
 
 
 @register.filter(name="lookup_user_label")

@@ -6,7 +6,9 @@ from typing import Any
 
 from users.models import User
 from users.permissions import (
+    can_access_attendance_dashboard,
     can_access_attendance_roster,
+    can_access_attendance_roster_input,
     can_access_member_registry,
     can_access_team_roster_tab,
     can_manage_division_accounts,
@@ -53,8 +55,10 @@ def user_permission_snapshot(user: User) -> dict[str, Any]:
             "parking_manager": is_parking_manager(user),
             "account_management": can_manage_division_accounts(user),
             "member_registry": can_access_member_registry(user),
+            "attendance_dashboard": can_access_attendance_dashboard(user),
             "team_roster_tab": can_access_team_roster_tab(user),
             "attendance_roster": can_access_attendance_roster(user),
+            "attendance_roster_input": can_access_attendance_roster_input(user),
         },
         "divisions": {
             "dashboard_visible_codes": div_vis,
