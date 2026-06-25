@@ -100,7 +100,6 @@ class KakaoAvatarDisplayTests(TestCase):
             reverse("user_profile"),
             {
                 "real_name": "홍길동",
-                "display_name": "",
                 "phone": "010-1234-5678",
                 "bio": "",
                 "avatar": self._valid_jpeg_upload(),

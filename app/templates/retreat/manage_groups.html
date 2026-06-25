@@ -1,4 +1,4 @@
-{% load static permission_tags %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -17,9 +17,7 @@
         <main>
           <div class="jcc-retreat-listTop jcc-retreat-listTop--withPicker">
             {% include 'includes/retreat_event_picker.html' %}
-            {% if user|can_access_retreat_leader_guide %}
-              <a class="jcc-retreat-guideLink" href="{% url 'retreat_leader_guide' %}">사용 가이드</a>
-            {% endif %}
+            <a class="jcc-retreat-guideLink" href="{% url 'retreat_platform_guide' %}">플랫폼 가이드</a>
             <div class="msg" id="retreatStatus" role="status"></div>
             {% if can_add_group %}
               <button type="button" class="jcc-retreat-addGroupBtn" id="btnAddGroup" aria-label="조 추가">

@@ -52,6 +52,8 @@ class UserProfilePageTests(TestCase):
         self.assertContains(r, "내 프로필")
         self.assertContains(r, "홍길동")
         self.assertContains(r, "청년부")
+        self.assertNotContains(r, "표시 이름")
+        self.assertContains(r, "실명")
 
     def test_post_updates_profile(self):
         self.client.force_login(self.user)
@@ -59,7 +61,6 @@ class UserProfilePageTests(TestCase):
             self.url,
             {
                 "real_name": "김샬롬",
-                "display_name": "샬롬",
                 "phone": "010-9876-5432",
                 "bio": "수정된 소개",
                 "interest_topics": "찬양, 봉사",
@@ -69,7 +70,6 @@ class UserProfilePageTests(TestCase):
         self.assertEqual(r.url, self.url)
         profile = UserProfile.objects.get(user=self.user)
         self.assertEqual(profile.real_name, "김샬롬")
-        self.assertEqual(profile.display_name, "샬롬")
         self.assertEqual(profile.phone, "010-9876-5432")
         self.assertEqual(profile.bio, "수정된 소개")
         self.assertEqual(profile.interest_topics, "찬양,봉사")
@@ -80,7 +80,6 @@ class UserProfilePageTests(TestCase):
             self.url,
             {
                 "real_name": "홍길동",
-                "display_name": "",
                 "phone": "010-1234-5678",
                 "bio": "",
                 "interest_topics": "#찬양, 찬양, 모티스락",

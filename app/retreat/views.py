@@ -33,7 +33,6 @@ from retreat.models import (
 )
 from retreat.services.changelog_format import humanize_change_logs
 from users.permissions import (
-    can_access_retreat_leader_guide,
     can_access_retreat_tab,
     can_change_retreat_check_in,
     can_manage_retreat_pickup,
@@ -45,6 +44,7 @@ from users.permissions import (
     is_retreat_group_leader,
     is_retreat_staff,
     retreat_pickup_group_ids_for,
+    retreat_pickup_visible_group_ids_for,
     visible_retreat_groups_for,
     visible_retreat_sessions_for,
 )
@@ -370,10 +370,12 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         ctx["pickup_filter_date"] = filter_date.isoformat() if filter_date else ""
 
         can_select_group = can_select_pickup_group(user, event)
-        # 조장/부조장은 본인 조의 픽업만 조회
         if not can_select_group:
-            group_ids = retreat_pickup_group_ids_for(user, event)
-            pickups_qs = pickups_qs.filter(group_id__in=group_ids)
+            group_ids = retreat_pickup_visible_group_ids_for(user, event)
+            if group_ids:
+                pickups_qs = pickups_qs.filter(group_id__in=group_ids)
+            else:
+                pickups_qs = pickups_qs.none()
 
         pickups = list(pickups_qs)
         # 픽업 대상 조원의 입실 상태 매핑 ((group_id, name) -> 조원)
@@ -1174,7 +1176,7 @@ class RetreatGroupDetailView(_RetreatAccessMixin, TemplateView):
 
 
 class RetreatAdminView(_RetreatEventMixin, TemplateView):
-    """슈퍼유저·회장단·목사/전도사(read-only)만 접근. 그 외 staff는 차단."""
+    """슈퍼유저·해당 집회 회장단만 접근."""
 
     template_name = "retreat/admin.html"
 
@@ -1183,11 +1185,7 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
             event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"])
             user = request.user
             role_code = getattr(getattr(user, "role_level", None), "code", "")
-            allowed = (
-                user.is_superuser
-                or is_retreat_council(user, event)
-                or role_code in {"pastor", "evangelist"}
-            )
+            allowed = user.is_superuser or is_retreat_council(user, event)
             if not allowed:
                 raise PermissionDenied(
                     "수련회 관리 화면 접근 권한이 없습니다. "
@@ -1313,28 +1311,25 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
         return ctx
 
 
-class RetreatLeaderGuideView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
-    """조장·부조장 전용 수련회 앱 사용 가이드."""
+class RetreatPlatformGuideView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
+    """수련회 관리 플랫폼 사용 가이드 (회장단·조장·목회자 등)."""
 
-    template_name = "retreat/leader_guide.html"
+    template_name = "retreat/platform_guide.html"
     login_url = reverse_lazy("user_login")
 
     def test_func(self) -> bool:
-        return can_access_retreat_leader_guide(self.request.user)
+        return can_access_retreat_tab(self.request.user)
 
     def handle_no_permission(self):
         raise PermissionDenied("이 가이드를 볼 권한이 없습니다.")
 
     def get_context_data(self, **kwargs):
-        from retreat.services.guide import load_leader_guide_markdown, render_leader_guide
-
         user = self.request.user
         events = _retreat_dropdown_events(user)
 
         ctx = super().get_context_data(**kwargs)
-        ctx["page_title"] = "사용 가이드"
-        ctx["page_subtitle"] = "조장 부조장 수련회 앱 이용 가이드"
-        ctx["rendered_body"] = render_leader_guide(load_leader_guide_markdown())
+        ctx["page_title"] = "플랫폼 가이드"
+        ctx["page_subtitle"] = "수련회 관리 플랫폼 가이드"
         event = events[0] if events else None
         ctx["event"] = event
         if event:

@@ -18,7 +18,6 @@ from retreat.apis._common import (
     assert_can_change_check_in_status,
     assert_can_delete_attendee,
     assert_can_edit_attendee_details,
-    assert_can_mutate_group,
     assert_check_in_status_transition,
     get_group_or_403,
     user_can_edit_attendee_timestamps,
@@ -35,6 +34,11 @@ from retreat.services.group_sync import (
 )
 from retreat.services.lodging import assert_room_can_accept
 from retreat.services.participation import apply_participation_change
+from retreat.services.pickup_attendee import (
+    delete_pickups_for_attendee,
+    pickups_for_attendee,
+    serialize_pickup_for_attendee_preview,
+)
 
 _ATTENDEE_FIELDS = [
     "id",
@@ -89,7 +93,7 @@ class RetreatGroupAttendeesView(APIView):
 
     def post(self, request, group_id: int):
         group = get_group_or_403(request.user, group_id)
-        assert_can_mutate_group(request.user, group)
+        assert_can_edit_attendee_details(request.user, group)
         raw_status = request.data.get("check_in_status") or RetreatAttendee.CheckInStatus.PENDING
         if raw_status != RetreatAttendee.CheckInStatus.PENDING:
             assert_can_change_check_in_status(request.user, group)
@@ -145,13 +149,26 @@ class RetreatAttendeeDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def _get(self, request, attendee_id: int) -> RetreatAttendee:
-        attendee = get_object_or_404(RetreatAttendee, pk=attendee_id)
+        attendee = get_object_or_404(
+            RetreatAttendee.objects.select_related("group", "group__event"),
+            pk=attendee_id,
+        )
         get_group_or_403(request.user, attendee.group_id)
         return attendee
 
     def get(self, request, attendee_id: int):
         attendee = self._get(request, attendee_id)
-        return Response(RetreatAttendeeSerializer(attendee).data)
+        data = RetreatAttendeeSerializer(attendee).data
+        if (request.query_params.get("with_pickups") or "").strip() in (
+            "1",
+            "true",
+            "yes",
+        ):
+            data["linked_pickups"] = [
+                serialize_pickup_for_attendee_preview(p)
+                for p in pickups_for_attendee(attendee)
+            ]
+        return Response(data)
 
     def patch(self, request, attendee_id: int):
         attendee = self._get(request, attendee_id)
@@ -240,6 +257,7 @@ class RetreatAttendeeDetailView(APIView):
         before = serialize_model_fields(attendee, _ATTENDEE_FIELDS)
         event = attendee.group.event
         aid = attendee.id
+        deleted_pickups = delete_pickups_for_attendee(attendee, changed_by=request.user)
         remove_membership_for_attendee(attendee, changed_by=request.user)
         attendee.delete()
         log_retreat_change(
@@ -251,4 +269,7 @@ class RetreatAttendeeDetailView(APIView):
             payload_before=before,
             payload_after=None,
         )
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {"deleted_pickup_count": deleted_pickups},
+            status=status.HTTP_200_OK,
+        )

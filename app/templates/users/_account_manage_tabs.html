@@ -1,4 +1,4 @@
-{% comment %}계정 관리 하위 탭 — account_tab('roles'|'approvals') 필요{% endcomment %}
+{% comment %}계정 관리 하위 탭 — account_tab('roles'|'applications') 필요{% endcomment %}
 {% load permission_tags %}
 <div class="jcc-account-pageTabsRow jcc-pageHeader-tabsRow">
   <nav class="jcc-page-tabs jcc-account-pageTabs jcc-pageHeader-tabs" aria-label="계정 관리 메뉴">
@@ -10,9 +10,9 @@
     {% endif %}
     {% if user|can_access_onboarding_approvals_tab %}
       <a
-        class="jcc-page-tab{% if account_tab == 'approvals' %} is-active{% endif %}"
-        href="{% url 'user_onboarding_approvals' %}"
-      >승인절차</a>
+        class="jcc-page-tab{% if account_tab == 'applications' %} is-active{% endif %}"
+        href="{% url 'user_onboarding_applications' %}"
+      >가입신청서</a>
     {% endif %}
   </nav>
 </div>

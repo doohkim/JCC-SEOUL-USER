@@ -19,7 +19,7 @@ from retreat.models import (
     RetreatGroupScope,
 )
 from retreat.services.lodging import assert_room_can_accept, rooms_for_group
-from users.models import Division, Region, RoleLevel, UserDivisionTeam, UserProfile
+from users.models import Division, PastoralDivisionAssignment, Region, RoleLevel, UserDivisionTeam, UserProfile
 from users.permissions import can_add_retreat_group, can_manage_retreat_group_leaders
 
 User = get_user_model()
@@ -70,6 +70,23 @@ class _GroupManageFixture(TestCase):
         UserDivisionTeam.objects.create(
             user=cls.pastor, division=cls.div, is_primary=True
         )
+        PastoralDivisionAssignment.objects.create(
+            user=cls.pastor, division=cls.div, is_primary=True
+        )
+
+        cls.pastor_council = User.objects.create_user(
+            username="gm_pastor_council", password="x"
+        )
+        cls.pastor_council.role_level = cls.rl_pastor
+        cls.pastor_council.save()
+        PastoralDivisionAssignment.objects.create(
+            user=cls.pastor_council, division=cls.div, is_primary=True
+        )
+        RetreatCouncilMembership.objects.create(
+            event=cls.event,
+            user=cls.pastor_council,
+            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+        )
 
         cls.leader = User.objects.create_user(username="gm_leader", password="x")
         RetreatGroupMembership.objects.create(
@@ -84,8 +101,8 @@ class GroupCreatePermissionTests(_GroupManageFixture):
     def test_pastor_cannot_add_group(self):
         self.assertFalse(can_add_retreat_group(self.pastor, self.event))
 
-    def test_leader_can_manage_leaders_on_own_group(self):
-        self.assertTrue(
+    def test_leader_cannot_manage_leaders_on_own_group(self):
+        self.assertFalse(
             can_manage_retreat_group_leaders(self.leader, self.group)
         )
 
@@ -406,7 +423,7 @@ class AttendeeEditPermissionTests(_GroupManageFixture):
             args=[self.attendee.id],
         )
 
-    def test_leader_can_patch_profile_fields(self):
+    def test_leader_cannot_patch_profile_fields(self):
         self.client.force_authenticate(self.leader)
         r = self.client.patch(
             self.url,
@@ -418,14 +435,10 @@ class AttendeeEditPermissionTests(_GroupManageFixture):
             },
             format="json",
         )
-        self.assertEqual(r.status_code, 200, r.content)
-        self.attendee.refresh_from_db()
-        self.assertEqual(self.attendee.name, "이름변경")
-        self.assertEqual(self.attendee.phone, "010-9999-8888")
-        self.assertEqual(self.attendee.memo, "조장메모")
+        self.assertEqual(r.status_code, 403, r.content)
 
     def test_phone_digits_only_normalized_on_save(self):
-        self.client.force_authenticate(self.leader)
+        self.client.force_authenticate(self.council_user)
         r = self.client.patch(
             self.url,
             {"phone": "01044442222"},
@@ -445,13 +458,13 @@ class AttendeeEditPermissionTests(_GroupManageFixture):
         )
         self.assertEqual(r.status_code, 403, r.content)
 
-    def test_leader_can_delete_attendee(self):
+    def test_leader_cannot_delete_attendee(self):
         victim = RetreatAttendee.objects.create(group=self.group, name="삭제대상")
         url = reverse("api_retreat_attendee_detail", args=[victim.id])
         self.client.force_authenticate(self.leader)
         r = self.client.delete(url)
-        self.assertEqual(r.status_code, 204, r.content)
-        self.assertFalse(RetreatAttendee.objects.filter(pk=victim.id).exists())
+        self.assertEqual(r.status_code, 403, r.content)
+        self.assertTrue(RetreatAttendee.objects.filter(pk=victim.id).exists())
 
     def test_pastor_cannot_patch_attendee(self):
         self.client.force_authenticate(self.pastor)
@@ -626,6 +639,15 @@ class GroupMembershipWritePermissionTests(_GroupManageFixture):
         )
         self.assertEqual(r.status_code, 403)
 
+    def test_leader_cannot_add_membership(self):
+        self.client.force_authenticate(self.leader)
+        target = User.objects.create_user(username="gm_leader_target", password="x")
+        url = reverse("api_retreat_group_memberships", args=[self.group.id])
+        r = self.client.post(
+            url, {"user_id": target.id, "role": "vice_leader"}, format="json"
+        )
+        self.assertEqual(r.status_code, 403)
+
 
 class OnboardingRetreatAssignTests(_GroupManageFixture):
     def test_participant_creates_attendee_only(self):
@@ -644,6 +666,7 @@ class OnboardingRetreatAssignTests(_GroupManageFixture):
             retreat_group_id=str(self.group.id),
             retreat_role="participant",
             changed_by=self.council_user,
+            appoint_leadership=False,
         )
         self.assertFalse(
             RetreatGroupMembership.objects.filter(
@@ -654,7 +677,8 @@ class OnboardingRetreatAssignTests(_GroupManageFixture):
             RetreatAttendee.objects.filter(group=self.group, name=applicant.username).exists()
         )
 
-    def test_leader_creates_membership_and_attendee(self):
+    def test_leader_profile_without_appoint_leadership_creates_member_only(self):
+        from retreat.models import RetreatAttendee
         from retreat.services.onboarding import apply_retreat_membership_on_approval
 
         applicant = User.objects.create_user(username="gm_leader_app", password="x")
@@ -662,6 +686,7 @@ class OnboardingRetreatAssignTests(_GroupManageFixture):
             user=applicant,
             requested_retreat_participation=True,
             requested_retreat_event=self.event,
+            requested_retreat_group=self.group,
             requested_retreat_role="leader",
         )
         apply_retreat_membership_on_approval(
@@ -670,6 +695,34 @@ class OnboardingRetreatAssignTests(_GroupManageFixture):
             retreat_group_id=str(self.group.id),
             retreat_role="leader",
             changed_by=self.council_user,
+            appoint_leadership=False,
+        )
+        self.assertFalse(
+            RetreatGroupMembership.objects.filter(
+                user=applicant, group=self.group
+            ).exists()
+        )
+        attendee = RetreatAttendee.objects.get(group=self.group, user=applicant)
+        self.assertEqual(attendee.member_role, RetreatAttendee.MemberRole.MEMBER)
+
+    def test_leader_with_appoint_leadership_creates_membership_and_attendee(self):
+        from retreat.services.onboarding import apply_retreat_membership_on_approval
+
+        applicant = User.objects.create_user(username="gm_leader_manual", password="x")
+        profile = UserProfile.objects.create(
+            user=applicant,
+            requested_retreat_participation=True,
+            requested_retreat_event=self.event,
+            requested_retreat_group=self.group,
+            requested_retreat_role="leader",
+        )
+        apply_retreat_membership_on_approval(
+            user=applicant,
+            profile=profile,
+            retreat_group_id=str(self.group.id),
+            retreat_role="leader",
+            changed_by=self.council_user,
+            appoint_leadership=True,
         )
         self.assertTrue(
             RetreatGroupMembership.objects.filter(
@@ -689,7 +742,7 @@ class AttendeeCreateCreatedByTests(_GroupManageFixture):
 
     def test_create_attendee_records_created_by(self):
         """조원 추가 시 생성자(created_by)가 기록된다."""
-        self.client.force_authenticate(self.leader)
+        self.client.force_authenticate(self.council_user)
         r = self.client.post(
             reverse("api_retreat_group_attendees", args=[self.group.id]),
             {"name": "기록조원"},
@@ -697,4 +750,86 @@ class AttendeeCreateCreatedByTests(_GroupManageFixture):
         )
         self.assertEqual(r.status_code, 201, r.content)
         attendee = RetreatAttendee.objects.get(pk=r.json()["id"])
-        self.assertEqual(attendee.created_by_id, self.leader.id)
+        self.assertEqual(attendee.created_by_id, self.council_user.id)
+
+
+class PastoralObserverGroupManageTests(_GroupManageFixture):
+    """목사·전도사(회장단 제외): 담당 부서 조 열람만, 변경 불가."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.attendee = RetreatAttendee.objects.create(
+            group=self.group, name="열람대상", gender="male"
+        )
+        self.attendee_url = reverse(
+            "api_retreat_attendee_detail", args=[self.attendee.id]
+        )
+
+    def test_pastor_observer_can_list_groups(self):
+        self.client.force_authenticate(self.pastor)
+        r = self.client.get(reverse("api_retreat_event_groups", args=[self.event.id]))
+        self.assertEqual(r.status_code, 200, r.content)
+        ids = {g["id"] for g in r.json()}
+        self.assertEqual(ids, {self.group.id})
+
+    def test_pastor_observer_can_get_attendees(self):
+        self.client.force_authenticate(self.pastor)
+        r = self.client.get(
+            reverse("api_retreat_group_attendees", args=[self.group.id])
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(len(r.json()), 1)
+
+    def test_leader_cannot_post_attendee(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.post(
+            reverse("api_retreat_group_attendees", args=[self.group.id]),
+            {"name": "추가시도"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 403, r.content)
+
+    def test_pastor_observer_cannot_post_attendee(self):
+        self.client.force_authenticate(self.pastor)
+        r = self.client.post(
+            reverse("api_retreat_group_attendees", args=[self.group.id]),
+            {"name": "추가시도"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 403, r.content)
+
+    def test_pastor_observer_cannot_patch_attendee_even_as_group_leader(self):
+        """목사·전도사는 조장 멤버십이 있어도 회장단이 아니면 수정 불가."""
+        RetreatGroupMembership.objects.create(
+            user=self.pastor,
+            group=self.group,
+            role=RetreatGroupMembership.Role.LEADER,
+        )
+        self.client.force_authenticate(self.pastor)
+        r = self.client.patch(
+            self.attendee_url, {"name": "목사조장변경"}, format="json"
+        )
+        self.assertEqual(r.status_code, 403, r.content)
+
+    def test_pastor_council_can_patch_attendee(self):
+        """회장단에 등록된 목사는 조원 수정 가능."""
+        self.client.force_authenticate(self.pastor_council)
+        r = self.client.patch(
+            self.attendee_url, {"name": "회장단목사수정"}, format="json"
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.name, "회장단목사수정")
+
+    def test_pastor_observer_manage_page_is_readonly(self):
+        from django.test import Client
+
+        client = Client()
+        client.force_login(self.pastor)
+        r = client.get(
+            reverse("retreat_group_manage", args=[self.event.id, self.group.id])
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(r.context["can_edit_attendee"])
+        self.assertFalse(r.context["can_delete_attendee"])
+        self.assertNotContains(r, 'id="btnAddAttendee"')

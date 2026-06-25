@@ -121,12 +121,11 @@ class LodgingApiPermissionTests(_LodgingFixture):
         r = self.client.post(self._url(), {"name": "본관"}, format="json")
         self.assertEqual(r.status_code, 403)
 
-    def test_leader_can_list_lodgings(self):
+    def test_leader_cannot_list_lodgings(self):
         Lodging.objects.create(event=self.event, name="본관")
         self.client.force_authenticate(self.leader)
         r = self.client.get(self._url())
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(len(r.json()), 1)
+        self.assertEqual(r.status_code, 403)
 
     def test_outsider_blocked_from_listing(self):
         self.client.force_authenticate(self.outsider)

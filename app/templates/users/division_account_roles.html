@@ -6,30 +6,102 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>계정 관리</title>
-  <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g">
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260622b">
   <style>
-    .jcc-division-roles-table th {
-      vertical-align: bottom;
-      font-size: 0.8125rem;
-      color: var(--muted);
-      font-weight: 600;
+    .jcc-appsToolbar {
+      --jcc-apps-control-h: 2.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.65rem;
+      margin-bottom: 1rem;
     }
-    .jcc-division-roles-table tbody td {
-      vertical-align: middle;
-      font-size: 0.875rem;
+    .jcc-appsFilter {
+      flex: 1 1 9.5rem;
+      min-width: min(100%, 9.5rem);
+      max-width: 100%;
     }
-    .jcc-division-roles-table tbody tr[data-account-row] {
-      cursor: pointer;
-      transition: background 0.12s ease;
+    .jcc-appsToolbar-filters {
+      display: flex;
+      flex: 1 1 auto;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.65rem;
+      min-width: 0;
     }
-    .jcc-division-roles-table tbody tr[data-account-row]:hover,
-    .jcc-division-roles-table tbody tr[data-account-row]:focus-visible {
-      background: color-mix(in srgb, var(--accent) 6%, var(--card));
-      outline: none;
+    .jcc-appsToolbar-filters .jcc-appsFilter {
+      flex: 1 1 9.5rem;
     }
-    .jcc-division-roles-table .jcc-account-name {
+    .jcc-appsToolbar .jcc-cselect-btn {
+      min-height: var(--jcc-apps-control-h, 2.75rem);
+      height: var(--jcc-apps-control-h, 2.75rem);
+      padding: 0 0.85rem;
+      font-weight: 500;
+      font-size: 0.9rem;
+      border-radius: 12px;
+    }
+    .jcc-accountsDivisionHint {
+      margin: 0;
+      padding: 0.65rem 1rem;
+      border-radius: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      font-size: 0.9rem;
       font-weight: 600;
       color: var(--text);
+    }
+    .jcc-appsTableCard {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .jcc-appsTableWrap { overflow-x: auto; }
+    .jcc-appsTable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .jcc-appsTable thead th {
+      padding: 0.85rem 1rem;
+      text-align: left;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: color-mix(in srgb, var(--surface-2, var(--card)) 70%, var(--card));
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .jcc-appsTable tbody td {
+      padding: 0.95rem 1rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+      vertical-align: middle;
+    }
+    .jcc-appsTable tbody tr:last-child td { border-bottom: none; }
+    .jcc-appsTable tbody tr:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+    .jcc-appsUserLink {
+      display: inline;
+      padding: 0;
+      border: none;
+      background: none;
+      color: #2563eb;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+    }
+    .jcc-appsUserLink:hover { text-decoration: underline; }
+    .jcc-appsTextCell { color: var(--text); white-space: nowrap; }
+    .jcc-appsPhoneCell { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .jcc-appsTimeCell { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); font-size: 0.85rem; }
+    .jcc-appsEmpty {
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.92rem;
     }
     .jcc-account-editOverlay {
       position: fixed;
@@ -38,16 +110,18 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1rem;
+      padding: 1.25rem 2rem;
       background: rgba(0, 0, 0, 0.55);
     }
     .jcc-account-editOverlay[hidden] {
       display: none;
     }
     .jcc-account-editModal {
-      width: min(100%, 28rem);
-      max-height: min(92vh, 760px);
-      overflow: auto;
+      width: min(100%, 40rem);
+      max-height: min(92vh, 820px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
       border-radius: 20px;
       border: 1px solid var(--border);
       background: var(--card);
@@ -58,8 +132,9 @@
       align-items: flex-start;
       justify-content: space-between;
       gap: 0.75rem;
-      padding: 1.6rem 1.6rem 1.2rem;
+      padding: 1.5rem 2rem 1.1rem;
       border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
     }
     .jcc-account-editModal__title {
       margin: 0;
@@ -74,12 +149,296 @@
     }
     .jcc-account-editModal__close {
       flex: 0 0 auto;
-      padding: 0.45rem 0.8rem;
-      font-size: 0.82rem;
-      border-radius: 10px;
+      border: none;
+      background: transparent;
+      font-size: 1.35rem;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 0.25rem 0.4rem;
     }
+    .jcc-account-editModal__body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    .jcc-account-editModal.is-activity-view {
+      width: min(100%, 42rem);
+    }
+    .jcc-account-editModal.is-activity-view .jcc-account-editModal__body {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .jcc-account-editModal__headRow {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .jcc-account-editActivityView {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .jcc-account-editActivityView[hidden] {
+      display: none !important;
+    }
+    .jcc-actLogUser {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+      background: color-mix(in srgb, var(--surface-2, var(--card)) 35%, var(--card));
+    }
+    .jcc-actLogUser__avatar {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      background: var(--surface-2);
+    }
+    .jcc-actLogUser__meta { min-width: 0; flex: 1 1 auto; }
+    .jcc-actLogUser__label {
+      margin: 0 0 0.2rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #2563eb;
+    }
+    .jcc-actLogUser__name {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .jcc-actLogUser__nameLink {
+      display: inline;
+      padding: 0;
+      border: none;
+      background: none;
+      color: #2563eb;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: left;
+    }
+    .jcc-actLogUser__nameLink:hover { text-decoration: underline; }
+    .jcc-actLogUser__divisionSuffix {
+      font-weight: 800;
+      color: var(--text);
+    }
+    .jcc-actLogUser__updated {
+      flex: 0 0 auto;
+      text-align: right;
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .jcc-actLogUser__updated strong {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .jcc-actLogScroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .jcc-actLogTimeline {
+      list-style: none;
+      margin: 0;
+      padding: 1.1rem 2rem 0.75rem 2.35rem;
+      position: relative;
+    }
+    .jcc-actLogTimeline::before {
+      content: "";
+      position: absolute;
+      left: 1.15rem;
+      top: 1.25rem;
+      bottom: 1rem;
+      width: 2px;
+      background: color-mix(in srgb, var(--border) 85%, transparent);
+    }
+    .jcc-actLogEntry {
+      position: relative;
+      padding: 0 0 1.2rem 1rem;
+    }
+    .jcc-actLogEntry::before {
+      content: "";
+      position: absolute;
+      left: -1.45rem;
+      top: 0.35rem;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 2px solid #94a3b8;
+      box-shadow: 0 0 0 3px var(--card);
+      z-index: 1;
+    }
+    .jcc-actLogEntry__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .jcc-actLogEntry__time {
+      margin: 0;
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .jcc-actLogBadge {
+      display: inline-flex;
+      padding: 0.22rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .jcc-actLogBadge--status { background: #dbeafe; color: #1d4ed8; }
+    .jcc-actLogBadge--profile { background: #ede9fe; color: #6d28d9; }
+    .jcc-actLogBadge--group { background: #ffedd5; color: #c2410c; }
+    .jcc-actLogBadge--signup { background: #f3f4f6; color: #4b5563; }
+    .jcc-actLogBadge--other {
+      background: color-mix(in srgb, var(--border) 40%, var(--card));
+      color: var(--muted);
+    }
+    .jcc-actLogEntry__box {
+      padding: 0.8rem 0.95rem;
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--surface-2, #f8fafc) 80%, var(--card));
+      border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+    }
+    .jcc-actLogEntry__actor {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      margin: 0 0 0.4rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .jcc-actLogEntry__actorIcon {
+      display: inline-flex;
+      width: 1.15rem;
+      height: 1.15rem;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: 0.62rem;
+      flex-shrink: 0;
+    }
+    .jcc-actLogEntry__actorIcon--admin { background: #dbeafe; color: #1d4ed8; }
+    .jcc-actLogEntry__actorIcon--system { background: #f3f4f6; color: #6b7280; }
+    .jcc-actLogEntry__actorIcon--self { background: #dcfce7; color: #15803d; }
+    .jcc-actLogEntry__detail {
+      margin: 0;
+      font-size: 0.86rem;
+      line-height: 1.55;
+      color: var(--text);
+    }
+    .jcc-actLogEntry__arrow { color: var(--muted); padding: 0 0.15rem; }
+    .jcc-actLogEntry__after--status { color: #2563eb; font-weight: 800; }
+    .jcc-actLogEntry__after--profile { font-weight: 800; }
+    .jcc-actLogEntry__after--group { color: #ea580c; font-weight: 800; }
+    .jcc-actLogEntry__after--signup { font-weight: 700; }
+    .jcc-actLogFooter {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 0.85rem 2rem 1.25rem;
+      border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+      background: color-mix(in srgb, var(--surface-2, var(--card)) 25%, var(--card));
+    }
+    .jcc-actLogPaginationBar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem 1rem;
+    }
+    .jcc-actLogPaginationMeta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .jcc-actLogPaginationMeta strong { color: var(--text); font-weight: 700; }
+    .jcc-appsPaginationDivider { opacity: 0.55; }
+    .jcc-actLogPagination {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .jcc-appsPageBtn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.15rem;
+      height: 2.15rem;
+      padding: 0 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+    }
+    .jcc-appsPageBtn--arrow { min-width: 2rem; font-size: 1rem; line-height: 1; }
+    .jcc-appsPageBtn:hover:not(.is-active):not(.is-disabled) {
+      border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+      color: var(--accent);
+    }
+    .jcc-appsPageBtn.is-active {
+      background: #1e3a5f;
+      border-color: #1e3a5f;
+      color: #fff;
+      cursor: default;
+    }
+    .jcc-appsPageBtn.is-disabled {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+    .jcc-actLogFooterActions {
+      display: flex;
+      justify-content: flex-end;
+    }
+    .jcc-actLogBackBtn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.55rem;
+      padding: 0.5rem 1rem;
+      border-radius: 12px;
+      border: 1px solid #2563eb;
+      background: #2563eb;
+      color: #fff;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .jcc-actLogBackBtn:hover { background: #1d4ed8; }
     .jcc-account-editForm {
-      padding: 1.5rem 1.6rem 1.6rem;
+      padding: 1.25rem 2rem 2rem;
     }
     .jcc-account-editSection {
       margin-bottom: 1.9rem;
@@ -258,6 +617,36 @@
       border-radius: 16px;
       font-size: 0.98rem;
       font-weight: 700;
+    }
+    .jcc-appEditLogArea {
+      margin: 0.5rem 0 0.25rem;
+      padding-bottom: 0.25rem;
+    }
+    .jcc-appEditLogBtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 2.75rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0.55rem 0.95rem;
+      transition: border-color 0.12s ease, background 0.12s ease;
+    }
+    .jcc-appEditLogBtn__icon {
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .jcc-appEditLogBtn:hover {
+      border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+      background: color-mix(in srgb, var(--accent) 5%, var(--card));
     }
     @keyframes jccEventPickerIn {
       from {
@@ -444,75 +833,69 @@
           </div>
         {% endif %}
 
-        <div class="card" style="margin-bottom: 1rem;">
-          <h2>대상 부서</h2>
-          {% if allowed_divisions %}
-            {% if can_choose_division %}
-              <form method="get">
-                <div class="toolbar" style="padding:0; border:none; background:transparent;">
-                  <div class="field">
-                    <label>부서</label>
-                    <select name="division_code" data-cselect onchange="this.form.submit()">
-                      <option value="{{ all_divisions_code }}" {% if not active_division %}selected{% endif %}>전체</option>
-                      {% regroup allowed_divisions by region.name as region_groups %}
-                      {% for group in region_groups %}
-                        <optgroup label="{{ group.grouper|default:'(지역 미지정)' }}">
-                          {% for d in group.list %}
-                            <option value="{{ d.code }}" {% if active_division and d.id == active_division.id %}selected{% endif %}>
-                              {{ d.name }}
-                            </option>
-                          {% endfor %}
-                        </optgroup>
-                      {% endfor %}
-                    </select>
-                  </div>
+        {% if allowed_divisions %}
+          <form method="get" class="jcc-appsToolbar">
+            <div class="jcc-appsToolbar-filters">
+              {% if can_choose_division %}
+                <div class="jcc-appsFilter">
+                  <select name="division_code" data-cselect aria-label="부서 필터" onchange="this.form.submit()">
+                    <option value="{{ all_divisions_code }}" {% if not active_division %}selected{% endif %}>전체 부서</option>
+                    {% regroup allowed_divisions by region.name as region_groups %}
+                    {% for group in region_groups %}
+                      <optgroup label="{{ group.grouper|default:'(지역 미지정)' }}">
+                        {% for d in group.list %}
+                          <option value="{{ d.code }}" {% if active_division and d.id == active_division.id %}selected{% endif %}>{{ d.name }}</option>
+                        {% endfor %}
+                      </optgroup>
+                    {% endfor %}
+                  </select>
                 </div>
-              </form>
-            {% else %}
-              <div class="msg">{{ active_division.name }}</div>
-            {% endif %}
-          {% else %}
+              {% elif active_division %}
+                <p class="jcc-accountsDivisionHint">{{ active_division.name }}</p>
+              {% endif %}
+            </div>
+          </form>
+        {% else %}
+          <div class="card" style="margin-bottom: 1rem;">
             <div class="msg err">관리 가능한 부서가 없습니다.</div>
-          {% endif %}
-        </div>
+          </div>
+        {% endif %}
 
-        <div class="card">
-          <h2>부서 계정 목록</h2>
+        <div class="jcc-appsTableCard">
           {% if users_payload %}
-            <div style="overflow-x:auto;">
-              <table class="jcc-division-roles-table">
+            <div class="jcc-appsTableWrap">
+              <table class="jcc-appsTable">
                 <thead>
                   <tr>
-                    <th>실명</th>
+                    <th>사용자</th>
                     <th>휴대폰</th>
-                    <th>kakao id</th>
                     <th>지역</th>
                     <th>부서</th>
-                    <th>팀</th>
+                    <th>가입한 날짜</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for u in users_payload %}
-                    <tr
-                      data-account-row
-                      data-user-id="{{ u.id }}"
-                      tabindex="0"
-                      role="button"
-                      aria-label="{{ u.real_name|default:u.username }} 계정 상세"
-                    >
-                      <td class="jcc-account-name">{{ u.real_name|default:"-" }}</td>
-                      <td>{{ u.phone|format_korea_phone }}</td>
-                      <td>{{ u.kakao_uid|default:"-" }}</td>
-                      <td>{{ u.region_name|default:"-" }}</td>
-                      <td>{{ u.division_name|default:"-" }}</td>
-                      <td>{{ u.team_name|default:"-" }}</td>
+                    <tr>
+                      <td>
+                        <button
+                          type="button"
+                          class="jcc-appsUserLink js-account-user-link"
+                          data-user-id="{{ u.id }}"
+                          aria-label="{{ u.real_name|default:u.username }} 계정 상세"
+                        >{{ u.real_name|default:"-" }}</button>
+                      </td>
+                      <td class="jcc-appsPhoneCell">{{ u.phone|format_korea_phone }}</td>
+                      <td class="jcc-appsTextCell">{{ u.region_name|default:"-" }}</td>
+                      <td class="jcc-appsTextCell">{{ u.division_name|default:"-" }}</td>
+                      <td class="jcc-appsTimeCell">{{ u.date_joined|default:"-" }}</td>
                     </tr>
                   {% endfor %}
                 </tbody>
               </table>
             </div>
           {% else %}
-            <div class="msg">해당 부서에 조회할 계정이 없습니다.</div>
+            <div class="jcc-appsEmpty">해당 부서에 조회할 계정이 없습니다.</div>
           {% endif %}
         </div>
       </main>
@@ -520,14 +903,20 @@
   </div>
 
   <div class="jcc-account-editOverlay" id="accountEditOverlay" hidden aria-hidden="true">
-    <div class="jcc-account-editModal" role="dialog" aria-modal="true" aria-labelledby="accountEditTitle">
+    <div class="jcc-account-editModal" id="accountEditModal" role="dialog" aria-modal="true" aria-labelledby="accountEditTitle">
       <div class="jcc-account-editModal__head">
-        <div>
-          <h2 id="accountEditTitle" class="jcc-account-editModal__title">계정 상세</h2>
-          <p class="jcc-account-editModal__subtitle" id="accountEditSubtitle"></p>
+        <div class="jcc-account-editModal__headRow" id="accountDetailHeadBlock">
+          <div>
+            <h2 id="accountEditTitle" class="jcc-account-editModal__title">계정 상세</h2>
+            <p class="jcc-account-editModal__subtitle" id="accountEditSubtitle"></p>
+          </div>
         </div>
-        <button type="button" class="secondary jcc-account-editModal__close" id="accountEditClose">닫기</button>
+        <div class="jcc-account-editModal__headRow" id="accountActivityHeadBlock" hidden>
+          <h2 id="accountActivityTitle" class="jcc-account-editModal__title">활동 로그</h2>
+        </div>
+        <button type="button" class="jcc-account-editModal__close" id="accountEditClose" aria-label="닫기">&times;</button>
       </div>
+      <div class="jcc-account-editModal__body">
       <form method="post" id="accountEditForm" class="jcc-account-editForm">
         {% csrf_token %}
         <input type="hidden" name="user_id" id="accountEditUserId" value="">
@@ -656,10 +1045,46 @@
           </div>
         </section>
 
+        <div class="jcc-appEditLogArea">
+          <button type="button" class="jcc-appEditLogBtn" id="accountActivityBtn">
+            <span class="jcc-appEditLogBtn__icon" aria-hidden="true">📋</span>
+            활동 로그
+          </button>
+        </div>
+
         <div class="jcc-account-editActions">
           <button type="submit">저장</button>
         </div>
       </form>
+
+      <div class="jcc-account-editActivityView" id="accountEditActivityView" hidden>
+        <div class="jcc-actLogUser">
+          <img class="jcc-actLogUser__avatar" id="accountActivityAvatar" src="" alt="" width="48" height="48">
+          <div class="jcc-actLogUser__meta">
+            <p class="jcc-actLogUser__label">대상 사용자</p>
+            <p class="jcc-actLogUser__name">
+              <button type="button" class="jcc-actLogUser__nameLink" id="accountActivityUserName"></button><span class="jcc-actLogUser__divisionSuffix" id="accountActivityDivisionSuffix"></span>
+            </p>
+          </div>
+          <div class="jcc-actLogUser__updated">
+            <strong>최종 업데이트</strong>
+            <span id="accountActivityUpdated">-</span>
+          </div>
+        </div>
+        <div class="jcc-actLogScroll" id="accountActivityScroll">
+          <ol class="jcc-actLogTimeline" id="accountActivityTimeline"></ol>
+        </div>
+        <div class="jcc-actLogFooter">
+          <div class="jcc-actLogPaginationBar">
+            <div class="jcc-actLogPaginationMeta" id="accountActivityPaginationMeta"></div>
+            <nav class="jcc-actLogPagination" id="accountActivityPagination" aria-label="활동 로그 페이지" hidden></nav>
+          </div>
+          <div class="jcc-actLogFooterActions">
+            <button type="button" class="jcc-actLogBackBtn" id="accountActivityBack">사용자 정보로 돌아가기</button>
+          </div>
+        </div>
+      </div>
+      </div>
     </div>
   </div>
 
@@ -672,8 +1097,20 @@
   <script>
     (function () {
       const overlay = document.getElementById("accountEditOverlay");
+      const modal = document.getElementById("accountEditModal");
       const form = document.getElementById("accountEditForm");
       const closeBtn = document.getElementById("accountEditClose");
+      const activityBtn = document.getElementById("accountActivityBtn");
+      const activityView = document.getElementById("accountEditActivityView");
+      const activityTimeline = document.getElementById("accountActivityTimeline");
+      const activityScroll = document.getElementById("accountActivityScroll");
+      const activityBackBtn = document.getElementById("accountActivityBack");
+      const activityPaginationMeta = document.getElementById("accountActivityPaginationMeta");
+      const activityPaginationNav = document.getElementById("accountActivityPagination");
+      const detailHeadBlock = document.getElementById("accountDetailHeadBlock");
+      const activityHeadBlock = document.getElementById("accountActivityHeadBlock");
+      const activityLogApiUrl = "{{ activity_log_url|escapejs }}";
+      const defaultAvatarUrl = "{% static 'attendance/default-avatar.svg' %}";
       const titleEl = document.getElementById("accountEditTitle");
       const subtitleEl = document.getElementById("accountEditSubtitle");
       const permSummaryEl = document.getElementById("accountEditPermSummary");
@@ -706,6 +1143,230 @@
       let cachedRoles = [];
       let selectedRoleCodes = [];
       let rolePickerMounted = false;
+      let currentUserId = "";
+      let modalView = "detail";
+      const ACTIVITY_PAGE_SIZE = 5;
+      let activityItemsAll = [];
+      let activityPage = 1;
+
+      function escapeHtml(value) {
+        return String(value == null ? "" : value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function actorIcon(kind) {
+        if (kind === "admin") return "👤";
+        if (kind === "self") return "✎";
+        return "⚙";
+      }
+
+      function renderActivityDetail(item) {
+        const tone = item.tone || "other";
+        if (item.before && item.after) {
+          const afterClass = `jcc-actLogEntry__after--${tone === "status" || tone === "group" ? tone : "profile"}`;
+          return `${escapeHtml(item.before)}<span class="jcc-actLogEntry__arrow">→</span><span class="${afterClass}">${escapeHtml(item.after)}</span>`;
+        }
+        if (item.after && tone === "status") {
+          return `승인 상태: <span class="jcc-actLogEntry__after--status">${escapeHtml(item.after)}</span>`;
+        }
+        if (item.after) {
+          return `<span class="jcc-actLogEntry__after--${tone}">${escapeHtml(item.detail || item.after)}</span>`;
+        }
+        return escapeHtml(item.detail || item.summary || "-");
+      }
+
+      function renderActivityTimeline(items) {
+        if (!activityTimeline) return;
+        if (!items.length) {
+          activityTimeline.innerHTML = (
+            '<li class="jcc-actLogEntry"><div class="jcc-actLogEntry__box">' +
+            '<p class="jcc-actLogEntry__detail">표시할 활동 기록이 없습니다.</p></div></li>'
+          );
+          return;
+        }
+        activityTimeline.innerHTML = items.map((item) => {
+          const tone = item.tone || "other";
+          const kind = item.actor_kind || "system";
+          return (
+            `<li class="jcc-actLogEntry">` +
+            `<div class="jcc-actLogEntry__head">` +
+            `<p class="jcc-actLogEntry__time">${escapeHtml(item.at || "-")}</p>` +
+            `<span class="jcc-actLogBadge jcc-actLogBadge--${tone}">${escapeHtml(item.category || "기타 변경")}</span>` +
+            `</div>` +
+            `<div class="jcc-actLogEntry__box">` +
+            `<p class="jcc-actLogEntry__actor">` +
+            `<span class="jcc-actLogEntry__actorIcon jcc-actLogEntry__actorIcon--${kind}" aria-hidden="true">${actorIcon(kind)}</span>` +
+            `${escapeHtml(item.actor || "-")}` +
+            `</p>` +
+            `<p class="jcc-actLogEntry__detail">${renderActivityDetail(item)}</p>` +
+            `</div>` +
+            `</li>`
+          );
+        }).join("");
+      }
+
+      function renderActivityPagination(total, totalPages) {
+        const start = total ? (activityPage - 1) * ACTIVITY_PAGE_SIZE + 1 : 0;
+        const end = total ? Math.min(activityPage * ACTIVITY_PAGE_SIZE, total) : 0;
+
+        if (activityPaginationMeta) {
+          if (!total) {
+            activityPaginationMeta.innerHTML = "<span>0건</span>";
+          } else {
+            activityPaginationMeta.innerHTML = (
+              `<span><strong>${start}–${end}</strong> / 총 ${total}건</span>` +
+              `<span class="jcc-appsPaginationDivider" aria-hidden="true">·</span>` +
+              `<span>${ACTIVITY_PAGE_SIZE}개씩</span>` +
+              (totalPages > 1
+                ? `<span class="jcc-appsPaginationDivider" aria-hidden="true">·</span><span>${activityPage} / ${totalPages}페이지</span>`
+                : "")
+            );
+          }
+        }
+
+        if (!activityPaginationNav) return;
+        if (totalPages <= 1) {
+          activityPaginationNav.innerHTML = "";
+          activityPaginationNav.hidden = true;
+          return;
+        }
+        activityPaginationNav.hidden = false;
+
+        const btn = (label, page, opts = {}) => {
+          const disabled = opts.disabled ? " is-disabled" : "";
+          const active = opts.active ? " is-active" : "";
+          const arrow = opts.arrow ? " jcc-appsPageBtn--arrow" : "";
+          if (disabled || active) {
+            return `<span class="jcc-appsPageBtn${arrow}${disabled}${active}"${active ? ' aria-current="page"' : ""}${disabled ? ' aria-hidden="true"' : ""}>${label}</span>`;
+          }
+          return `<button type="button" class="jcc-appsPageBtn${arrow}" data-page="${page}">${label}</button>`;
+        };
+
+        const pages = [];
+        for (let num = 1; num <= totalPages; num += 1) {
+          if (num === 1 || num === totalPages || (num >= activityPage - 2 && num <= activityPage + 2)) {
+            pages.push(num);
+          }
+        }
+
+        let html = "";
+        html += btn("«", 1, { arrow: true, disabled: activityPage <= 1 });
+        html += btn("‹", activityPage - 1, { arrow: true, disabled: activityPage <= 1 });
+        let prev = 0;
+        pages.forEach((num) => {
+          if (prev && num - prev > 1) {
+            html += '<span class="jcc-appsPaginationDivider" aria-hidden="true">…</span>';
+          }
+          html += btn(String(num), num, { active: num === activityPage });
+          prev = num;
+        });
+        html += btn("›", activityPage + 1, { arrow: true, disabled: activityPage >= totalPages });
+        html += btn("»", totalPages, { arrow: true, disabled: activityPage >= totalPages });
+        activityPaginationNav.innerHTML = html;
+      }
+
+      function renderActivityPage() {
+        const total = activityItemsAll.length;
+        const totalPages = Math.max(1, Math.ceil(total / ACTIVITY_PAGE_SIZE) || 1);
+        if (activityPage > totalPages) activityPage = totalPages;
+        if (activityPage < 1) activityPage = 1;
+        const start = (activityPage - 1) * ACTIVITY_PAGE_SIZE;
+        renderActivityTimeline(activityItemsAll.slice(start, start + ACTIVITY_PAGE_SIZE));
+        renderActivityPagination(total, totalPages);
+        if (activityScroll) activityScroll.scrollTop = 0;
+      }
+
+      function setActivityItems(items) {
+        activityItemsAll = Array.isArray(items) ? items : [];
+        activityPage = 1;
+        renderActivityPage();
+      }
+
+      function goActivityPage(page) {
+        const totalPages = Math.max(1, Math.ceil(activityItemsAll.length / ACTIVITY_PAGE_SIZE) || 1);
+        const next = Math.min(Math.max(1, page), totalPages);
+        if (next === activityPage) return;
+        activityPage = next;
+        renderActivityPage();
+      }
+
+      function showDetailView() {
+        modalView = "detail";
+        form.hidden = false;
+        if (activityView) activityView.hidden = true;
+        if (detailHeadBlock) detailHeadBlock.hidden = false;
+        if (activityHeadBlock) activityHeadBlock.hidden = true;
+        if (modal) modal.classList.remove("is-activity-view");
+        const modalBody = overlay.querySelector(".jcc-account-editModal__body");
+        if (modalBody) modalBody.scrollTop = 0;
+      }
+
+      function goToUserDetailFromActivity() {
+        if (!currentUserId) return;
+        showDetailView();
+      }
+
+      function showActivityView() {
+        modalView = "activity";
+        form.hidden = true;
+        if (activityView) activityView.hidden = false;
+        if (detailHeadBlock) detailHeadBlock.hidden = true;
+        if (activityHeadBlock) activityHeadBlock.hidden = false;
+        if (modal) modal.classList.add("is-activity-view");
+        if (activityScroll) activityScroll.scrollTop = 0;
+      }
+
+      async function openActivityView() {
+        if (!currentUserId) return;
+        const d = accountDetails[String(currentUserId)] || accountDetails[currentUserId];
+        if (!d) return;
+
+        const displayName = d.real_name || d.display_name || d.username || "계정";
+        const divisionSuffix = d.division_name ? ` (${d.division_name})` : "";
+        const avatarEl = document.getElementById("accountActivityAvatar");
+        const nameEl = document.getElementById("accountActivityUserName");
+        const divisionSuffixEl = document.getElementById("accountActivityDivisionSuffix");
+        const updatedEl = document.getElementById("accountActivityUpdated");
+        if (avatarEl) avatarEl.src = d.avatar_url || defaultAvatarUrl;
+        if (nameEl) nameEl.textContent = displayName;
+        if (divisionSuffixEl) divisionSuffixEl.textContent = divisionSuffix;
+        if (nameEl) nameEl.setAttribute("aria-label", `${displayName} 사용자 정보 보기`);
+        if (updatedEl) updatedEl.textContent = d.updated_at_label || d.updated_at || "-";
+
+        showActivityView();
+        setActivityItems([{
+          at: "-",
+          category: "불러오는 중",
+          tone: "other",
+          actor: "-",
+          actor_kind: "system",
+          detail: "활동 로그를 불러오는 중…",
+        }]);
+
+        try {
+          const res = await fetch(
+            `${activityLogApiUrl}?user_id=${encodeURIComponent(currentUserId)}&format=json`,
+            { headers: { Accept: "application/json" }, credentials: "same-origin" }
+          );
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || "활동 로그를 불러오지 못했습니다.");
+          }
+          setActivityItems(data.items || []);
+        } catch (err) {
+          setActivityItems([{
+            at: "-",
+            category: "오류",
+            tone: "other",
+            actor: "-",
+            actor_kind: "system",
+            detail: err.message || "오류",
+          }]);
+        }
+      }
 
       function refreshCustomSelects(root) {
         if (window.JccCustomSelect) {
@@ -923,6 +1584,7 @@
         const d = accountDetails[String(userId)] || accountDetails[userId];
         if (!d) return;
 
+        currentUserId = String(userId);
         const displayTitle = d.real_name || d.display_name || d.username || "계정";
         titleEl.textContent = displayTitle;
         subtitleEl.textContent = d.kakao_uid ? "kakao id · " + d.kakao_uid : (d.username || "");
@@ -962,40 +1624,66 @@
 
         await ensureRolePicker(d.assigned_role_codes || []);
         refreshCustomSelects(form);
+        showDetailView();
 
         overlay.hidden = false;
         overlay.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
         document.getElementById("accountEditRealName").focus();
       }
 
       function closeModal() {
         overlay.hidden = true;
         overlay.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+        showDetailView();
+        activityItemsAll = [];
+        activityPage = 1;
         rolePickerMounted = false;
         selectedRoleCodes = [];
       }
 
-      document.querySelectorAll("[data-account-row]").forEach((row) => {
-        row.addEventListener("click", () => {
-          const id = row.getAttribute("data-user-id");
+      document.querySelectorAll(".js-account-user-link").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-user-id");
           if (id) openModal(id);
-        });
-        row.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            const id = row.getAttribute("data-user-id");
-            if (id) openModal(id);
-          }
         });
       });
 
       closeBtn.addEventListener("click", closeModal);
+      activityBtn?.addEventListener("click", openActivityView);
+      activityBackBtn?.addEventListener("click", showDetailView);
+      document.getElementById("accountActivityUserName")?.addEventListener("click", goToUserDetailFromActivity);
+      activityPaginationNav?.addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-page]");
+        if (!btn) return;
+        const page = parseInt(btn.getAttribute("data-page"), 10);
+        if (!Number.isNaN(page)) goActivityPage(page);
+      });
       overlay.addEventListener("click", (e) => {
         if (e.target === overlay) closeModal();
       });
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && !overlay.hidden) closeModal();
+        if (e.key !== "Escape" || overlay.hidden) return;
+        if (modalView === "activity") showDetailView();
+        else closeModal();
       });
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const openUserParam = urlParams.get("open_user");
+      const openViewParam = urlParams.get("view");
+      if (openUserParam) {
+        openModal(openUserParam).then(() => {
+          if (openViewParam === "activity") openActivityView();
+        });
+        urlParams.delete("open_user");
+        urlParams.delete("view");
+        const nextQuery = urlParams.toString();
+        const nextUrl = nextQuery
+          ? `${window.location.pathname}?${nextQuery}`
+          : window.location.pathname;
+        window.history.replaceState({}, "", nextUrl);
+      }
 
       form.addEventListener("submit", () => {
         if (phoneInput && window.JccPhoneFormat) {

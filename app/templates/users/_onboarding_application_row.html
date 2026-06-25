@@ -1,0 +1,69 @@
+{% load permission_tags phone_tags %}
+<tr class="jcc-appsRow" data-profile-id="{{ p.id }}">
+  <td>
+    <button type="button" class="js-user-detail jcc-appsUserLink" data-profile-id="{{ p.id }}">
+      {% if p.real_name %}{{ p.real_name }}{% else %}{{ profile_label_map|lookup_user_label:p.id }}{% endif %}
+    </button>
+  </td>
+  <td class="jcc-appsTextCell jcc-appsPhoneCell">{{ p.phone|format_korea_phone }}</td>
+  <td class="jcc-appsTextCell">
+    {% if p.requested_division and p.requested_division.region_id %}
+      {{ p.requested_division.region.name }}
+    {% else %}
+      -
+    {% endif %}
+  </td>
+  <td class="jcc-appsTextCell">{{ p.requested_division.name|default:"-" }}</td>
+  <td class="jcc-appsTextCell">{{ p.requested_team.name|default:"-" }}</td>
+  <td class="jcc-appsTextCell">
+    {% if p.requested_retreat_participation and p.requested_retreat_group_id %}
+      {{ p.requested_retreat_group.name }}
+    {% else %}
+      -
+    {% endif %}
+  </td>
+  <td class="jcc-appsTextCell jcc-appsTimeCell">
+    {% if p.user.date_joined %}
+      {{ p.user.date_joined|date:"Y-m-d H:i" }}
+    {% else %}
+      -
+    {% endif %}
+  </td>
+  <td class="jcc-appsStatusCell">
+    <select
+      name="onboarding_status"
+      form="save-{{ p.id }}"
+      class="jcc-appsStatusSelect"
+      data-cselect
+      aria-label="승인 상태"
+      {% if p.onboarding_status == "approved" %}disabled{% endif %}
+    >
+      {% for code, label in onboarding_status_choices %}
+        <option value="{{ code }}" {% if p.onboarding_status == code %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </td>
+  <td class="jcc-appsActionCell">
+    <form id="save-{{ p.id }}" method="post" class="jcc-appsSaveForm">
+      {% csrf_token %}
+      <input type="hidden" name="profile_id" value="{{ p.id }}">
+      <input type="hidden" name="action" value="save">
+      <input type="hidden" name="date_from" value="{{ date_from }}">
+      <input type="hidden" name="date_to" value="{{ date_to }}">
+      <input type="hidden" name="q" value="{{ search_query }}">
+      <input type="hidden" name="region_id" value="{{ active_region_id }}">
+      <input type="hidden" name="list_status" value="{{ status_filter }}">
+      <input type="hidden" name="page" value="{{ page_obj.number }}">
+      {% if active_division_code %}<input type="hidden" name="division_code" value="{{ active_division_code }}">{% endif %}
+      <input type="hidden" name="requested_division_id" value="{{ p.requested_division_id|default:'' }}">
+      <input type="hidden" name="requested_team_id" value="{{ p.requested_team_id|default:'' }}">
+      <input type="hidden" name="requested_retreat_event_id" value="{{ p.requested_retreat_event_id|default:'' }}">
+      <input type="hidden" name="requested_retreat_group_id" value="{{ p.requested_retreat_group_id|default:'' }}">
+      <button
+        type="submit"
+        class="jcc-appsSaveBtn{% if p.onboarding_status == 'approved' %} is-disabled{% endif %}"
+        {% if p.onboarding_status == "approved" %}disabled{% endif %}
+      >저장</button>
+    </form>
+  </td>
+</tr>

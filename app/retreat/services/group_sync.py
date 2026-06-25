@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from retreat.models import RetreatAttendee, RetreatChangeLog, RetreatGroupMembership
 from retreat.services.audit import log_retreat_change
+from retreat.services.pickup_attendee import delete_pickups_for_attendee
 from retreat.services.enrollment import enroll_attendee_into_active_sessions
 from users.services.user_display import user_display_name
 
@@ -157,10 +158,13 @@ def delete_attendees_for_membership(
         return 0
     removed = 0
     for attendee in list(
-        RetreatAttendee.objects.filter(group_id=group_id, user_id=user_id)
+        RetreatAttendee.objects.filter(group_id=group_id, user_id=user_id).select_related(
+            "group", "group__event"
+        )
     ):
         attendee_id = attendee.id
         event_id = attendee.group.event_id
+        delete_pickups_for_attendee(attendee, changed_by=changed_by)
         attendee.delete()
         removed += 1
         log_retreat_change(

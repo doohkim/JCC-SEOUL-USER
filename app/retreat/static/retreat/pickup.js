@@ -232,11 +232,14 @@
     memberSelect.disabled = false;
     memberSelect.innerHTML = '<option value="">선택</option>';
     const members = groupMembers[String(groupId)] || [];
+    const takenNames = existingPickupNamesForGroup(groupId, editingId);
     let matched = false;
     members.forEach((m) => {
       const isSelected = selectedName != null && m.name === selectedName;
       // 구분(입회/출회)에 따른 입실 상태 필터. 단, 수정 중 선택된 조원은 항상 유지.
       if (!isSelected && !memberAllowedForDirection(m.check_in_status)) return;
+      // 이미 차량 요청된 조원은 신규 등록 시 목록에서 제외
+      if (!isSelected && takenNames.has(m.name)) return;
       const opt = document.createElement("option");
       opt.value = m.name;
       opt.textContent = m.name;
@@ -361,8 +364,61 @@
     if (el) el.value = value || "";
   }
 
+  function resetStatusField() {
+    const statusField = document.getElementById("pickupModalStatusField");
+    const statusBadge = document.getElementById("pickupModalStatusBadge");
+    if (statusField) statusField.hidden = true;
+    if (statusBadge) {
+      statusBadge.textContent = "";
+      statusBadge.className = "jcc-retreat-checkInBadge";
+    }
+  }
+
+  function existingPickupNamesForGroup(groupId, excludePickupId) {
+    const names = new Set();
+    if (!tbody || !groupId) return names;
+    const dir = modalDirection || ctx.direction || "";
+    tbody.querySelectorAll("tr[data-pickup-id]").forEach((tr) => {
+      if (String(tr.dataset.group) !== String(groupId)) return;
+      if ((tr.dataset.direction || ctx.direction) !== dir) return;
+      if (
+        excludePickupId != null &&
+        String(tr.dataset.pickupId) === String(excludePickupId)
+      ) {
+        return;
+      }
+      const n = (tr.dataset.name || "").trim();
+      if (n) names.add(n);
+    });
+    return names;
+  }
+
+  function isDuplicatePickupName(name, groupId, excludePickupId) {
+    if (!tbody || !name) return false;
+    const dir = modalDirection || ctx.direction || "";
+    return Array.from(tbody.querySelectorAll("tr[data-pickup-id]")).some((tr) => {
+      if ((tr.dataset.direction || ctx.direction) !== dir) return false;
+      if (
+        excludePickupId != null &&
+        String(tr.dataset.pickupId) === String(excludePickupId)
+      ) {
+        return false;
+      }
+      if (groupId && String(tr.dataset.group) !== String(groupId)) return false;
+      return (tr.dataset.name || "").trim() === name;
+    });
+  }
+
+  function refreshPickupCount() {
+    const el = document.querySelector(".jcc-retreat-pickupCount");
+    if (!el || !tbody) return;
+    const n = tbody.querySelectorAll("tr[data-pickup-id]").length;
+    el.textContent = `총 ${n}건`;
+  }
+
   function openModal(editItem) {
     if (!modalOverlay || !form) return;
+    resetStatusField();
     form.reset();
     clearInvalid([
       "pickupRegion",
@@ -373,27 +429,28 @@
       "pickupBoardingPlace",
       "pickupContact",
     ]);
-    editingId = editItem ? editItem.id : null;
+    editingId = editItem && editItem.id ? editItem.id : null;
+    const isExistingPickup = editingId != null;
     // 조원 명단 필터 기준이 되는 구분 결정 (수정 시 항목 구분, 추가 시 활성 탭)
     modalDirection =
       editItem && editItem.direction ? editItem.direction : ctx.direction || "";
     if (modalTitleEl)
-      modalTitleEl.textContent = editItem ? "픽업 정보 수정" : "픽업 정보 추가";
+      modalTitleEl.textContent = isExistingPickup
+        ? "픽업 정보 수정"
+        : "픽업 정보 추가";
     if (modalSubmitBtn)
-      modalSubmitBtn.textContent = editItem ? "저장" : "등록";
+      modalSubmitBtn.textContent = isExistingPickup ? "저장" : "등록";
 
-    // 픽업 대상 조원의 입실 상태 표시 (수정 화면에서만)
-    const statusField = document.getElementById("pickupModalStatusField");
-    const statusBadge = document.getElementById("pickupModalStatusBadge");
-    if (statusField && statusBadge) {
-      const stVal = editItem ? editItem.checkInStatus || "" : "";
-      const stLabel = editItem ? editItem.checkInStatusDisplay || "" : "";
-      if (editItem && stLabel) {
+    // 기존 픽업 조회·수정 시에만 입실 상태 표시 (신규 차량 요청에는 미표시)
+    if (isExistingPickup) {
+      const statusField = document.getElementById("pickupModalStatusField");
+      const statusBadge = document.getElementById("pickupModalStatusBadge");
+      const stVal = editItem.checkInStatus || "";
+      const stLabel = editItem.checkInStatusDisplay || "";
+      if (statusField && statusBadge && stLabel) {
         statusBadge.textContent = stLabel;
         statusBadge.className = `jcc-retreat-checkInBadge jcc-retreat-checkInBadge--${stVal || "pending"}`;
         statusField.hidden = false;
-      } else {
-        statusField.hidden = true;
       }
     }
 
@@ -429,6 +486,8 @@
     if (!modalOverlay) return;
     modalOverlay.hidden = true;
     modalOverlay.setAttribute("aria-hidden", "true");
+    editingId = null;
+    resetStatusField();
   }
 
   function removeEmptyRow() {
@@ -491,6 +550,7 @@
     const tr = document.createElement("tr");
     applyRowData(tr, item);
     tbody.appendChild(tr);
+    refreshPickupCount();
   }
 
   function updateRow(item) {
@@ -579,6 +639,16 @@
       }
 
       const isEdit = editingId != null;
+      if (!isEdit && isDuplicatePickupName(name, group || null, null)) {
+        markInvalid(
+          "pickupName",
+          true,
+          "이미 차량 요청이 등록된 조원입니다."
+        );
+        focusField("pickupName");
+        return;
+      }
+
       const failMsg = isEdit ? "수정에 실패했습니다." : "등록에 실패했습니다.";
       setStatus("");
       try {
@@ -678,6 +748,7 @@
           empty.innerHTML = `<td colspan="${colCount}">등록된 픽업 정보가 없습니다.</td>`;
           tbody.appendChild(empty);
         }
+        refreshPickupCount();
         setStatus("제거되었습니다.", false);
       } catch (err) {
         setStatus(err.message || "제거에 실패했습니다.", true);

@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+
 from retreat.models import (
     RetreatAttendance,
     RetreatAttendee,
@@ -51,6 +54,16 @@ FIELD_LABELS = {
     "end_day": "종료 일자",
     "end_time": "종료 시각",
 }
+
+DATETIME_FIELD_KEYS = frozenset(
+    {
+        "expected_check_in_at",
+        "expected_check_out_at",
+        "checked_in_at",
+        "checked_out_at",
+        "occurs_at",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -269,7 +282,24 @@ def _format_value(key: str, value) -> str:
         return _check_in(value)
     if key == "participation_status":
         return PARTICIPATION_LABELS.get(value, str(value or "-"))
+    if key in DATETIME_FIELD_KEYS or key.endswith("_at"):
+        return _format_datetime_value(value)
     return str(value)
+
+
+def _format_datetime_value(value) -> str:
+    if value in (None, ""):
+        return "-"
+    dt = value
+    if isinstance(value, str):
+        dt = parse_datetime(value.strip())
+        if dt is None:
+            return value.strip()
+    if not hasattr(dt, "year"):
+        return str(value)
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, timezone.get_default_timezone())
+    return timezone.localtime(dt).strftime("%Y.%m.%d %H:%M")
 
 
 def _status(value) -> str:

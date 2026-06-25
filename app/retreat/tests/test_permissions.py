@@ -18,6 +18,7 @@ from retreat.models import (
 )
 from users.models import (
     Division,
+    PastoralDivisionAssignment,
     Region,
     Role,
     RoleLevel,
@@ -161,6 +162,9 @@ class _BaseFixture(TestCase):
         UserDivisionTeam.objects.create(
             user=cls.pastor, division=cls.div_youth_seoul, is_primary=True
         )
+        PastoralDivisionAssignment.objects.create(
+            user=cls.pastor, division=cls.div_youth_seoul, is_primary=True
+        )
 
         # 일반 유저 (조 권한 없음)
         cls.stranger = User.objects.create_user(username="stranger_r", password="x")
@@ -206,12 +210,19 @@ class RetreatPermissionsTests(_BaseFixture):
             {self.group_seoul_1.id, self.group_seoul_2.id, self.group_incheon_1.id},
         )
 
-    def test_pastor_sees_all_groups(self):
+    def test_pastor_sees_pastoral_division_groups_only(self):
         groups = visible_retreat_groups_for(self.pastor, self.event)
         self.assertEqual(
             set(groups.values_list("id", flat=True)),
-            {self.group_seoul_1.id, self.group_seoul_2.id, self.group_incheon_1.id},
+            {self.group_seoul_1.id, self.group_seoul_2.id},
         )
+
+    def test_pastor_without_assignment_sees_no_groups(self):
+        unassigned = User.objects.create_user(username="pastor_none", password="x")
+        unassigned.role_level = self.rl_pastor
+        unassigned.save()
+        groups = visible_retreat_groups_for(unassigned, self.event)
+        self.assertEqual(set(groups.values_list("id", flat=True)), set())
 
     def test_staff_other_division_does_not_see_youth_groups(self):
         # 서울 대학부 부장: 청년부 그룹은 안 보여야 함 (division 다름)
@@ -266,8 +277,8 @@ class RetreatPermissionsTests(_BaseFixture):
     def test_leader_can_access_retreat_tab(self):
         self.assertTrue(can_access_retreat_tab(self.leader_seoul_1))
 
-    def test_pastor_can_view_retreat_all(self):
-        self.assertTrue(can_view_retreat_all(self.pastor, self.event))
+    def test_pastor_cannot_view_retreat_all(self):
+        self.assertFalse(can_view_retreat_all(self.pastor, self.event))
 
     def test_leader_cannot_view_retreat_all(self):
         self.assertFalse(can_view_retreat_all(self.leader_seoul_1, self.event))
@@ -412,7 +423,8 @@ class RetreatAttendeeDeletePermissionTests(_BaseFixture):
     def test_leader_can_delete_attendee(self):
         self.client.force_authenticate(self.leader_seoul_1)
         r = self.client.delete(self.url)
-        self.assertEqual(r.status_code, 204, r.content)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json().get("deleted_pickup_count"), 0)
         self.assertFalse(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())
 
     def test_council_can_delete_attendee(self):
@@ -427,11 +439,11 @@ class RetreatAttendeeDeletePermissionTests(_BaseFixture):
         )
         self.client.force_authenticate(council)
         r = self.client.delete(self.url)
-        self.assertEqual(r.status_code, 204, r.content)
+        self.assertEqual(r.status_code, 200, r.content)
         self.assertFalse(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())
 
     def test_superuser_can_delete_attendee(self):
         self.client.force_authenticate(self.superuser)
         r = self.client.delete(self.url)
-        self.assertEqual(r.status_code, 204, r.content)
+        self.assertEqual(r.status_code, 200, r.content)
         self.assertFalse(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())

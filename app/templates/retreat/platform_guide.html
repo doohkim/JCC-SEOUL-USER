@@ -1,0 +1,33 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>플랫폼 가이드 · 수련회</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260625b" />
+  </head>
+  <body class="jcc-retreat-platformGuidePage{% if event %} has-retreat-bottom-tabs{% endif %}">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content jcc-pgLayoutContent">
+        <header class="jcc-pgTopBar">
+          {% if event %}
+            <a class="jcc-pgTopBar-back" href="{% url 'retreat_dashboard' event.id %}">← 대시보드</a>
+          {% else %}
+            <a class="jcc-pgTopBar-back" href="{% url 'retreat_home' %}">← 수련회</a>
+          {% endif %}
+          <span class="jcc-pgTopBar-title">플랫폼 가이드</span>
+        </header>
+        <main class="jcc-pgDeck">
+          {% include 'retreat/platform_guide_slides.html' %}
+        </main>
+      </div>
+    </div>
+    {% if event %}
+      {% include 'includes/retreat_bottom_tabs.html' %}
+    {% endif %}
+  </body>
+</html>

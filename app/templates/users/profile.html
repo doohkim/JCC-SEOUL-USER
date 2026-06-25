@@ -104,15 +104,10 @@
             {% endif %}
 
             <div class="jcc-profileFieldGrid">
-              <div class="field">
+              <div class="field jcc-profileField--full">
                 <label for="{{ form.real_name.id_for_label }}">{{ form.real_name.label }}</label>
                 {{ form.real_name }}
                 {% if form.real_name.errors %}<ul class="errorlist">{% for e in form.real_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
-              </div>
-              <div class="field">
-                <label for="{{ form.display_name.id_for_label }}">{{ form.display_name.label }}</label>
-                {{ form.display_name }}
-                {% if form.display_name.errors %}<ul class="errorlist">{% for e in form.display_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
               </div>
               <div class="field jcc-profileField--full">
                 <label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>

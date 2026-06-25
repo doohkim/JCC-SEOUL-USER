@@ -6,6 +6,8 @@ username / display_name 부분 일치로 활성 사용자를 최대 N건 반환�
 
 from __future__ import annotations
 
+import re
+
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 from rest_framework.exceptions import PermissionDenied
@@ -14,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from users.permissions import can_access_retreat_tab
+from users.services.user_display import user_account_link_label
 
 User = get_user_model()
 
@@ -66,9 +69,15 @@ class RetreatUserSearchView(APIView):
         elif region_id:
             qs = qs.filter(division_teams__division__region_id=region_id)
         if q:
-            qs = qs.filter(
-                Q(username__icontains=q) | Q(profile__display_name__icontains=q)
+            q_filter = (
+                Q(username__icontains=q)
+                | Q(profile__display_name__icontains=q)
+                | Q(profile__real_name__icontains=q)
             )
+            digits = re.sub(r"\D", "", q)
+            if len(digits) >= 4:
+                q_filter |= Q(profile__phone__icontains=digits[-4:])
+            qs = qs.filter(q_filter)
         elif not (division_ids or region_id or all_users):
             # 필터도 검색어도 없고 all 플래그도 없으면 빈 목록(전체 계정 노출 방지).
             return Response([])
@@ -76,8 +85,9 @@ class RetreatUserSearchView(APIView):
 
         results = []
         for u in qs:
-            display = getattr(getattr(u, "profile", None), "display_name", "") or ""
-            name = display or u.username
+            profile = getattr(u, "profile", None)
+            display = getattr(profile, "display_name", "") or ""
+            name = user_account_link_label(u)
             results.append(
                 {
                     "id": u.id,

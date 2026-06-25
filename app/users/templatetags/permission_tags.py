@@ -151,14 +151,6 @@ def can_access_cursor_docs_tab(user):
     return bool(user and getattr(user, "is_authenticated", False) and user.is_superuser)
 
 
-@register.filter(name="can_access_retreat_leader_guide")
-def can_access_retreat_leader_guide(user):
-    """조장·부조장 사용 가이드 링크 노출."""
-    from users.permissions import can_access_retreat_leader_guide as can_access_guide
-
-    return bool(user and can_access_guide(user))
-
-
 @register.filter(name="can_access_pastoral_tab")
 def can_access_pastoral_tab(user):
     """@deprecated — ``can_access_member_registry`` 와 동일."""

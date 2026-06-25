@@ -130,6 +130,14 @@ class RetireUserTests(AccountRetireFixture):
             retire_user(self.superuser)
 
 
+class UserProfileStrTests(AccountRetireFixture):
+    def test_str_with_user(self):
+        self.assertEqual(str(self.profile), f"Profile · {self.target.username}")
+
+    def test_str_without_user(self):
+        self.assertEqual(str(self.orphan), "Profile · 고아실명 (계정 없음)")
+
+
 class ApprovalListHideTests(AccountRetireFixture):
     def test_orphan_profile_hidden_from_approvals(self):
         self.client.force_login(self.superuser)

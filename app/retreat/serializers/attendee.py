@@ -65,11 +65,9 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
         user = attendee.user
         if not user:
             return ""
-        from users.services.user_display import user_display_name
+        from users.services.user_display import user_account_link_label
 
-        profile = getattr(user, "profile", None)
-        real = (getattr(profile, "real_name", "") or "").strip()
-        return real or user_display_name(user) or user.username
+        return user_account_link_label(user)
 
     def validate_name(self, value: str) -> str:
         v = (value or "").strip()

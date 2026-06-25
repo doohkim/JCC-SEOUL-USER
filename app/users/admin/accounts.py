@@ -245,6 +245,9 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
             if not profile.requested_division_id:
                 skipped_count += 1
                 continue
+            was_already_approved = (
+                profile.onboarding_status == UserProfile.OnboardingStatus.APPROVED
+            )
             req_team = profile.requested_team
             if req_team and req_team.division_id != profile.requested_division_id:
                 req_team = None
@@ -264,6 +267,26 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
             profile.onboarding_status = UserProfile.OnboardingStatus.APPROVED
             profile.onboarding_note = ""
             profile.save(update_fields=["onboarding_status", "onboarding_note", "updated_at"])
+            if not was_already_approved:
+                from retreat.services.onboarding import sync_retreat_attendee_from_onboarding_profile
+
+                sync_retreat_attendee_from_onboarding_profile(
+                    user=user_obj,
+                    profile=profile,
+                    changed_by=request.user,
+                )
+            elif profile.requested_retreat_participation and profile.requested_retreat_group_id:
+                from retreat.services.onboarding import (
+                    retreat_attendee_exists_for_profile,
+                    sync_retreat_attendee_from_onboarding_profile,
+                )
+
+                if not retreat_attendee_exists_for_profile(profile):
+                    sync_retreat_attendee_from_onboarding_profile(
+                        user=user_obj,
+                        profile=profile,
+                        changed_by=request.user,
+                    )
             approved_count += 1
         if approved_count:
             self.message_user(

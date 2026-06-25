@@ -13,7 +13,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260625a" />
   </head>
   <body>
     <div class="jcc-layout">
@@ -21,6 +21,9 @@
       <div class="jcc-layout-content">
         {% include 'includes/jcc_page_header.html' with page_title='수련회' subtitle='집회·내 조 바로가기' %}
         <main>
+          <div class="jcc-retreat-homeActions">
+            <a class="jcc-retreat-guideLink" href="{% url 'retreat_platform_guide' %}">플랫폼 가이드</a>
+          </div>
           {% if not event_cards %}
             <div class="card jcc-retreat-emptyCard">
               <h2>표시할 수련회 집회가 없습니다.</h2>

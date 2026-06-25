@@ -9,6 +9,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
 
 from retreat.models import RetreatEvent, RetreatGroup, RetreatGroupMembership
+from users.mixins import ensure_user_profile
 from users.models import Division, Region, UserDivisionTeam
 
 User = get_user_model()
@@ -45,6 +46,11 @@ class UserSearchApiTests(APITestCase):
         cls.target_b = User.objects.create_user(
             username="kakao_4812361055", password="x"
         )
+        profile_a = ensure_user_profile(cls.target_a)
+        profile_a.display_name = "카카오닉A"
+        profile_a.real_name = "김도오"
+        profile_a.phone = "010-1234-6804"
+        profile_a.save(update_fields=["display_name", "real_name", "phone", "updated_at"])
         cls.outsider = User.objects.create_user(username="us_outsider", password="x")
 
     def setUp(self):
@@ -62,6 +68,24 @@ class UserSearchApiTests(APITestCase):
         usernames = [u["username"] for u in r.json()]
         self.assertIn(self.target_a.username, usernames)
         self.assertNotIn(self.target_b.username, usernames)
+        matched = next(u for u in r.json() if u["username"] == self.target_a.username)
+        self.assertEqual(matched["name"], "김도오-6804")
+
+    def test_leader_can_search_by_real_name_and_phone_suffix(self):
+        UserDivisionTeam.objects.create(
+            user=self.target_a, division=self.div, is_primary=False
+        )
+        self.client.force_authenticate(self.leader)
+        for q in ("김도오", "6804"):
+            with self.subTest(q=q):
+                r = self.client.get(
+                    reverse("api_retreat_user_search"),
+                    {"division": self.div.id, "q": q},
+                )
+                self.assertEqual(r.status_code, 200)
+                usernames = [u["username"] for u in r.json()]
+                self.assertEqual(usernames, [self.target_a.username])
+                self.assertEqual(r.json()[0]["name"], "김도오-6804")
 
     def test_blank_query_returns_empty_without_filter(self):
         self.client.force_authenticate(self.leader)

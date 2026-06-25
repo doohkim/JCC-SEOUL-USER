@@ -11,9 +11,24 @@ class RetreatSessionInline(admin.TabularInline):
 
 @admin.register(RetreatEvent)
 class RetreatEventAdmin(admin.ModelAdmin):
-    list_display = ["name", "start_date", "end_date", "is_active"]
-    list_filter = ["is_active"]
+    list_display = [
+        "name",
+        "start_date",
+        "end_date",
+        "is_active",
+        "require_retreat_participation_on_signup",
+    ]
+    list_filter = ["is_active", "require_retreat_participation_on_signup"]
     search_fields = ["name"]
+    fieldsets = (
+        (None, {"fields": ("name", "start_date", "end_date", "is_active")}),
+        (
+            "가입신청",
+            {
+                "fields": ("require_retreat_participation_on_signup",),
+            },
+        ),
+    )
     inlines = [RetreatSessionInline]
 
 

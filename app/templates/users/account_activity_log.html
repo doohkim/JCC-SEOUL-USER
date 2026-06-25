@@ -1,0 +1,342 @@
+{% load static permission_tags %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  {% include 'includes/jcc_theme_head.html' %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>활동 로그 · {{ display_name }}</title>
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260622b">
+  <style>
+    .jcc-actLogPage {
+      max-width: 52rem;
+      margin: 0 auto;
+    }
+    .jcc-actLogCard {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08);
+      overflow: hidden;
+    }
+    .jcc-actLogCard__head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1.35rem 1.6rem 1.1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .jcc-actLogCard__titleRow {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .jcc-actLogCard__titleIcon {
+      display: inline-flex;
+      width: 1.35rem;
+      height: 1.35rem;
+      color: #2563eb;
+    }
+    .jcc-actLogCard__titleIcon svg { width: 100%; height: 100%; }
+    .jcc-actLogUser {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.1rem 1.6rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+      background: color-mix(in srgb, var(--surface-2, var(--card)) 35%, var(--card));
+    }
+    .jcc-actLogUser__avatar {
+      width: 3.25rem;
+      height: 3.25rem;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      background: var(--surface-2);
+    }
+    .jcc-actLogUser__meta { min-width: 0; flex: 1 1 auto; }
+    .jcc-actLogUser__label {
+      margin: 0 0 0.2rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #2563eb;
+    }
+    .jcc-actLogUser__name {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .jcc-actLogUser__updated {
+      flex: 0 0 auto;
+      text-align: right;
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .jcc-actLogUser__updated strong {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+    }
+    .jcc-actLogTimeline {
+      list-style: none;
+      margin: 0;
+      padding: 1.25rem 1.6rem 0.5rem 2.4rem;
+      position: relative;
+    }
+    .jcc-actLogTimeline::before {
+      content: "";
+      position: absolute;
+      left: 1.15rem;
+      top: 1.5rem;
+      bottom: 1.5rem;
+      width: 2px;
+      background: color-mix(in srgb, var(--border) 85%, transparent);
+    }
+    .jcc-actLogEntry {
+      position: relative;
+      padding: 0 0 1.35rem 1.1rem;
+    }
+    .jcc-actLogEntry::before {
+      content: "";
+      position: absolute;
+      left: -1.55rem;
+      top: 0.35rem;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 2px solid #94a3b8;
+      box-shadow: 0 0 0 3px var(--card);
+      z-index: 1;
+    }
+    .jcc-actLogEntry__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.55rem;
+      flex-wrap: wrap;
+    }
+    .jcc-actLogEntry__time {
+      margin: 0;
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .jcc-actLogBadge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.22rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .jcc-actLogBadge--status {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+    .jcc-actLogBadge--profile {
+      background: #ede9fe;
+      color: #6d28d9;
+    }
+    .jcc-actLogBadge--group {
+      background: #ffedd5;
+      color: #c2410c;
+    }
+    .jcc-actLogBadge--signup {
+      background: #f3f4f6;
+      color: #4b5563;
+    }
+    .jcc-actLogBadge--other {
+      background: color-mix(in srgb, var(--border) 40%, var(--card));
+      color: var(--muted);
+    }
+    .jcc-actLogEntry__box {
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--surface-2, #f8fafc) 80%, var(--card));
+      border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+    }
+    .jcc-actLogEntry__actor {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      margin: 0 0 0.45rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .jcc-actLogEntry__actorIcon {
+      display: inline-flex;
+      width: 1.15rem;
+      height: 1.15rem;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: 0.62rem;
+      flex-shrink: 0;
+    }
+    .jcc-actLogEntry__actorIcon--admin {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+    .jcc-actLogEntry__actorIcon--system {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+    .jcc-actLogEntry__actorIcon--self {
+      background: #dcfce7;
+      color: #15803d;
+    }
+    .jcc-actLogEntry__detail {
+      margin: 0;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: var(--text);
+    }
+    .jcc-actLogEntry__arrow { color: var(--muted); padding: 0 0.15rem; }
+    .jcc-actLogEntry__after--status { color: #2563eb; font-weight: 800; }
+    .jcc-actLogEntry__after--profile { font-weight: 800; }
+    .jcc-actLogEntry__after--group { color: #ea580c; font-weight: 800; }
+    .jcc-actLogEntry__after--signup { font-weight: 700; }
+    .jcc-actLogFooter {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 1rem 1.6rem 1.35rem;
+      border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+      background: color-mix(in srgb, var(--surface-2, var(--card)) 25%, var(--card));
+    }
+    .jcc-actLogBackBtn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      min-height: 2.65rem;
+      padding: 0.55rem 1.1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .jcc-actLogBackBtn--primary {
+      border-color: #2563eb;
+      background: #2563eb;
+      color: #fff;
+    }
+    .jcc-actLogBackBtn--primary:hover { background: #1d4ed8; }
+    .jcc-actLogBackBtn:hover {
+      border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+    }
+    @media (max-width: 640px) {
+      .jcc-actLogUser { flex-wrap: wrap; }
+      .jcc-actLogUser__updated { width: 100%; text-align: left; }
+      .jcc-actLogFooter { flex-direction: column-reverse; align-items: stretch; }
+      .jcc-actLogBackBtn { width: 100%; }
+    }
+  </style>
+</head>
+<body class="has-account-bottom-tabs">
+  <div class="jcc-layout">
+    {% include 'includes/jcc_left_nav.html' %}
+    <div class="jcc-layout-content">
+      {% include 'includes/jcc_page_header.html' with page_title='계정 관리' subtitle='사용자 활동 변경 이력을 확인할 수 있습니다.' tabs_template='users/_account_manage_tabs.html' %}
+      <main class="jcc-actLogPage">
+        <div class="jcc-actLogCard">
+          <div class="jcc-actLogCard__head">
+            <h1 class="jcc-actLogCard__titleRow">
+              <span class="jcc-actLogCard__titleIcon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M12 8v5l3 1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+                  <path d="M16 3.5a9 9 0 0 1 0 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </span>
+              활동 로그
+            </h1>
+          </div>
+
+          <div class="jcc-actLogUser">
+            <img
+              class="jcc-actLogUser__avatar"
+              src="{% user_profile_avatar_url target_user %}"
+              alt=""
+              width="52"
+              height="52"
+            >
+            <div class="jcc-actLogUser__meta">
+              <p class="jcc-actLogUser__label">대상 사용자</p>
+              <p class="jcc-actLogUser__name">
+                {{ display_name }}{% if division_name %} ({{ division_name }}){% endif %}
+              </p>
+            </div>
+            <div class="jcc-actLogUser__updated">
+              <strong>최종 업데이트</strong>
+              {{ last_updated_label }}
+            </div>
+          </div>
+
+          <ol class="jcc-actLogTimeline">
+            {% for item in activity_items %}
+              <li class="jcc-actLogEntry">
+                <div class="jcc-actLogEntry__head">
+                  <p class="jcc-actLogEntry__time">{{ item.at }}</p>
+                  <span class="jcc-actLogBadge jcc-actLogBadge--{{ item.tone|default:'other' }}">{{ item.category }}</span>
+                </div>
+                <div class="jcc-actLogEntry__box">
+                  <p class="jcc-actLogEntry__actor">
+                    <span class="jcc-actLogEntry__actorIcon jcc-actLogEntry__actorIcon--{{ item.actor_kind|default:'system' }}" aria-hidden="true">
+                      {% if item.actor_kind == "admin" %}👤{% elif item.actor_kind == "self" %}✎{% else %}⚙{% endif %}
+                    </span>
+                    {{ item.actor }}
+                  </p>
+                    <p class="jcc-actLogEntry__detail">
+                    {% if item.before and item.after %}
+                      {% if item.tone == "status" %}
+                        {{ item.before }}<span class="jcc-actLogEntry__arrow">→</span><span class="jcc-actLogEntry__after--status">{{ item.after }}</span>
+                      {% elif item.tone == "group" %}
+                        {{ item.before }}<span class="jcc-actLogEntry__arrow">→</span><span class="jcc-actLogEntry__after--group">{{ item.after }}</span>
+                      {% else %}
+                        {{ item.before }}<span class="jcc-actLogEntry__arrow">→</span><span class="jcc-actLogEntry__after--profile">{{ item.after }}</span>
+                      {% endif %}
+                    {% elif item.after and item.tone == "status" %}
+                      승인 상태: <span class="jcc-actLogEntry__after--status">{{ item.after }}</span>
+                    {% elif item.after %}
+                      <span class="jcc-actLogEntry__after--{{ item.tone|default:'other' }}">{{ item.detail }}</span>
+                    {% else %}
+                      {{ item.detail }}
+                    {% endif %}
+                  </p>
+                </div>
+              </li>
+            {% endfor %}
+          </ol>
+
+          <div class="jcc-actLogFooter">
+            <a class="jcc-actLogBackBtn" href="{{ list_url }}">목록으로</a>
+            <a class="jcc-actLogBackBtn jcc-actLogBackBtn--primary" href="{{ return_url }}">사용자 정보로 돌아가기</a>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  {% include 'includes/account_bottom_tabs.html' %}
+</body>
+</html>

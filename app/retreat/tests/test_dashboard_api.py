@@ -12,13 +12,15 @@ from rest_framework.test import APIClient, APITestCase
 from retreat.models import (
     RetreatAttendee,
     RetreatAttendance,
+    RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
     RetreatGroupMembership,
+    RetreatPickup,
     RetreatSession,
     RetreatSessionAttendee,
 )
-from users.models import Division, Region, UserDivisionTeam
+from users.models import Division, PastoralDivisionAssignment, Region, RoleLevel, UserDivisionTeam
 
 User = get_user_model()
 
@@ -166,6 +168,56 @@ class RetreatDashboardApiTests(APITestCase):
         data = self.client.get(url).json()
         self.assertEqual(data["summary"]["lodging_unassigned"], 1)
 
+    def test_lodging_unassigned_leader_sees_own_group_only(self):
+        """조장은 본인 조 숙박 미배정 인원만 집계한다."""
+        now = timezone.now()
+        other_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+        )
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="우리조미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        RetreatAttendee.objects.create(
+            group=other_group,
+            name="다른조미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        self.client.force_authenticate(self.leader)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(data["summary"]["lodging_unassigned"], 1)
+
+    def test_lodging_unassigned_staff_sees_all_groups(self):
+        """회장단은 집회 전체 조 숙박 미배정 인원을 집계한다."""
+        now = timezone.now()
+        other_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+        )
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="1조미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        RetreatAttendee.objects.create(
+            group=other_group,
+            name="2조미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        staff = User.objects.create_user(username="dash_lodging_council", password="x")
+        RetreatCouncilMembership.objects.create(user=staff, event=self.event)
+        self.client.force_authenticate(staff)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(data["summary"]["lodging_unassigned"], 2)
+
     def test_results_grand_total(self):
         self.client.force_authenticate(self.leader)
         url = reverse("api_retreat_event_results", args=[self.event.id])
@@ -206,8 +258,6 @@ class RetreatDashboardApiTests(APITestCase):
 
     def test_group_board_shows_all_regions_for_staff(self):
         """수련회 회장단은 전체 지역 조를 본다."""
-        from retreat.models import RetreatCouncilMembership
-
         busan = Region.objects.create(code="busan_staff", name="부산", sort_order=99)
         busan_div = Division.objects.create(
             region=busan, code="staff_busan_youth", name="부산청년부"
@@ -226,3 +276,505 @@ class RetreatDashboardApiTests(APITestCase):
         regions = {g["region"] for g in data["groups"]}
         self.assertIn(self.seoul.name, regions)
         self.assertIn(busan.name, regions)
+
+    def test_car_today_leader_sees_own_group_only(self):
+        """조장은 당일 본인 조 픽업 인원만 집계한다."""
+        now = timezone.now()
+        other_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+        )
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=1,
+            group=self.group,
+            name="우리조원",
+            region=self.seoul,
+            division=self.div,
+            train_time=now,
+            boarding_place="역",
+            contact="010",
+        )
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=2,
+            group=other_group,
+            name="다른조원",
+            region=self.seoul,
+            division=self.div,
+            train_time=now,
+            boarding_place="역",
+            contact="010",
+        )
+        self.client.force_authenticate(self.leader)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(data["summary"]["car_today"], 1)
+
+    def test_car_today_staff_sees_all_groups(self):
+        """회장단은 당일 전체 조 픽업 인원을 집계한다."""
+        now = timezone.now()
+        other_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+        )
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=1,
+            group=self.group,
+            name="1조원",
+            region=self.seoul,
+            division=self.div,
+            train_time=now,
+            boarding_place="역",
+            contact="010",
+        )
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=2,
+            group=other_group,
+            name="2조원",
+            region=self.seoul,
+            division=self.div,
+            train_time=now,
+            boarding_place="역",
+            contact="010",
+        )
+        staff = User.objects.create_user(username="dash_council", password="x")
+        RetreatCouncilMembership.objects.create(user=staff, event=self.event)
+        self.client.force_authenticate(staff)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(data["summary"]["car_today"], 2)
+
+    def test_car_today_excludes_absent_and_other_dates(self):
+        """불참 조원·다른 날짜 픽업은 당일 차량 지원 집계에서 제외."""
+        now = timezone.now()
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="불참픽업",
+            participation_status=RetreatAttendee.ParticipationStatus.ABSENT,
+        )
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=1,
+            group=self.group,
+            name="참석픽업",
+            region=self.seoul,
+            division=self.div,
+            train_time=now,
+            boarding_place="역",
+            contact="010",
+        )
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=2,
+            group=self.group,
+            name="불참픽업",
+            region=self.seoul,
+            division=self.div,
+            train_time=now,
+            boarding_place="역",
+            contact="010",
+        )
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=3,
+            group=self.group,
+            name="어제픽업",
+            region=self.seoul,
+            division=self.div,
+            train_time=now - timedelta(days=1),
+            boarding_place="역",
+            contact="010",
+        )
+        self.client.force_authenticate(self.leader)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(data["summary"]["car_today"], 1)
+
+    def test_lodging_unassigned_superuser_sees_all_groups(self):
+        """슈퍼유저는 집회 전체 조 숙박 미배정 인원을 집계한다."""
+        now = timezone.now()
+        other_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+        )
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="1조미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        RetreatAttendee.objects.create(
+            group=other_group,
+            name="2조미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        superuser = User.objects.create_superuser(
+            username="dash_superuser", password="x", email="su@test.local"
+        )
+        self.client.force_authenticate(superuser)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(data["summary"]["lodging_unassigned"], 2)
+
+    def test_lodging_unassigned_vice_leader_sees_own_group_only(self):
+        """부조장은 본인 조 숙박 미배정 인원만 집계한다."""
+        now = timezone.now()
+        other_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+        )
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="우리조미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        RetreatAttendee.objects.create(
+            group=other_group,
+            name="다른조미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        vice_leader = User.objects.create_user(username="dash_vice_leader", password="x")
+        UserDivisionTeam.objects.create(
+            user=vice_leader, division=self.div, is_primary=True
+        )
+        RetreatGroupMembership.objects.create(
+            user=vice_leader,
+            group=self.group,
+            role=RetreatGroupMembership.Role.VICE_LEADER,
+        )
+        self.client.force_authenticate(vice_leader)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(data["summary"]["lodging_unassigned"], 1)
+
+    def test_lodging_unassigned_council_leader_sees_all_groups(self):
+        """회장단이면서 조장이면 집회 전체 조를 집계한다 (회장단 우선)."""
+        now = timezone.now()
+        other_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+        )
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="1조미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        RetreatAttendee.objects.create(
+            group=other_group,
+            name="2조미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        council_leader = User.objects.create_user(
+            username="dash_council_leader", password="x"
+        )
+        RetreatCouncilMembership.objects.create(user=council_leader, event=self.event)
+        RetreatGroupMembership.objects.create(user=council_leader, group=self.group)
+        self.client.force_authenticate(council_leader)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(data["summary"]["lodging_unassigned"], 2)
+
+    def test_car_today_superuser_sees_all_groups(self):
+        """슈퍼유저는 당일 전체 조 픽업 인원을 집계한다."""
+        now = timezone.now()
+        other_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+        )
+        for number, group, name in (
+            (1, self.group, "1조원"),
+            (2, other_group, "2조원"),
+        ):
+            RetreatPickup.objects.create(
+                event=self.event,
+                direction=RetreatPickup.Direction.ARRIVAL,
+                number=number,
+                group=group,
+                name=name,
+                region=self.seoul,
+                division=self.div,
+                train_time=now,
+                boarding_place="역",
+                contact="010",
+            )
+        superuser = User.objects.create_superuser(
+            username="dash_car_superuser", password="x", email="car-su@test.local"
+        )
+        self.client.force_authenticate(superuser)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(data["summary"]["car_today"], 2)
+
+    def test_car_today_vice_leader_sees_own_group_only(self):
+        """부조장은 당일 본인 조 픽업 인원만 집계한다."""
+        now = timezone.now()
+        other_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+        )
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=1,
+            group=self.group,
+            name="우리조원",
+            region=self.seoul,
+            division=self.div,
+            train_time=now,
+            boarding_place="역",
+            contact="010",
+        )
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=2,
+            group=other_group,
+            name="다른조원",
+            region=self.seoul,
+            division=self.div,
+            train_time=now,
+            boarding_place="역",
+            contact="010",
+        )
+        vice_leader = User.objects.create_user(
+            username="dash_car_vice_leader", password="x"
+        )
+        UserDivisionTeam.objects.create(
+            user=vice_leader, division=self.div, is_primary=True
+        )
+        RetreatGroupMembership.objects.create(
+            user=vice_leader,
+            group=self.group,
+            role=RetreatGroupMembership.Role.VICE_LEADER,
+        )
+        self.client.force_authenticate(vice_leader)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(data["summary"]["car_today"], 1)
+
+    def test_car_today_council_leader_sees_all_groups(self):
+        """회장단이면서 조장이면 당일 전체 조 픽업을 집계한다 (회장단 우선)."""
+        now = timezone.now()
+        other_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+        )
+        for number, group, name in (
+            (1, self.group, "1조원"),
+            (2, other_group, "2조원"),
+        ):
+            RetreatPickup.objects.create(
+                event=self.event,
+                direction=RetreatPickup.Direction.ARRIVAL,
+                number=number,
+                group=group,
+                name=name,
+                region=self.seoul,
+                division=self.div,
+                train_time=now,
+                boarding_place="역",
+                contact="010",
+            )
+        council_leader = User.objects.create_user(
+            username="dash_car_council_leader", password="x"
+        )
+        RetreatCouncilMembership.objects.create(
+            user=council_leader, event=self.event
+        )
+        RetreatGroupMembership.objects.create(
+            user=council_leader, group=self.group
+        )
+        self.client.force_authenticate(council_leader)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(data["summary"]["car_today"], 2)
+
+    def test_dashboard_page_summary_aligns_with_api_for_roles(self):
+        """대시보드 페이지 isStaff·API summary가 역할별 집계 범위와 일치한다."""
+        now = timezone.now()
+        other_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+        )
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="1조미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        RetreatAttendee.objects.create(
+            group=other_group,
+            name="2조미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=1,
+            group=self.group,
+            name="1조픽업",
+            region=self.seoul,
+            division=self.div,
+            train_time=now,
+            boarding_place="역",
+            contact="010",
+        )
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=2,
+            group=other_group,
+            name="2조픽업",
+            region=self.seoul,
+            division=self.div,
+            train_time=now,
+            boarding_place="역",
+            contact="010",
+        )
+        api_url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        page_url = reverse("retreat_dashboard", args=[self.event.id])
+
+        self.client.force_login(self.leader)
+        page = self.client.get(page_url)
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "isStaff: false")
+        self.assertNotContains(
+            page, f'href="{reverse("retreat_lodging_roster", args=[self.event.id])}'
+        )
+        summary = self.client.get(api_url).json()["summary"]
+        self.assertEqual(summary["lodging_unassigned"], 1)
+        self.assertEqual(summary["car_today"], 1)
+
+        council = User.objects.create_user(username="dash_page_council", password="x")
+        RetreatCouncilMembership.objects.create(user=council, event=self.event)
+        self.client.force_login(council)
+        page = self.client.get(page_url)
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "isStaff: true")
+        self.assertContains(
+            page, f'href="{reverse("retreat_lodging_roster", args=[self.event.id])}'
+        )
+        summary = self.client.get(api_url).json()["summary"]
+        self.assertEqual(summary["lodging_unassigned"], 2)
+        self.assertEqual(summary["car_today"], 2)
+
+
+class RetreatDashboardPastoralScopeTests(APITestCase):
+    """목사·전도사: 담당 지역·부서 조만 대시보드에 집계."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.seoul = Region.objects.get(code="seoul")
+        cls.div_youth = Division.objects.create(
+            region=cls.seoul, code="dash_past_youth", name="청년부"
+        )
+        cls.div_univ = Division.objects.create(
+            region=cls.seoul, code="dash_past_univ", name="대학부"
+        )
+        cls.event = RetreatEvent.objects.create(
+            name="목회 담당 집계",
+            start_date=date(2026, 6, 1),
+            end_date=date(2026, 6, 2),
+        )
+        cls.group_youth = RetreatGroup.objects.create(
+            event=cls.event,
+            region=cls.seoul,
+            division=cls.div_youth,
+            name="청년1조",
+        )
+        cls.group_univ = RetreatGroup.objects.create(
+            event=cls.event,
+            region=cls.seoul,
+            division=cls.div_univ,
+            name="대학1조",
+        )
+        cls.rl_pastor, _ = RoleLevel.objects.get_or_create(
+            code="pastor",
+            defaults={"name": "목사", "level": 80, "sort_order": 10},
+        )
+        cls.pastor = User.objects.create_user(username="dash_pastor", password="x")
+        cls.pastor.role_level = cls.rl_pastor
+        cls.pastor.save()
+        PastoralDivisionAssignment.objects.create(
+            user=cls.pastor, division=cls.div_youth, is_primary=True
+        )
+
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_pastor_dashboard_summary_scoped_to_assigned_division(self):
+        now = timezone.now()
+        RetreatAttendee.objects.create(
+            group=self.group_youth,
+            name="청년미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        RetreatAttendee.objects.create(
+            group=self.group_univ,
+            name="대학미배정",
+            expected_check_in_at=now + timedelta(hours=2),
+        )
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=1,
+            group=self.group_youth,
+            name="청년픽업",
+            region=self.seoul,
+            division=self.div_youth,
+            train_time=now,
+            boarding_place="역",
+            contact="010",
+        )
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=2,
+            group=self.group_univ,
+            name="대학픽업",
+            region=self.seoul,
+            division=self.div_univ,
+            train_time=now,
+            boarding_place="역",
+            contact="010",
+        )
+        self.client.force_authenticate(self.pastor)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(len(data["by_group"]), 1)
+        self.assertEqual(data["by_group"][0]["group_id"], self.group_youth.id)
+        self.assertEqual(data["summary"]["lodging_unassigned"], 1)
+        self.assertEqual(data["summary"]["car_today"], 1)
+
+    def test_pastor_group_board_excludes_other_division(self):
+        self.client.force_authenticate(self.pastor)
+        url = reverse("api_retreat_event_group_board", args=[self.event.id])
+        data = self.client.get(url).json()
+        group_ids = {g["group_id"] for g in data["groups"]}
+        self.assertEqual(group_ids, {self.group_youth.id})

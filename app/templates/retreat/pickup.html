@@ -185,8 +185,8 @@
               </div>
               {% endif %}
               <div class="field">
-                <label for="pickupTrainTime">{% if active_pickup_tab == 'arrival' %}열차 하차시각{% else %}열차 타는 시각{% endif %} *</label>
-                <input type="datetime-local" id="pickupTrainTime" name="train_time" required autocomplete="off" data-dtp aria-label="{% if active_pickup_tab == 'arrival' %}열차 하차시각{% else %}열차 타는 시각{% endif %}" />
+                <label for="pickupTrainTime">버스,열차 승하차 시각 *</label>
+                <input type="datetime-local" id="pickupTrainTime" name="train_time" required autocomplete="off" data-dtp aria-label="버스,열차 승하차 시각" />
               </div>
               <div class="field jcc-retreat-modalField--full">
                 <label for="pickupBoardingPlace">탑승장소 *</label>
@@ -196,7 +196,7 @@
                 <small class="muted jcc-pickup-boardingHint" id="pickupBoardingHint" hidden>등록된 탑승장소가 없습니다. 회장단에게 등록을 요청해 주세요.</small>
               </div>
               <div class="field">
-                <label for="pickupContact">연락처 *</label>
+                <label for="pickupContact">픽업대상자 연락처 *</label>
                 <input type="tel" id="pickupContact" name="contact" required maxlength="30" autocomplete="off" inputmode="numeric" placeholder="010-1234-5678" pattern="01[016789][0-9-]{7,12}" />
               </div>
               <div class="field jcc-retreat-modalField--full">
@@ -280,6 +280,6 @@
     <script src="{% static 'retreat/datetime_picker.js' %}?v=20260619a" defer></script>
     <script src="{% static 'retreat/date_filter.js' %}?v=20260615a" defer></script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/pickup.js' %}?v=20260615k" defer></script>
+    <script src="{% static 'retreat/pickup.js' %}?v=20260622a" defer></script>
   </body>
 </html>

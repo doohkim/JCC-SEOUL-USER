@@ -18,6 +18,11 @@ class RetreatEvent(models.Model):
         default=True,
         help_text="비활성화 시 API 목록/관리 화면에서 숨김(데이터는 보존).",
     )
+    require_retreat_participation_on_signup = models.BooleanField(
+        "가입신청 시 수련회 참석 여부 필수",
+        default=False,
+        help_text="활성 집회에 이 옵션이 켜져 있으면 가입신청서에서 수련회 참석 여부를 반드시 선택해야 합니다.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -28,6 +33,14 @@ class RetreatEvent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.start_date:%Y-%m-%d}~{self.end_date:%Y-%m-%d})"
+
+    @classmethod
+    def active_requires_signup_retreat_participation(cls) -> bool:
+        """활성 집회 중 가입신청 시 수련회 참석 여부를 필수로 하는 집회가 있는지."""
+        return cls.objects.filter(
+            is_active=True,
+            require_retreat_participation_on_signup=True,
+        ).exists()
 
 
 class RetreatSession(models.Model):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 
 from django.contrib.auth import get_user_model
@@ -73,3 +74,24 @@ def user_display_name(user, *, kakao_map: dict[int, str] | None = None) -> str:
         if nick:
             return nick
     return (user.username or "").strip() or str(user.pk)
+
+
+def _phone_suffix4(phone: str) -> str:
+    digits = re.sub(r"\D", "", phone or "")
+    return digits[-4:] if len(digits) >= 4 else ""
+
+
+def user_account_link_label(user) -> str:
+    """계정 연결 피커용: ``실명-휴대폰뒤4자리`` (예: 김도오-6804)."""
+    if user is None:
+        return ""
+    profile = getattr(user, "profile", None)
+    real = (getattr(profile, "real_name", "") or "").strip()
+    suffix = _phone_suffix4(getattr(profile, "phone", "") or "")
+    if real and suffix:
+        return f"{real}-{suffix}"
+    if real:
+        return real
+    if suffix:
+        return suffix
+    return user_display_name(user) or (user.username or "").strip() or str(user.pk)

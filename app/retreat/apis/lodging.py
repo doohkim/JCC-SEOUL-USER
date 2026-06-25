@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from retreat.apis._common import (
     assert_can_manage_lodging,
-    assert_can_view_event,
+    assert_can_view_lodging,
 )
 from retreat.models import (
     Lodging,
@@ -46,7 +46,7 @@ class RetreatEventLodgingsView(APIView):
 
     def get(self, request, event_id: int):
         event = get_object_or_404(RetreatEvent, pk=event_id)
-        assert_can_view_event(request.user, event)
+        assert_can_view_lodging(request.user, event)
         lodgings = _lodgings_with_rooms(event)
         return Response(LodgingSerializer(lodgings, many=True).data)
 
@@ -75,7 +75,7 @@ class RetreatLodgingDetailView(APIView):
 
     def get(self, request, lodging_id: int):
         lodging = self._get(request, lodging_id)
-        assert_can_view_event(request.user, lodging.event)
+        assert_can_view_lodging(request.user, lodging.event)
         return Response(LodgingSerializer(lodging).data)
 
     def patch(self, request, lodging_id: int):
@@ -103,7 +103,7 @@ class RetreatLodgingRoomsView(APIView):
         lodging = get_object_or_404(
             Lodging.objects.select_related("event"), pk=lodging_id
         )
-        assert_can_view_event(request.user, lodging.event)
+        assert_can_view_lodging(request.user, lodging.event)
         rooms = lodging.rooms.all().order_by("sort_order", "number", "id")
         return Response(LodgingRoomSerializer(rooms, many=True).data)
 
@@ -134,7 +134,7 @@ class RetreatLodgingRoomDetailView(APIView):
 
     def get(self, request, room_id: int):
         room = self._get(request, room_id)
-        assert_can_view_event(request.user, room.lodging.event)
+        assert_can_view_lodging(request.user, room.lodging.event)
         return Response(LodgingRoomSerializer(room).data)
 
     def patch(self, request, room_id: int):

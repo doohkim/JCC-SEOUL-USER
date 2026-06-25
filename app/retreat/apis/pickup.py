@@ -30,6 +30,7 @@ from users.permissions import (
     can_manage_retreat_pickup,
     can_select_pickup_group,
     retreat_pickup_group_ids_for,
+    retreat_pickup_visible_group_ids_for,
 )
 
 
@@ -42,6 +43,26 @@ def _assert_can_manage(user, event: RetreatEvent) -> None:
     _assert_can_view(user, event)
     if not can_manage_retreat_pickup(user, event):
         raise PermissionDenied("픽업 정보 추가·삭제 권한이 없습니다.")
+
+
+def _pickup_duplicate_exists(
+    event: RetreatEvent,
+    direction: str,
+    group_id: int | None,
+    name: str,
+    *,
+    exclude_id: int | None = None,
+) -> bool:
+    """동일 집회·구분·조·이름의 픽업이 이미 있으면 True."""
+    qs = RetreatPickup.objects.filter(
+        event=event,
+        direction=direction,
+        group_id=group_id,
+        name=name,
+    )
+    if exclude_id is not None:
+        qs = qs.exclude(pk=exclude_id)
+    return qs.exists()
 
 
 def _parse_direction(value) -> str:
@@ -115,10 +136,13 @@ class RetreatEventPickupListCreateView(APIView):
             .select_related("group", "region", "division")
             .order_by("number", "id")
         )
-        # 조장/부조장은 본인 조의 픽업만 조회 가능 (회장단·슈퍼유저는 전체)
+        # 조장/부조장은 본인 조, 목사/전도사는 담당 부서 조만 (회장단·슈퍼유저는 전체)
         if not can_select_pickup_group(request.user, event):
-            group_ids = retreat_pickup_group_ids_for(request.user, event)
-            qs = qs.filter(group_id__in=group_ids)
+            group_ids = retreat_pickup_visible_group_ids_for(request.user, event)
+            if group_ids:
+                qs = qs.filter(group_id__in=group_ids)
+            else:
+                qs = qs.none()
         return Response(RetreatPickupSerializer(qs, many=True).data)
 
     def post(self, request, event_id: int):
@@ -203,6 +227,16 @@ class RetreatEventPickupListCreateView(APIView):
         if place_err:
             errors["boarding_place"] = place_err
             raise ValidationError(errors)
+
+        if _pickup_duplicate_exists(
+            event,
+            direction,
+            group.pk if group else None,
+            name,
+        ):
+            raise ValidationError(
+                {"name": "이미 동일 구분·조에 차량 요청이 등록된 조원입니다."}
+            )
 
         applicant_name = _applicant_name(request.user)
         with transaction.atomic():
@@ -362,6 +396,16 @@ class RetreatPickupDetailView(APIView):
         if errors:
             raise ValidationError(errors)
         if update_fields:
+            if _pickup_duplicate_exists(
+                event,
+                pickup.direction,
+                pickup.group_id,
+                pickup.name,
+                exclude_id=pickup.pk,
+            ):
+                raise ValidationError(
+                    {"name": "이미 동일 구분·조에 차량 요청이 등록된 조원입니다."}
+                )
             place_err = _validate_boarding_place(event, pickup.boarding_place)
             if place_err:
                 raise ValidationError({"boarding_place": place_err})

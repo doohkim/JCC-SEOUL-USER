@@ -12,6 +12,7 @@ from users.permissions import (
     can_manage_retreat_group_leaders,
     is_retreat_council,
     is_retreat_group_leader,
+    is_retreat_pastoral_observer,
     visible_retreat_groups_for,
 )
 
@@ -34,7 +35,10 @@ def assert_can_mutate_group(user, group: RetreatGroup) -> None:
     - 슈퍼유저 OK
     - 조장/부조장 OK (본인 그룹)
     - 회장단 OK
+    - 목사·전도사(회장단 제외)는 변경 불가
     """
+    if is_retreat_pastoral_observer(user, group.event):
+        raise PermissionDenied("목사·전도사는 조 정보를 열람만 할 수 있습니다.")
     if user.is_superuser:
         return
     if is_retreat_group_leader(user, group):
@@ -75,6 +79,14 @@ def assert_can_view_event(user, event: RetreatEvent) -> None:
         raise PermissionDenied("이 집회를 볼 권한이 없습니다.")
 
 
+def assert_can_view_lodging(user, event: RetreatEvent) -> None:
+    """숙소 탭·API 조회 — 슈퍼유저·해당 집회 회장단만 (조장·부조장 제외)."""
+    from users.permissions import can_view_retreat_all
+
+    if not can_view_retreat_all(user, event):
+        raise PermissionDenied("이 집회의 숙소를 볼 권한이 없습니다.")
+
+
 def assert_can_add_group(user, event: RetreatEvent) -> None:
     if not can_add_retreat_group(user, event):
         raise PermissionDenied("조를 추가할 권한이 없습니다.")
@@ -86,12 +98,12 @@ def assert_can_manage_group_leaders(user, group: RetreatGroup) -> None:
 
 
 def user_can_edit_attendee_details(user, group: RetreatGroup) -> bool:
-    """조원 프로필(이름·연락처 등) 수정 — 회장단·슈퍼유저·본인 조 조장."""
+    """조원 프로필(이름·연락처 등) 수정 — 슈퍼유저·해당 집회 회장단만."""
+    if is_retreat_pastoral_observer(user, group.event):
+        return False
     if user.is_superuser:
         return True
-    if is_retreat_council(user, group.event):
-        return True
-    return is_retreat_group_leader(user, group)
+    return is_retreat_council(user, group.event)
 
 
 def assert_can_edit_attendee_details(user, group: RetreatGroup) -> None:
@@ -105,14 +117,14 @@ def assert_can_change_check_in_status(user, group: RetreatGroup) -> None:
 
 
 def user_can_delete_attendee(user, group: RetreatGroup) -> bool:
-    """조원 삭제 — 슈퍼유저·회장단·본인 조 조장/부조장."""
+    """조원 삭제 — 슈퍼유저·해당 집회 회장단만."""
     if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if is_retreat_pastoral_observer(user, group.event):
         return False
     if user.is_superuser:
         return True
-    if is_retreat_council(user, group.event):
-        return True
-    return is_retreat_group_leader(user, group)
+    return is_retreat_council(user, group.event)
 
 
 def assert_can_delete_attendee(user, group: RetreatGroup) -> None:

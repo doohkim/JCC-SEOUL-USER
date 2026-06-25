@@ -1,0 +1,40 @@
+<div class="jcc-appsPaginationBar">
+  <div class="jcc-appsPaginationMeta">
+    {% if paginator.count %}
+      <span><strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong> / 총 {{ paginator.count }}건</span>
+      <span class="jcc-appsPaginationDivider" aria-hidden="true">·</span>
+      <span>{{ page_size }}개씩</span>
+      {% if is_paginated %}
+        <span class="jcc-appsPaginationDivider" aria-hidden="true">·</span>
+        <span>{{ page_obj.number }} / {{ paginator.num_pages }}페이지</span>
+      {% endif %}
+    {% else %}
+      <span>0건</span>
+    {% endif %}
+  </div>
+  {% if is_paginated %}
+    <nav class="jcc-appsPagination" aria-label="페이지">
+      {% if page_obj.has_previous %}
+        <a class="jcc-appsPageBtn jcc-appsPageBtn--arrow" href="?{% if applications_query_base %}{{ applications_query_base }}&{% endif %}page=1" aria-label="첫 페이지">«</a>
+        <a class="jcc-appsPageBtn jcc-appsPageBtn--arrow" href="?{% if applications_query_base %}{{ applications_query_base }}&{% endif %}page={{ page_obj.previous_page_number }}" aria-label="이전 페이지">‹</a>
+      {% else %}
+        <span class="jcc-appsPageBtn jcc-appsPageBtn--arrow is-disabled" aria-hidden="true">«</span>
+        <span class="jcc-appsPageBtn jcc-appsPageBtn--arrow is-disabled" aria-hidden="true">‹</span>
+      {% endif %}
+      {% for num in paginator.page_range %}
+        {% if num == page_obj.number %}
+          <span class="jcc-appsPageBtn is-active" aria-current="page">{{ num }}</span>
+        {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+          <a class="jcc-appsPageBtn" href="?{% if applications_query_base %}{{ applications_query_base }}&{% endif %}page={{ num }}">{{ num }}</a>
+        {% endif %}
+      {% endfor %}
+      {% if page_obj.has_next %}
+        <a class="jcc-appsPageBtn jcc-appsPageBtn--arrow" href="?{% if applications_query_base %}{{ applications_query_base }}&{% endif %}page={{ page_obj.next_page_number }}" aria-label="다음 페이지">›</a>
+        <a class="jcc-appsPageBtn jcc-appsPageBtn--arrow" href="?{% if applications_query_base %}{{ applications_query_base }}&{% endif %}page={{ paginator.num_pages }}" aria-label="마지막 페이지">»</a>
+      {% else %}
+        <span class="jcc-appsPageBtn jcc-appsPageBtn--arrow is-disabled" aria-hidden="true">›</span>
+        <span class="jcc-appsPageBtn jcc-appsPageBtn--arrow is-disabled" aria-hidden="true">»</span>
+      {% endif %}
+    </nav>
+  {% endif %}
+</div>

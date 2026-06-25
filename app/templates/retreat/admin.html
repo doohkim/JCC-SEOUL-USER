@@ -168,7 +168,7 @@
                   <tbody>
                     {% for entry in changelog_entries %}
                       <tr>
-                        <td>{{ entry.log.changed_at|date:"m/d H:i:s" }}</td>
+                        <td>{{ entry.log.changed_at|date:"m/d H:i" }}</td>
                         <td>{{ entry.actor }}</td>
                         <td>{{ entry.summary }}</td>
                         <td class="jcc-retreat-logPayload">

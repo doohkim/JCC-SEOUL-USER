@@ -207,39 +207,34 @@ class RetreatPageAccessTests(_PageFixture):
         )
         self.assertIsNotNone(attendee.checked_in_at)
 
-    def test_manage_group_detail_has_check_in_tab_and_stamps(self):
+    def test_manage_group_detail_leader_read_only(self):
         RetreatAttendee.objects.create(group=self.group, name="입실표시")
         self.client.force_login(self.leader)
         r = self.client.get(
             reverse("retreat_group_manage", args=[self.event.id, self.group.id])
         )
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, 'id="retreatEventSwitcher"')
+        self.assertContains(r, 'id="retreatEventPicker"')
         self.assertContains(r, "역할")
         self.assertContains(r, "data-status-badge")
         self.assertContains(r, "jcc-retreat-checkInBadge")
-        # 조장(can_mutate)은 예상 입·퇴실 시각을 리스트에서 인라인으로 입력할 수 있다.
-        self.assertContains(r, 'data-expected-field="expected_check_in_at"')
-        self.assertContains(r, 'data-expected-field="expected_check_out_at"')
-        # 입·퇴실 상태 변경은 수정 모달에서 처리한다.
-        self.assertContains(r, 'id="retreatAttCheckIn"')
-        self.assertNotContains(r, "data-check-in-group")
-        # 정렬 가능한 컬럼 헤더 노출.
+        self.assertFalse(r.context["can_edit_attendee"])
+        self.assertFalse(r.context["can_delete_attendee"])
+        self.assertNotContains(r, 'data-expected-field="expected_check_in_at"')
+        self.assertNotContains(r, 'id="retreatAttCheckIn"')
+        self.assertNotContains(r, "data-del")
+        self.assertNotContains(r, 'id="btnAddAttendee"')
+        self.assertNotContains(r, "사용자 연동")
+        self.assertContains(r, "읽기 전용")
         self.assertContains(r, 'data-sort-key="role"')
-        # 실제 입·퇴실 시각 수정 권한은 여전히 없다.
-        self.assertFalse(r.context["can_edit_timestamps"])
-        # 조장은 조원 삭제(제거) 버튼을 볼 수 있다.
-        self.assertTrue(r.context["can_delete_attendee"])
-        self.assertContains(r, "data-del")
 
-    def test_manage_group_detail_staff_can_edit_timestamps(self):
+    def test_manage_group_detail_council_can_edit_timestamps(self):
         RetreatAttendee.objects.create(group=self.group, name="시각수정")
-        self.client.force_login(self.staff)
+        self.client.force_login(self.council)
         r = self.client.get(
             reverse("retreat_group_manage", args=[self.event.id, self.group.id])
         )
         self.assertEqual(r.status_code, 200)
-        self.assertTrue(r.context["can_edit_timestamps"])
         self.assertTrue(r.context["can_edit_attendee"])
         self.assertContains(r, "구분")
         self.assertContains(r, "jcc-retreat-modal--attendeeEdit")
@@ -347,13 +342,17 @@ class RetreatPageAccessTests(_PageFixture):
         r = self.client.get(reverse("retreat_admin", args=[self.event.id]))
         self.assertEqual(r.status_code, 403)
 
-    def test_admin_ok_for_pastor_readonly(self):
-        # 목사/전도사는 접근 가능하지만 출석부 만들기 버튼은 보이지 않음.
+    def test_admin_forbidden_for_pastor(self):
         self.client.force_login(self.pastor)
         r = self.client.get(reverse("retreat_admin", args=[self.event.id]))
-        self.assertEqual(r.status_code, 200)
-        self.assertFalse(r.context["can_manage_sessions"])
-        self.assertNotContains(r, "출석부 만들기")
+        self.assertEqual(r.status_code, 403)
+
+    def test_admin_changelog_forbidden_for_pastor(self):
+        self.client.force_login(self.pastor)
+        r = self.client.get(
+            reverse("retreat_admin", args=[self.event.id]) + "?tab=changelog"
+        )
+        self.assertEqual(r.status_code, 403)
 
     def test_admin_ok_for_council_with_create_button(self):
         self.client.force_login(self.council)
@@ -396,14 +395,10 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertEqual(r.context["active_tab"], "changelog")
         self.assertIn("changelog_entries", r.context)
 
-    def test_admin_pastor_sessions_tab_no_create_button(self):
-        # 목사/전도사는 기본 sessions 탭에서도 read-only — 만들기 버튼이 없다.
+    def test_admin_pastor_forbidden_on_sessions_tab(self):
         self.client.force_login(self.pastor)
         r = self.client.get(reverse("retreat_admin", args=[self.event.id]))
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.context["active_tab"], "sessions")
-        self.assertFalse(r.context["can_manage_sessions"])
-        self.assertNotContains(r, "출석부 만들기")
+        self.assertEqual(r.status_code, 403)
 
     def test_admin_create_modal_exposes_extended_fields(self):
         # 회장단/슈퍼유저 모달에 집회·상태·마감일시 필드가 함께 노출된다.

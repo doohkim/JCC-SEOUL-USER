@@ -11,6 +11,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from retreat.models import (
+    RetreatAttendee,
     RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
@@ -161,6 +162,66 @@ class PickupApiTests(_PickupFixture):
         )
         self.assertEqual(r2.status_code, 201)
         self.assertEqual(r2.data["number"], 2)
+
+    def test_duplicate_pickup_same_group_name_rejected(self):
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=1,
+            group=self.group,
+            name="김비투",
+            train_time=_tt(17, 20),
+            boarding_place="장성역",
+            contact="010-4442-1313",
+        )
+        self.client.force_login(self.leader)
+        r = self.client.post(
+            self._list_url(),
+            {
+                "direction": RetreatPickup.Direction.ARRIVAL,
+                "name": "김비투",
+                "train_time": "2026-08-01T17:20",
+                "boarding_place": "장성역",
+                "contact": "010-4442-1313",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("name", r.data)
+        self.assertEqual(
+            RetreatPickup.objects.filter(
+                event=self.event,
+                direction=RetreatPickup.Direction.ARRIVAL,
+                group=self.group,
+                name="김비투",
+            ).count(),
+            1,
+        )
+
+    def test_same_name_different_direction_allowed(self):
+        RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=1,
+            group=self.group,
+            name="김비투",
+            train_time=_tt(17, 20),
+            boarding_place="장성역",
+            contact="010-4442-1313",
+        )
+        self.client.force_login(self.leader)
+        r = self.client.post(
+            self._list_url(),
+            {
+                "direction": RetreatPickup.Direction.DEPARTURE,
+                "name": "김비투",
+                "train_time": "2026-08-03T10:00",
+                "boarding_place": "장성역",
+                "contact": "010-4442-1313",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
 
     def test_create_requires_mandatory_fields(self):
         self.client.force_login(self.council)
@@ -492,3 +553,67 @@ class PickupApiTests(_PickupFixture):
         )
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(r.data["group"], self.group2.id)
+
+
+class AttendeeDeletePickupCascadeTests(_PickupFixture):
+    """조원 삭제 시 동일 조·이름 픽업 요청 연쇄 삭제."""
+
+    def setUp(self):
+        super().setUp()
+        self.attendee = RetreatAttendee.objects.create(
+            group=self.group,
+            name="픽업대상",
+        )
+        self.pickup_arrival = RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=1,
+            group=self.group,
+            name="픽업대상",
+            train_time=_tt(9),
+            boarding_place="서울역",
+            contact="010-1111-2222",
+        )
+        self.pickup_departure = RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.DEPARTURE,
+            number=1,
+            group=self.group,
+            name="픽업대상",
+            train_time=_tt(18),
+            boarding_place="수원역",
+            contact="010-1111-2222",
+        )
+        self.other_pickup = RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=2,
+            group=self.group,
+            name="다른사람",
+            train_time=_tt(10),
+            boarding_place="역",
+            contact="010-3333-4444",
+        )
+        self.url = reverse("api_retreat_attendee_detail", args=[self.attendee.id])
+
+    def test_get_with_pickups_lists_linked_requests(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.get(f"{self.url}?with_pickups=1")
+        self.assertEqual(r.status_code, 200, r.content)
+        pickups = r.data.get("linked_pickups") or []
+        self.assertEqual(len(pickups), 2)
+        numbers = {p["number"] for p in pickups}
+        self.assertEqual(numbers, {1})
+
+    def test_delete_attendee_removes_matching_pickups_only(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.delete(self.url)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.data.get("deleted_pickup_count"), 2)
+        self.assertFalse(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())
+        self.assertFalse(
+            RetreatPickup.objects.filter(
+                pk__in=[self.pickup_arrival.id, self.pickup_departure.id]
+            ).exists()
+        )
+        self.assertTrue(RetreatPickup.objects.filter(pk=self.other_pickup.id).exists())

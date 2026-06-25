@@ -25,7 +25,6 @@ from retreat.services.participation import (
     pickup_visible_for_participation,
 )
 from users.permissions import (
-    membership_divisions_for,
     visible_retreat_groups_for,
     visible_retreat_sessions_for,
 )
@@ -37,9 +36,7 @@ def _group_queryset(event: RetreatEvent, user, *, restrict_to_user_groups: bool)
         .select_related("region", "division")
         .order_by("order", "id")
     )
-    if restrict_to_user_groups and not (
-        user.is_superuser or _is_staff_for_event(user, event)
-    ):
+    if restrict_to_user_groups and not _is_event_wide_for_user(user, event):
         leader_group_ids = set(
             user.retreat_group_memberships.filter(group__event=event).values_list(
                 "group_id", flat=True
@@ -50,10 +47,47 @@ def _group_queryset(event: RetreatEvent, user, *, restrict_to_user_groups: bool)
     return qs
 
 
-def _is_staff_for_event(user, event: RetreatEvent) -> bool:
-    from users.permissions import can_view_retreat_all
+def _is_event_wide_for_user(user, event: RetreatEvent) -> bool:
+    """집회 전체 조 집계·보기 — 슈퍼유저·해당 집회 회장단."""
+    if user.is_superuser:
+        return True
+    from users.permissions import is_retreat_council
 
-    return can_view_retreat_all(user, event)
+    return is_retreat_council(user, event)
+
+
+def _event_group_ids(event: RetreatEvent) -> list[int]:
+    return list(
+        RetreatGroup.objects.filter(event=event).values_list("id", flat=True)
+    )
+
+
+def _leader_group_ids_for_event(user, event: RetreatEvent) -> list[int]:
+    """집회에서 조장/부조장으로 소속된 조 id 목록."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return []
+    return list(
+        user.retreat_group_memberships.filter(group__event=event).values_list(
+            "group_id", flat=True
+        )
+    )
+
+
+def _summary_scope_group_ids(
+    event: RetreatEvent, user, *, staff_view: bool
+) -> list[int]:
+    """요약 카드(미배정·차량 지원) 집계 범위.
+
+    - staff_view(회장단·슈퍼유저): 집회 전체 조
+    - 조장/부조장: 본인 조만
+    - 목사/전도사 등: ``visible_retreat_groups_for`` (담당 지역·부서 조)
+    """
+    if staff_view:
+        return _event_group_ids(event)
+    leader_ids = _leader_group_ids_for_event(user, event)
+    if leader_ids:
+        return leader_ids
+    return list(visible_retreat_groups_for(user, event).values_list("id", flat=True))
 
 
 def _attendance_counts_by_group(session_id: int) -> dict[int, dict[str, int]]:
@@ -262,11 +296,9 @@ def build_realtime_dashboard(
         participation_status=RetreatAttendee.ParticipationStatus.ABSENT,
     ).count()
 
-    region_ids = {g.region_id for g in groups}
     summary = _build_dashboard_summary(
         event,
-        group_ids=group_ids,
-        region_ids=region_ids,
+        user=user,
         staff_view=staff_view,
         now=now,
         checked_in=grand_in,
@@ -293,9 +325,8 @@ def build_realtime_dashboard(
 
 def _build_dashboard_summary(
     event: RetreatEvent,
+    user,
     *,
-    group_ids: list[int],
-    region_ids: set[int],
     staff_view: bool,
     now,
     checked_in: int,
@@ -306,24 +337,31 @@ def _build_dashboard_summary(
 
     - 실시간 참석: 입실 인원 / 총 참석인원, 전체 인원 대비 입실 비율(%)
     - 미배정: 숙박 대상(참석·입실 예정·퇴실 제외) 중 호실 미배정 조원 수
-    - 차량 지원: 오늘 열차 시각이 잡힌 픽업 인원 수
-
-    staff_view 가 아니면 사용자가 볼 수 있는 조(group_ids)·지역(region_ids)으로
-    범위를 제한해 타 부서 데이터가 노출되지 않게 한다.
+      - 조장/부조장: 본인 조 조원만
+      - 회장단·슈퍼유저(staff_view): 집회 전체 조
+      - 목사/전도사: 담당 지역·부서 조
+    - 차량 지원: 당일(현재 시각 기준) 열차 시각이 잡힌 픽업 인원 수
+      - 조장/부조장: 본인 조 신청만
+      - 회장단·슈퍼유저(staff_view): 집회 전체 조
+      - 목사/전도사: 담당 지역·부서 조
     """
     attend_percent = round(checked_in / total * 100) if total else 0
 
+    scope_group_ids = _summary_scope_group_ids(event, user, staff_view=staff_view)
+
     lodging_unassigned = lodging_eligible_filter(
         RetreatAttendee.objects.filter(
-            group_id__in=group_ids, lodging_room__isnull=True
+            group_id__in=scope_group_ids, lodging_room__isnull=True
         )
     ).count()
 
     today = timezone.localdate(now)
     pickups = RetreatPickup.objects.filter(event=event, train_time__date=today)
     if not staff_view:
-        pickups = pickups.filter(region_id__in=region_ids)
-    absent_keys = absent_attendee_keys(group_ids)
+        pickups = pickups.filter(group_id__in=scope_group_ids)
+    absent_keys = absent_attendee_keys(
+        _event_group_ids(event) if staff_view else scope_group_ids
+    )
     car_today = sum(
         1
         for p in pickups
@@ -354,17 +392,20 @@ def build_group_attendance_board(
     시각과 현재 시각을 비교해 실시간으로 계산한다.
     """
     now = now or timezone.now()
-    # 회장단·목사·전도사·슈퍼유저(staff_view)는 전체 조를, 그 외 일반 사용자는
-    # 본인 소속(UserDivisionTeam) 지역의 조만 볼 수 있도록 제한한다.
-    groups_qs = RetreatGroup.objects.filter(event=event).select_related(
-        "region", "division"
-    )
-    if not staff_view:
-        region_ids = set(
-            membership_divisions_for(user).values_list("region_id", flat=True)
+    # 회장단·슈퍼유저(staff_view)는 전체 조를, 그 외는 visible_retreat_groups_for 범위.
+    if staff_view:
+        groups_qs = (
+            RetreatGroup.objects.filter(event=event)
+            .select_related("region", "division")
+            .order_by("order", "id")
         )
-        groups_qs = groups_qs.filter(region_id__in=region_ids)
-    groups = list(groups_qs.order_by("order", "id"))
+    else:
+        groups_qs = (
+            visible_retreat_groups_for(user, event)
+            .select_related("region", "division")
+            .order_by("order", "id")
+        )
+    groups = list(groups_qs)
     group_ids = [g.id for g in groups]
 
     S = RetreatAttendee.CheckInStatus

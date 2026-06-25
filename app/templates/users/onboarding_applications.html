@@ -1,0 +1,1124 @@
+{% load static permission_tags %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  {% include 'includes/jcc_theme_head.html' %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>계정 관리 · 가입신청서</title>
+  <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260622b">
+  <style>
+    .jcc-appsToolbar {
+      --jcc-apps-control-h: 2.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.65rem;
+      margin-bottom: 1rem;
+    }
+    .jcc-appsSearchWrap {
+      position: relative;
+      flex: 1 1 12rem;
+      min-width: min(100%, 12rem);
+    }
+    .jcc-appsSearchIcon {
+      position: absolute;
+      left: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 1.05rem;
+      height: 1.05rem;
+      color: var(--muted);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .jcc-appsSearchIcon svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .jcc-appsToolbar .jcc-appsSearchInput {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      min-width: 0;
+      height: var(--jcc-apps-control-h);
+      min-height: var(--jcc-apps-control-h);
+      max-height: var(--jcc-apps-control-h);
+      padding: 0 0.85rem 0 2.45rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 500;
+      line-height: normal;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .jcc-appsToolbar .jcc-appsSearchInput::placeholder {
+      color: var(--muted);
+      opacity: 1;
+    }
+    .jcc-appsToolbar .jcc-appsSearchInput:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+    }
+    .jcc-appsToolbar .jcc-appsSearchInput::-webkit-search-cancel-button,
+    .jcc-appsToolbar .jcc-appsSearchInput::-webkit-search-decoration {
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .jcc-appsFilter {
+      flex: 1 1 9.5rem;
+      min-width: min(100%, 9.5rem);
+      max-width: 100%;
+    }
+    .jcc-appsToolbar-filters {
+      display: flex;
+      flex: 1 1 auto;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.65rem;
+      min-width: 0;
+    }
+    .jcc-appsToolbar-filters .jcc-appsFilter {
+      flex: 1 1 9.5rem;
+    }
+    @keyframes jccAppsPickerIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: none; }
+    }
+    .jcc-cselect-native {
+      position: absolute !important;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .jcc-cselect {
+      position: relative;
+      display: block;
+      width: 100%;
+      min-width: 0;
+    }
+    .jcc-cselect-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0 0.85rem;
+      min-height: var(--jcc-apps-control-h, 2.75rem);
+      height: var(--jcc-apps-control-h, 2.75rem);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-weight: 500;
+      font-size: 0.9rem;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .jcc-cselect-btn:hover,
+    .jcc-cselect-btn:focus,
+    .jcc-cselect-btn:active,
+    .jcc-cselect.is-open .jcc-cselect-btn {
+      background: var(--card);
+      color: var(--text);
+    }
+    .jcc-cselect-btn:hover {
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    }
+    .jcc-cselect.is-open .jcc-cselect-btn,
+    .jcc-cselect-btn:focus-visible {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+    .jcc-cselect.is-placeholder .jcc-cselect-label { color: var(--muted); }
+    .jcc-cselect-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .jcc-cselect-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .jcc-cselect-caret {
+      display: inline-flex;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: var(--muted);
+      transition: transform 0.15s ease;
+    }
+    .jcc-cselect-caret svg { width: 100%; height: 100%; }
+    .jcc-cselect.is-open .jcc-cselect-caret { transform: rotate(180deg); }
+    .jcc-cselect-menu {
+      position: fixed;
+      z-index: 2500;
+      margin: 0;
+      padding: 0.35rem;
+      list-style: none;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.08);
+      max-height: min(18rem, 60vh);
+      overflow-y: auto;
+      animation: jccAppsPickerIn 0.12s ease;
+    }
+    .jcc-cselect-group {
+      padding: 0.5rem 0.7rem 0.25rem;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+    }
+    .jcc-cselect-group:not(:first-child) {
+      margin-top: 0.2rem;
+      border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+      padding-top: 0.5rem;
+    }
+    .jcc-cselect-opt {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      padding: 0.6rem 0.7rem;
+      border-radius: 10px;
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .jcc-cselect-opt:hover,
+    .jcc-cselect-opt.is-focus {
+      background: color-mix(in srgb, var(--text) 7%, transparent);
+    }
+    .jcc-cselect-opt.is-selected {
+      color: var(--accent);
+      font-weight: 800;
+    }
+    .jcc-cselect-opt.is-disabled {
+      color: var(--muted);
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .jcc-cselect-check {
+      display: inline-flex;
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      opacity: 0;
+    }
+    .jcc-cselect-check svg { width: 100%; height: 100%; }
+    .jcc-cselect-opt.is-selected .jcc-cselect-check { opacity: 1; }
+    .jcc-appsTableCard {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .jcc-appsTableWrap { overflow-x: auto; }
+    .jcc-appsTable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .jcc-appsTable thead th {
+      padding: 0.85rem 1rem;
+      text-align: left;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: color-mix(in srgb, var(--surface-2, var(--card)) 70%, var(--card));
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .jcc-appsTable tbody td {
+      padding: 0.95rem 1rem;
+      border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+      vertical-align: middle;
+    }
+    .jcc-appsTable tbody tr:last-child td { border-bottom: none; }
+    .jcc-appsTable tbody tr:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+    .jcc-appsUserLink {
+      display: inline;
+      padding: 0;
+      border: none;
+      background: none;
+      color: #2563eb;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+    }
+    .jcc-appsUserLink:hover { text-decoration: underline; }
+    .jcc-appsTextCell { color: var(--text); white-space: nowrap; }
+    .jcc-appsPhoneCell { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .jcc-appsTimeCell { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); font-size: 0.85rem; }
+    .jcc-appsStatusCell {
+      width: 1%;
+      white-space: nowrap;
+    }
+    .jcc-appsStatusCell .jcc-cselect {
+      min-width: 7.25rem;
+      max-width: 9.5rem;
+    }
+    .jcc-appsStatusCell .jcc-cselect-btn {
+      min-height: 2.5rem;
+      height: 2.5rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 10px;
+    }
+    .jcc-appsSaveForm { margin: 0; }
+    .jcc-appsSaveBtn {
+      border: none;
+      border-radius: 10px;
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
+      background: #2563eb;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease, opacity 0.15s ease;
+    }
+    .jcc-appsSaveBtn:hover:not(:disabled) { background: #1d4ed8; }
+    .jcc-appsSaveBtn.is-disabled,
+    .jcc-appsSaveBtn:disabled {
+      background: #e2e8f0;
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+    .jcc-appsFooter {
+      padding: 0;
+      border-top: 1px solid var(--border);
+      background: color-mix(in srgb, var(--surface-2, var(--card)) 50%, var(--card));
+    }
+    .jcc-appsPaginationBar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem 1rem;
+      padding: 0.9rem 1rem;
+    }
+    .jcc-appsPaginationBar + .jcc-appsPaginationBar {
+      border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+    }
+    .jcc-appsPaginationMeta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .jcc-appsPaginationMeta strong { color: var(--text); font-weight: 700; }
+    .jcc-appsPaginationDivider { opacity: 0.55; }
+    .jcc-appsPagination {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .jcc-appsPageBtn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.15rem;
+      height: 2.15rem;
+      padding: 0 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+    }
+    .jcc-appsPageBtn--arrow { min-width: 2rem; font-size: 1rem; line-height: 1; }
+    .jcc-appsPageBtn:hover:not(.is-active):not(.is-disabled) {
+      border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+      color: var(--accent);
+    }
+    .jcc-appsPageBtn.is-active {
+      background: #1e3a5f;
+      border-color: #1e3a5f;
+      color: #fff;
+    }
+    .jcc-appsPageBtn.is-disabled {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+    .jcc-appsEmpty {
+      padding: 2.5rem 1rem;
+      text-align: center;
+      color: var(--muted);
+    }
+    .jcc-appEditOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.55);
+    }
+    .jcc-appEditOverlay[hidden] { display: none; }
+    .jcc-appEditModal {
+      width: min(100%, 40rem);
+      max-height: min(92vh, 820px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      box-shadow: 0 18px 56px rgba(0, 0, 0, 0.4);
+    }
+    .jcc-appEditModal__head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 1.5rem 1.6rem 1.1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .jcc-appEditModal__title {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .jcc-appEditModal__close {
+      flex: 0 0 auto;
+      border: none;
+      background: transparent;
+      font-size: 1.35rem;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 0.25rem 0.4rem;
+    }
+    .jcc-appEditForm {
+      padding: 1.25rem 1.6rem 1.5rem;
+      overflow-y: auto;
+    }
+    .jcc-appEditSection {
+      margin-bottom: 1.75rem;
+    }
+    .jcc-appEditSection__title {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      margin: 0 0 1rem;
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .jcc-appEditSection__icon {
+      display: inline-flex;
+      width: 1.1rem;
+      height: 1.1rem;
+      color: #2563eb;
+    }
+    .jcc-appEditGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.85rem 1rem;
+    }
+    .jcc-appEditGrid--full { grid-template-columns: 1fr; }
+    .jcc-appEditField label {
+      display: block;
+      margin-bottom: 0.45rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .jcc-appEditField input[type="text"],
+    .jcc-appEditField input[type="tel"],
+    .jcc-appEditField select {
+      width: 100%;
+      min-height: 2.85rem;
+      padding: 0.7rem 0.9rem;
+      font-size: 0.92rem;
+      border-radius: 14px;
+      background: var(--input-elev-0, color-mix(in srgb, var(--card) 92%, var(--border)));
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-sizing: border-box;
+    }
+    .jcc-appEditField .jcc-cselect-btn {
+      min-height: 2.85rem;
+      height: 2.85rem;
+      padding: 0 0.9rem;
+      border-radius: 14px;
+      font-size: 0.92rem;
+      font-weight: 500;
+      background: var(--input-elev-0, color-mix(in srgb, var(--card) 92%, var(--border)));
+    }
+    .jcc-appEditReadonly {
+      min-height: 2.85rem;
+      padding: 0.7rem 0.9rem;
+      border-radius: 14px;
+      background: var(--input-elev-0, color-mix(in srgb, var(--card) 92%, var(--border)));
+      border: 1px solid var(--border);
+      font-size: 0.92rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .jcc-appEditKakaoBadge {
+      flex: 0 0 auto;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      padding: 0.2rem 0.45rem;
+      border-radius: 6px;
+      background: #fee500;
+      color: #191600;
+    }
+    .jcc-appEditLogArea {
+      margin: 0.5rem 0 1.25rem;
+      padding-bottom: 0.25rem;
+    }
+    .jcc-appEditLogBtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 2.75rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0.55rem 0.95rem;
+      transition: border-color 0.12s ease, background 0.12s ease;
+    }
+    .jcc-appEditLogBtn__icon {
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .jcc-appEditLogBtn:hover {
+      border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+      background: color-mix(in srgb, var(--accent) 5%, var(--card));
+    }
+    .jcc-appEditFooter {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      gap: 0.65rem;
+      padding-top: 1rem;
+      border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+      margin-top: 0.25rem;
+    }
+    .jcc-appEditCancelBtn {
+      flex: 1;
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      background: var(--card);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .jcc-appEditSubmitBtn {
+      flex: 2;
+      min-width: 0;
+      border: none;
+      border-radius: 12px;
+      padding: 0.7rem 1rem;
+      font-size: 0.92rem;
+      font-weight: 700;
+      background: #2563eb;
+      color: #fff;
+      cursor: pointer;
+    }
+    .jcc-appEditSubmitBtn:hover { background: #1d4ed8; }
+    .jcc-appActivityModal {
+      width: min(100%, 32rem);
+      max-height: min(80vh, 520px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      box-shadow: 0 18px 56px rgba(0, 0, 0, 0.4);
+    }
+    .jcc-appActivityList {
+      list-style: none;
+      margin: 0;
+      padding: 0 1.4rem 1.25rem;
+      overflow-y: auto;
+    }
+    .jcc-appActivityItem {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+    }
+    .jcc-appActivityItem:last-child { border-bottom: none; }
+    .jcc-appActivityItem__summary {
+      margin: 0 0 0.25rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .jcc-appActivityItem__meta {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    @media (max-width: 640px) {
+      .jcc-appEditGrid { grid-template-columns: 1fr; }
+    }
+    @media (min-width: 480px) and (max-width: 768px) {
+      .jcc-appsToolbar-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .jcc-appsToolbar-filters .jcc-appsFilter:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+      }
+    }
+    @media (max-width: 768px) {
+      .jcc-appsToolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.55rem;
+      }
+      .jcc-appsSearchWrap {
+        flex: none;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+      }
+      .jcc-appsToolbar-filters {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.55rem;
+        width: 100%;
+      }
+      .jcc-appsToolbar-filters .jcc-appsFilter {
+        flex: none;
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+      }
+      .jcc-appsPaginationBar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .jcc-appsPaginationMeta { justify-content: center; }
+      .jcc-appsPagination { justify-content: center; }
+    }
+  </style>
+</head>
+<body class="has-account-bottom-tabs">
+  <div class="jcc-layout">
+    {% include 'includes/jcc_left_nav.html' %}
+    <div class="jcc-layout-content">
+      {% include 'includes/jcc_page_header.html' with page_title='계정 관리' subtitle='가입신청서를 확인하고 승인 상태를 변경할 수 있습니다.' tabs_template='users/_account_manage_tabs.html' %}
+      <main>
+        {% if messages %}
+          <div class="card" style="margin-bottom: 1rem;">
+            {% for message in messages %}
+              <div class="msg{% if message.tags == 'error' %} err{% endif %}" style="margin-bottom: 0.5rem;">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="get" class="jcc-appsToolbar">
+          <div class="jcc-appsSearchWrap">
+            <svg class="jcc-appsSearchIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+              <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <input
+              class="jcc-appsSearchInput"
+              type="search"
+              name="q"
+              value="{{ search_query }}"
+              placeholder="이름, 지역, 팀으로 검색..."
+              aria-label="검색"
+              autocomplete="off"
+              enterkeyhint="search"
+            >
+          </div>
+          <div class="jcc-appsToolbar-filters">
+          <div class="jcc-appsFilter">
+            <select name="region_id" data-cselect aria-label="지역 필터" onchange="this.form.submit()">
+              <option value="">전체 지역</option>
+              {% for r in region_choices %}
+                <option value="{{ r.id }}" {% if active_region_id == r.id|stringformat:"s" %}selected{% endif %}>{{ r.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          {% if can_choose_onboarding_division %}
+            <div class="jcc-appsFilter">
+              <select name="division_code" data-cselect aria-label="부서 필터" onchange="this.form.submit()">
+                <option value="{{ all_divisions_code }}" {% if not active_division %}selected{% endif %}>전체 부서</option>
+                {% regroup allowed_divisions by region.name as region_groups %}
+                {% for group in region_groups %}
+                  <optgroup label="{{ group.grouper|default:'(지역 미지정)' }}">
+                    {% for d in group.list %}
+                      <option value="{{ d.code }}" {% if active_division and d.id == active_division.id %}selected{% endif %}>{{ d.name }}</option>
+                    {% endfor %}
+                  </optgroup>
+                {% endfor %}
+              </select>
+            </div>
+          {% endif %}
+          <div class="jcc-appsFilter">
+            <select name="status" data-cselect aria-label="승인 상태 필터" onchange="this.form.submit()">
+              <option value="" {% if not status_filter %}selected{% endif %}>전체 상태</option>
+              {% for code, label in onboarding_status_choices %}
+                <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          </div>
+          {% if not can_choose_onboarding_division and active_division %}
+            <input type="hidden" name="division_code" value="{{ active_division.code }}">
+          {% endif %}
+          <input type="hidden" name="date_from" value="{{ date_from }}">
+          <input type="hidden" name="date_to" value="{{ date_to }}">
+        </form>
+
+        <div class="jcc-appsTableCard">
+          {% if application_profiles %}
+            {% if is_paginated %}
+              <div class="jcc-appsFooter jcc-appsFooter--top">
+                {% include "users/_onboarding_applications_pagination.html" %}
+              </div>
+            {% endif %}
+            <div class="jcc-appsTableWrap">
+              <table class="jcc-appsTable">
+                <thead>
+                  <tr>
+                    <th>사용자</th>
+                    <th>휴대폰</th>
+                    <th>지역</th>
+                    <th>부서</th>
+                    <th>팀</th>
+                    <th>수련회 신청 조</th>
+                    <th>신청 시간</th>
+                    <th>승인 상태</th>
+                    <th>관리</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for p in application_profiles %}
+                    {% include "users/_onboarding_application_row.html" %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <div class="jcc-appsFooter">
+              {% include "users/_onboarding_applications_pagination.html" %}
+            </div>
+          {% else %}
+            <div class="jcc-appsEmpty">표시할 가입신청서가 없습니다.</div>
+          {% endif %}
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="jcc-appEditOverlay" id="applicationEditOverlay" hidden aria-hidden="true">
+    <div class="jcc-appEditModal" role="dialog" aria-modal="true" aria-labelledby="applicationEditTitle">
+      <div class="jcc-appEditModal__head">
+        <h2 id="applicationEditTitle" class="jcc-appEditModal__title">사용자 정보 수정</h2>
+        <button type="button" class="jcc-appEditModal__close" id="applicationEditClose" aria-label="닫기">&times;</button>
+      </div>
+      <form method="post" id="applicationEditForm" class="jcc-appEditForm" autocomplete="off">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update_profile">
+        <input type="hidden" name="profile_id" id="applicationEditProfileId" value="">
+        <input type="hidden" name="date_from" value="{{ date_from }}">
+        <input type="hidden" name="date_to" value="{{ date_to }}">
+        <input type="hidden" name="q" value="{{ search_query }}">
+        <input type="hidden" name="region_id" value="{{ active_region_id }}">
+        <input type="hidden" name="status" value="{{ status_filter }}">
+        <input type="hidden" name="page" value="{{ page_obj.number|default:1 }}">
+        {% if active_division_code %}<input type="hidden" name="division_code" value="{{ active_division_code }}">{% endif %}
+
+        <section class="jcc-appEditSection">
+          <h3 class="jcc-appEditSection__title">
+            <span class="jcc-appEditSection__icon" aria-hidden="true">&#128100;</span>
+            기본 정보
+          </h3>
+          <div class="jcc-appEditGrid">
+            <div class="jcc-appEditField">
+              <label for="applicationEditRealName">실명</label>
+              <input type="text" id="applicationEditRealName" name="real_name" maxlength="50" autocomplete="off">
+            </div>
+            <div class="jcc-appEditField">
+              <label for="applicationEditDisplayName">표시 이름</label>
+              <input type="text" id="applicationEditDisplayName" name="display_name" maxlength="50" autocomplete="off">
+            </div>
+          </div>
+          <div class="jcc-appEditGrid jcc-appEditGrid--full" style="margin-top: 0.85rem;">
+            <div class="jcc-appEditField">
+              <label for="applicationEditPhone">전화번호</label>
+              <input
+                type="tel"
+                id="applicationEditPhone"
+                name="phone"
+                maxlength="13"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                inputmode="numeric"
+                placeholder="010-1234-5678"
+                data-lpignore="true"
+                data-1p-ignore
+                data-bwignore
+                readonly
+              >
+            </div>
+          </div>
+          <div class="jcc-appEditGrid jcc-appEditGrid--full" style="margin-top: 0.85rem;">
+            <div class="jcc-appEditField">
+              <label>카카오 계정</label>
+              <div class="jcc-appEditReadonly" id="applicationEditKakao">
+                <span id="applicationEditKakaoValue">-</span>
+                <span class="jcc-appEditKakaoBadge">KAKAO</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="jcc-appEditSection">
+          <h3 class="jcc-appEditSection__title">
+            <span class="jcc-appEditSection__icon" aria-hidden="true">&#127970;</span>
+            소속
+          </h3>
+          <div class="jcc-appEditGrid">
+            <div class="jcc-appEditField">
+              <label for="applicationEditRegion">지역</label>
+              <select id="applicationEditRegion" data-cselect aria-label="지역">
+                <option value="">지역 선택</option>
+                {% for region in region_choices %}
+                  <option value="{{ region.id }}">{{ region.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="jcc-appEditField">
+              <label for="applicationEditDivision">소속 부서/팀</label>
+              <select id="applicationEditDivision" name="requested_division_id" data-cselect aria-label="부서">
+                <option value="">부서 선택</option>
+              </select>
+            </div>
+          </div>
+          <div class="jcc-appEditGrid jcc-appEditGrid--full" style="margin-top: 0.85rem;">
+            <div class="jcc-appEditField">
+              <label for="applicationEditTeam">팀</label>
+              <select id="applicationEditTeam" name="requested_team_id" data-cselect aria-label="팀">
+                <option value="">팀 미지정</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="jcc-appEditSection" id="applicationEditRetreatSection">
+          <h3 class="jcc-appEditSection__title">
+            <span class="jcc-appEditSection__icon" aria-hidden="true">&#128186;</span>
+            수련회 신청 정보
+          </h3>
+          <div class="jcc-appEditGrid jcc-appEditGrid--full">
+            <div class="jcc-appEditField">
+              <label for="applicationEditRetreatEvent">신청 집회</label>
+              <select id="applicationEditRetreatEvent" name="requested_retreat_event_id" data-cselect aria-label="신청 집회">
+                <option value="">집회 미선택</option>
+              </select>
+            </div>
+            <div class="jcc-appEditField">
+              <label for="applicationEditRetreatGroup">신청 조 배정</label>
+              <select id="applicationEditRetreatGroup" name="requested_retreat_group_id" data-cselect aria-label="신청 조">
+                <option value="">조 선택</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <div class="jcc-appEditLogArea">
+          <button type="button" class="jcc-appEditLogBtn" id="applicationActivityBtn">
+            <span class="jcc-appEditLogBtn__icon" aria-hidden="true">📋</span>
+            활동 로그
+          </button>
+        </div>
+
+        <div class="jcc-appEditFooter">
+          <button type="button" class="jcc-appEditCancelBtn" id="applicationEditCancel">취소</button>
+          <button type="submit" class="jcc-appEditSubmitBtn">수정 완료</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="jcc-appEditOverlay" id="applicationActivityOverlay" hidden aria-hidden="true">
+    <div class="jcc-appActivityModal" role="dialog" aria-modal="true" aria-labelledby="applicationActivityTitle">
+      <div class="jcc-appEditModal__head">
+        <h2 id="applicationActivityTitle" class="jcc-appEditModal__title">활동 로그</h2>
+        <button type="button" class="jcc-appEditModal__close" id="applicationActivityClose" aria-label="닫기">&times;</button>
+      </div>
+      <ul class="jcc-appActivityList" id="applicationActivityList"></ul>
+    </div>
+  </div>
+
+  <script id="jccApplicationEditJson" type="application/json">{{ application_edit_json|safe }}</script>
+  <script id="jccApplicationDivisionsJson" type="application/json">{{ divisions_map_json|safe }}</script>
+  <script id="jccApplicationTeamsJson" type="application/json">{{ teams_map_json|safe }}</script>
+  <script id="jccApplicationRetreatEventsJson" type="application/json">{{ retreat_events_json|safe }}</script>
+  <script id="jccApplicationRetreatGroupsJson" type="application/json">{{ retreat_groups_json|safe }}</script>
+  <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c"></script>
+  <script src="{% static 'retreat/phone_format.js' %}?v=20260617a"></script>
+  <script>
+    (function () {
+      const editOverlay = document.getElementById("applicationEditOverlay");
+      const editForm = document.getElementById("applicationEditForm");
+      const activityOverlay = document.getElementById("applicationActivityOverlay");
+      const activityList = document.getElementById("applicationActivityList");
+      const activityBtn = document.getElementById("applicationActivityBtn");
+      const activityLogUrl = "{{ activity_log_url|escapejs }}";
+      if (!editOverlay || !editForm) return;
+
+      let applicationEditMap = {};
+      const divisionsMap = JSON.parse(document.getElementById("jccApplicationDivisionsJson").textContent || "{}");
+      const teamsMap = JSON.parse(document.getElementById("jccApplicationTeamsJson").textContent || "{}");
+      const retreatEvents = JSON.parse(document.getElementById("jccApplicationRetreatEventsJson").textContent || "[]");
+      const retreatGroups = JSON.parse(document.getElementById("jccApplicationRetreatGroupsJson").textContent || "[]");
+
+      try {
+        applicationEditMap = JSON.parse(document.getElementById("jccApplicationEditJson").textContent || "{}");
+      } catch (e) {
+        applicationEditMap = {};
+      }
+
+      const regionSel = document.getElementById("applicationEditRegion");
+      const divisionSel = document.getElementById("applicationEditDivision");
+      const teamSel = document.getElementById("applicationEditTeam");
+      const retreatEventSel = document.getElementById("applicationEditRetreatEvent");
+      const retreatGroupSel = document.getElementById("applicationEditRetreatGroup");
+      const phoneInput = document.getElementById("applicationEditPhone");
+      let currentProfileId = "";
+
+      if (phoneInput && window.JccPhoneFormat) {
+        JccPhoneFormat.bindInput(phoneInput);
+      }
+      phoneInput?.addEventListener("focus", () => {
+        phoneInput.removeAttribute("readonly");
+      });
+
+      function refreshCustomSelects(root) {
+        if (window.JccCustomSelect) {
+          JccCustomSelect.refresh(root || editForm);
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value == null ? "" : value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function fillDivisionSelect(regionId, selectedDivisionId) {
+        const current = String(selectedDivisionId || "");
+        divisionSel.innerHTML = '<option value="">부서 선택</option>';
+        (divisionsMap[String(regionId)] || []).forEach((d) => {
+          const opt = document.createElement("option");
+          opt.value = d.id;
+          opt.textContent = d.name;
+          if (String(d.id) === current) opt.selected = true;
+          divisionSel.appendChild(opt);
+        });
+      }
+
+      function fillTeamSelect(divisionId, selectedTeamId) {
+        const current = String(selectedTeamId || "");
+        teamSel.innerHTML = '<option value="">팀 미지정</option>';
+        (teamsMap[String(divisionId)] || []).forEach((t) => {
+          const opt = document.createElement("option");
+          opt.value = t.id;
+          opt.textContent = t.name;
+          if (String(t.id) === current) opt.selected = true;
+          teamSel.appendChild(opt);
+        });
+      }
+
+      function fillRetreatEventSelect(selectedEventId) {
+        const current = String(selectedEventId || "");
+        retreatEventSel.innerHTML = '<option value="">집회 미선택</option>';
+        retreatEvents.forEach((e) => {
+          const opt = document.createElement("option");
+          opt.value = e.id;
+          opt.textContent = e.name;
+          if (String(e.id) === current) opt.selected = true;
+          retreatEventSel.appendChild(opt);
+        });
+      }
+
+      function fillRetreatGroupSelect(eventId, divisionId, selectedGroupId) {
+        const current = String(selectedGroupId || "");
+        retreatGroupSel.innerHTML = '<option value="">조 선택</option>';
+        retreatGroups
+          .filter((g) => String(g.event_id) === String(eventId) && String(g.division_id) === String(divisionId))
+          .forEach((g) => {
+            const opt = document.createElement("option");
+            opt.value = g.id;
+            opt.textContent = g.label;
+            if (String(g.id) === current) opt.selected = true;
+            retreatGroupSel.appendChild(opt);
+          });
+      }
+
+      function syncFromRegion(selectedDivisionId, selectedTeamId, selectedEventId, selectedGroupId) {
+        fillDivisionSelect(regionSel.value, selectedDivisionId);
+        syncFromDivision(selectedTeamId, selectedEventId, selectedGroupId);
+      }
+
+      function syncFromDivision(selectedTeamId, selectedEventId, selectedGroupId) {
+        const divisionId = divisionSel.value;
+        fillTeamSelect(divisionId, selectedTeamId);
+        const eventId = selectedEventId || retreatEventSel.value;
+        fillRetreatEventSelect(eventId);
+        fillRetreatGroupSelect(retreatEventSel.value || eventId, divisionId, selectedGroupId);
+        refreshCustomSelects(editForm);
+      }
+
+      function openEditModal(profileId) {
+        const d = applicationEditMap[profileId];
+        if (!d) return;
+        currentProfileId = String(profileId);
+        document.getElementById("applicationEditProfileId").value = currentProfileId;
+        document.getElementById("applicationEditRealName").value = d.real_name || "";
+        document.getElementById("applicationEditDisplayName").value = d.display_name || "";
+        document.getElementById("applicationEditPhone").value = d.phone || "";
+        if (phoneInput) {
+          phoneInput.setAttribute("readonly", "readonly");
+        }
+        const kakaoEl = document.getElementById("applicationEditKakaoValue");
+        const kakaoWrap = document.getElementById("applicationEditKakao");
+        if (d.kakao_account) {
+          kakaoEl.textContent = d.kakao_account;
+          kakaoWrap.style.display = "";
+        } else {
+          kakaoEl.textContent = "-";
+          kakaoWrap.style.display = "";
+        }
+        if (regionSel) {
+          regionSel.value = d.region_id ? String(d.region_id) : "";
+        }
+        syncFromRegion(d.division_id, d.team_id, d.retreat_event_id, d.retreat_group_id);
+        const retreatSection = document.getElementById("applicationEditRetreatSection");
+        if (retreatSection) {
+          retreatSection.hidden = retreatEvents.length === 0;
+        }
+        editOverlay.hidden = false;
+        editOverlay.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+      }
+
+      function closeEditModal() {
+        editOverlay.hidden = true;
+        editOverlay.setAttribute("aria-hidden", "true");
+        if (activityOverlay.hidden) {
+          document.body.style.overflow = "";
+        }
+      }
+
+      function closeActivityModal() {
+        activityOverlay.hidden = true;
+        activityOverlay.setAttribute("aria-hidden", "true");
+        if (editOverlay.hidden) {
+          document.body.style.overflow = "";
+        }
+      }
+
+      async function openActivityModal() {
+        if (!currentProfileId) return;
+        activityList.innerHTML = '<li class="jcc-appActivityItem"><p class="jcc-appActivityItem__summary">불러오는 중…</p></li>';
+        activityOverlay.hidden = false;
+        activityOverlay.setAttribute("aria-hidden", "false");
+        try {
+          const res = await fetch(`${activityLogUrl}?profile_id=${encodeURIComponent(currentProfileId)}`, {
+            headers: { Accept: "application/json" },
+            credentials: "same-origin",
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || "활동 로그를 불러오지 못했습니다.");
+          }
+          const items = data.items || [];
+          if (!items.length) {
+            activityList.innerHTML = '<li class="jcc-appActivityItem"><p class="jcc-appActivityItem__summary">표시할 활동 기록이 없습니다.</p></li>';
+            return;
+          }
+          activityList.innerHTML = items.map((item) => (
+            `<li class="jcc-appActivityItem">` +
+            `<p class="jcc-appActivityItem__summary">${escapeHtml(item.summary)}</p>` +
+            `<p class="jcc-appActivityItem__meta">${escapeHtml(item.at)} · ${escapeHtml(item.actor || "-")}</p>` +
+            `</li>`
+          )).join("");
+        } catch (err) {
+          activityList.innerHTML = `<li class="jcc-appActivityItem"><p class="jcc-appActivityItem__summary">${escapeHtml(err.message || "오류")}</p></li>`;
+        }
+      }
+
+      document.querySelectorAll(".js-user-detail").forEach((btn) => {
+        btn.addEventListener("click", () => openEditModal(btn.dataset.profileId));
+      });
+      document.getElementById("applicationEditClose")?.addEventListener("click", closeEditModal);
+      document.getElementById("applicationEditCancel")?.addEventListener("click", closeEditModal);
+      document.getElementById("applicationActivityClose")?.addEventListener("click", closeActivityModal);
+      activityBtn?.addEventListener("click", openActivityModal);
+      editOverlay.addEventListener("click", (e) => {
+        if (e.target === editOverlay) closeEditModal();
+      });
+      activityOverlay?.addEventListener("click", (e) => {
+        if (e.target === activityOverlay) closeActivityModal();
+      });
+      regionSel?.addEventListener("change", () => syncFromRegion("", "", "", ""));
+      divisionSel?.addEventListener("change", () => syncFromDivision("", "", ""));
+      retreatEventSel?.addEventListener("change", () => {
+        fillRetreatGroupSelect(retreatEventSel.value, divisionSel.value, "");
+        refreshCustomSelects(editForm);
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape") return;
+        if (!activityOverlay.hidden) closeActivityModal();
+        else if (!editOverlay.hidden) closeEditModal();
+      });
+    })();
+  </script>
+  {% include 'includes/account_bottom_tabs.html' %}
+</body>
+</html>

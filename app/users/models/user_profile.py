@@ -135,7 +135,10 @@ class UserProfile(models.Model):
         verbose_name_plural = "사용자 프로필"
 
     def __str__(self):
-        return f"Profile · {self.user.username}"
+        if self.user is not None:
+            return f"Profile · {self.user.username}"
+        label = (self.real_name or self.display_name or "").strip() or "?"
+        return f"Profile · {label} (계정 없음)"
 
     @property
     def interest_topic_list(self) -> list[str]:
