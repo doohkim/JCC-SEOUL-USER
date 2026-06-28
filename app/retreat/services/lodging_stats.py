@@ -7,9 +7,13 @@ from dataclasses import dataclass
 from django.db.models import Count, Q, QuerySet
 
 from retreat.models import Lodging, LodgingRoom, RetreatAttendee, RetreatEvent
+from retreat.services.lodging_stay import (
+    active_lodging_occupant_q,
+    lodging_stay_eligible_filter,
+)
 from retreat.services.participation import participating_filter
 
-_ACTIVE_ATTENDEE = ~Q(attendees__check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT)
+_ACTIVE_ATTENDEE = active_lodging_occupant_q(prefix="attendees__")
 
 
 @dataclass(frozen=True)
@@ -30,13 +34,12 @@ class LodgingPageSummary:
 
 
 def _lodging_eligible_qs(event: RetreatEvent) -> QuerySet[RetreatAttendee]:
-    """숙박 관리 대상: 참석 + 예상 입실 시각 있음 + 입실전·입실만 (퇴실 제외)."""
-    return participating_filter(
-        RetreatAttendee.objects.filter(
-            group__event=event,
-            expected_check_in_at__isnull=False,
+    """숙박 관리 대상: lodging_stay_status active|unassigned."""
+    return lodging_stay_eligible_filter(
+        participating_filter(
+            RetreatAttendee.objects.filter(group__event=event)
         )
-    ).exclude(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT)
+    )
 
 
 def _rooms_qs(event: RetreatEvent) -> QuerySet[LodgingRoom]:

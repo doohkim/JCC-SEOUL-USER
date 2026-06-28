@@ -13,6 +13,10 @@ from django.db.models import Count, Q, QuerySet
 from rest_framework.exceptions import ValidationError
 
 from retreat.models import LodgingRoom, RetreatAttendee, RetreatEvent, RetreatGroup
+from retreat.services.lodging_stay import (
+    active_lodging_occupant_q,
+    count_active_occupants_for_room,
+)
 from retreat.services.participation import is_participating
 from users.models import Division, Region
 
@@ -59,7 +63,7 @@ def assert_room_can_accept(room: LodgingRoom, attendee: RetreatAttendee) -> None
 
     capacity = int(room.capacity or 0)
     if capacity > 0:
-        current = room.attendees.exclude(pk=attendee.pk).count()
+        current = count_active_occupants_for_room(room, exclude_pk=attendee.pk)
         if current + 1 > capacity:
             raise ValidationError(
                 {
@@ -105,9 +109,12 @@ def rooms_for_group(group: RetreatGroup) -> QuerySet[LodgingRoom]:
 
 
 def rooms_for_group_with_counts(group: RetreatGroup) -> QuerySet[LodgingRoom]:
-    """배정 드롭다운용 — 조 범위 호실 + 현재 배정 인원 수."""
+    """배정 드롭다운용 — 조 범위 호실 + 현재 활성 배정 인원 수."""
     return rooms_for_group(group).annotate(
-        assigned_count=Count("attendees", distinct=True),
+        assigned_count=Count(
+            "attendees",
+            filter=active_lodging_occupant_q(prefix="attendees__"),
+        ),
     )
 
 
@@ -115,7 +122,7 @@ def room_assignment_option(room: LodgingRoom) -> dict:
     """조원 수정 모달 숙소 옵션 JSON."""
     assigned = getattr(room, "assigned_count", None)
     if assigned is None:
-        assigned = room.attendees.count()
+        assigned = count_active_occupants_for_room(room)
     return {
         "id": room.id,
         "label": f"{room.lodging.name} {room.number}",
@@ -145,7 +152,7 @@ def room_visible_in_assignment_picker(
 
     assigned = getattr(room, "assigned_count", None)
     if assigned is None:
-        assigned = room.attendees.count()
+        assigned = count_active_occupants_for_room(room)
     return assigned < capacity
 
 
@@ -190,9 +197,7 @@ def room_has_vacancy(room: LodgingRoom) -> bool:
     """잔여 객실 여부 — 정원 0(무제한)이거나 활성 배정 인원이 정원 미만."""
     assigned = getattr(room, "assigned_count", None)
     if assigned is None:
-        assigned = room.attendees.exclude(
-            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT
-        ).count()
+        assigned = count_active_occupants_for_room(room)
     return room.capacity == 0 or assigned < room.capacity
 
 

@@ -2,8 +2,13 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+from retreat.apis._common import profile_locked_patch_keys_for
 from retreat.models import RetreatAttendee
-from retreat.services.check_in_stamps import is_expected_timestamps_locked
+from retreat.services.check_in_stamps import (
+    is_attendee_profile_locked,
+    is_expected_timestamps_locked,
+)
+from retreat.services.lodging_stay import lodging_stay_display
 from users.validators import normalize_korea_mobile_phone
 
 
@@ -20,7 +25,10 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
     )
     user_label = serializers.SerializerMethodField()
     lodging_room_label = serializers.SerializerMethodField()
+    lodging_stay_status = serializers.CharField(read_only=True)
+    lodging_stay_display = serializers.SerializerMethodField()
     expected_timestamps_locked = serializers.SerializerMethodField()
+    profile_locked = serializers.SerializerMethodField()
 
     class Meta:
         model = RetreatAttendee
@@ -47,7 +55,10 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
             "source_member",
             "lodging_room",
             "lodging_room_label",
+            "lodging_stay_status",
+            "lodging_stay_display",
             "expected_timestamps_locked",
+            "profile_locked",
             "sort_order",
         ]
         read_only_fields = [
@@ -58,7 +69,10 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
             "user_label",
             "participation_status_display",
             "lodging_room_label",
+            "lodging_stay_status",
+            "lodging_stay_display",
             "expected_timestamps_locked",
+            "profile_locked",
         ]
 
     def get_user_label(self, attendee: RetreatAttendee) -> str:
@@ -89,15 +103,19 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
     def get_expected_timestamps_locked(self, attendee: RetreatAttendee) -> bool:
         return is_expected_timestamps_locked(attendee)
 
+    def get_profile_locked(self, attendee: RetreatAttendee) -> bool:
+        return is_attendee_profile_locked(attendee)
+
     def validate(self, attrs):
-        if self.instance and is_expected_timestamps_locked(self.instance):
-            for key in ("expected_check_in_at", "expected_check_out_at"):
-                if key in attrs:
-                    raise serializers.ValidationError(
-                        {
-                            key: "자동 퇴실 처리된 조원의 입·퇴실 시각은 수정할 수 없습니다."
-                        }
-                    )
+        if self.instance and is_attendee_profile_locked(self.instance):
+            user = self.context.get("user")
+            group = self.context.get("group")
+            blocked = set(attrs.keys()) & profile_locked_patch_keys_for(
+                user, group, self.instance
+            )
+            if blocked:
+                msg = "퇴실 상태 조원의 정보는 수정할 수 없습니다."
+                raise serializers.ValidationError({key: msg for key in blocked})
         # 부분 수정(PATCH)에서 한쪽만 들어와도 인스턴스 값과 합쳐 비교한다.
         sentinel = object()
         in_at = attrs.get("expected_check_in_at", sentinel)
@@ -139,3 +157,6 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
         lodging = getattr(room, "lodging", None)
         lname = getattr(lodging, "name", "") or ""
         return (f"{lname} {room.number}" if lname else room.number).strip()
+
+    def get_lodging_stay_display(self, attendee: RetreatAttendee) -> str:
+        return lodging_stay_display(attendee)

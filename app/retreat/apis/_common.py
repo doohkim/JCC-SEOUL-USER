@@ -98,12 +98,14 @@ def assert_can_manage_group_leaders(user, group: RetreatGroup) -> None:
 
 
 def user_can_edit_attendee_details(user, group: RetreatGroup) -> bool:
-    """조원 프로필(이름·연락처 등) 수정 — 슈퍼유저·해당 집회 회장단만."""
+    """조원 프로필(이름·연락처 등) 수정 — 슈퍼유저·회장단·본인 조 조장/부조장."""
     if is_retreat_pastoral_observer(user, group.event):
         return False
     if user.is_superuser:
         return True
-    return is_retreat_council(user, group.event)
+    if is_retreat_council(user, group.event):
+        return True
+    return is_retreat_group_leader(user, group)
 
 
 def assert_can_edit_attendee_details(user, group: RetreatGroup) -> None:
@@ -116,19 +118,60 @@ def assert_can_change_check_in_status(user, group: RetreatGroup) -> None:
         raise PermissionDenied("입·퇴실 상태를 변경할 권한이 없습니다.")
 
 
-def user_can_delete_attendee(user, group: RetreatGroup) -> bool:
-    """조원 삭제 — 슈퍼유저·해당 집회 회장단만."""
+_PROFILE_LOCKED_PATCH_KEYS = frozenset(
+    {
+        "name",
+        "phone",
+        "gender",
+        "memo",
+        "member_role",
+        "user",
+        "expected_check_in_at",
+        "expected_check_out_at",
+        "lodging_room",
+        "participation_status",
+    }
+)
+
+_COUNCIL_CHECKED_OUT_PATCH_KEYS = frozenset({"expected_check_out_at"})
+
+
+def profile_locked_patch_keys_for(user, group: RetreatGroup, attendee) -> frozenset:
+    """퇴실 조원 PATCH 시 차단할 프로필 키 (회장단·슈퍼유저 예외 반영)."""
+    from retreat.services.check_in_stamps import is_attendee_profile_locked
+
+    if not is_attendee_profile_locked(attendee):
+        return _PROFILE_LOCKED_PATCH_KEYS
+    if user and group and (
+        getattr(user, "is_superuser", False)
+        or is_retreat_council(user, group.event)
+    ):
+        return _PROFILE_LOCKED_PATCH_KEYS - _COUNCIL_CHECKED_OUT_PATCH_KEYS
+    return _PROFILE_LOCKED_PATCH_KEYS
+
+
+def user_can_delete_attendee(user, group: RetreatGroup, attendee=None) -> bool:
+    """조원 삭제 — 슈퍼유저·회장단·본인 조 조장/부조장 (퇴실은 회장단·슈퍼유저만)."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if is_retreat_pastoral_observer(user, group.event):
         return False
+    if attendee is not None:
+        from retreat.services.check_in_stamps import is_attendee_profile_locked
+
+        if is_attendee_profile_locked(attendee):
+            if user.is_superuser:
+                return True
+            return is_retreat_council(user, group.event)
     if user.is_superuser:
         return True
-    return is_retreat_council(user, group.event)
+    if is_retreat_council(user, group.event):
+        return True
+    return is_retreat_group_leader(user, group)
 
 
-def assert_can_delete_attendee(user, group: RetreatGroup) -> None:
-    if not user_can_delete_attendee(user, group):
+def assert_can_delete_attendee(user, group: RetreatGroup, attendee=None) -> None:
+    if not user_can_delete_attendee(user, group, attendee=attendee):
         raise PermissionDenied("조원을 삭제할 권한이 없습니다.")
 
 

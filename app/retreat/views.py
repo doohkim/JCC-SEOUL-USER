@@ -782,7 +782,13 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
             output_field=IntegerField(),
         )
 
-        from retreat.services.check_in_stamps import is_expected_timestamps_locked
+        from retreat.services.check_in_stamps import (
+            is_attendee_profile_locked,
+            is_expected_check_in_locked,
+            is_expected_check_out_locked,
+            is_expected_timestamps_locked,
+        )
+        from retreat.services.lodging_stay import lodging_stay_display
         from retreat.services.participation import is_participating
 
         attendees = list(
@@ -791,6 +797,15 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         )
         for attendee in attendees:
             attendee.expected_timestamps_locked = is_expected_timestamps_locked(attendee)
+            attendee.profile_locked = is_attendee_profile_locked(attendee)
+            attendee.expected_check_in_locked = is_expected_check_in_locked(
+                attendee, user, group
+            )
+            attendee.expected_check_out_locked = is_expected_check_out_locked(
+                attendee, user, group
+            )
+            attendee.can_delete = user_can_delete_attendee(user, group, attendee=attendee)
+            attendee.lodging_stay_display = lodging_stay_display(attendee)
         ctx["attendees"] = attendees
         ctx["count_total"] = len(attendees)
         ctx["count_participating"] = sum(1 for a in attendees if is_participating(a))
@@ -845,27 +860,30 @@ class RetreatLodgingView(_RetreatEventMixin, TemplateView):
         if not can_view_retreat_all(user, event):
             raise PermissionDenied("이 집회의 숙소를 볼 권한이 없습니다.")
 
-        from django.db.models import Count, Prefetch, Q
+        from django.db.models import Count, Prefetch
 
         from retreat.services.auto_check_in import apply_due_auto_transitions
         from retreat.services.lodging import room_has_vacancy
         from retreat.services.lodging_stats import build_lodging_page_summary
+        from retreat.services.lodging_stay import (
+            active_lodging_occupant_filter,
+            active_lodging_occupant_q,
+        )
 
         apply_due_auto_transitions(event_id=event.id)
 
         from users.models import Division, Region
 
-        active_attendee_filter = ~Q(
-            attendees__check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT
-        )
-        active_attendees_qs = (
+        active_attendees_qs = active_lodging_occupant_filter(
             RetreatAttendee.objects.select_related("group")
-            .exclude(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT)
-            .order_by("name", "id")
-        )
+        ).order_by("name", "id")
         rooms_qs = (
             LodgingRoom.objects.select_related("region", "division", "lodging")
-            .annotate(assigned_count=Count("attendees", filter=active_attendee_filter))
+            .annotate(
+                assigned_count=Count(
+                    "attendees", filter=active_lodging_occupant_q(prefix="attendees__")
+                )
+            )
             .prefetch_related(Prefetch("attendees", queryset=active_attendees_qs))
             .order_by("sort_order", "number", "id")
         )

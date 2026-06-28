@@ -34,6 +34,13 @@ class RetreatAttendee(models.Model):
         PARTICIPATING = "participating", "참석"
         ABSENT = "absent", "불참"
 
+    class LodgingStayStatus(models.TextChoices):
+        ACTIVE = "active", "숙박 중"
+        UNASSIGNED = "unassigned", "미배정"
+        ENDED = "ended", "숙박 종료"
+        NO_STAY = "no_stay", "숙박 없음"
+        ABSENT = "absent", "불참"
+
     group = models.ForeignKey(
         RetreatGroup,
         on_delete=models.CASCADE,
@@ -101,6 +108,13 @@ class RetreatAttendee(models.Model):
         blank=True,
         related_name="attendees",
         verbose_name="숙소 호실",
+    )
+    lodging_stay_status = models.CharField(
+        "숙박 상태",
+        max_length=20,
+        choices=LodgingStayStatus.choices,
+        null=True,
+        blank=True,
     )
     sort_order = models.PositiveSmallIntegerField("정렬 순서", default=0)
     created_by = models.ForeignKey(

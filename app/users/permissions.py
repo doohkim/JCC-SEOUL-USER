@@ -751,7 +751,7 @@ def is_retreat_pastoral_observer(user: User, event) -> bool:
 
 
 def can_manage_retreat_group_leaders(user: User, group) -> bool:
-    """조 운영진(조장·부조장) 추가·수정·삭제 — 슈퍼유저·해당 집회 회장단만."""
+    """조 운영진(조장·부조장) 추가·수정·삭제 — 슈퍼유저·회장단·본인 조 운영진."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if group is None:
@@ -760,7 +760,9 @@ def can_manage_retreat_group_leaders(user: User, group) -> bool:
         return False
     if user.is_superuser:
         return True
-    return is_retreat_council(user, group.event)
+    if is_retreat_council(user, group.event):
+        return True
+    return is_retreat_group_leader(user, group)
 
 
 def can_manage_retreat_sessions(user: User, event) -> bool:

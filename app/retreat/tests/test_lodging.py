@@ -175,18 +175,21 @@ class LodgingRoomAssignmentTests(_LodgingFixture):
             name="남자A",
             gender=RetreatAttendee.Gender.MALE,
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            expected_check_in_at=timezone.now(),
         )
         cls.male_attendee_b = RetreatAttendee.objects.create(
             group=cls.group,
             name="남자B",
             gender=RetreatAttendee.Gender.MALE,
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            expected_check_in_at=timezone.now(),
         )
         cls.male_attendee_c = RetreatAttendee.objects.create(
             group=cls.group,
             name="남자C",
             gender=RetreatAttendee.Gender.MALE,
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            expected_check_in_at=timezone.now(),
         )
 
     def setUp(self):
@@ -219,10 +222,18 @@ class LodgingRoomAssignmentTests(_LodgingFixture):
         self.assertIsNone(self.male_attendee.lodging_room_id)
 
     def test_capacity_overflow_rejected(self):
-        self.male_attendee.lodging_room = self.room
-        self.male_attendee.save(update_fields=["lodging_room"])
-        self.male_attendee_b.lodging_room = self.room
-        self.male_attendee_b.save(update_fields=["lodging_room"])
+        r1 = self.client.patch(
+            self._detail(self.male_attendee),
+            {"lodging_room": self.room.id},
+            format="json",
+        )
+        self.assertEqual(r1.status_code, 200, r1.content)
+        r2 = self.client.patch(
+            self._detail(self.male_attendee_b),
+            {"lodging_room": self.room.id},
+            format="json",
+        )
+        self.assertEqual(r2.status_code, 200, r2.content)
         # 정원 2명인데 추가로 한 명 더 배정 → 400
         r = self.client.patch(
             self._detail(self.male_attendee_c),
@@ -230,6 +241,34 @@ class LodgingRoomAssignmentTests(_LodgingFixture):
             format="json",
         )
         self.assertEqual(r.status_code, 400, r.content)
+
+    def test_checked_out_in_room_does_not_block_new_assignment(self):
+        """퇴실(ended) 조원은 정원 집계에서 제외되어 새 배정이 가능해야 한다."""
+        from retreat.services.lodging_stay import persist_lodging_stay_status
+
+        checked_out = RetreatAttendee.objects.create(
+            group=self.group,
+            name="퇴실자",
+            gender=RetreatAttendee.Gender.MALE,
+            expected_check_in_at=timezone.now(),
+            lodging_room=self.room,
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+        )
+        persist_lodging_stay_status(checked_out)
+        checked_out.refresh_from_db()
+        self.assertEqual(
+            checked_out.lodging_stay_status,
+            RetreatAttendee.LodgingStayStatus.ENDED,
+        )
+
+        r = self.client.patch(
+            self._detail(self.male_attendee),
+            {"lodging_room": self.room.id},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.male_attendee.refresh_from_db()
+        self.assertEqual(self.male_attendee.lodging_room_id, self.room.id)
 
     def test_gender_mismatch_rejected(self):
         r = self.client.patch(
@@ -272,11 +311,14 @@ class LodgingAssignmentPickerTests(LodgingRoomAssignmentTests):
             room_visible_in_assignment_picker,
             rooms_for_group_with_counts,
         )
+        from retreat.services.lodging_stay import persist_lodging_stay_status
 
         self.male_attendee.lodging_room = self.room
         self.male_attendee.save(update_fields=["lodging_room"])
+        persist_lodging_stay_status(self.male_attendee)
         self.male_attendee_b.lodging_room = self.room
         self.male_attendee_b.save(update_fields=["lodging_room"])
+        persist_lodging_stay_status(self.male_attendee_b)
 
         rooms = list(rooms_for_group_with_counts(self.group))
         room_by_number = {r.number: r for r in rooms}
@@ -312,9 +354,11 @@ class LodgingAssignmentPickerTests(LodgingRoomAssignmentTests):
             room_assignment_option,
             rooms_for_group_with_counts,
         )
+        from retreat.services.lodging_stay import persist_lodging_stay_status
 
         self.male_attendee.lodging_room = self.male_room
         self.male_attendee.save(update_fields=["lodging_room"])
+        persist_lodging_stay_status(self.male_attendee)
         room = rooms_for_group_with_counts(self.group).get(pk=self.male_room.id)
         opt = room_assignment_option(room)
         self.assertEqual(opt["assigned_count"], 1)
@@ -447,7 +491,7 @@ class ManageGroupRoomOptionsTests(_LodgingFixture):
             reverse("retreat_group_manage", args=[self.event.id, self.group.id])
         )
         self.assertEqual(r.status_code, 200)
-        room_ids = {room.id for room in r.context["event_rooms"]}
+        room_ids = {room["id"] for room in r.context["event_rooms"]}
         self.assertIn(self.matching_room.id, room_ids)
         self.assertNotIn(self.other_div_room.id, room_ids)
         self.assertNotIn(self.unassigned_room.id, room_ids)
@@ -532,6 +576,9 @@ class LodgingVacancyAttributeTests(_LodgingFixture):
         )
         attendee.lodging_room = cls.full_room
         attendee.save(update_fields=["lodging_room"])
+        from retreat.services.lodging_stay import persist_lodging_stay_status
+
+        persist_lodging_stay_status(attendee)
 
     def setUp(self):
         self.client = APIClient()

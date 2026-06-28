@@ -14,6 +14,7 @@ from retreat.models import (
     RetreatEvent,
     RetreatGroup,
 )
+from retreat.services.lodging_stay import persist_lodging_stay_status
 from retreat.services.lodging_stats import build_lodging_page_summary
 from users.models import Division, Region
 
@@ -63,7 +64,9 @@ class LodgingStatsTests(TestCase):
             kwargs["expected_check_in_at"] = expected_in
         if room is not None:
             kwargs["lodging_room"] = room
-        return RetreatAttendee.objects.create(**kwargs)
+        attendee = RetreatAttendee.objects.create(**kwargs)
+        persist_lodging_stay_status(attendee)
+        return attendee
 
     def test_facility_counts(self):
         summary = build_lodging_page_summary(self.event)

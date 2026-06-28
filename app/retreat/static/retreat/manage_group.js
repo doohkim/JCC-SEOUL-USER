@@ -26,25 +26,74 @@
   const GENDER_LABELS = { male: "남성", female: "여성", "": "-" };
 
   const STAMP_LOCK_MSG =
-    "자동 퇴실 처리된 조원은 입·퇴실 시각을 수정할 수 없습니다.";
+    "퇴실 상태 조원은 정보를 수정할 수 없습니다.";
 
-  function isExpectedTimestampsLocked(source) {
+  function isProfileLocked(source) {
     if (!source) return false;
     if (source instanceof HTMLElement) {
-      return source.dataset.expectedTimestampsLocked === "true";
+      return (
+        source.dataset.profileLocked === "true" ||
+        source.dataset.checkIn === "checked_out"
+      );
     }
-    return !!source.expected_timestamps_locked;
+    return !!(
+      source.profile_locked ||
+      source.profileLocked ||
+      source.checkIn === "checked_out" ||
+      source.check_in_status === "checked_out"
+    );
+  }
+
+  function isExpectedInLocked(source) {
+    if (!source) return false;
+    if (source instanceof HTMLElement) {
+      return source.dataset.expectedInLocked === "true";
+    }
+    return !!source.expected_check_in_locked;
+  }
+
+  function isExpectedOutLocked(source) {
+    if (!source) return false;
+    if (source instanceof HTMLElement) {
+      return source.dataset.expectedOutLocked === "true";
+    }
+    return !!source.expected_check_out_locked;
+  }
+
+  function isExpectedTimestampsLocked(source) {
+    return isExpectedInLocked(source) && isExpectedOutLocked(source);
+  }
+
+  function syncExpectedFieldLock(input, locked) {
+    if (!input) return;
+    input.disabled = !!locked;
+    input.classList.toggle("is-locked", !!locked);
+    if (locked) input.title = STAMP_LOCK_MSG;
+    else input.removeAttribute("title");
+  }
+
+  function syncRowLockDatasets(tr) {
+    if (!tr) return;
+    const profileLocked = isProfileLocked(tr);
+    tr.dataset.profileLocked = profileLocked ? "true" : "false";
+    tr.dataset.expectedInLocked = isExpectedInLocked(tr)
+      ? "true"
+      : profileLocked
+        ? "true"
+        : "false";
+    tr.dataset.expectedOutLocked =
+      profileLocked && !ctx.canChangeStatus ? "true" : "false";
+    tr.dataset.expectedTimestampsLocked =
+      isExpectedInLocked(tr) && isExpectedOutLocked(tr) ? "true" : "false";
   }
 
   function syncRowExpectedInputs(tr) {
     if (!tr) return;
-    const locked = isExpectedTimestampsLocked(tr);
-    tr.querySelectorAll("[data-expected-field]").forEach((input) => {
-      input.disabled = locked;
-      input.classList.toggle("is-locked", locked);
-      if (locked) input.title = STAMP_LOCK_MSG;
-      else input.removeAttribute("title");
-    });
+    syncRowLockDatasets(tr);
+    const inInput = tr.querySelector('[data-expected-field="expected_check_in_at"]');
+    const outInput = tr.querySelector('[data-expected-field="expected_check_out_at"]');
+    syncExpectedFieldLock(inInput, isExpectedInLocked(tr));
+    syncExpectedFieldLock(outInput, isExpectedOutLocked(tr));
   }
 
   function syncModalExpectedInputs(locked) {
@@ -55,6 +104,45 @@
       if (locked) input.title = STAMP_LOCK_MSG;
       else input.removeAttribute("title");
     });
+  }
+
+  function setModalFieldDisabled(el, disabled) {
+    if (!el) return;
+    el.disabled = !!disabled;
+    el.classList.toggle("is-readonly", !!disabled);
+  }
+
+  function applyModalProfileLock(profileLocked, viewOnly, statusOnlyEdit) {
+    const profileReadOnly = !!profileLocked;
+    if (viewOnly) {
+      setModalFieldDisabled(expectedInInput, true);
+      setModalFieldDisabled(expectedOutInput, true);
+    } else if (statusOnlyEdit) {
+      setModalFieldDisabled(expectedInInput, true);
+      setModalFieldDisabled(expectedOutInput, false);
+    } else {
+      setModalFieldDisabled(expectedInInput, false);
+      setModalFieldDisabled(expectedOutInput, false);
+    }
+    [
+      nameInput,
+      phoneInput,
+      genderInput,
+      memoInput,
+      lodgingInput,
+      roleInput,
+      participationInput,
+    ].forEach((el) => setModalFieldDisabled(el, profileReadOnly));
+    if (attendeePicker?.setDisabled) attendeePicker.setDisabled(profileReadOnly);
+    else {
+      const pickerInput = form?.querySelector("[data-user-picker-input]");
+      setModalFieldDisabled(pickerInput, profileReadOnly);
+    }
+    if (checkInInput) setModalFieldDisabled(checkInInput, viewOnly);
+    if (submitBtn) {
+      submitBtn.hidden = !!viewOnly;
+      submitBtn.disabled = !!viewOnly;
+    }
   }
 
   function formatPhoneDisplay(phone) {
@@ -163,9 +251,13 @@
     const isAbsent = (tr.dataset.participation || "participating") === "absent";
     tr.classList.toggle("is-absent", isAbsent);
     tr.querySelectorAll("[data-expected-field]").forEach((input) => {
-      const locked = isExpectedTimestampsLocked(tr);
-      input.disabled = isAbsent || locked;
-      input.classList.toggle("is-locked", isAbsent || locked);
+      const field = input.dataset.expectedField;
+      const fieldLocked =
+        field === "expected_check_out_at"
+          ? isExpectedOutLocked(tr)
+          : isExpectedInLocked(tr);
+      input.disabled = isAbsent || fieldLocked;
+      input.classList.toggle("is-locked", isAbsent || fieldLocked);
     });
   }
 
@@ -335,6 +427,17 @@
     });
   }
 
+  function lodgingCellHtml(data) {
+    const display = data.lodging_stay_display || "";
+    if (data.lodging_stay_status === "active" && display) {
+      return escapeHtml(display);
+    }
+    if (display && display !== "-") {
+      return `<span class="muted">${escapeHtml(display)}</span>`;
+    }
+    return '<span class="muted">-</span>';
+  }
+
   function updateRowFromData(tr, data) {
     if (!tr || !data) return;
     if (data.participation_status) {
@@ -342,6 +445,18 @@
       syncParticipationRow(tr);
     }
     tr.dataset.checkIn = data.check_in_status || "pending";
+    if (data.check_in_status) {
+      const locked = data.check_in_status === "checked_out";
+      tr.dataset.profileLocked = locked ? "true" : "false";
+      tr.dataset.expectedInLocked = locked ? "true" : "false";
+      tr.dataset.expectedOutLocked =
+        locked && !ctx.canChangeStatus ? "true" : "false";
+      if (locked) {
+        tr.dataset.canDelete = ctx.canChangeStatus ? "true" : "false";
+      } else if (ctx.canDeleteAttendee) {
+        tr.dataset.canDelete = "true";
+      }
+    }
     if (data.checked_in_at) {
       tr.dataset.checkedInAt = data.checked_in_at;
     }
@@ -350,10 +465,13 @@
     }
     tr.dataset.expectedInAt = data.expected_check_in_at || "";
     tr.dataset.expectedOutAt = data.expected_check_out_at || "";
-    if ("expected_timestamps_locked" in data) {
-      tr.dataset.expectedTimestampsLocked = data.expected_timestamps_locked
-        ? "true"
-        : "false";
+    if ("expected_timestamps_locked" in data || "profile_locked" in data) {
+      const locked = !!(data.profile_locked ?? data.expected_timestamps_locked);
+      tr.dataset.expectedTimestampsLocked = locked ? "true" : "false";
+      tr.dataset.profileLocked = locked ? "true" : "false";
+      tr.dataset.expectedInLocked = locked ? "true" : "false";
+      tr.dataset.expectedOutLocked =
+        locked && !ctx.canChangeStatus ? "true" : "false";
     }
 
     if (data.member_role) {
@@ -376,14 +494,19 @@
       }
     }
 
-    if ("lodging_room" in data) {
+    if (
+      "lodging_room" in data ||
+      "lodging_stay_status" in data ||
+      "lodging_stay_display" in data
+    ) {
       tr.dataset.lodgingRoom = data.lodging_room ? String(data.lodging_room) : "";
       tr.dataset.lodgingLabel = data.lodging_room_label || "";
+      if (data.lodging_stay_status) {
+        tr.dataset.lodgingStayStatus = data.lodging_stay_status;
+      }
       const lodgingCell = tr.querySelector("[data-lodging-cell]");
       if (lodgingCell) {
-        lodgingCell.innerHTML = data.lodging_room_label
-          ? escapeHtml(data.lodging_room_label)
-          : '<span class="muted">-</span>';
+        lodgingCell.innerHTML = lodgingCellHtml(data);
       }
     }
 
@@ -433,7 +556,18 @@
 
     syncRowExpectedInputs(tr);
     updateStatusBadge(tr);
+    updateRowEditButton(tr);
     recomputeSummary();
+  }
+
+  function updateRowEditButton(tr) {
+    if (!tr) return;
+    const btn = tr.querySelector("[data-edit]");
+    if (!btn) return;
+    const locked = isProfileLocked(tr);
+    const label = locked ? "보기" : "수정";
+    btn.textContent = label;
+    btn.setAttribute("aria-label", `${tr.querySelector("[data-name]")?.textContent?.trim() || "조원"} ${label}`);
   }
 
   async function patchAttendee(attendeeId, payload) {
@@ -495,9 +629,10 @@
       if (!input) return;
       const tr = input.closest("tr[data-attendee-id]");
       if (!tr) return;
-      if (isExpectedTimestampsLocked(tr)) return;
       const field = input.dataset.expectedField;
       if (!field) return;
+      if (field === "expected_check_out_at" && isExpectedOutLocked(tr)) return;
+      if (field === "expected_check_in_at" && isExpectedInLocked(tr)) return;
       const aid = Number(tr.dataset.attendeeId);
 
       const inInput = tr.querySelector('[data-expected-field="expected_check_in_at"]');
@@ -666,6 +801,7 @@
       expectedIn: tr.dataset.expectedInAt || "",
       expectedOut: tr.dataset.expectedOutAt || "",
       expectedTimestampsLocked: tr.dataset.expectedTimestampsLocked === "true",
+      profileLocked: tr.dataset.profileLocked === "true",
       memberRole: tr.dataset.memberRole || "member",
       userId: tr.dataset.userId || "",
       userLabel: tr.dataset.userLabel || "",
@@ -684,7 +820,7 @@
 
       const del = e.target.closest("[data-del]");
       if (del) {
-        if (ctx.canDeleteAttendee) confirmDelete(aid);
+        if (tr.dataset.canDelete === "true") confirmDelete(aid);
         return;
       }
       // 이력 버튼은 별도 핸들러(bindHistory)에서 처리
@@ -947,14 +1083,24 @@
     modalAttendeeId = payload?.id || null;
     const checkIn = payload?.checkIn || "pending";
     modalInitialCheckIn = checkIn;
+    const rowEl =
+      modalAttendeeId &&
+      attBody?.querySelector(`tr[data-attendee-id="${modalAttendeeId}"]`);
+    const profileLocked =
+      mode === "edit" && (isProfileLocked(payload) || isProfileLocked(rowEl));
+    const viewOnly = profileLocked && !ctx.canChangeStatus;
+    const statusOnlyEdit = profileLocked && ctx.canChangeStatus;
     if (titleEl) {
       if (mode === "edit") {
-        titleEl.textContent = ctx.canEditAttendee ? "조원 수정" : "입·퇴실 변경";
+        if (viewOnly) titleEl.textContent = "조원 보기";
+        else if (statusOnlyEdit) titleEl.textContent = "입·퇴실 변경";
+        else titleEl.textContent = ctx.canEditAttendee ? "조원 수정" : "입·퇴실 변경";
       } else {
         titleEl.textContent = "조원 추가";
       }
     }
     if (submitBtn) {
+      submitBtn.hidden = false;
       submitBtn.textContent = mode === "edit" ? "수정" : "저장";
       submitBtn.disabled = false;
     }
@@ -969,13 +1115,7 @@
     markStampInvalid(expectedInInput, false);
     markStampInvalid(expectedOutInput, false);
     setFieldError(expectedOutInput, "");
-    const timestampsLocked =
-      isExpectedTimestampsLocked(payload) ||
-      (modalAttendeeId &&
-        isExpectedTimestampsLocked(
-          attBody?.querySelector(`tr[data-attendee-id="${modalAttendeeId}"]`)
-        ));
-    syncModalExpectedInputs(timestampsLocked);
+    applyModalProfileLock(profileLocked, viewOnly, statusOnlyEdit);
     refreshLodgingOptions(payload?.lodgingRoom || "");
     if (roleInput) roleInput.value = payload?.memberRole || "member";
     if (checkInInput) {
@@ -1001,7 +1141,13 @@
     overlay.hidden = false;
     overlay.setAttribute("aria-hidden", "false");
     const focusEl =
-      showProfileFields && mode === "create" ? nameInput : checkInInput || nameInput;
+      viewOnly
+        ? cancelBtn
+        : statusOnlyEdit
+          ? checkInInput || expectedOutInput
+          : showProfileFields && mode === "create"
+            ? nameInput
+            : checkInInput || nameInput;
     requestAnimationFrame(() => focusEl?.focus());
   }
 
@@ -1020,79 +1166,34 @@
   async function onSubmit(e) {
     e.preventDefault();
     closeDateTimePicker();
-    if (!submitBtn) return;
+    if (!submitBtn || submitBtn.hidden) return;
     submitBtn.disabled = true;
     const linkedUserId = attendeePicker ? attendeePicker.getId() : "";
     const newCheckIn = checkInInput?.value || modalInitialCheckIn;
+    const rowEl =
+      modalAttendeeId &&
+      attBody?.querySelector(`tr[data-attendee-id="${modalAttendeeId}"]`);
+    const profileLocked =
+      modalMode === "edit" && isProfileLocked(rowEl);
+    const statusOnlyEdit = profileLocked && ctx.canChangeStatus;
     const payload = {};
 
     if (ctx.canChangeStatus && checkInInput) {
       payload.check_in_status = newCheckIn;
     }
-    const includeProfile = ctx.canEditAttendee;
-    if (includeProfile) {
-      payload.name = (nameInput?.value || "").trim();
-      payload.gender = genderInput?.value || "";
-      payload.phone = phoneSubmitValue(phoneInput?.value || "");
-    }
-    if (ctx.canEditAttendee) {
-      payload.participation_status =
-        participationInput?.value || "participating";
-      payload.memo = (memoInput?.value || "").trim();
-      payload.member_role = roleInput?.value || "member";
-      payload.user = linkedUserId ? Number(linkedUserId) : null;
-      const timestampsLocked =
-        modalMode === "edit" &&
-        (isExpectedTimestampsLocked({
-          expected_timestamps_locked:
-            attBody
-              ?.querySelector(`tr[data-attendee-id="${modalAttendeeId}"]`)
-              ?.dataset.expectedTimestampsLocked === "true",
-        }) ||
-          expectedInInput?.disabled);
-      if (!timestampsLocked) {
-        payload.expected_check_in_at = isoFromDatetimeLocal(
-          expectedInInput?.value || ""
-        );
-        payload.expected_check_out_at = isoFromDatetimeLocal(
-          expectedOutInput?.value || ""
-        );
-      }
-      payload.lodging_room =
-        lodgingInput && lodgingInput.value ? Number(lodgingInput.value) : null;
-    }
-    if (includeProfile && !payload.name) {
-      submitBtn.disabled = false;
-      showToast("실명은 필수입니다.", true);
-      nameInput?.focus();
-      return;
-    }
-    if (includeProfile && modalMode === "create" && !payload.gender) {
-      submitBtn.disabled = false;
-      showToast("성별은 필수입니다.", true);
-      genderInput?.focus();
-      return;
-    }
-    if (ctx.canEditAttendee) {
+    if (statusOnlyEdit) {
+      payload.expected_check_out_at = isoFromDatetimeLocal(
+        expectedOutInput?.value || ""
+      );
       markStampInvalid(expectedInInput, false);
       markStampInvalid(expectedOutInput, false);
       setFieldError(expectedOutInput, "");
-      const timestampsLocked =
-        modalMode === "edit" &&
-        (isExpectedTimestampsLocked({
-          expected_timestamps_locked:
-            attBody
-              ?.querySelector(`tr[data-attendee-id="${modalAttendeeId}"]`)
-              ?.dataset.expectedTimestampsLocked === "true",
-        }) ||
-          expectedInInput?.disabled);
-      if (
-        !timestampsLocked &&
-        !isCheckOutAfterCheckIn(
-          expectedInInput?.value || "",
-          expectedOutInput?.value || ""
-        )
-      ) {
+      const inVal =
+        expectedInInput?.value ||
+        (rowEl?.dataset?.expectedInAt
+          ? toDatetimeLocalValue(rowEl.dataset.expectedInAt)
+          : "");
+      if (!isCheckOutAfterCheckIn(inVal, expectedOutInput?.value || "")) {
         submitBtn.disabled = false;
         markStampInvalid(expectedInInput, true);
         markStampInvalid(expectedOutInput, true);
@@ -1100,6 +1201,68 @@
         showToast(STAMP_ORDER_MSG, true);
         (expectedOutInput?.nextElementSibling || expectedOutInput)?.focus?.();
         return;
+      }
+    } else {
+      const includeProfile = ctx.canEditAttendee;
+      if (includeProfile) {
+        payload.name = (nameInput?.value || "").trim();
+        payload.gender = genderInput?.value || "";
+        payload.phone = phoneSubmitValue(phoneInput?.value || "");
+      }
+      if (ctx.canEditAttendee) {
+        payload.participation_status =
+          participationInput?.value || "participating";
+        payload.memo = (memoInput?.value || "").trim();
+        payload.member_role = roleInput?.value || "member";
+        payload.user = linkedUserId ? Number(linkedUserId) : null;
+        const timestampsLocked =
+          modalMode === "edit" &&
+          (isProfileLocked(rowEl) || expectedInInput?.disabled);
+        if (!timestampsLocked) {
+          payload.expected_check_in_at = isoFromDatetimeLocal(
+            expectedInInput?.value || ""
+          );
+          payload.expected_check_out_at = isoFromDatetimeLocal(
+            expectedOutInput?.value || ""
+          );
+        }
+        payload.lodging_room =
+          lodgingInput && lodgingInput.value ? Number(lodgingInput.value) : null;
+      }
+      if (includeProfile && !payload.name) {
+        submitBtn.disabled = false;
+        showToast("실명은 필수입니다.", true);
+        nameInput?.focus();
+        return;
+      }
+      if (includeProfile && modalMode === "create" && !payload.gender) {
+        submitBtn.disabled = false;
+        showToast("성별은 필수입니다.", true);
+        genderInput?.focus();
+        return;
+      }
+      if (ctx.canEditAttendee) {
+        markStampInvalid(expectedInInput, false);
+        markStampInvalid(expectedOutInput, false);
+        setFieldError(expectedOutInput, "");
+        const timestampsLocked =
+          modalMode === "edit" &&
+          (isProfileLocked(rowEl) || expectedInInput?.disabled);
+        if (
+          !timestampsLocked &&
+          !isCheckOutAfterCheckIn(
+            expectedInInput?.value || "",
+            expectedOutInput?.value || ""
+          )
+        ) {
+          submitBtn.disabled = false;
+          markStampInvalid(expectedInInput, true);
+          markStampInvalid(expectedOutInput, true);
+          setFieldError(expectedOutInput, STAMP_ORDER_MSG);
+          showToast(STAMP_ORDER_MSG, true);
+          (expectedOutInput?.nextElementSibling || expectedOutInput)?.focus?.();
+          return;
+        }
       }
     }
     if (!Object.keys(payload).length) {

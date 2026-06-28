@@ -207,7 +207,7 @@ class RetreatPageAccessTests(_PageFixture):
         )
         self.assertIsNotNone(attendee.checked_in_at)
 
-    def test_manage_group_detail_leader_read_only(self):
+    def test_manage_group_detail_leader_can_edit(self):
         RetreatAttendee.objects.create(group=self.group, name="입실표시")
         self.client.force_login(self.leader)
         r = self.client.get(
@@ -218,15 +218,48 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertContains(r, "역할")
         self.assertContains(r, "data-status-badge")
         self.assertContains(r, "jcc-retreat-checkInBadge")
-        self.assertFalse(r.context["can_edit_attendee"])
-        self.assertFalse(r.context["can_delete_attendee"])
-        self.assertNotContains(r, 'data-expected-field="expected_check_in_at"')
-        self.assertNotContains(r, 'id="retreatAttCheckIn"')
-        self.assertNotContains(r, "data-del")
-        self.assertNotContains(r, 'id="btnAddAttendee"')
-        self.assertNotContains(r, "사용자 연동")
-        self.assertContains(r, "읽기 전용")
+        self.assertTrue(r.context["can_edit_attendee"])
+        self.assertTrue(r.context["can_delete_attendee"])
+        self.assertFalse(r.context["can_change_status"])
+        self.assertContains(r, 'data-expected-field="expected_check_in_at"')
+        self.assertContains(r, 'id="btnAddAttendee"')
+        self.assertContains(r, "사용자 연동")
+        self.assertNotContains(r, "읽기 전용")
         self.assertContains(r, 'data-sort-key="role"')
+
+    def test_manage_group_detail_checked_out_has_profile_locked(self):
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="퇴실조원",
+            gender="male",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+        )
+        self.client.force_login(self.leader)
+        r = self.client.get(
+            reverse("retreat_group_manage", args=[self.event.id, self.group.id])
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'data-profile-locked="true"')
+        self.assertContains(r, 'data-expected-out-locked="true"')
+        self.assertContains(r, ">보기</button>")
+
+    def test_manage_group_detail_council_checked_out_expected_out_editable(self):
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="퇴실조원",
+            gender="male",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+        )
+        self.client.force_login(self.council)
+        r = self.client.get(
+            reverse("retreat_group_manage", args=[self.event.id, self.group.id])
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'data-expected-out-locked="false"')
+        self.assertNotContains(
+            r,
+            'aria-label="퇴실조원 퇴실 시각" disabled',
+        )
 
     def test_manage_group_detail_council_can_edit_timestamps(self):
         RetreatAttendee.objects.create(group=self.group, name="시각수정")

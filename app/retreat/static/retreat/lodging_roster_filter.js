@@ -1,5 +1,5 @@
 /**
- * 숙소 탭 전체 명단 — 입실·숙박·배정·지역·부서 칩 필터 + 이름 검색 + 요약 프리셋
+ * 숙소 탭 전체 명단 — 입실·숙소 상태·지역·부서 칩 필터 + 이름 검색 + 요약 프리셋
  */
 (function () {
   "use strict";
@@ -21,8 +21,7 @@
   const divisionRow = filterBar?.querySelector('[data-filter-row="division"]');
 
   const selectedStatus = new Set();
-  const selectedStay = new Set();
-  const selectedAssign = new Set();
+  const selectedLodgingStay = new Set();
   const selectedRegions = new Set();
   const selectedDivisions = new Set();
   let nameQuery = "";
@@ -56,8 +55,7 @@
         STORAGE_KEY,
         JSON.stringify({
           status: Array.from(selectedStatus),
-          stay: Array.from(selectedStay),
-          assign: Array.from(selectedAssign),
+          lodgingStay: Array.from(selectedLodgingStay),
           regions: Array.from(selectedRegions),
           divisions: Array.from(selectedDivisions),
           name: nameQuery,
@@ -69,8 +67,9 @@
   function syncUrl() {
     const params = new URLSearchParams();
     if (selectedStatus.size) params.set("status", Array.from(selectedStatus).join(","));
-    if (selectedStay.size) params.set("stay", Array.from(selectedStay).join(","));
-    if (selectedAssign.size) params.set("assign", Array.from(selectedAssign).join(","));
+    if (selectedLodgingStay.size) {
+      params.set("lodgingStay", Array.from(selectedLodgingStay).join(","));
+    }
     if (selectedRegions.size) params.set("region", Array.from(selectedRegions).join(","));
     if (selectedDivisions.size) params.set("division", Array.from(selectedDivisions).join(","));
     if (nameQuery.trim()) params.set("q", nameQuery.trim());
@@ -79,13 +78,44 @@
     window.history.replaceState(null, "", next);
   }
 
-  function applyLegacyLodgingParam(values) {
-    values.forEach((v) => {
-      if (v === "eligible") selectedStay.add("eligible");
-      else if (v === "na" || v === "ineligible") selectedStay.add("ineligible");
-      else if (v === "assigned") selectedAssign.add("assigned");
-      else if (v === "unassigned") selectedAssign.add("unassigned");
-    });
+  function applyLegacyParams(params) {
+    const stayParam = params.get("stay");
+    const assignParam = params.get("assign");
+    const lodgingParam = params.get("lodging");
+
+    if (stayParam) {
+      stayParam.split(",").filter(Boolean).forEach((v) => {
+        if (v === "eligible") {
+          selectedLodgingStay.add("active");
+          selectedLodgingStay.add("unassigned");
+        } else if (v === "ineligible" || v === "na") {
+          selectedLodgingStay.add("ended");
+          selectedLodgingStay.add("no_stay");
+          selectedLodgingStay.add("absent");
+        }
+      });
+    }
+    if (assignParam) {
+      assignParam.split(",").filter(Boolean).forEach((v) => {
+        if (v === "assigned") selectedLodgingStay.add("active");
+        if (v === "unassigned") selectedLodgingStay.add("unassigned");
+      });
+    }
+    if (lodgingParam) {
+      lodgingParam.split(",").filter(Boolean).forEach((v) => {
+        if (v === "assigned") selectedLodgingStay.add("active");
+        if (v === "unassigned") selectedLodgingStay.add("unassigned");
+        if (v === "eligible") {
+          selectedLodgingStay.add("active");
+          selectedLodgingStay.add("unassigned");
+        }
+        if (v === "na" || v === "ineligible") {
+          selectedLodgingStay.add("ended");
+          selectedLodgingStay.add("no_stay");
+          selectedLodgingStay.add("absent");
+        }
+      });
+    }
   }
 
   function phoneDigits(value) {
@@ -94,16 +124,16 @@
 
   function rowMatches(row) {
     const status = row.dataset.checkInStatus || "";
-    const stay = row.dataset.lodgingEligible || "";
-    const assignment = row.dataset.lodgingAssignment || "";
+    const lodgingStay = row.dataset.lodgingStayStatus || "";
     const region = row.dataset.regionName || "";
     const division = row.dataset.divisionName || "";
     const name = (row.dataset.name || "").toLowerCase();
     const phone = row.dataset.phone || "";
 
     if (selectedStatus.size > 0 && !selectedStatus.has(status)) return false;
-    if (selectedStay.size > 0 && !selectedStay.has(stay)) return false;
-    if (selectedAssign.size > 0 && !selectedAssign.has(assignment)) return false;
+    if (selectedLodgingStay.size > 0 && !selectedLodgingStay.has(lodgingStay)) {
+      return false;
+    }
     if (selectedRegions.size > 0 && !selectedRegions.has(region)) return false;
     if (selectedDivisions.size > 0 && !selectedDivisions.has(division)) return false;
     if (nameQuery.trim()) {
@@ -136,8 +166,7 @@
     renumberVisible();
     const hasFilter =
       selectedStatus.size > 0 ||
-      selectedStay.size > 0 ||
-      selectedAssign.size > 0 ||
+      selectedLodgingStay.size > 0 ||
       selectedRegions.size > 0 ||
       selectedDivisions.size > 0 ||
       !!nameQuery.trim();
@@ -154,8 +183,7 @@
 
   function chipSetForKind(kind) {
     if (kind === "status") return selectedStatus;
-    if (kind === "stay") return selectedStay;
-    if (kind === "assign") return selectedAssign;
+    if (kind === "lodgingStay") return selectedLodgingStay;
     if (kind === "region") return selectedRegions;
     return selectedDivisions;
   }
@@ -227,8 +255,7 @@
 
   function applyPreset(preset) {
     selectedStatus.clear();
-    selectedStay.clear();
-    selectedAssign.clear();
+    selectedLodgingStay.clear();
     selectedRegions.clear();
     selectedDivisions.clear();
     nameQuery = "";
@@ -237,9 +264,14 @@
     if (preset && preset !== "all") {
       const [kind, value] = preset.split(":");
       if (kind === "status" && value) selectedStatus.add(value);
-      if (kind === "stay" && value) selectedStay.add(value);
-      if (kind === "assign" && value) selectedAssign.add(value);
-      if (kind === "lodging" && value) applyLegacyLodgingParam([value]);
+      if (kind === "lodgingStay" && value) selectedLodgingStay.add(value);
+      if (kind === "stay" && value === "eligible") {
+        selectedLodgingStay.add("active");
+        selectedLodgingStay.add("unassigned");
+      }
+      if (kind === "assign" && value === "unassigned") {
+        selectedLodgingStay.add("unassigned");
+      }
     }
 
     syncChipStates();
@@ -272,21 +304,41 @@
     const stored = loadStored();
 
     const statusParam = params.get("status") || (stored && stored.status?.join(","));
-    const stayParam = params.get("stay") || (stored && stored.stay?.join(","));
-    const assignParam = params.get("assign") || (stored && stored.assign?.join(","));
-    const legacyLodgingParam = params.get("lodging");
+    const lodgingStayParam =
+      params.get("lodgingStay") || (stored && stored.lodgingStay?.join(","));
     const regionParam = params.get("region") || (stored && stored.regions?.join(","));
     const divisionParam =
       params.get("division") || (stored && stored.divisions?.join(","));
     const qParam = params.get("q") || (stored && stored.name) || "";
 
     if (statusParam) statusParam.split(",").filter(Boolean).forEach((v) => selectedStatus.add(v));
-    if (stayParam) stayParam.split(",").filter(Boolean).forEach((v) => selectedStay.add(v));
-    if (assignParam) assignParam.split(",").filter(Boolean).forEach((v) => selectedAssign.add(v));
-    if (legacyLodgingParam) applyLegacyLodgingParam(legacyLodgingParam.split(",").filter(Boolean));
+    if (lodgingStayParam) {
+      lodgingStayParam.split(",").filter(Boolean).forEach((v) => selectedLodgingStay.add(v));
+    } else {
+      applyLegacyParams(params);
+      if (stored && stored.stay) {
+        stored.stay.forEach((v) => {
+          if (v === "eligible") {
+            selectedLodgingStay.add("active");
+            selectedLodgingStay.add("unassigned");
+          } else if (v === "ineligible") {
+            selectedLodgingStay.add("ended");
+            selectedLodgingStay.add("no_stay");
+            selectedLodgingStay.add("absent");
+          }
+        });
+      }
+      if (stored && stored.assign) {
+        stored.assign.forEach((v) => {
+          if (v === "assigned") selectedLodgingStay.add("active");
+          if (v === "unassigned") selectedLodgingStay.add("unassigned");
+        });
+      }
+    }
     if (regionParam) regionParam.split(",").filter(Boolean).forEach((v) => selectedRegions.add(v));
-    if (divisionParam)
+    if (divisionParam) {
       divisionParam.split(",").filter(Boolean).forEach((v) => selectedDivisions.add(v));
+    }
     nameQuery = qParam;
     if (searchInput && nameQuery) searchInput.value = nameQuery;
 

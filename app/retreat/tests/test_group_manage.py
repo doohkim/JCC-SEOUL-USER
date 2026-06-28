@@ -101,8 +101,8 @@ class GroupCreatePermissionTests(_GroupManageFixture):
     def test_pastor_cannot_add_group(self):
         self.assertFalse(can_add_retreat_group(self.pastor, self.event))
 
-    def test_leader_cannot_manage_leaders_on_own_group(self):
-        self.assertFalse(
+    def test_leader_can_manage_leaders_on_own_group(self):
+        self.assertTrue(
             can_manage_retreat_group_leaders(self.leader, self.group)
         )
 
@@ -423,7 +423,7 @@ class AttendeeEditPermissionTests(_GroupManageFixture):
             args=[self.attendee.id],
         )
 
-    def test_leader_cannot_patch_profile_fields(self):
+    def test_leader_can_patch_profile_fields(self):
         self.client.force_authenticate(self.leader)
         r = self.client.patch(
             self.url,
@@ -435,7 +435,11 @@ class AttendeeEditPermissionTests(_GroupManageFixture):
             },
             format="json",
         )
-        self.assertEqual(r.status_code, 403, r.content)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.name, "이름변경")
+        self.assertEqual(self.attendee.phone, "010-9999-8888")
+        self.assertEqual(self.attendee.memo, "조장메모")
 
     def test_phone_digits_only_normalized_on_save(self):
         self.client.force_authenticate(self.council_user)
@@ -458,13 +462,13 @@ class AttendeeEditPermissionTests(_GroupManageFixture):
         )
         self.assertEqual(r.status_code, 403, r.content)
 
-    def test_leader_cannot_delete_attendee(self):
+    def test_leader_can_delete_attendee(self):
         victim = RetreatAttendee.objects.create(group=self.group, name="삭제대상")
         url = reverse("api_retreat_attendee_detail", args=[victim.id])
         self.client.force_authenticate(self.leader)
         r = self.client.delete(url)
-        self.assertEqual(r.status_code, 403, r.content)
-        self.assertTrue(RetreatAttendee.objects.filter(pk=victim.id).exists())
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertFalse(RetreatAttendee.objects.filter(pk=victim.id).exists())
 
     def test_pastor_cannot_patch_attendee(self):
         self.client.force_authenticate(self.pastor)
@@ -560,10 +564,9 @@ class AttendeeExpectedTimeValidationTests(_GroupManageFixture):
             {"expected_check_in_at": "2026-07-01T10:00:00+09:00"},
             format="json",
         )
-        self.assertEqual(r.status_code, 400, r.content)
-        self.assertIn("expected_check_in_at", r.json())
+        self.assertEqual(r.status_code, 403, r.content)
 
-    def test_manual_early_checkout_can_still_patch_expected_timestamps(self):
+    def test_manual_early_checkout_cannot_patch_expected_timestamps(self):
         from datetime import timedelta
 
         from django.utils import timezone
@@ -582,9 +585,7 @@ class AttendeeExpectedTimeValidationTests(_GroupManageFixture):
             },
             format="json",
         )
-        self.assertEqual(r.status_code, 200, r.content)
-        self.attendee.refresh_from_db()
-        self.assertIsNotNone(self.attendee.expected_check_in_at)
+        self.assertEqual(r.status_code, 403, r.content)
 
 
 class AttendeeCheckInStatusEditTests(_GroupManageFixture):
@@ -625,6 +626,173 @@ class AttendeeCheckInStatusEditTests(_GroupManageFixture):
         )
         self.assertEqual(r.status_code, 403, r.content)
 
+    def test_leader_cannot_patch_name_when_checked_out(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.patch(self.url, {"name": "변경불가"}, format="json")
+        self.assertEqual(r.status_code, 403, r.content)
+
+    def test_leader_cannot_delete_checked_out_attendee(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.delete(self.url)
+        self.assertEqual(r.status_code, 403, r.content)
+
+    def test_council_can_revert_checked_out_status_only(self):
+        self.client.force_authenticate(self.council_user)
+        r = self.client.patch(
+            self.url,
+            {"check_in_status": "checked_in", "name": "동시변경"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 403, r.content)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.check_in_status, "checked_out")
+        self.assertEqual(self.attendee.name, "상태수정대상")
+
+        future_out = "2026-07-03T18:00:00+09:00"
+        r = self.client.patch(
+            self.url,
+            {
+                "check_in_status": "checked_in",
+                "expected_check_out_at": future_out,
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.check_in_status, "checked_in")
+
+    def test_council_can_delete_checked_out_attendee(self):
+        self.client.force_authenticate(self.council_user)
+        r = self.client.delete(self.url)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertFalse(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())
+
+    def test_council_can_patch_expected_out_when_checked_out(self):
+        from django.utils import timezone
+
+        now = timezone.now()
+        self.attendee.expected_check_in_at = now
+        self.attendee.expected_check_out_at = now
+        self.attendee.save(
+            update_fields=["expected_check_in_at", "expected_check_out_at"]
+        )
+        self.client.force_authenticate(self.council_user)
+        new_out = "2026-07-03T20:00:00+09:00"
+        r = self.client.patch(
+            self.url, {"expected_check_out_at": new_out}, format="json"
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.check_in_status, "checked_out")
+
+    def test_superuser_can_patch_expected_out_when_checked_out(self):
+        superuser = User.objects.create_user(
+            username="gm_super", password="x", is_superuser=True
+        )
+        self.client.force_authenticate(superuser)
+        new_out = "2026-07-03T21:00:00+09:00"
+        r = self.client.patch(
+            self.url, {"expected_check_out_at": new_out}, format="json"
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.check_in_status, "checked_out")
+
+    def test_leader_cannot_patch_expected_out_when_checked_out(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.patch(
+            self.url,
+            {"expected_check_out_at": "2026-07-03T22:00:00+09:00"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 403, r.content)
+
+    def test_council_checked_out_future_out_avoids_auto_recheckout(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from retreat.services.auto_check_in import apply_due_auto_transitions
+
+        now = timezone.now()
+        self.attendee.expected_check_in_at = now - timedelta(hours=2)
+        self.attendee.expected_check_out_at = now - timedelta(hours=1)
+        self.attendee.save(
+            update_fields=["expected_check_in_at", "expected_check_out_at"]
+        )
+        self.client.force_authenticate(self.council_user)
+        future_out = (now + timedelta(hours=3)).isoformat()
+        r = self.client.patch(
+            self.url,
+            {
+                "check_in_status": "checked_in",
+                "expected_check_out_at": future_out,
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        apply_due_auto_transitions(now=now)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.check_in_status, "checked_in")
+
+
+class AttendeeCheckInRevertOverbookingTests(_GroupManageFixture):
+    """퇴실→입실 되돌리기 시 정원 초과여도 상태 변경은 허용."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.lodging = Lodging.objects.create(event=cls.event, name="본관")
+        cls.room = LodgingRoom.objects.create(
+            lodging=cls.lodging,
+            number="101",
+            capacity=1,
+            region=cls.seoul,
+            division=cls.div,
+        )
+
+    def setUp(self):
+        self.client = APIClient()
+        from django.utils import timezone
+
+        from retreat.services.lodging_stay import persist_lodging_stay_status
+
+        now = timezone.now()
+        self.active = RetreatAttendee.objects.create(
+            group=self.group,
+            name="입실중",
+            gender="male",
+            expected_check_in_at=now,
+            lodging_room=self.room,
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+        )
+        persist_lodging_stay_status(self.active)
+        self.checked_out = RetreatAttendee.objects.create(
+            group=self.group,
+            name="퇴실되돌리기",
+            gender="male",
+            expected_check_in_at=now,
+            lodging_room=self.room,
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+        )
+        persist_lodging_stay_status(self.checked_out)
+        self.url = reverse(
+            "api_retreat_attendee_detail", args=[self.checked_out.id]
+        )
+
+    def test_revert_checked_in_allows_overbooking(self):
+        self.client.force_authenticate(self.council_user)
+        r = self.client.patch(
+            self.url, {"check_in_status": "checked_in"}, format="json"
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.checked_out.refresh_from_db()
+        self.assertEqual(self.checked_out.check_in_status, "checked_in")
+        self.assertEqual(
+            self.checked_out.lodging_stay_status,
+            RetreatAttendee.LodgingStayStatus.ACTIVE,
+        )
+
 
 class GroupMembershipWritePermissionTests(_GroupManageFixture):
     def setUp(self):
@@ -639,14 +807,14 @@ class GroupMembershipWritePermissionTests(_GroupManageFixture):
         )
         self.assertEqual(r.status_code, 403)
 
-    def test_leader_cannot_add_membership(self):
+    def test_leader_can_add_membership(self):
         self.client.force_authenticate(self.leader)
         target = User.objects.create_user(username="gm_leader_target", password="x")
         url = reverse("api_retreat_group_memberships", args=[self.group.id])
         r = self.client.post(
             url, {"user_id": target.id, "role": "vice_leader"}, format="json"
         )
-        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.status_code, 201, r.content)
 
 
 class OnboardingRetreatAssignTests(_GroupManageFixture):
@@ -780,14 +948,17 @@ class PastoralObserverGroupManageTests(_GroupManageFixture):
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(len(r.json()), 1)
 
-    def test_leader_cannot_post_attendee(self):
+    def test_leader_can_post_attendee(self):
         self.client.force_authenticate(self.leader)
         r = self.client.post(
             reverse("api_retreat_group_attendees", args=[self.group.id]),
-            {"name": "추가시도"},
+            {"name": "추가시도", "gender": "male"},
             format="json",
         )
-        self.assertEqual(r.status_code, 403, r.content)
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertTrue(
+            RetreatAttendee.objects.filter(group=self.group, name="추가시도").exists()
+        )
 
     def test_pastor_observer_cannot_post_attendee(self):
         self.client.force_authenticate(self.pastor)

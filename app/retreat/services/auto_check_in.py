@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from retreat.models import RetreatAttendee, RetreatChangeLog
 from retreat.services.audit import log_retreat_change, serialize_model_fields
+from retreat.services.lodging_stay import sync_lodging_stay_status
 from retreat.services.participation import participating_filter
 
 _AUTO_FIELDS = [
@@ -30,7 +31,10 @@ def _transition(attendee: RetreatAttendee, *, new_status: str, stamp_field: str,
     before = serialize_model_fields(attendee, _AUTO_FIELDS)
     attendee.check_in_status = new_status
     setattr(attendee, stamp_field, now)
-    attendee.save(update_fields=["check_in_status", stamp_field, "updated_at"])
+    update_fields = ["check_in_status", stamp_field, "updated_at"]
+    if sync_lodging_stay_status(attendee):
+        update_fields.append("lodging_stay_status")
+    attendee.save(update_fields=update_fields)
     log_retreat_change(
         user=None,
         event=attendee.group.event_id,

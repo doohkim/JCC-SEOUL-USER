@@ -113,6 +113,16 @@ class _LodgingRosterFixture(TestCase):
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
             lodging_room=cls.room,
         )
+        from retreat.services.lodging_stay import persist_lodging_stay_status
+
+        for attendee in (
+            cls.unassigned_attendee,
+            cls.assigned_attendee,
+            cls.full_room_attendee,
+            cls.no_lodging_attendee,
+            cls.checked_out_attendee,
+        ):
+            persist_lodging_stay_status(attendee)
 
 
 class LodgingRosterPageTests(_LodgingRosterFixture):
@@ -130,15 +140,16 @@ class LodgingRosterPageTests(_LodgingRosterFixture):
         self.assertContains(r, "숙소·호수 관리")
         self.assertContains(r, "미배정자")
         self.assertContains(r, "배정자")
-        self.assertContains(r, 'data-lodging-eligible="eligible"')
-        self.assertContains(r, 'data-lodging-assignment="unassigned"')
-        self.assertContains(r, 'data-lodging-assignment="assigned"')
-        self.assertContains(r, 'data-lodging-eligible="ineligible"')
-        self.assertContains(r, "숙박 없음")
+        self.assertContains(r, 'data-lodging-stay-status="active"')
+        self.assertContains(r, 'data-lodging-stay-status="unassigned"')
+        self.assertContains(r, 'data-lodging-stay-status="ended"')
+        self.assertContains(r, "jcc-retreat-lodgingStayBadge--active")
+        self.assertContains(r, "jcc-retreat-lodgingStayBadge--unassigned")
+        self.assertContains(r, "입실 예정 없음")
         self.assertContains(r, "숙박 종료")
-        self.assertContains(r, "숙박 여부")
-        self.assertContains(r, "호실 배정")
-        self.assertContains(r, "숙박 비대상")
+        self.assertContains(r, "숙소 상태")
+        self.assertContains(r, 'data-filter-kind="lodgingStay"')
+        self.assertContains(r, "숙박 관리 대상")
 
     def test_leader_blocked(self):
         self.client.force_login(self.leader)
@@ -150,7 +161,7 @@ class LodgingRosterPageTests(_LodgingRosterFixture):
         r = self.client.get(self._url() + "?assign=unassigned")
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'data-filter-value="unassigned"')
-        self.assertContains(r, 'data-lodging-assignment="unassigned"')
+        self.assertContains(r, 'data-lodging-stay-status="unassigned"')
 
     def test_legacy_lodging_unassigned_query(self):
         self.client.force_login(self.staff)
@@ -187,7 +198,7 @@ class LodgingRosterSummaryTests(_LodgingRosterFixture):
         self.assertEqual(by_name["당일참석"].lodging_eligible_key, "ineligible")
         self.assertEqual(by_name["당일참석"].lodging_assignment_key, "")
         self.assertEqual(by_name["퇴실자"].lodging_eligible_key, "ineligible")
-        self.assertEqual(attendee_lodging_cell_label(by_name["당일참석"]), "숙박 없음")
+        self.assertEqual(attendee_lodging_cell_label(by_name["당일참석"]), "입실 예정 없음")
         self.assertEqual(attendee_lodging_cell_label(by_name["퇴실자"]), "숙박 종료")
         self.assertIsNone(attendee_lodging_cell_label(by_name["배정자"]))
 

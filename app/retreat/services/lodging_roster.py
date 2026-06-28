@@ -8,8 +8,18 @@ from django.contrib.auth import get_user_model
 from django.db.models import Case, IntegerField, QuerySet, Value, When
 
 from retreat.models import RetreatAttendee, RetreatEvent
-from retreat.services.check_in_stamps import is_expected_timestamps_locked
-from retreat.services.participation import is_participating, participating_filter
+from retreat.services.check_in_stamps import (
+    is_attendee_profile_locked,
+    is_expected_check_in_locked,
+    is_expected_check_out_locked,
+    is_expected_timestamps_locked,
+)
+from retreat.services.lodging_stay import (
+    is_lodging_stay_eligible,
+    lodging_stay_display,
+    lodging_stay_eligible_filter,
+)
+from retreat.services.participation import is_participating
 from users.permissions import visible_retreat_groups_for
 
 User = get_user_model()
@@ -28,27 +38,21 @@ class LodgingRosterSummary:
 
 
 def is_lodging_eligible(attendee: RetreatAttendee) -> bool:
-    if not is_participating(attendee):
-        return False
-    if attendee.expected_check_in_at is None:
-        return False
-    return attendee.check_in_status != RetreatAttendee.CheckInStatus.CHECKED_OUT
+    return is_lodging_stay_eligible(attendee)
 
 
 def lodging_eligible_filter(qs: QuerySet) -> QuerySet:
-    """숙박 대상만 — 참석 + 예상 입실 시각 있음 + 퇴실 제외."""
-    return participating_filter(qs).filter(
-        expected_check_in_at__isnull=False,
-    ).exclude(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT)
+    """숙박 대상만 — lodging_stay_status active|unassigned."""
+    return lodging_stay_eligible_filter(qs)
 
 
 def attendee_lodging_scope(attendee: RetreatAttendee) -> str:
     """레거시·집계용: eligible | assigned | unassigned | na."""
-    if not is_lodging_eligible(attendee):
-        return "na"
-    if attendee.lodging_room_id:
-        return "assigned"
-    return "unassigned"
+    S = RetreatAttendee.LodgingStayStatus
+    status = attendee.lodging_stay_status
+    if status in (S.ACTIVE, S.UNASSIGNED):
+        return "assigned" if status == S.ACTIVE else "unassigned"
+    return "na"
 
 
 def attendee_lodging_eligible_key(attendee: RetreatAttendee) -> str:
@@ -58,24 +62,24 @@ def attendee_lodging_eligible_key(attendee: RetreatAttendee) -> str:
 
 def attendee_lodging_assignment_key(attendee: RetreatAttendee) -> str:
     """필터용 호실 배정: assigned | unassigned | '' (숙박 비대상)."""
-    if not is_lodging_eligible(attendee):
-        return ""
-    if attendee.lodging_room_id:
+    S = RetreatAttendee.LodgingStayStatus
+    status = attendee.lodging_stay_status
+    if status == S.ACTIVE:
         return "assigned"
-    return "unassigned"
+    if status == S.UNASSIGNED:
+        return "unassigned"
+    return ""
 
 
 def attendee_lodging_cell_label(attendee: RetreatAttendee) -> str | None:
-    """숙소·호수 컬럼 라벨. 호실 표시 시 None."""
-    if not is_participating(attendee):
-        return "불참"
-    if attendee.lodging_room_id and is_lodging_eligible(attendee):
+    """숙소·호수 컬럼 라벨. 호실 표시(active) 시 None."""
+    S = RetreatAttendee.LodgingStayStatus
+    status = attendee.lodging_stay_status
+    if status == S.ACTIVE:
         return None
-    if is_lodging_eligible(attendee):
-        return "미배정"
-    if attendee.check_in_status == RetreatAttendee.CheckInStatus.CHECKED_OUT:
-        return "숙박 종료"
-    return "숙박 없음"
+    if status in (S.UNASSIGNED, S.ENDED, S.NO_STAY, S.ABSENT):
+        return lodging_stay_display(attendee)
+    return lodging_stay_display(attendee)
 
 
 def build_lodging_roster_context(
@@ -127,7 +131,15 @@ def build_lodging_roster_context(
         attendee.lodging_eligible_key = attendee_lodging_eligible_key(attendee)
         attendee.lodging_assignment_key = attendee_lodging_assignment_key(attendee)
         attendee.lodging_cell_label = attendee_lodging_cell_label(attendee)
+        attendee.lodging_stay_display = lodging_stay_display(attendee)
         attendee.expected_timestamps_locked = is_expected_timestamps_locked(attendee)
+        attendee.profile_locked = is_attendee_profile_locked(attendee)
+        attendee.expected_check_in_locked = is_expected_check_in_locked(
+            attendee, user, attendee.group
+        )
+        attendee.expected_check_out_locked = is_expected_check_out_locked(
+            attendee, user, attendee.group
+        )
 
     s = RetreatAttendee.CheckInStatus
     p = RetreatAttendee.ParticipationStatus

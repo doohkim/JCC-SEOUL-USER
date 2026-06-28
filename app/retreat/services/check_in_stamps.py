@@ -10,17 +10,36 @@ from django.utils import timezone
 from retreat.models import RetreatAttendee
 
 
+def is_attendee_profile_locked(attendee: RetreatAttendee) -> bool:
+    """퇴실 상태 조원은 프로필·예정 시각 수정 불가 (회장단은 상태만 변경 가능)."""
+    return attendee.check_in_status == RetreatAttendee.CheckInStatus.CHECKED_OUT
+
+
 def is_expected_timestamps_locked(
     attendee: RetreatAttendee, *, now: datetime | None = None
 ) -> bool:
-    """예상 퇴실 시각이 지나 자동 퇴실된 조원은 입·퇴실 시각 수정 불가."""
-    if attendee.check_in_status != RetreatAttendee.CheckInStatus.CHECKED_OUT:
+    """퇴실 상태 조원의 입·퇴실 예정 시각 수정 불가 (조장 기준)."""
+    return is_attendee_profile_locked(attendee)
+
+
+def is_expected_check_in_locked(attendee, user, group) -> bool:
+    """퇴실이면 입실 예정 시각 수정 불가."""
+    return is_attendee_profile_locked(attendee)
+
+
+def is_expected_check_out_locked(attendee, user, group) -> bool:
+    """퇴실 조원의 퇴실 예정 시각 — 회장단·슈퍼유저만 수정 가능."""
+    if not is_attendee_profile_locked(attendee):
         return False
-    out_at = attendee.expected_check_out_at
-    if out_at is None:
+    if not user:
+        return True
+    if getattr(user, "is_superuser", False):
         return False
-    ts = now or timezone.now()
-    return out_at <= ts
+    from users.permissions import is_retreat_council
+
+    if group and is_retreat_council(user, group.event):
+        return False
+    return True
 
 
 def ensure_stamps_for_status(

@@ -123,6 +123,10 @@ class RetreatAttendeeHistoryTests(APITestCase):
         self.assertIn("입실", entry["summary"])
 
     def test_leader_can_patch_expected_timestamps(self):
+        self.assertNotEqual(
+            self.attendee.check_in_status,
+            RetreatAttendee.CheckInStatus.CHECKED_OUT,
+        )
         self.client.force_authenticate(self.leader)
         url = reverse("api_retreat_attendee_detail", args=[self.attendee.id])
         r = self.client.patch(

@@ -7,6 +7,7 @@ from copy import deepcopy
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -14,25 +15,29 @@ from rest_framework.views import APIView
 from retreat.apis._common import (
     _ATTENDEE_DETAIL_PATCH_KEYS,
     _CHECK_IN_STATUS_KEYS,
-    _PROFILE_PATCH_KEYS,
     assert_can_change_check_in_status,
     assert_can_delete_attendee,
     assert_can_edit_attendee_details,
     assert_check_in_status_transition,
     get_group_or_403,
+    profile_locked_patch_keys_for,
     user_can_edit_attendee_timestamps,
 )
-from users.permissions import can_change_retreat_check_in
-from retreat.models import RetreatAttendee, RetreatChangeLog, RetreatGroup
-from retreat.serializers import RetreatAttendeeSerializer
-from retreat.services.audit import log_retreat_change, serialize_model_fields
-from retreat.services.check_in_stamps import apply_attendee_stamp_from_payload
+from retreat.services.check_in_stamps import (
+    apply_attendee_stamp_from_payload,
+    is_attendee_profile_locked,
+)
 from retreat.services.enrollment import enroll_attendee_into_active_sessions
 from retreat.services.group_sync import (
     remove_membership_for_attendee,
     sync_membership_from_attendee,
 )
+from users.permissions import can_change_retreat_check_in
+from retreat.models import RetreatAttendee, RetreatChangeLog, RetreatGroup
+from retreat.serializers import RetreatAttendeeSerializer
+from retreat.services.audit import log_retreat_change, serialize_model_fields
 from retreat.services.lodging import assert_room_can_accept
+from retreat.services.lodging_stay import persist_lodging_stay_status, sync_lodging_stay_status
 from retreat.services.participation import apply_participation_change
 from retreat.services.pickup_attendee import (
     delete_pickups_for_attendee,
@@ -55,6 +60,7 @@ _ATTENDEE_FIELDS = [
     "checked_in_at",
     "checked_out_at",
     "lodging_room_id",
+    "lodging_stay_status",
     "participation_status",
     "sort_order",
 ]
@@ -127,6 +133,7 @@ class RetreatGroupAttendeesView(APIView):
             stamp_fields.append("checked_out_at")
         if len(stamp_fields) > 1:
             attendee.save(update_fields=stamp_fields)
+        persist_lodging_stay_status(attendee)
         if attendee.user_id:
             sync_membership_from_attendee(attendee, changed_by=request.user)
         enroll_attendee_into_active_sessions(attendee, actor=request.user)
@@ -179,6 +186,11 @@ class RetreatAttendeeDetailView(APIView):
         payload = _sanitize_attendee_payload(request.user, group, request.data)
         keys = set(payload.keys())
         detail_keys = keys & _ATTENDEE_DETAIL_PATCH_KEYS
+        profile_keys = keys & profile_locked_patch_keys_for(
+            request.user, group, attendee
+        )
+        if is_attendee_profile_locked(attendee) and profile_keys:
+            raise PermissionDenied("퇴실 상태 조원의 정보는 수정할 수 없습니다.")
         if detail_keys:
             assert_can_edit_attendee_details(request.user, group)
         elif keys:
@@ -195,7 +207,12 @@ class RetreatAttendeeDetailView(APIView):
         before = serialize_model_fields(attendee, _ATTENDEE_FIELDS)
         previous_status = attendee.check_in_status
         previous_participation = attendee.participation_status
-        ser = RetreatAttendeeSerializer(attendee, data=payload, partial=True)
+        ser = RetreatAttendeeSerializer(
+            attendee,
+            data=payload,
+            partial=True,
+            context={"user": request.user, "group": group},
+        )
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
         if "lodging_room" in ser.validated_data or "gender" in ser.validated_data:
@@ -230,11 +247,13 @@ class RetreatAttendeeDetailView(APIView):
             manual_checked_in_at=manual_in,
             manual_checked_out_at=manual_out,
         )
+        sync_lodging_stay_status(attendee)
         attendee.save(
             update_fields=[
                 "check_in_status",
                 "checked_in_at",
                 "checked_out_at",
+                "lodging_stay_status",
                 "updated_at",
             ]
         )
@@ -253,7 +272,7 @@ class RetreatAttendeeDetailView(APIView):
 
     def delete(self, request, attendee_id: int):
         attendee = self._get(request, attendee_id)
-        assert_can_delete_attendee(request.user, attendee.group)
+        assert_can_delete_attendee(request.user, attendee.group, attendee=attendee)
         before = serialize_model_fields(attendee, _ATTENDEE_FIELDS)
         event = attendee.group.event
         aid = attendee.id
