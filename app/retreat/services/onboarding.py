@@ -21,6 +21,20 @@ RETREAT_ROLE_LABELS = {
     "vice_leader": "부조장",
 }
 
+APPLICANT_ROLE_LABELS = dict(UserProfile.ApplicantRole.choices)
+
+PASTORAL_APPLICANT_ROLES = frozenset(
+    {
+        UserProfile.ApplicantRole.PASTOR,
+        UserProfile.ApplicantRole.EVANGELIST,
+    }
+)
+
+
+def is_pastoral_applicant(profile) -> bool:
+    role = getattr(profile, "requested_applicant_role", UserProfile.ApplicantRole.MEMBER)
+    return role in PASTORAL_APPLICANT_ROLES
+
 
 def _attendee_name_for_user(user, profile) -> str:
     real_name = (getattr(profile, "real_name", "") or "").strip()
@@ -203,6 +217,9 @@ def apply_retreat_membership_on_approval(
     - ``appoint_leadership=False`` (가입신청서 승인): ``RetreatAttendee`` 만, 항상 조원
     - ``appoint_leadership=True`` (계정 관리 수동 지정): 조장·부조장 시 ``RetreatGroupMembership`` + ``RetreatAttendee``
     """
+    if is_pastoral_applicant(profile):
+        return
+
     group_id_raw = retreat_group_id or getattr(
         profile, "requested_retreat_group_id", None
     )

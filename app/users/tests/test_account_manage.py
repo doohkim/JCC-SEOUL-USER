@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -19,6 +20,7 @@ from users.models import (
     UserDivisionTeam,
     UserProfile,
 )
+from users.permissions import can_access_retreat_tab, visible_retreat_groups_for
 
 User = get_user_model()
 
@@ -443,6 +445,48 @@ class OnboardingApprovalMemberOnlyTests(AccountManageFixture):
         self.assertEqual(attendee.member_role, RetreatAttendee.MemberRole.MEMBER)
         self.assertEqual(attendee.name, "승인조배정")
 
+    def test_approve_pastoral_applicant_skips_retreat_attendee_even_with_group(self):
+        applicant = User.objects.create_user(username="acct_pastor_app", password="x")
+        profile = ensure_user_profile(applicant)
+        profile.real_name = "목사신청"
+        profile.onboarding_status = UserProfile.OnboardingStatus.PENDING
+        profile.requested_division = self.div_a
+        profile.requested_team = self.team_a
+        profile.requested_applicant_role = UserProfile.ApplicantRole.PASTOR
+        profile.requested_retreat_participation = True
+        profile.requested_retreat_event = self.event
+        profile.requested_retreat_group = self.group
+        profile.save()
+
+        self.client.force_login(self.staff)
+        r = self.client.post(
+            reverse("user_onboarding_applications"),
+            {
+                "profile_id": str(profile.id),
+                "action": "save",
+                "onboarding_status": UserProfile.OnboardingStatus.APPROVED,
+                "requested_division_id": str(self.div_a.id),
+                "requested_team_id": str(self.team_a.id),
+                "requested_retreat_event_id": str(self.event.id),
+                "requested_retreat_group_id": str(self.group.id),
+            },
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assertFalse(
+            RetreatAttendee.objects.filter(group=self.group, user=applicant).exists()
+        )
+        applicant.refresh_from_db()
+        self.assertEqual(applicant.role_level_id, self.rl_pastor.id)
+        self.assertTrue(
+            PastoralDivisionAssignment.objects.filter(
+                user=applicant, division=self.div_a
+            ).exists()
+        )
+        self.assertTrue(can_access_retreat_tab(applicant))
+        self.assertTrue(
+            visible_retreat_groups_for(applicant, self.event).filter(pk=self.group.pk).exists()
+        )
+
     def test_approve_with_group_only_when_participation_flag_false(self):
         """참여 플래그가 꺼져 있어도 조가 지정돼 있으면 조원으로 등록한다."""
         applicant = User.objects.create_user(username="acct_retreat_flag", password="x")
@@ -863,6 +907,24 @@ class OnboardingApplicationEditTests(AccountManageFixture):
 
 
 class DivisionAccountActivityLogTests(AccountManageFixture):
+    def test_roles_page_includes_signup_application_in_account_details(self):
+        self.client.force_login(self.staff)
+        r = self.client.get(
+            reverse("user_division_account_roles"),
+            {"division_code": self.div_a.code},
+        )
+        self.assertEqual(r.status_code, 200)
+        details = json.loads(r.context["account_details_json"])
+        member_detail = details[str(self.member.id)]
+        signup = member_detail["signup_application"]
+        self.assertTrue(signup["has_application"])
+        self.assertEqual(signup["division_name"], self.div_a.name)
+        self.assertEqual(signup["team_name"], self.team_a.name)
+        self.assertEqual(signup["applicant_role_label"], "성도")
+        self.assertFalse(signup["is_pastoral_applicant"])
+        self.assertContains(r, "accountSignupApplicationSection")
+        self.assertContains(r, "가입 신청 정보")
+
     def test_roles_page_includes_activity_log_ui(self):
         self.client.force_login(self.staff)
         r = self.client.get(reverse("user_division_account_roles"))

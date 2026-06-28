@@ -60,7 +60,7 @@
       list.innerHTML = items
         .map((u, i) => {
           const shown = u.name || u.display_name || u.username;
-          return `<li role="option" data-idx="${i}">${escapeHtml(shown)} <span class="muted">(${escapeHtml(u.username)})</span></li>`;
+          return `<li role="option" data-idx="${i}">${escapeHtml(shown)}</li>`;
         })
         .join("");
       list.hidden = false;

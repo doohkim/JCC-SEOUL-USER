@@ -46,6 +46,7 @@ class _CouncilFixture:
         )
 
         cls.staff = User.objects.create_user(username="cl_staff", password="x")
+        # 부서 회장 직급(RoleLevel)만 — 수련회 회장단(RetreatCouncilMembership) 아님.
         cls.staff.role_level = cls.rl_president
         cls.staff.save()
         UserDivisionTeam.objects.create(
@@ -126,11 +127,12 @@ class CouncilManagementApiTests(APITestCase, _CouncilFixture):
         r = self.client.post(url, {"username": self.extra.username}, format="json")
         self.assertEqual(r.status_code, 403)
 
-    def test_staff_can_view_council_list(self):
+    def test_org_president_without_council_cannot_view_council_list(self):
+        """부서 회장 직급만으로는 수련회 회장단 API 조회 불가."""
         self.client.force_authenticate(self.staff)
         url = reverse("api_retreat_event_council", args=[self.event.id])
         r = self.client.get(url)
-        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.status_code, 403)
 
 
 class CouncilPageAccessTests(TestCase, _CouncilFixture):
@@ -150,10 +152,11 @@ class CouncilPageAccessTests(TestCase, _CouncilFixture):
         r = self.client.get(reverse("retreat_council", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
 
-    def test_council_page_ok_for_staff(self):
+    def test_council_page_forbidden_for_org_president_without_council(self):
+        """부서 회장 직급만으로는 회장단 관리 페이지 접근 불가."""
         self.client.force_login(self.staff)
         r = self.client.get(reverse("retreat_council", args=[self.event.id]))
-        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.status_code, 403)
 
     def test_council_page_forbidden_for_stranger(self):
         self.client.force_login(self.stranger)

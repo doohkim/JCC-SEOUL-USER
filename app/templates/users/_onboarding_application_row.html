@@ -16,7 +16,14 @@
   <td class="jcc-appsTextCell">{{ p.requested_division.name|default:"-" }}</td>
   <td class="jcc-appsTextCell">{{ p.requested_team.name|default:"-" }}</td>
   <td class="jcc-appsTextCell">
-    {% if p.requested_retreat_participation and p.requested_retreat_group_id %}
+    {% if p.requested_applicant_role == "pastor" %}목사
+    {% elif p.requested_applicant_role == "evangelist" %}전도사
+    {% else %}성도{% endif %}
+  </td>
+  <td class="jcc-appsTextCell">
+    {% if p.requested_applicant_role == "pastor" or p.requested_applicant_role == "evangelist" %}
+      조원 배정 없음
+    {% elif p.requested_retreat_participation and p.requested_retreat_group_id %}
       {{ p.requested_retreat_group.name }}
     {% else %}
       -

@@ -19,6 +19,11 @@ class UserProfile(models.Model):
         APPROVED = "approved", "승인 완료"
         REJECTED = "rejected", "반려"
 
+    class ApplicantRole(models.TextChoices):
+        MEMBER = "member", "성도"
+        PASTOR = "pastor", "목사"
+        EVANGELIST = "evangelist", "전도사"
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -101,6 +106,13 @@ class UserProfile(models.Model):
         verbose_name="신청 팀",
     )
     onboarding_note = models.TextField("온보딩 메모", blank=True, default="")
+    requested_applicant_role = models.CharField(
+        "신청 직급",
+        max_length=20,
+        choices=ApplicantRole.choices,
+        default=ApplicantRole.MEMBER,
+        help_text="가입 신청서 구분용(목사/전도사/성도). User.role_level 과 별개.",
+    )
     requested_retreat_participation = models.BooleanField(
         "수련회 참여 희망",
         default=False,

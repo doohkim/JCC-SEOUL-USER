@@ -267,6 +267,9 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
             profile.onboarding_status = UserProfile.OnboardingStatus.APPROVED
             profile.onboarding_note = ""
             profile.save(update_fields=["onboarding_status", "onboarding_note", "updated_at"])
+            from users.services.onboarding_approval import apply_pastoral_account_setup
+
+            apply_pastoral_account_setup(user_obj, profile)
             if not was_already_approved:
                 from retreat.services.onboarding import sync_retreat_attendee_from_onboarding_profile
 

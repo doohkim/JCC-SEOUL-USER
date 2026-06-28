@@ -47,6 +47,7 @@
     .status.rejected strong { color:#dc2626; }
     .retreatBlock { margin-top:.25rem; }
     .retreatBlock[hidden] { display:none !important; }
+    .teamField[hidden] { display:none !important; }
     .retreatDetails[hidden] { display:none !important; }
     @media (max-width:640px) { .card { padding:16px; } .actions { justify-content:stretch; } button[type="submit"] { width:100%; } }
   </style>
@@ -90,6 +91,11 @@
             <div class="readonly-box">{{ requested_division_name|default:"-" }}</div>
           </div>
           <div class="field">
+            <label>신청 직급</label>
+            <div class="readonly-box">{{ requested_applicant_role_label|default:"성도" }}</div>
+          </div>
+          {% if not is_pastoral_applicant %}
+          <div class="field">
             <label>신청 팀</label>
             <div class="readonly-box">{{ requested_team_name|default:"미선택" }}</div>
           </div>
@@ -108,6 +114,7 @@
               <label>수련회 조</label>
               <div class="readonly-box">{{ requested_retreat_group_name|default:"-" }}</div>
             </div>
+          {% endif %}
           {% endif %}
         {% else %}
           <div class="field">
@@ -133,6 +140,12 @@
             </div>
           </div>
           <div class="field">
+            <label for="{{ form.requested_applicant_role.id_for_label }}">직급 *</label>
+            {{ form.requested_applicant_role }}
+            {{ form.requested_applicant_role.errors }}
+            <div class="msg">승인 시 관리자가 확인합니다. 직급 선택만으로 권한이 부여되지 않습니다.</div>
+          </div>
+          <div class="field teamField" id="teamField">
             <label for="{{ form.requested_team.id_for_label }}">팀</label>
             {{ form.requested_team }}
             {{ form.requested_team.errors }}
@@ -184,11 +197,46 @@
 
       const selectedDivision = division ? division.value : "";
       const selectedTeam = team ? team.value : "";
+      const applicantRole = document.getElementById("id_requested_applicant_role");
+      const teamField = document.getElementById("teamField");
+      const retreatFields = document.getElementById("retreatFields");
       const retreatParticipation = document.getElementById("id_requested_retreat_participation");
       const retreatDetails = document.getElementById("retreatDetails");
       const retreatEvent = document.getElementById("id_requested_retreat_event");
       const retreatGroup = document.getElementById("id_requested_retreat_group");
       const retreatGroups = {{ retreat_groups_json|safe }};
+      const pastoralRoles = new Set(["pastor", "evangelist"]);
+
+      function isPastoralApplicant() {
+        return !!(applicantRole && pastoralRoles.has(applicantRole.value));
+      }
+
+      function clearRetreatInputs() {
+        if (retreatParticipation) retreatParticipation.value = "";
+        if (retreatEvent) retreatEvent.value = "";
+        if (retreatGroup) retreatGroup.value = "";
+        if (retreatDetails) retreatDetails.hidden = true;
+      }
+
+      function clearTeamInput() {
+        if (team) team.value = "";
+      }
+
+      function syncApplicantRoleUi() {
+        const pastoral = isPastoralApplicant();
+        if (teamField) {
+          teamField.hidden = pastoral;
+          if (pastoral) clearTeamInput();
+        }
+        if (!retreatFields) return;
+        if (pastoral) {
+          retreatFields.hidden = true;
+          clearRetreatInputs();
+        } else {
+          retreatFields.hidden = false;
+          syncRetreatDetails();
+        }
+      }
 
       function renderDivisions() {
         if (!region || !division) return;
@@ -281,9 +329,12 @@
       if (retreatParticipation) {
         retreatParticipation.addEventListener("change", syncRetreatDetails);
       }
+      if (applicantRole) {
+        applicantRole.addEventListener("change", syncApplicantRoleUi);
+      }
       if (retreatEvent) retreatEvent.addEventListener("change", renderRetreatGroups);
       renderDivisions();
-      syncRetreatDetails();
+      syncApplicantRoleUi();
     })();
   </script>
 </body>

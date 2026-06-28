@@ -725,6 +725,7 @@
                     <th>지역</th>
                     <th>부서</th>
                     <th>팀</th>
+                    <th>신청 직급</th>
                     <th>수련회 신청 조</th>
                     <th>신청 시간</th>
                     <th>승인 상태</th>
@@ -842,6 +843,10 @@
               <select id="applicationEditTeam" name="requested_team_id" data-cselect aria-label="팀">
                 <option value="">팀 미지정</option>
               </select>
+            </div>
+            <div class="jcc-appEditField">
+              <label>신청 직급</label>
+              <div class="jcc-appEditReadonly" id="applicationEditApplicantRole">성도</div>
             </div>
           </div>
         </section>
@@ -1038,9 +1043,13 @@
           regionSel.value = d.region_id ? String(d.region_id) : "";
         }
         syncFromRegion(d.division_id, d.team_id, d.retreat_event_id, d.retreat_group_id);
+        const applicantRoleEl = document.getElementById("applicationEditApplicantRole");
+        if (applicantRoleEl) {
+          applicantRoleEl.textContent = d.applicant_role_label || "성도";
+        }
         const retreatSection = document.getElementById("applicationEditRetreatSection");
         if (retreatSection) {
-          retreatSection.hidden = retreatEvents.length === 0;
+          retreatSection.hidden = retreatEvents.length === 0 || !!d.is_pastoral_applicant;
         }
         editOverlay.hidden = false;
         editOverlay.setAttribute("aria-hidden", "false");

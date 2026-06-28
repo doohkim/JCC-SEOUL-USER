@@ -6,7 +6,7 @@ from django.db import models
 class RoleLevel(models.Model):
     """
     직급 레벨(교회 직분 서열).
-    예: 전도사 > 목사 > 회장 > 부회장 > 총무 > 팀장 > 셀장 > 팀원
+    예: 목사 > 전도사 > 회장 > 부회장 > 총무 > 팀장 > 셀장 > 팀원
     """
 
     name = models.CharField("직급명", max_length=50)

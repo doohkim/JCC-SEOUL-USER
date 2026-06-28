@@ -934,6 +934,50 @@
           </div>
         </section>
 
+        <section class="jcc-account-editSection" id="accountSignupApplicationSection" hidden>
+          <h3 class="jcc-account-editSection__title">가입 신청 정보</h3>
+          <div class="jcc-account-editField">
+            <label>승인 상태</label>
+            <div class="jcc-account-editReadonly" id="accountSignupStatus">-</div>
+          </div>
+          <div class="jcc-account-editField">
+            <label>신청 지역</label>
+            <div class="jcc-account-editReadonly" id="accountSignupRegion">-</div>
+          </div>
+          <div class="jcc-account-editField">
+            <label>신청 부서</label>
+            <div class="jcc-account-editReadonly" id="accountSignupDivision">-</div>
+          </div>
+          <div class="jcc-account-editField" id="accountSignupTeamField">
+            <label>신청 팀</label>
+            <div class="jcc-account-editReadonly" id="accountSignupTeam">-</div>
+          </div>
+          <div class="jcc-account-editField">
+            <label>신청 직급</label>
+            <div class="jcc-account-editReadonly" id="accountSignupApplicantRole">-</div>
+          </div>
+          <div class="jcc-account-editField" id="accountSignupRetreatParticipationField">
+            <label>수련회 참석</label>
+            <div class="jcc-account-editReadonly" id="accountSignupRetreatParticipation">-</div>
+          </div>
+          <div class="jcc-account-editField" id="accountSignupRetreatEventField" hidden>
+            <label>수련회 집회</label>
+            <div class="jcc-account-editReadonly" id="accountSignupRetreatEvent">-</div>
+          </div>
+          <div class="jcc-account-editField" id="accountSignupRetreatGroupField" hidden>
+            <label>수련회 조</label>
+            <div class="jcc-account-editReadonly" id="accountSignupRetreatGroup">-</div>
+          </div>
+          <div class="jcc-account-editField" id="accountSignupNoteField" hidden>
+            <label>메모</label>
+            <div class="jcc-account-editReadonly" id="accountSignupNote">-</div>
+          </div>
+          <div class="jcc-account-editField">
+            <label>신청 갱신</label>
+            <div class="jcc-account-editReadonly" id="accountSignupUpdatedAt">-</div>
+          </div>
+        </section>
+
         <section class="jcc-account-editSection">
           <h3 class="jcc-account-editSection__title">소속</h3>
           <div class="jcc-account-editField">
@@ -1580,6 +1624,65 @@
         mountRolePicker(cachedRoles, assigned);
       }
 
+      function fillSignupApplication(app) {
+        const section = document.getElementById("accountSignupApplicationSection");
+        if (!section) return;
+        const hasApp = !!(app && app.has_application);
+        section.hidden = !hasApp;
+        if (!hasApp) return;
+
+        const setText = (id, value) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = value || "-";
+        };
+
+        setText("accountSignupStatus", app.onboarding_status_label);
+        setText("accountSignupRegion", app.region_name);
+        setText("accountSignupDivision", app.division_name);
+        setText("accountSignupApplicantRole", app.applicant_role_label);
+        setText("accountSignupUpdatedAt", app.application_updated_at);
+
+        const teamField = document.getElementById("accountSignupTeamField");
+        if (teamField) {
+          teamField.hidden = !!app.is_pastoral_applicant;
+        }
+        setText(
+          "accountSignupTeam",
+          app.is_pastoral_applicant ? "" : (app.team_name || "미선택")
+        );
+
+        const participationField = document.getElementById("accountSignupRetreatParticipationField");
+        const eventField = document.getElementById("accountSignupRetreatEventField");
+        const groupField = document.getElementById("accountSignupRetreatGroupField");
+        if (app.is_pastoral_applicant) {
+          if (participationField) participationField.hidden = true;
+          if (eventField) eventField.hidden = true;
+          if (groupField) groupField.hidden = true;
+        } else {
+          if (participationField) participationField.hidden = false;
+          setText(
+            "accountSignupRetreatParticipation",
+            app.retreat_participation ? "참석" : "미참석"
+          );
+          const showRetreat = !!app.retreat_participation;
+          if (eventField) {
+            eventField.hidden = !showRetreat;
+            setText("accountSignupRetreatEvent", app.retreat_event_name);
+          }
+          if (groupField) {
+            groupField.hidden = !showRetreat;
+            setText("accountSignupRetreatGroup", app.retreat_group_name || "-");
+          }
+        }
+
+        const noteField = document.getElementById("accountSignupNoteField");
+        const note = (app.onboarding_note || "").trim();
+        if (noteField) {
+          noteField.hidden = !note;
+          setText("accountSignupNote", note);
+        }
+      }
+
       async function openModal(userId) {
         const d = accountDetails[String(userId)] || accountDetails[userId];
         if (!d) return;
@@ -1588,6 +1691,8 @@
         const displayTitle = d.real_name || d.display_name || d.username || "계정";
         titleEl.textContent = displayTitle;
         subtitleEl.textContent = d.kakao_uid ? "kakao id · " + d.kakao_uid : (d.username || "");
+
+        fillSignupApplication(d.signup_application || {});
 
         document.getElementById("accountEditUserId").value = userId;
         document.getElementById("accountEditRealName").value = d.real_name || "";

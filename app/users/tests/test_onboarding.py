@@ -41,6 +41,7 @@ class OnboardingRetreatParticipationTests(TestCase):
             "requested_region": str(self.region.id),
             "requested_division": str(self.division.id),
             "requested_team": "",
+            "requested_applicant_role": UserProfile.ApplicantRole.MEMBER,
             "requested_retreat_role": "participant",
         }
 
@@ -102,3 +103,36 @@ class OnboardingRetreatParticipationTests(TestCase):
         attendee = RetreatAttendee.objects.get(group=group, user=self.user)
         self.assertEqual(attendee.name, "홍길동")
         self.assertEqual(attendee.user_id, self.user.id)
+
+    def test_pastor_signup_skips_retreat_and_does_not_require_participation(self):
+        self.client.force_login(self.user)
+        group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.region,
+            division=self.division,
+            name="목회자조",
+        )
+        payload = self._base_payload()
+        payload["requested_applicant_role"] = UserProfile.ApplicantRole.PASTOR
+        payload["requested_retreat_participation"] = "yes"
+        payload["requested_retreat_event"] = str(self.event.id)
+        payload["requested_retreat_group"] = str(group.id)
+        r = self.client.post(reverse("user_onboarding"), payload)
+        self.assertEqual(r.status_code, 302)
+
+        profile = UserProfile.objects.get(user=self.user)
+        self.assertEqual(profile.requested_applicant_role, UserProfile.ApplicantRole.PASTOR)
+        self.assertFalse(profile.requested_retreat_participation)
+        self.assertIsNone(profile.requested_retreat_group_id)
+        self.assertIsNone(profile.requested_team_id)
+
+    def test_member_default_applicant_role_on_signup(self):
+        self.event.require_retreat_participation_on_signup = False
+        self.event.save(update_fields=["require_retreat_participation_on_signup", "updated_at"])
+        self.client.force_login(self.user)
+        payload = self._base_payload()
+        del payload["requested_applicant_role"]
+        r = self.client.post(reverse("user_onboarding"), payload)
+        self.assertEqual(r.status_code, 302)
+        profile = UserProfile.objects.get(user=self.user)
+        self.assertEqual(profile.requested_applicant_role, UserProfile.ApplicantRole.MEMBER)

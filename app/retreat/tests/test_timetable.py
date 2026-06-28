@@ -43,7 +43,7 @@ class RetreatTimetableTests(TestCase):
             role=RetreatCouncilMembership.Role.CHAIRPERSON,
         )
 
-        # staff (조회만, 편집 불가)
+        # 부서 회장 직급만 — 수련회 회장단 아님.
         cls.rl_president, _ = RoleLevel.objects.get_or_create(
             code="president", defaults={"name": "회장", "level": 80, "sort_order": 20}
         )
@@ -87,7 +87,8 @@ class RetreatTimetableTests(TestCase):
             ).exists()
         )
 
-    def test_staff_can_view_but_not_create(self):
+    def test_org_president_without_council_cannot_access_timetable(self):
+        """부서 회장 직급만으로는 타임테이블 API 접근 불가."""
         RetreatTimetableEntry.objects.create(
             event=self.event,
             day=date(2026, 7, 1),
@@ -96,8 +97,7 @@ class RetreatTimetableTests(TestCase):
         )
         self.client.force_authenticate(self.staff)
         r = self.client.get(self.list_url)
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(len(r.json()), 1)
+        self.assertEqual(r.status_code, 403)
 
         r2 = self.client.post(self.list_url, self._payload(title="몰래추가"), format="json")
         self.assertEqual(r2.status_code, 403)

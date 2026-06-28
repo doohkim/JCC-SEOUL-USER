@@ -1,4 +1,4 @@
-{% load static %}
+{% load static phone_tags %}
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -57,7 +57,8 @@
               <table class="jcc-table">
                 <thead>
                   <tr>
-                    <th>사용자</th>
+                    <th>이름</th>
+                    <th>휴대폰</th>
                     <th>역할</th>
                     <th>메모</th>
                     <th>등록일</th>
@@ -67,7 +68,8 @@
                 <tbody id="councilTbody">
                   {% for m in memberships %}
                     <tr data-membership-id="{{ m.id }}">
-                      <td>{{ m.user.profile.display_name|default:m.user.username }}</td>
+                      <td>{{ m.user.profile.real_name|default:m.user.username }}</td>
+                      <td>{{ m.user.profile.phone|format_korea_phone }}</td>
                       <td>
                         {% if is_retreat_council %}
                           <select class="council-role-select" data-prev="{{ m.role }}" data-cselect>
@@ -86,7 +88,7 @@
                       {% endif %}
                     </tr>
                   {% empty %}
-                    <tr><td colspan="{% if is_retreat_council %}5{% else %}4{% endif %}">등록된 회장단이 없습니다.</td></tr>
+                    <tr><td colspan="{% if is_retreat_council %}6{% else %}5{% endif %}">등록된 회장단이 없습니다.</td></tr>
                   {% endfor %}
                 </tbody>
               </table>
@@ -106,6 +108,6 @@
       };
     </script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_council.js' %}?v=20260613a" defer></script>
+    <script src="{% static 'retreat/retreat_council.js' %}?v=20260628a" defer></script>
   </body>
 </html>

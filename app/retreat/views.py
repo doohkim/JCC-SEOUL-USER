@@ -78,7 +78,7 @@ def safe_retreat_back_url(request, event_id: int) -> str:
 
 
 class _RetreatAccessMixin(LoginRequiredMixin):
-    """로그인 + 수련회 탭 접근 권한(staff or 멤버십)."""
+    """로그인 + 수련회 탭 접근 권한(수련회 회장단·목사·조장 등)."""
 
     login_url = reverse_lazy("user_login")
 
@@ -91,7 +91,7 @@ class _RetreatAccessMixin(LoginRequiredMixin):
 def _retreat_dropdown_events(user) -> list[RetreatEvent]:
     """수련회 상단 집회 드롭다운에 노출할 집회 목록.
 
-    `home` 카드 노출 기준과 동일: 활성 집회 중 사용자가 staff/회장단/슈퍼유저이거나
+    `home` 카드 노출 기준과 동일: 활성 집회 중 사용자가 수련회 회장단/슈퍼유저이거나
     소속 조가 보이는 집회만 포함한다.
     """
     candidates = list(
@@ -274,7 +274,7 @@ class RetreatCouncilView(_RetreatEventMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         event = ctx["event"]
         memberships = list(
-            event.council_memberships.select_related("user").order_by(
+            event.council_memberships.select_related("user", "user__profile").order_by(
                 "role", "user__username"
             )
         )

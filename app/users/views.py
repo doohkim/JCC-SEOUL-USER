@@ -383,6 +383,13 @@ class OnboardingRequestForm(forms.Form):
         required=False,
         empty_label="팀을 선택해 주세요",
     )
+    requested_applicant_role = forms.ChoiceField(
+        label="직급",
+        choices=UserProfile.ApplicantRole.choices,
+        initial=UserProfile.ApplicantRole.MEMBER,
+        required=False,
+        widget=forms.Select(attrs={"class": "applicant-role-select"}),
+    )
     requested_retreat_participation = forms.ChoiceField(
         label="수련회 참석",
         choices=[],
@@ -419,13 +426,28 @@ class OnboardingRequestForm(forms.Form):
         region = cleaned.get("requested_region")
         division = cleaned.get("requested_division")
         team = cleaned.get("requested_team")
+        applicant_role = (
+            cleaned.get("requested_applicant_role") or UserProfile.ApplicantRole.MEMBER
+        )
+        cleaned["requested_applicant_role"] = applicant_role
+        is_pastoral_applicant_role = applicant_role in (
+            UserProfile.ApplicantRole.PASTOR,
+            UserProfile.ApplicantRole.EVANGELIST,
+        )
+
         participation_choice = (cleaned.get("requested_retreat_participation") or "").strip()
-        if self.retreat_participation_required and not participation_choice:
+        if (
+            not is_pastoral_applicant_role
+            and self.retreat_participation_required
+            and not participation_choice
+        ):
             self.add_error(
                 "requested_retreat_participation",
                 "수련회 참석 여부를 선택해 주세요.",
             )
-        retreat_participation = participation_choice == "yes"
+        retreat_participation = (
+            False if is_pastoral_applicant_role else participation_choice == "yes"
+        )
         retreat_event = cleaned.get("requested_retreat_event")
         retreat_group = cleaned.get("requested_retreat_group")
         if division and region and division.region_id != region.id:
@@ -433,7 +455,12 @@ class OnboardingRequestForm(forms.Form):
         if team and division and team.division_id != division.id:
             self.add_error("requested_team", "선택한 팀은 해당 부서에 속하지 않습니다.")
 
-        if retreat_participation:
+        if is_pastoral_applicant_role:
+            cleaned["requested_team"] = None
+            cleaned["requested_retreat_event"] = None
+            cleaned["requested_retreat_group"] = None
+            cleaned["retreat_participation"] = False
+        elif retreat_participation:
             if not retreat_event:
                 self.add_error("requested_retreat_event", "수련회 집회를 선택해 주세요.")
             if not retreat_group:
@@ -442,10 +469,11 @@ class OnboardingRequestForm(forms.Form):
                 self.add_error("requested_retreat_group", "선택한 조는 선택한 집회에 속해야 합니다.")
             if retreat_group and division and retreat_group.division_id != division.id:
                 self.add_error("requested_retreat_group", "선택한 조는 신청 부서에 속해야 합니다.")
+            cleaned["retreat_participation"] = True
         else:
             cleaned["requested_retreat_event"] = None
             cleaned["requested_retreat_group"] = None
-        cleaned["retreat_participation"] = retreat_participation
+            cleaned["retreat_participation"] = False
         return cleaned
 
 
@@ -482,6 +510,8 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
             "phone": profile.phone or "",
             "requested_division": profile.requested_division_id,
             "requested_team": profile.requested_team_id,
+            "requested_applicant_role": profile.requested_applicant_role
+            or UserProfile.ApplicantRole.MEMBER,
             "requested_retreat_participation": participation_initial,
             "requested_retreat_event": profile.requested_retreat_event_id,
             "requested_retreat_group": profile.requested_retreat_group_id,
@@ -511,6 +541,14 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
         else:
             ctx["requested_division_name"] = ""
         ctx["requested_team_name"] = profile.requested_team.name if profile.requested_team_id else ""
+        ctx["requested_applicant_role"] = profile.requested_applicant_role or UserProfile.ApplicantRole.MEMBER
+        ctx["requested_applicant_role_label"] = dict(UserProfile.ApplicantRole.choices).get(
+            ctx["requested_applicant_role"], "성도"
+        )
+        ctx["is_pastoral_applicant"] = ctx["requested_applicant_role"] in (
+            UserProfile.ApplicantRole.PASTOR,
+            UserProfile.ApplicantRole.EVANGELIST,
+        )
         ctx["requested_retreat_participation"] = bool(profile.requested_retreat_participation)
         ctx["requested_retreat_event_name"] = (
             profile.requested_retreat_event.name
@@ -584,7 +622,16 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
         profile.real_name = (form.cleaned_data["real_name"] or "").strip()
         profile.phone = (form.cleaned_data["phone"] or "").strip()
         profile.requested_division = form.cleaned_data["requested_division"]
-        profile.requested_team = form.cleaned_data.get("requested_team")
+        is_pastoral = form.cleaned_data.get(
+            "requested_applicant_role", UserProfile.ApplicantRole.MEMBER
+        ) in (
+            UserProfile.ApplicantRole.PASTOR,
+            UserProfile.ApplicantRole.EVANGELIST,
+        )
+        profile.requested_team = None if is_pastoral else form.cleaned_data.get("requested_team")
+        profile.requested_applicant_role = form.cleaned_data.get(
+            "requested_applicant_role", UserProfile.ApplicantRole.MEMBER
+        )
         profile.onboarding_status = UserProfile.OnboardingStatus.PENDING
         profile.onboarding_note = ""
         update_fields = [
@@ -592,6 +639,7 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
             "phone",
             "requested_division",
             "requested_team",
+            "requested_applicant_role",
             "onboarding_status",
             "onboarding_note",
             "updated_at",
@@ -1048,6 +1096,9 @@ class OnboardingApplicationsListView(LoginRequiredMixin, TemplateView):
                 division=profile.requested_division,
                 defaults={"team": team, "is_primary": True, "sort_order": 0},
             )
+            from users.services.onboarding_approval import apply_pastoral_account_setup
+
+            apply_pastoral_account_setup(profile.user, profile)
             profile.onboarding_status = UserProfile.OnboardingStatus.APPROVED
             profile.onboarding_note = note
             profile.save(
@@ -1245,6 +1296,14 @@ class OnboardingApplicationsListView(LoginRequiredMixin, TemplateView):
                     region_name = div.region.name
                 except Exception:
                     region_name = ""
+            applicant_role = p.requested_applicant_role or UserProfile.ApplicantRole.MEMBER
+            applicant_role_label = dict(UserProfile.ApplicantRole.choices).get(
+                applicant_role, "성도"
+            )
+            is_pastoral_applicant_row = applicant_role in (
+                UserProfile.ApplicantRole.PASTOR,
+                UserProfile.ApplicantRole.EVANGELIST,
+            )
             detail_map[p.id] = {
                 "profile_id": p.id,
                 "label": label,
@@ -1262,6 +1321,9 @@ class OnboardingApplicationsListView(LoginRequiredMixin, TemplateView):
                 "division": div.name if div else "",
                 "team_id": p.requested_team_id,
                 "team": p.requested_team.name if p.requested_team_id else "",
+                "applicant_role": applicant_role,
+                "applicant_role_label": applicant_role_label,
+                "is_pastoral_applicant": is_pastoral_applicant_row,
                 "onboarding_status": p.onboarding_status,
                 "status": status_label.get(p.onboarding_status, p.onboarding_status),
                 "note": (p.onboarding_note or "").strip(),
@@ -1270,7 +1332,11 @@ class OnboardingApplicationsListView(LoginRequiredMixin, TemplateView):
                 "retreat_group_id": p.requested_retreat_group_id,
                 "retreat_event": p.requested_retreat_event.name if p.requested_retreat_event_id else "",
                 "retreat_group": p.requested_retreat_group.name if p.requested_retreat_group_id else "",
-                "retreat_assign_note": "승인 시 조원으로 배정",
+                "retreat_assign_note": (
+                    "목회자 — 조원 자동 배정 없음"
+                    if is_pastoral_applicant_row
+                    else "승인 시 조원으로 배정"
+                ),
                 "date_joined": _fmt_dt(getattr(p.user, "date_joined", None)),
                 "updated_at": _fmt_dt(p.updated_at),
             }
@@ -1863,7 +1929,14 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             user_ids = list(rep_division_by_user.keys())
             user_qs = (
                 User.objects.filter(pk__in=user_ids, is_active=True)
-                .select_related("role_level", "profile")
+                .select_related(
+                    "role_level",
+                    "profile",
+                    "profile__requested_division__region",
+                    "profile__requested_team",
+                    "profile__requested_retreat_event",
+                    "profile__requested_retreat_group",
+                )
                 .order_by("username")
             )
 
@@ -1975,6 +2048,8 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                     last_updated_label = _activity_date_label(prof.updated_at)
                 elif u.date_joined:
                     last_updated_label = _activity_date_label(u.date_joined)
+                from users.services.onboarding_approval import signup_application_detail
+
                 account_details[u.id] = {
                     "username": u.username,
                     "kakao_uid": u.username[6:]
@@ -2018,6 +2093,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                     "updated_at_label": last_updated_label,
                     "avatar_url": user_profile_avatar_url(u),
                     "event_name": active_retreat.name if active_retreat else "",
+                    "signup_application": signup_application_detail(prof),
                 }
 
         region_qs = Region.objects.all().order_by("sort_order", "name")

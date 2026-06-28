@@ -337,7 +337,7 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertEqual(r.status_code, 403)
 
     def test_admin_forbidden_for_general_staff(self):
-        # 일반 staff(부서장/간사·회장 직급 등)는 admin 차단 — 슈퍼유저/회장단/목사·전도사만 허용.
+        # 부서 회장·부회장·총무 등 조직 직급은 admin 차단 — 슈퍼유저·수련회 회장단만 허용.
         self.client.force_login(self.staff)
         r = self.client.get(reverse("retreat_admin", args=[self.event.id]))
         self.assertEqual(r.status_code, 403)
@@ -427,8 +427,9 @@ class CanAccessRetreatTabFilterTests(_PageFixture):
     def test_leader_shows_tab(self):
         self.assertEqual(self._render(self.leader), "1")
 
-    def test_staff_shows_tab(self):
-        self.assertEqual(self._render(self.staff), "1")
+    def test_org_president_does_not_show_tab(self):
+        """부서 회장 직급만으로는 수련회 탭 미노출."""
+        self.assertEqual(self._render(self.staff), "0")
 
     def test_stranger_does_not_show_tab(self):
         self.assertEqual(self._render(self.stranger), "0")

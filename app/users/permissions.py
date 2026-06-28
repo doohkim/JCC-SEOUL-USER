@@ -609,15 +609,10 @@ class IsCounselingPastor(BasePermission):
 
 
 # ---------------------------------------------------------------------------
-# 수련회(Retreat) 권한 — 평시 출석과 분리된 별도 체계.
+# 수련회(Retreat) 권한 — 평시 출석·조직 직급(부서 회장단)과 완전 분리.
+# 수련회 회장단 = ``RetreatCouncilMembership`` 명단만. RoleLevel president 등은 무관.
 # ---------------------------------------------------------------------------
 
-# "조 운영진(staff)" 으로 인정할 직급(RoleLevel) / 직책(Role) 코드.
-# - "회장·부회장·총무"는 직급(RoleLevel) 차원의 임원.
-# - "부장·차장·간사"는 직책(Role) 차원의 부서 운영진.
-# region/division 매칭은 별도로 확인한다.
-_RETREAT_STAFF_ROLE_LEVEL_CODES = {"president", "vice_president", "secretary_general"}
-_RETREAT_STAFF_FUNCTIONAL_ROLE_CODES = {"dept_head", "deputy_dept_head", "secretary"}
 _RETREAT_PASTORAL_ROLE_LEVEL_CODES = {"pastor", "evangelist"}
 
 
@@ -654,7 +649,7 @@ def can_access_retreat_tab(user: User) -> bool:
 
 
 def is_retreat_council(user: User, event) -> bool:
-    """해당 집회의 회장단(임원·총무·부회장·회장)인지."""
+    """해당 집회의 수련회 회장단(``RetreatCouncilMembership``)인지."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if user.is_superuser:
@@ -803,18 +798,6 @@ def is_retreat_council_any(user: User) -> bool:
     if user.is_superuser:
         return True
     return user.retreat_council_memberships.exists()
-
-
-def _user_has_retreat_staff_role(user: User) -> bool:
-    """직급/직책 화이트리스트 어디에라도 들어있는지."""
-    role_code = getattr(getattr(user, "role_level", None), "code", None)
-    if role_code in _RETREAT_STAFF_ROLE_LEVEL_CODES:
-        return True
-    if role_code in _RETREAT_PASTORAL_ROLE_LEVEL_CODES:
-        return True
-    return user.functional_dept_roles.filter(
-        role__code__in=_RETREAT_STAFF_FUNCTIONAL_ROLE_CODES
-    ).exists()
 
 
 def _user_division_ids(user: User) -> set[int]:
