@@ -2,15 +2,147 @@
 
 from __future__ import annotations
 
-from retreat.models import RetreatAttendee, RetreatChangeLog, RetreatGroupMembership
+from retreat.models import (
+    RetreatAttendee,
+    RetreatChangeLog,
+    RetreatGroup,
+    RetreatGroupMembership,
+)
 from retreat.services.audit import log_retreat_change
-from retreat.services.pickup_attendee import delete_pickups_for_attendee
 from retreat.services.enrollment import enroll_attendee_into_active_sessions
+from retreat.services.lodging_stay import persist_lodging_stay_status
+from retreat.services.pickup_attendee import delete_pickups_for_attendee
 from users.services.user_display import user_display_name
 
 
 def _profile_for(user):
     return getattr(user, "profile", None)
+
+
+def duplicate_event_attendees_for_user(user, *, event_id: int, exclude_pk: int | None = None):
+    """같은 집회에서 user 가 연결된 다른 조원 행."""
+    qs = RetreatAttendee.objects.filter(
+        user_id=user.pk,
+        group__event_id=event_id,
+    ).select_related("group")
+    if exclude_pk is not None:
+        qs = qs.exclude(pk=exclude_pk)
+    return qs
+
+
+def remove_stale_attendees_for_user_in_event(
+    *,
+    user,
+    event_id: int,
+    keep_group_id: int,
+    changed_by,
+) -> int:
+    """같은 집회 내 다른 조에 남아 있는 조원 행을 제거한다."""
+    removed = 0
+    for attendee in list(
+        duplicate_event_attendees_for_user(user, event_id=event_id).exclude(
+            group_id=keep_group_id
+        )
+    ):
+        attendee_id = attendee.id
+        group_id = attendee.group_id
+        delete_pickups_for_attendee(attendee, changed_by=changed_by)
+        attendee.delete()
+        removed += 1
+        log_retreat_change(
+            user=changed_by,
+            event=event_id,
+            action=RetreatChangeLog.Action.DELETE,
+            target_type=RetreatChangeLog.TargetType.ATTENDEE,
+            target_id=attendee_id,
+            payload_before={
+                "group_id": group_id,
+                "user_id": user.pk,
+                "source": "event_attendee_consolidation",
+            },
+        )
+    return removed
+
+
+def remove_stale_memberships_for_user_in_event(
+    *,
+    user,
+    event_id: int,
+    keep_group_id: int,
+    changed_by,
+) -> int:
+    """같은 집회 내 다른 조 운영진 멤버십을 제거한다."""
+    removed = 0
+    for membership in list(
+        RetreatGroupMembership.objects.filter(
+            user=user,
+            group__event_id=event_id,
+        )
+        .exclude(group_id=keep_group_id)
+        .select_related("group")
+    ):
+        mid = membership.id
+        group_id = membership.group_id
+        membership.delete()
+        removed += 1
+        log_retreat_change(
+            user=changed_by,
+            event=event_id,
+            action=RetreatChangeLog.Action.DELETE,
+            target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
+            target_id=mid,
+            payload_before={
+                "group_id": group_id,
+                "user_id": user.pk,
+                "source": "event_attendee_consolidation",
+            },
+        )
+    return removed
+
+
+def sync_profile_retreat_group(user, group: RetreatGroup) -> bool:
+    """프로필의 수련회 조·집회 요청을 현재 배정 조와 맞춘다."""
+    profile = _profile_for(user)
+    if profile is None:
+        return False
+    update_fields: list[str] = []
+    if profile.requested_retreat_group_id != group.id:
+        profile.requested_retreat_group = group
+        update_fields.append("requested_retreat_group")
+    if profile.requested_retreat_event_id != group.event_id:
+        profile.requested_retreat_event = group.event
+        update_fields.append("requested_retreat_event")
+    if not profile.requested_retreat_participation:
+        profile.requested_retreat_participation = True
+        update_fields.append("requested_retreat_participation")
+    if update_fields:
+        profile.save(update_fields=[*update_fields, "updated_at"])
+        return True
+    return False
+
+
+def consolidate_user_to_event_group(
+    user,
+    group: RetreatGroup,
+    *,
+    changed_by,
+) -> None:
+    """집회당 user → 조 1행·멤버십·프로필을 현재 조 기준으로 정리한다."""
+    if user is None or not user.pk:
+        return
+    remove_stale_attendees_for_user_in_event(
+        user=user,
+        event_id=group.event_id,
+        keep_group_id=group.id,
+        changed_by=changed_by,
+    )
+    remove_stale_memberships_for_user_in_event(
+        user=user,
+        event_id=group.event_id,
+        keep_group_id=group.id,
+        changed_by=changed_by,
+    )
+    sync_profile_retreat_group(user, group)
 
 
 def sync_attendee_from_membership(
@@ -61,6 +193,8 @@ def sync_attendee_from_membership(
             "source": "group_membership_sync",
         },
     )
+    consolidate_user_to_event_group(user, group, changed_by=changed_by)
+    persist_lodging_stay_status(attendee)
     return attendee
 
 
@@ -116,6 +250,7 @@ def sync_membership_from_attendee(attendee: RetreatAttendee, *, changed_by) -> N
                 target_id=mid,
                 payload_before={"group_id": group.id, "user_id": user.id},
             )
+    consolidate_user_to_event_group(user, group, changed_by=changed_by)
 
 
 def remove_membership_for_attendee(attendee: RetreatAttendee, *, changed_by) -> None:

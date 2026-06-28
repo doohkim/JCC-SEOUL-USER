@@ -10,7 +10,11 @@ from retreat.models import (
     RetreatGroupMembership,
 )
 from retreat.services.audit import log_retreat_change
-from retreat.services.group_sync import sync_attendee_from_membership
+from retreat.services.group_sync import (
+    consolidate_user_to_event_group,
+    sync_attendee_from_membership,
+)
+from retreat.services.lodging_stay import persist_lodging_stay_status
 from users.models import UserProfile
 from users.services.user_display import user_display_name
 
@@ -172,6 +176,8 @@ def _ensure_attendee_for_group(
             "source": "onboarding_approval",
         },
     )
+    consolidate_user_to_event_group(user, group, changed_by=changed_by)
+    persist_lodging_stay_status(attendee)
     return attendee
 
 
