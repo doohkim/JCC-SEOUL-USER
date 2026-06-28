@@ -1329,7 +1329,7 @@ class RetreatPlatformGuideView(LoginRequiredMixin, UserPassesTestMixin, Template
 
         ctx = super().get_context_data(**kwargs)
         ctx["page_title"] = "플랫폼 가이드"
-        ctx["page_subtitle"] = "수련회 관리 플랫폼 가이드"
+        ctx["page_subtitle"] = "수련회 인원체크 프로그램 가이드"
         event = events[0] if events else None
         ctx["event"] = event
         if event:

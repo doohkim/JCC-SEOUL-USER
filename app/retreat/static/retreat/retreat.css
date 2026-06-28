@@ -6427,3 +6427,58 @@ body.jcc-retreat-platformGuidePage .jcc-layout-content {
     display: none;
   }
 }
+
+/* ── 플랫폼 가이드 PDF 뷰어 ── */
+body.jcc-retreat-platformGuidePage--pdf {
+  --pg-text: var(--text, #1a1a1a);
+  --pg-muted: var(--muted, #64748b);
+}
+body.jcc-retreat-platformGuidePage--pdf .jcc-layout-content {
+  background: var(--bg, #f8fafc);
+}
+.jcc-pgTopBar--pdf {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  background: var(--card, #fff);
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+.jcc-pgTopBar--pdf .jcc-pgTopBar-back,
+.jcc-pgTopBar--pdf .jcc-pgTopBar-title {
+  color: var(--text, #1a1a1a);
+}
+.jcc-pgPdfDownload {
+  margin-left: auto;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--accent, #1d64d8);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.jcc-pgPdfDownload:hover {
+  text-decoration: underline;
+}
+.jcc-pgPdfMain {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  padding: 0.75rem;
+  box-sizing: border-box;
+}
+.jcc-pgPdfFrame {
+  flex: 1;
+  width: 100%;
+  min-height: calc(100dvh - 8rem);
+  min-height: calc(100vh - 8rem);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  background: #fff;
+}
+@media (max-width: 640px) {
+  .jcc-pgPdfMain {
+    padding: 0.5rem;
+  }
+  .jcc-pgPdfFrame {
+    min-height: calc(100dvh - 10rem);
+    min-height: calc(100vh - 10rem);
+  }
+}

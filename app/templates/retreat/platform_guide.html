@@ -7,22 +7,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>플랫폼 가이드 · 수련회</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260625b" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260628a" />
   </head>
-  <body class="jcc-retreat-platformGuidePage{% if event %} has-retreat-bottom-tabs{% endif %}">
+  <body class="jcc-retreat-platformGuidePage jcc-retreat-platformGuidePage--pdf{% if event %} has-retreat-bottom-tabs{% endif %}">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content jcc-pgLayoutContent">
-        <header class="jcc-pgTopBar">
+        <header class="jcc-pgTopBar jcc-pgTopBar--pdf">
           {% if event %}
             <a class="jcc-pgTopBar-back" href="{% url 'retreat_dashboard' event.id %}">← 대시보드</a>
           {% else %}
             <a class="jcc-pgTopBar-back" href="{% url 'retreat_home' %}">← 수련회</a>
           {% endif %}
           <span class="jcc-pgTopBar-title">플랫폼 가이드</span>
+          <a
+            class="jcc-pgPdfDownload"
+            href="{% static 'retreat/platform_guide/retreat-user-guide.pdf' %}"
+            download="수련회-인원체크-프로그램-가이드.pdf"
+          >PDF 다운로드</a>
         </header>
-        <main class="jcc-pgDeck">
-          {% include 'retreat/platform_guide_slides.html' %}
+        <main class="jcc-pgPdfMain">
+          <iframe
+            class="jcc-pgPdfFrame"
+            src="{% static 'retreat/platform_guide/retreat-user-guide.pdf' %}"
+            title="수련회 인원체크 프로그램 가이드"
+          ></iframe>
         </main>
       </div>
     </div>

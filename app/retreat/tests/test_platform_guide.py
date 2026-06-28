@@ -59,32 +59,31 @@ class _PlatformGuideFixture(TestCase):
 
 
 class RetreatPlatformGuidePageTests(_PlatformGuideFixture):
-    def test_leader_can_view_platform_guide(self):
+    def test_leader_can_view_platform_guide_pdf(self):
         self.client.force_login(self.leader)
         r = self.client.get(reverse("retreat_platform_guide"))
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "수련회 관리 플랫폼 가이드")
-        self.assertContains(r, "PLATFORM GUIDE 2026")
-        self.assertContains(r, "slide-overview")
-        self.assertContains(r, "Tier 1")
+        self.assertContains(r, "retreat/platform_guide/retreat-user-guide.pdf")
+        self.assertContains(r, 'title="수련회 인원체크 프로그램 가이드"')
+        self.assertContains(r, "PDF 다운로드")
 
-    def test_council_can_view_platform_guide(self):
+    def test_council_can_view_platform_guide_pdf(self):
         self.client.force_login(self.council)
         r = self.client.get(reverse("retreat_platform_guide"))
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "대시보드")
+        self.assertContains(r, "retreat/platform_guide/retreat-user-guide.pdf")
 
     def test_stranger_forbidden(self):
         self.client.force_login(self.stranger)
         r = self.client.get(reverse("retreat_platform_guide"))
         self.assertEqual(r.status_code, 403)
 
-    def test_dashboard_shows_platform_guide_link(self):
+    def test_dashboard_hides_platform_guide_link(self):
         self.client.force_login(self.council)
         r = self.client.get(reverse("retreat_dashboard", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, reverse("retreat_platform_guide"))
-        self.assertContains(r, "플랫폼 가이드")
+        self.assertNotContains(r, reverse("retreat_platform_guide"))
+        self.assertNotContains(r, "jcc-retreat-dashGuideLink")
 
     def test_manage_groups_hides_leader_guide_link(self):
         self.client.force_login(self.leader)
