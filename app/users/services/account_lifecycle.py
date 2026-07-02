@@ -8,7 +8,8 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
-from retreat.models import RetreatAttendee, RetreatCouncilMembership, RetreatGroupMembership
+from retreat.models import RetreatCouncilMembership, RetreatGroupMembership
+from retreat.services.account_retired import mark_attendees_retired_for_user
 from users.models import (
     PastoralDivisionAssignment,
     UserClub,
@@ -38,7 +39,7 @@ def retire_user(user, *, changed_by=None) -> None:
     - 보존: 주차·상담·변경이력 등 User FK CASCADE 대상, 출석부 스냅샷
       (``RetreatSessionAttendee`` 는 ``source_attendee=SET_NULL`` 로 보존)
     - 연동 제거: RetreatGroupMembership, RetreatCouncilMembership, 소속/직책/동아리/목회담당
-    - 조원 명단(RetreatAttendee): 탈퇴 계정의 조원 행을 삭제(명단 정리)
+    - 조원 명단(RetreatAttendee): 탈퇴 계정 연동 조원·픽업을 숨김 마킹(슈퍼유저만 조회)
     """
     if user.is_superuser:
         raise ValueError("슈퍼유저 계정은 탈퇴 처리할 수 없습니다.")
@@ -52,9 +53,8 @@ def retire_user(user, *, changed_by=None) -> None:
     RetreatGroupMembership.objects.filter(user=user).delete()
     RetreatCouncilMembership.objects.filter(user=user).delete()
 
-    # 조원 명단: 탈퇴 계정의 조원 행 제거(명단 정리).
-    # 이미 만든 출석부 스냅샷은 source_attendee=SET_NULL 로 보존된다.
-    RetreatAttendee.objects.filter(user=user).delete()
+    # 조원 명단: 탈퇴 계정 연동 행·픽업을 숨김 마킹(데이터 보존).
+    mark_attendees_retired_for_user(user, when=timezone.now())
 
     # 앱 조직 소속·직책 연동 제거
     UserDivisionTeam.objects.filter(user=user).delete()

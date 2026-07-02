@@ -108,18 +108,19 @@ class RetreatPageAccessTests(_PageFixture):
         r = self.client.get(reverse("retreat_home"))
         self.assertEqual(r.status_code, 403)
 
-    def test_home_redirects_to_dashboard_when_accessible_event(self):
+    def test_home_redirects_leader_to_dashboard(self):
         self.client.force_login(self.leader)
         r = self.client.get(reverse("retreat_home"))
         self.assertEqual(r.status_code, 302)
         self.assertIn(f"/retreat/{self.event.id}/dashboard/", r.url)
 
-    def test_home_redirects_to_most_recently_created_event(self):
+    def test_home_redirects_to_latest_accessible_event(self):
         older = self.event
         newer = RetreatEvent.objects.create(
             name="2026 여름 수련회",
             start_date=date(2026, 7, 1),
             end_date=date(2026, 7, 3),
+            is_active=True,
         )
         newer_group = RetreatGroup.objects.create(
             event=newer,
@@ -134,6 +135,31 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertEqual(r.status_code, 302)
         self.assertIn(f"/retreat/{newer.id}/dashboard/", r.url)
         self.assertNotIn(f"/retreat/{older.id}/dashboard/", r.url)
+
+    def test_home_remembers_last_visited_event(self):
+        older = self.event
+        newer = RetreatEvent.objects.create(
+            name="2026 여름 수련회",
+            start_date=date(2026, 7, 1),
+            end_date=date(2026, 7, 3),
+            is_active=True,
+        )
+        newer_group = RetreatGroup.objects.create(
+            event=newer,
+            region=self.seoul,
+            division=self.div_youth,
+            name="2조",
+        )
+        RetreatGroupMembership.objects.create(user=self.leader, group=newer_group)
+
+        self.client.force_login(self.leader)
+        r_visit = self.client.get(reverse("retreat_dashboard", args=[older.id]))
+        self.assertEqual(r_visit.status_code, 200)
+
+        r_home = self.client.get(reverse("retreat_home"))
+        self.assertEqual(r_home.status_code, 302)
+        self.assertIn(f"/retreat/{older.id}/dashboard/", r_home.url)
+        self.assertNotIn(f"/retreat/{newer.id}/dashboard/", r_home.url)
 
     def test_dashboard_ok_for_leader(self):
         self.client.force_login(self.leader)
@@ -288,7 +314,7 @@ class RetreatPageAccessTests(_PageFixture):
         )
         self.assertContains(r, manage_url)
 
-    def test_event_switcher_dropdown_lists_accessible_events(self):
+    def test_event_switcher_dropdown_lists_all_active_events(self):
         other_event = RetreatEvent.objects.create(
             name="다른 집회",
             start_date=date(2026, 5, 1),
@@ -301,6 +327,12 @@ class RetreatPageAccessTests(_PageFixture):
             name="조A",
         )
         RetreatGroupMembership.objects.create(user=self.leader, group=other_group)
+
+        inaccessible_event = RetreatEvent.objects.create(
+            name="접근 없는 집회",
+            start_date=date(2026, 8, 1),
+            end_date=date(2026, 8, 3),
+        )
 
         hidden_event = RetreatEvent.objects.create(
             name="비활성 집회",
@@ -316,10 +348,14 @@ class RetreatPageAccessTests(_PageFixture):
         available_ids = [ev.id for ev in r.context["available_events"]]
         self.assertIn(self.event.id, available_ids)
         self.assertIn(other_event.id, available_ids)
+        self.assertIn(inaccessible_event.id, available_ids)
         self.assertNotIn(hidden_event.id, available_ids)
         self.assertContains(r, 'id="retreatEventPicker"')
         self.assertContains(
             r, reverse("retreat_dashboard", args=[other_event.id])
+        )
+        self.assertContains(
+            r, reverse("retreat_staff_apply", args=[inaccessible_event.id])
         )
 
     def test_event_switcher_dropdown_options_match_current_tab(self):

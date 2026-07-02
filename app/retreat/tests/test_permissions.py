@@ -274,6 +274,19 @@ class RetreatPermissionsTests(_BaseFixture):
     def test_leader_can_access_retreat_tab(self):
         self.assertTrue(can_access_retreat_tab(self.leader_seoul_1))
 
+    def test_approved_member_can_access_retreat_tab_without_staff(self):
+        approved = User.objects.create_user(username="approved_hub", password="x")
+        UserDivisionTeam.objects.create(
+            user=approved, division=self.div_youth_seoul, is_primary=True
+        )
+        from users.mixins import ensure_user_profile
+        from users.models import UserProfile
+
+        profile = ensure_user_profile(approved)
+        profile.onboarding_status = UserProfile.OnboardingStatus.APPROVED
+        profile.save()
+        self.assertTrue(can_access_retreat_tab(approved))
+
     def test_pastor_cannot_view_retreat_all(self):
         self.assertFalse(can_view_retreat_all(self.pastor, self.event))
 

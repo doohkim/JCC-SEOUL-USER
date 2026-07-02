@@ -23,6 +23,11 @@ class RetreatEvent(models.Model):
         default=False,
         help_text="활성 집회에 이 옵션이 켜져 있으면 가입신청서에서 수련회 참석 여부를 반드시 선택해야 합니다.",
     )
+    staff_applications_open = models.BooleanField(
+        "운영진 모집 중",
+        default=False,
+        help_text="켜져 있으면 승인 완료 사용자가 운영진 참가 신청을 제출할 수 있습니다.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -10,6 +10,7 @@ from .changelog import RetreatChangeLog
 from .council import RetreatCouncilMembership
 from .pickup import RetreatPickup, RetreatPickupLocation
 from .timetable import RetreatTimetableEntry
+from .staff_application import RetreatStaffApplication
 
 __all__ = [
     "RetreatEvent",
@@ -27,4 +28,5 @@ __all__ = [
     "RetreatPickup",
     "RetreatPickupLocation",
     "RetreatTimetableEntry",
+    "RetreatStaffApplication",
 ]

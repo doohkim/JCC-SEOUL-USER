@@ -8,9 +8,9 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from retreat.models import RetreatAttendee, RetreatEvent, RetreatGroup
+from retreat.models import RetreatEvent
 from users.mixins import ensure_user_profile
-from users.models import Division, Region, UserDivisionTeam, UserProfile
+from users.models import Division, Region, UserProfile
 
 User = get_user_model()
 
@@ -38,85 +38,51 @@ class OnboardingRetreatParticipationTests(TestCase):
         return {
             "real_name": "홍길동",
             "phone": "01012345678",
+            "gender": UserProfile.Gender.MALE,
             "requested_region": str(self.region.id),
             "requested_division": str(self.division.id),
             "requested_team": "",
             "requested_applicant_role": UserProfile.ApplicantRole.MEMBER,
-            "requested_retreat_role": "participant",
         }
 
-    def test_participation_required_when_active_event_flagged(self):
+    def test_signup_succeeds_without_retreat_fields_even_when_flagged(self):
         self.client.force_login(self.user)
-        payload = self._base_payload()
-        payload["requested_retreat_participation"] = ""
-        r = self.client.post(reverse("user_onboarding"), payload)
-        self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "수련회 참석 여부를 선택해 주세요.")
-
-    def test_participation_not_required_without_flagged_event(self):
-        self.event.require_retreat_participation_on_signup = False
-        self.event.save(update_fields=["require_retreat_participation_on_signup", "updated_at"])
-        self.client.force_login(self.user)
-        payload = self._base_payload()
-        payload["requested_retreat_participation"] = ""
-        r = self.client.post(reverse("user_onboarding"), payload)
+        r = self.client.post(reverse("user_onboarding"), self._base_payload())
         self.assertEqual(r.status_code, 302)
         profile = UserProfile.objects.get(user=self.user)
         self.assertEqual(profile.onboarding_status, UserProfile.OnboardingStatus.PENDING)
         self.assertFalse(profile.requested_retreat_participation)
+        self.assertIsNone(profile.requested_retreat_group_id)
 
-    def test_signup_with_retreat_group_then_approval_creates_linked_attendee(self):
-        """가입신청서에서 조 선택 후 승인하면 조원·계정이 연동된다."""
-        group = RetreatGroup.objects.create(
-            event=self.event,
-            region=self.region,
-            division=self.division,
-            name="온보딩1조",
-        )
-        staff = User.objects.create_user(username="onboard_staff", password="x", is_staff=True)
-        UserDivisionTeam.objects.create(
-            user=staff, division=self.division, is_primary=True
-        )
+    def test_signup_page_does_not_show_retreat_fields(self):
+        self.client.force_login(self.user)
+        r = self.client.get(reverse("user_onboarding"))
+        self.assertEqual(r.status_code, 200)
+        self.assertNotContains(r, "수련회 참석")
+        self.assertNotContains(r, "수련회 집회")
+        self.assertNotContains(r, "수련회 조")
 
+    def test_signup_requires_gender(self):
         self.client.force_login(self.user)
         payload = self._base_payload()
-        payload["requested_retreat_participation"] = "yes"
-        payload["requested_retreat_event"] = str(self.event.id)
-        payload["requested_retreat_group"] = str(group.id)
+        del payload["gender"]
+        r = self.client.post(reverse("user_onboarding"), payload)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "이 필드는 필수 항목입니다")
+
+    def test_signup_saves_gender_on_profile(self):
+        self.client.force_login(self.user)
+        payload = self._base_payload()
+        payload["gender"] = UserProfile.Gender.FEMALE
         r = self.client.post(reverse("user_onboarding"), payload)
         self.assertEqual(r.status_code, 302)
-
         profile = UserProfile.objects.get(user=self.user)
-        self.assertTrue(profile.requested_retreat_participation)
-        self.assertEqual(profile.requested_retreat_group_id, group.id)
+        self.assertEqual(profile.gender, UserProfile.Gender.FEMALE)
 
-        self.client.force_login(staff)
-        r = self.client.post(
-            reverse("user_onboarding_applications"),
-            {
-                "profile_id": str(profile.id),
-                "action": "approve",
-                "requested_division_id": str(self.division.id),
-            },
-        )
-        self.assertEqual(r.status_code, 302)
-        attendee = RetreatAttendee.objects.get(group=group, user=self.user)
-        self.assertEqual(attendee.name, "홍길동")
-        self.assertEqual(attendee.user_id, self.user.id)
-
-    def test_pastor_signup_skips_retreat_and_does_not_require_participation(self):
+    def test_pastor_signup_clears_team_and_retreat(self):
         self.client.force_login(self.user)
-        group = RetreatGroup.objects.create(
-            event=self.event,
-            region=self.region,
-            division=self.division,
-            name="목회자조",
-        )
         payload = self._base_payload()
         payload["requested_applicant_role"] = UserProfile.ApplicantRole.PASTOR
-        payload["requested_retreat_participation"] = "yes"
-        payload["requested_retreat_event"] = str(self.event.id)
-        payload["requested_retreat_group"] = str(group.id)
         r = self.client.post(reverse("user_onboarding"), payload)
         self.assertEqual(r.status_code, 302)
 
@@ -127,8 +93,6 @@ class OnboardingRetreatParticipationTests(TestCase):
         self.assertIsNone(profile.requested_team_id)
 
     def test_member_default_applicant_role_on_signup(self):
-        self.event.require_retreat_participation_on_signup = False
-        self.event.save(update_fields=["require_retreat_participation_on_signup", "updated_at"])
         self.client.force_login(self.user)
         payload = self._base_payload()
         del payload["requested_applicant_role"]

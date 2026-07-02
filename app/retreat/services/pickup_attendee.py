@@ -20,7 +20,9 @@ def pickup_attendee_for_name(
     if not trimmed:
         return None
     return participating_filter(
-        RetreatAttendee.objects.filter(group=group, name=trimmed)
+        RetreatAttendee.objects.filter(
+            group=group, name=trimmed, account_retired_at__isnull=True
+        )
     ).first()
 
 

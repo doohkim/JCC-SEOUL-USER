@@ -1,5 +1,5 @@
-{% comment %}집회 선택 드롭다운 — event, available_events, retreat_tab 필요. 페이지당 1회만 include.{% endcomment %}
-{% if available_events %}
+{% comment %}집회 선택 드롭다운 — event, picker_entries, retreat_tab 필요. 페이지당 1회만 include.{% endcomment %}
+{% if picker_entries %}
   <div class="jcc-retreat-eventPicker" id="retreatEventPicker">
     <button
       type="button"
@@ -15,39 +15,20 @@
       </svg>
     </button>
     <ul class="jcc-retreat-eventPickerMenu" id="retreatEventPickerMenu" role="listbox" aria-label="집회 목록" hidden>
-      {% for ev in available_events %}
-        {% if retreat_tab == 'manage_groups' %}
-          {% url 'retreat_group_manage_list' ev.id as ev_url %}
-        {% elif retreat_tab == 'lodging' %}
-          {% url 'retreat_lodging' ev.id as ev_url %}
-        {% elif retreat_tab == 'lodging_roster' %}
-          {% url 'retreat_lodging_roster' ev.id as ev_url %}
-        {% elif retreat_tab == 'admin' %}
-          {% url 'retreat_admin' ev.id as ev_url %}
-        {% elif retreat_tab == 'council' %}
-          {% url 'retreat_council' ev.id as ev_url %}
-        {% elif retreat_tab == 'timetable' %}
-          {% url 'retreat_timetable' ev.id as ev_url %}
-        {% elif retreat_tab == 'pickup' %}
-          {% url 'retreat_pickup' ev.id as ev_url %}
-        {% elif retreat_tab == 'results' %}
-          {% url 'retreat_results' ev.id as ev_url %}
-        {% elif retreat_tab == 'rosters' %}
-          {% url 'retreat_rosters' ev.id as ev_url %}
-        {% else %}
-          {% url 'retreat_dashboard' ev.id as ev_url %}
-        {% endif %}
+      {% for entry in picker_entries %}
+        {% with ev=entry.event %}
         <li
           class="jcc-retreat-eventPickerItem{% if ev.id == event.id %} is-selected{% endif %}"
           role="option"
           aria-selected="{% if ev.id == event.id %}true{% else %}false{% endif %}"
-          data-url="{{ ev_url }}"
+          data-url="{{ entry.url }}"
         >
           <span>{{ ev.name }}</span>
           <svg class="jcc-retreat-eventPickerCheck" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
             <path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </li>
+        {% endwith %}
       {% endfor %}
     </ul>
   </div>

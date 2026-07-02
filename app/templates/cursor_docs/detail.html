@@ -7,9 +7,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ doc.title }} · Cursor Docs</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'cursor_docs/cursor_docs.css' %}?v=20260617e" />
+    <link rel="stylesheet" href="{% static 'cursor_docs/cursor_docs.css' %}?v=20260701a" />
   </head>
-  <body class="jcc-cursorDocs-page jcc-cursorDocs-detailPage">
+  <body class="jcc-cursorDocs-page jcc-cursorDocs-detailPage{% if permissions_toc %} jcc-cursorDocs-permissionsPage{% endif %}">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
@@ -26,8 +26,20 @@
                 {% endif %}
               </div>
               <h1 class="jcc-notice-detailTitle">{{ doc.title }}</h1>
-              <div class="jcc-notice-body jcc-cursorDocs-body">
-                {{ rendered_body }}
+              <div class="jcc-cursorDocs-detailLayout">
+                {% if permissions_toc %}
+                  <nav class="jcc-cursorDocs-toc" aria-label="역할 바로가기">
+                    <p class="jcc-cursorDocs-tocTitle">역할 바로가기</p>
+                    <ul class="jcc-cursorDocs-tocList">
+                      {% for anchor, label in permissions_toc %}
+                        <li><a href="#{{ anchor }}">{{ label }}</a></li>
+                      {% endfor %}
+                    </ul>
+                  </nav>
+                {% endif %}
+                <div class="jcc-notice-body jcc-cursorDocs-body">
+                  {{ rendered_body }}
+                </div>
               </div>
             </div>
           </article>

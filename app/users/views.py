@@ -363,6 +363,11 @@ class OnboardingRequestForm(forms.Form):
         max_length=30,
         validators=[validate_korea_mobile_phone],
     )
+    gender = forms.ChoiceField(
+        label="성별",
+        choices=UserProfile.Gender.choices,
+        widget=forms.Select(attrs={"class": "gender-select"}),
+    )
     requested_region = forms.ModelChoiceField(
         queryset=Region.objects.order_by("sort_order", "name"),
         label="지역",
@@ -390,36 +395,10 @@ class OnboardingRequestForm(forms.Form):
         required=False,
         widget=forms.Select(attrs={"class": "applicant-role-select"}),
     )
-    requested_retreat_participation = forms.ChoiceField(
-        label="수련회 참석",
-        choices=[],
-        required=False,
-    )
-    requested_retreat_event = forms.ModelChoiceField(
-        queryset=RetreatEvent.objects.filter(is_active=True).order_by("-start_date", "-id"),
-        label="수련회 집회",
-        required=False,
-        empty_label="집회를 선택해 주세요",
-    )
-    requested_retreat_group = forms.ModelChoiceField(
-        queryset=RetreatGroup.objects.select_related("event", "region", "division").order_by(
-            "event_id", "region__sort_order", "division__sort_order", "order", "id"
-        ),
-        label="수련회 조",
-        required=False,
-        empty_label="조를 선택해 주세요",
-    )
 
-    def __init__(self, *args, retreat_participation_required=False, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.retreat_participation_required = retreat_participation_required
-        participation_choices = [("yes", "참석"), ("no", "미참석")]
-        if not retreat_participation_required:
-            participation_choices = [("", "선택해 주세요")] + participation_choices
-        field = self.fields["requested_retreat_participation"]
-        field.choices = participation_choices
-        field.required = retreat_participation_required
-        field.widget.attrs.setdefault("class", "retreat-participation-select")
+        self.fields["gender"].empty_label = "성별을 선택해 주세요"
 
     def clean(self):
         cleaned = super().clean()
@@ -435,21 +414,6 @@ class OnboardingRequestForm(forms.Form):
             UserProfile.ApplicantRole.EVANGELIST,
         )
 
-        participation_choice = (cleaned.get("requested_retreat_participation") or "").strip()
-        if (
-            not is_pastoral_applicant_role
-            and self.retreat_participation_required
-            and not participation_choice
-        ):
-            self.add_error(
-                "requested_retreat_participation",
-                "수련회 참석 여부를 선택해 주세요.",
-            )
-        retreat_participation = (
-            False if is_pastoral_applicant_role else participation_choice == "yes"
-        )
-        retreat_event = cleaned.get("requested_retreat_event")
-        retreat_group = cleaned.get("requested_retreat_group")
         if division and region and division.region_id != region.id:
             self.add_error("requested_division", "선택한 부서는 해당 지역에 속해야 합니다.")
         if team and division and team.division_id != division.id:
@@ -457,23 +421,7 @@ class OnboardingRequestForm(forms.Form):
 
         if is_pastoral_applicant_role:
             cleaned["requested_team"] = None
-            cleaned["requested_retreat_event"] = None
-            cleaned["requested_retreat_group"] = None
-            cleaned["retreat_participation"] = False
-        elif retreat_participation:
-            if not retreat_event:
-                self.add_error("requested_retreat_event", "수련회 집회를 선택해 주세요.")
-            if not retreat_group:
-                self.add_error("requested_retreat_group", "수련회 조를 선택해 주세요.")
-            if retreat_group and retreat_event and retreat_group.event_id != retreat_event.id:
-                self.add_error("requested_retreat_group", "선택한 조는 선택한 집회에 속해야 합니다.")
-            if retreat_group and division and retreat_group.division_id != division.id:
-                self.add_error("requested_retreat_group", "선택한 조는 신청 부서에 속해야 합니다.")
-            cleaned["retreat_participation"] = True
-        else:
-            cleaned["requested_retreat_event"] = None
-            cleaned["requested_retreat_group"] = None
-            cleaned["retreat_participation"] = False
+        cleaned["retreat_participation"] = False
         return cleaned
 
 
@@ -492,29 +440,16 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
             return HttpResponseRedirect(target)
         return super().dispatch(request, *args, **kwargs)
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs["retreat_participation_required"] = RetreatEvent.active_requires_signup_retreat_participation()
-        return kwargs
-
     def get_initial(self):
         profile = ensure_user_profile(self.request.user)
-        if profile.requested_retreat_participation:
-            participation_initial = "yes"
-        elif profile.requested_division_id and not profile.requested_retreat_participation:
-            participation_initial = "no"
-        else:
-            participation_initial = ""
         initial = {
             "real_name": profile.real_name or "",
             "phone": profile.phone or "",
+            "gender": profile.gender or "",
             "requested_division": profile.requested_division_id,
             "requested_team": profile.requested_team_id,
             "requested_applicant_role": profile.requested_applicant_role
             or UserProfile.ApplicantRole.MEMBER,
-            "requested_retreat_participation": participation_initial,
-            "requested_retreat_event": profile.requested_retreat_event_id,
-            "requested_retreat_group": profile.requested_retreat_group_id,
         }
         if profile.requested_division_id:
             try:
@@ -545,26 +480,17 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
         ctx["requested_applicant_role_label"] = dict(UserProfile.ApplicantRole.choices).get(
             ctx["requested_applicant_role"], "성도"
         )
+        ctx["requested_gender_label"] = dict(UserProfile.Gender.choices).get(
+            profile.gender, ""
+        )
         ctx["is_pastoral_applicant"] = ctx["requested_applicant_role"] in (
             UserProfile.ApplicantRole.PASTOR,
             UserProfile.ApplicantRole.EVANGELIST,
-        )
-        ctx["requested_retreat_participation"] = bool(profile.requested_retreat_participation)
-        ctx["requested_retreat_event_name"] = (
-            profile.requested_retreat_event.name
-            if profile.requested_retreat_event_id
-            else ""
-        )
-        ctx["requested_retreat_group_name"] = (
-            profile.requested_retreat_group.name
-            if profile.requested_retreat_group_id
-            else ""
         )
         ctx["is_pending_locked"] = bool(
             profile.onboarding_status == UserProfile.OnboardingStatus.PENDING
             and profile.requested_division_id
         )
-        ctx["retreat_participation_required"] = RetreatEvent.active_requires_signup_retreat_participation()
         ctx["next_url"] = self.request.GET.get("next", "")
         divisions_map = {}
         for d in Division.objects.select_related("region").order_by(
@@ -580,31 +506,6 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
             teams_map.setdefault(str(t.division_id), []).append({"id": t.id, "name": t.name})
         ctx["divisions_map_json"] = json.dumps(divisions_map, ensure_ascii=False)
         ctx["teams_map_json"] = json.dumps(teams_map, ensure_ascii=False)
-
-        active_retreat = (
-            RetreatEvent.objects.filter(is_active=True).order_by("-start_date", "-id").first()
-        )
-        ctx["active_retreat_event"] = active_retreat
-        retreat_events = list(RetreatEvent.objects.filter(is_active=True).order_by("-start_date", "-id"))
-        ctx["retreat_events"] = retreat_events
-        retreat_groups = list(
-            RetreatGroup.objects.filter(event__in=retreat_events)
-            .select_related("event", "region", "division")
-            .order_by("event_id", "region__sort_order", "division__sort_order", "order", "id")
-        )
-        ctx["retreat_groups"] = retreat_groups
-        ctx["retreat_groups_json"] = json.dumps(
-            [
-                {
-                    "id": g.id,
-                    "event_id": g.event_id,
-                    "division_id": g.division_id,
-                    "label": f"{g.region.name} {g.division.name} {g.name}",
-                }
-                for g in retreat_groups
-            ],
-            ensure_ascii=False,
-        )
         return ctx
 
     def form_valid(self, form):
@@ -621,6 +522,7 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
 
         profile.real_name = (form.cleaned_data["real_name"] or "").strip()
         profile.phone = (form.cleaned_data["phone"] or "").strip()
+        profile.gender = form.cleaned_data.get("gender") or ""
         profile.requested_division = form.cleaned_data["requested_division"]
         is_pastoral = form.cleaned_data.get(
             "requested_applicant_role", UserProfile.ApplicantRole.MEMBER
@@ -634,29 +536,25 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
         )
         profile.onboarding_status = UserProfile.OnboardingStatus.PENDING
         profile.onboarding_note = ""
+        profile.requested_retreat_participation = False
+        profile.requested_retreat_event = None
+        profile.requested_retreat_group = None
+        profile.requested_retreat_role = ""
         update_fields = [
             "real_name",
             "phone",
+            "gender",
             "requested_division",
             "requested_team",
             "requested_applicant_role",
             "onboarding_status",
             "onboarding_note",
+            "requested_retreat_participation",
+            "requested_retreat_event",
+            "requested_retreat_group",
+            "requested_retreat_role",
             "updated_at",
         ]
-        retreat_participation = bool(form.cleaned_data.get("retreat_participation"))
-        profile.requested_retreat_participation = retreat_participation
-        profile.requested_retreat_event = form.cleaned_data.get("requested_retreat_event") if retreat_participation else None
-        profile.requested_retreat_group = form.cleaned_data.get("requested_retreat_group") if retreat_participation else None
-        profile.requested_retreat_role = ""
-        update_fields.extend(
-            [
-                "requested_retreat_participation",
-                "requested_retreat_event",
-                "requested_retreat_group",
-                "requested_retreat_role",
-            ]
-        )
         profile.save(update_fields=update_fields)
         messages.success(self.request, "소속 신청이 접수되었습니다. 관리자 승인 후 이용 가능합니다.")
         return super().form_valid(form)

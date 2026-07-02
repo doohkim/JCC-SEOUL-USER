@@ -439,9 +439,15 @@
     if (isExistingPickup) {
       const statusField = document.getElementById("pickupModalStatusField");
       const statusBadge = document.getElementById("pickupModalStatusBadge");
-      const stVal = editItem.checkInStatus || "";
-      const stLabel = editItem.checkInStatusDisplay || "";
-      if (statusField && statusBadge && stLabel) {
+      const retiredLabel = editItem.accountRetiredDisplay || editItem.account_retired_display || "";
+      const stVal = editItem.checkInStatus || editItem.check_in_status || "";
+      const stLabel = editItem.checkInStatusDisplay || editItem.check_in_status_display || "";
+      if (statusField && statusBadge && retiredLabel) {
+        statusBadge.textContent = retiredLabel;
+        statusBadge.className =
+          "jcc-retreat-checkInBadge jcc-retreat-checkInBadge--account_retired";
+        statusField.hidden = false;
+      } else if (statusField && statusBadge && stLabel) {
         statusBadge.textContent = stLabel;
         statusBadge.className = `jcc-retreat-checkInBadge jcc-retreat-checkInBadge--${stVal || "pending"}`;
         statusField.hidden = false;
@@ -500,7 +506,9 @@
       <td><span class="jcc-retreat-dirTag jcc-retreat-dirTag--${escapeHtml(dir)}">${escapeHtml(dirLabel)}</span></td>
       <td class="jcc-retreat-pickupParticipantName">${escapeHtml(item.name)}</td>
       <td class="jcc-retreat-pickupStatusCol">${
-        item.check_in_status_display
+        item.account_retired_display
+          ? `<span class="jcc-retreat-checkInBadge jcc-retreat-checkInBadge--account_retired">${escapeHtml(item.account_retired_display)}</span>`
+          : item.check_in_status_display
           ? `<span class="jcc-retreat-checkInBadge jcc-retreat-checkInBadge--${escapeHtml(item.check_in_status || "pending")}">${escapeHtml(item.check_in_status_display)}</span>`
           : "-"
       }</td>
@@ -516,7 +524,15 @@
           ? `<span class="jcc-retreat-pickupPlaceTag">${escapeHtml(item.boarding_place)}</span>`
           : "-"
       }</td>
-      <td class="jcc-retreat-pickupManageCol"><button type="button" class="jcc-retreat-pickupDelete" data-pickup-delete aria-label="제거" title="제거"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /></svg></button></td>
+      ${
+        ctx.canManage || ctx.canDelete
+          ? `<td class="jcc-retreat-pickupManageCol">${
+              ctx.canDelete
+                ? `<button type="button" class="jcc-retreat-pickupDelete" data-pickup-delete aria-label="제거" title="제거"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /></svg></button>`
+                : ""
+            }</td>`
+          : ""
+      }
     `;
   }
 
@@ -532,6 +548,8 @@
     tr.dataset.note = item.note || "";
     tr.dataset.checkInStatus = item.check_in_status || "";
     tr.dataset.checkInStatusDisplay = item.check_in_status_display || "";
+    tr.dataset.accountRetired = item.account_retired ? "true" : "false";
+    tr.dataset.accountRetiredDisplay = item.account_retired_display || "";
     tr.dataset.direction = item.direction || ctx.direction || "";
     tr.innerHTML = rowHtml(item);
   }
@@ -701,6 +719,7 @@
       division: tr.dataset.division || "",
       checkInStatus: tr.dataset.checkInStatus || "",
       checkInStatusDisplay: tr.dataset.checkInStatusDisplay || "",
+      accountRetiredDisplay: tr.dataset.accountRetiredDisplay || "",
       direction: tr.dataset.direction || "",
     });
   }

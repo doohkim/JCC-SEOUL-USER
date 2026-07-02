@@ -167,8 +167,109 @@
   padding-left: 1.25rem;
 }
 
+.jcc-cursorDocs-body ol {
+  margin: 0 0 1em;
+  padding-left: 1.35rem;
+}
+
+.jcc-cursorDocs-body ol ol,
+.jcc-cursorDocs-body ul ul,
+.jcc-cursorDocs-body ol ul,
+.jcc-cursorDocs-body ul ol {
+  margin: 0.35em 0 0.15em;
+}
+
 .jcc-cursorDocs-body li {
   margin-bottom: 0.35em;
+}
+
+.jcc-cursorDocs-body h2[id],
+.jcc-cursorDocs-body h1[id] {
+  scroll-margin-top: 88px;
+}
+
+.jcc-cursorDocs-detailLayout {
+  display: block;
+}
+
+.jcc-cursorDocs-toc {
+  margin-bottom: 1.5rem;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  background: var(--surface-muted, #f9fafb);
+}
+
+.jcc-cursorDocs-tocTitle {
+  margin: 0 0 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #6b7684);
+}
+
+.jcc-cursorDocs-tocList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.jcc-cursorDocs-tocList a {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-primary, #191f28);
+  background: #fff;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.jcc-cursorDocs-tocList a:hover {
+  border-color: #3182f6;
+  background: rgba(49, 130, 246, 0.06);
+  color: #3182f6;
+}
+
+@media (min-width: 1100px) {
+  .jcc-cursorDocs-permissionsPage .jcc-cursorDocs-detailLayout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+
+  .jcc-cursorDocs-permissionsPage .jcc-cursorDocs-toc {
+    position: sticky;
+    top: 24px;
+    margin-bottom: 0;
+  }
+
+  .jcc-cursorDocs-permissionsPage .jcc-cursorDocs-tocList {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  .jcc-cursorDocs-permissionsPage .jcc-cursorDocs-tocList a {
+    border-radius: 8px;
+    width: 100%;
+  }
+}
+
+[data-theme="dark"] .jcc-cursorDocs-toc {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="dark"] .jcc-cursorDocs-tocList a {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .jcc-cursorDocs-body a {

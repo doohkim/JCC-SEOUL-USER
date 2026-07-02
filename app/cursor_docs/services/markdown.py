@@ -12,11 +12,34 @@ _HR_RE = re.compile(r"^(\*{3,}|-{3,}|_{3,})\s*$", re.MULTILINE)
 _BLOCKQUOTE_RE = re.compile(r"^>\s?", re.MULTILINE)
 _UL_ITEM_RE = re.compile(r"^[-*]\s+")
 _OL_ITEM_RE = re.compile(r"^\d+\.\s+")
+_LIST_LINE_RE = re.compile(r"^(\s*)(?:(\d+\.)|([-*+]))\s+(.*)$")
 _LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 _ITALIC_RE = re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)|_(.+?)_")
 _DOUBLE_INLINE_CODE_RE = re.compile(r"``([^`]+)``")
 _INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
+
+
+def _slugify_heading(text: str) -> str:
+    plain = re.sub(r"\*\*|`", "", text).strip().lower()
+    slug = re.sub(r"[^\w\s가-힣-]", "", plain)
+    slug = re.sub(r"[\s_]+", "-", slug).strip("-")
+    return slug or "section"
+
+
+def extract_section_toc(text: str) -> list[tuple[str, str]]:
+    """## 제목 목록 → (anchor, label) — 권한 문서 목차용."""
+    body = _strip_frontmatter(text)
+    toc: list[tuple[str, str]] = []
+    seen: dict[str, int] = {}
+    for match in re.finditer(r"^##\s+(.+)$", body, re.MULTILINE):
+        label = re.sub(r"\*\*", "", match.group(1)).strip()
+        base = _slugify_heading(label)
+        count = seen.get(base, 0)
+        seen[base] = count + 1
+        anchor = base if count == 0 else f"{base}-{count + 1}"
+        toc.append((anchor, label))
+    return toc
 
 
 def _strip_frontmatter(text: str) -> str:
@@ -109,6 +132,59 @@ def _render_table(block: str) -> str:
     )
 
 
+def _is_list_block(block: str) -> bool:
+    lines = [ln for ln in block.splitlines() if ln.strip()]
+    return bool(lines) and all(_LIST_LINE_RE.match(ln) for ln in lines)
+
+
+def _render_nested_list(block: str) -> str:
+    items: list[tuple[int, str, str]] = []
+    for line in block.splitlines():
+        if not line.strip():
+            continue
+        match = _LIST_LINE_RE.match(line.rstrip())
+        if not match:
+            continue
+        indent = len(match.group(1).expandtabs(4))
+        kind = "ol" if match.group(2) else "ul"
+        items.append((indent, kind, match.group(4)))
+
+    if not items:
+        return ""
+
+    def build(start: int, base_indent: int) -> tuple[str, int]:
+        chunks: list[str] = []
+        index = start
+        current_tag: str | None = None
+
+        while index < len(items):
+            indent, kind, text = items[index]
+            if indent < base_indent:
+                break
+            if indent > base_indent:
+                break
+
+            if kind != current_tag:
+                if current_tag:
+                    chunks.append(f"</{current_tag}>")
+                chunks.append(f"<{kind}>")
+                current_tag = kind
+
+            index += 1
+            child_html = ""
+            if index < len(items) and items[index][0] > indent:
+                child_html, index = build(index, items[index][0])
+
+            chunks.append(f"<li>{_render_inline(text)}{child_html}</li>")
+
+        if current_tag:
+            chunks.append(f"</{current_tag}>")
+        return "".join(chunks), index
+
+    html, _ = build(0, items[0][0])
+    return html
+
+
 def _is_ul_block(block: str) -> bool:
     lines = [ln for ln in block.splitlines() if ln.strip()]
     return bool(lines) and all(_UL_ITEM_RE.match(ln.strip()) for ln in lines)
@@ -160,6 +236,8 @@ def _render_block(block: str) -> str:
 
     if _is_table_block(stripped):
         return _render_table(stripped)
+    if _is_list_block(stripped):
+        return _render_nested_list(stripped)
     if _is_ul_block(stripped):
         return _render_ul(stripped)
     if _is_ol_block(stripped):
@@ -186,11 +264,19 @@ def render_markdown(text: str) -> str:
     body = _FENCE_RE.sub(_code_repl, body)
     body = _HR_RE.sub("\n\n@@HR@@\n\n", body)
 
+    heading_ids: dict[str, int] = {}
+
     def _header_repl(match: re.Match[str]) -> str:
         level = min(len(match.group(1)), 6)
-        title = _render_inline(match.group(2).strip())
+        raw_title = match.group(2).strip()
+        title = _render_inline(raw_title)
+        base = _slugify_heading(raw_title)
+        count = heading_ids.get(base, 0)
+        heading_ids[base] = count + 1
+        anchor = base if count == 0 else f"{base}-{count + 1}"
         key = f"@@H{len(placeholders)}@@"
-        placeholders[key] = f"<h{level}>{title}</h{level}>"
+        id_attr = f' id="{anchor}"' if level <= 2 else ""
+        placeholders[key] = f"<h{level}{id_attr}>{title}</h{level}>"
         return f"\n\n{key}\n\n"
 
     body = _HEADER_RE.sub(_header_repl, body)

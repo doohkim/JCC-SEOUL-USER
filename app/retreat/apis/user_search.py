@@ -15,10 +15,37 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from retreat.models import RetreatAttendee
+from retreat.services.staff_pool import (
+    event_staff_eligible_division_ids,
+    staff_pool_users_for_event,
+)
+from users.models import UserProfile
 from users.permissions import can_access_retreat_tab
 from users.services.user_display import user_account_link_label
 
 User = get_user_model()
+
+
+def _primary_affiliation_for_user(user):
+    """주 소속 지역·부서 (UserDivisionTeam)."""
+    row = (
+        user.division_teams.order_by(
+            "-is_primary", "sort_order", "division__sort_order", "id"
+        )
+        .select_related("division", "division__region")
+        .first()
+    )
+    if row is None:
+        return None, None, "", ""
+    division = row.division
+    region = division.region
+    return (
+        region.id if region else None,
+        division.id,
+        (region.name if region else "") or "",
+        division.name or "",
+    )
 
 _DEFAULT_LIMIT = 10
 _MAX_LIMIT = 30
@@ -48,19 +75,39 @@ class RetreatUserSearchView(APIView):
         ]
         region_id = self._as_int(request.query_params.get("region"))
         signup_source = (request.query_params.get("signup_source") or "").strip()
+        event_id = self._as_int(request.query_params.get("event_id"))
+        staff_pool = (request.query_params.get("staff_pool") or "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
         all_users = (request.query_params.get("all") or "").strip().lower() in (
             "1",
             "true",
             "yes",
         )
         max_limit = _ALL_MAX_LIMIT if all_users else _MAX_LIMIT
+        if staff_pool and event_id:
+            max_limit = max(max_limit, 100)
         try:
             limit = int(request.query_params.get("limit") or _DEFAULT_LIMIT)
         except (TypeError, ValueError):
             limit = _DEFAULT_LIMIT
         limit = max(1, min(limit, max_limit))
 
-        qs = User.objects.filter(is_active=True).select_related("profile")
+        qs = User.objects.filter(
+            is_active=True, retired_at__isnull=True
+        ).select_related("profile")
+        if staff_pool and event_id:
+            if not event_staff_eligible_division_ids(event_id):
+                return Response([])
+            qs = staff_pool_users_for_event(event_id)
+        elif event_id:
+            event_user_ids = RetreatAttendee.objects.filter(
+                group__event_id=event_id,
+                user_id__isnull=False,
+            ).values_list("user_id", flat=True)
+            qs = qs.filter(id__in=event_user_ids)
         valid_sources = {c[0] for c in User.SignupSource.choices}
         if signup_source in valid_sources:
             qs = qs.filter(signup_source=signup_source)
@@ -78,7 +125,13 @@ class RetreatUserSearchView(APIView):
             if len(digits) >= 4:
                 q_filter |= Q(profile__phone__icontains=digits[-4:])
             qs = qs.filter(q_filter)
-        elif not (division_ids or region_id or all_users):
+        elif not (
+            division_ids
+            or region_id
+            or event_id
+            or all_users
+            or (staff_pool and event_id)
+        ):
             # 필터도 검색어도 없고 all 플래그도 없으면 빈 목록(전체 계정 노출 방지).
             return Response([])
         qs = qs.distinct().order_by("username")[:limit]
@@ -88,12 +141,27 @@ class RetreatUserSearchView(APIView):
             profile = getattr(u, "profile", None)
             display = getattr(profile, "display_name", "") or ""
             name = user_account_link_label(u)
+            real_name = (getattr(profile, "real_name", "") or "").strip()
+            phone = (getattr(profile, "phone", "") or "").strip()
+            gender = (getattr(profile, "gender", "") or "").strip()
+            if gender not in dict(RetreatAttendee.Gender.choices):
+                gender = ""
+            region_id, division_id, region_name, division_name = (
+                _primary_affiliation_for_user(u)
+            )
             results.append(
                 {
                     "id": u.id,
                     "username": u.username,
                     "display_name": display,
                     "name": name,
+                    "real_name": real_name,
+                    "phone": phone,
+                    "gender": gender,
+                    "region_id": region_id,
+                    "division_id": division_id,
+                    "region_name": region_name,
+                    "division_name": division_name,
                     # 옛 클라이언트 호환용. 새 UI는 name만 본다.
                     "label": name,
                 }

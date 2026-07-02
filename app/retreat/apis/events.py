@@ -235,6 +235,7 @@ class RetreatEventGroupListView(APIView):
             .select_related("region", "division")
             .prefetch_related(
                 "memberships__user",
+                "memberships__user__profile",
                 "extra_scopes__region",
                 "extra_scopes__division",
             )

@@ -9,11 +9,13 @@ from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
 
 from retreat.models import (
+    RetreatAttendee,
     RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
     RetreatGroupMembership,
 )
+from users.mixins import ensure_user_profile
 from users.models import Division, Region, RoleLevel, UserDivisionTeam
 
 User = get_user_model()
@@ -64,6 +66,13 @@ class _Fixture:
 
         cls.new_member = User.objects.create_user(
             username="gm_new_member", password="x"
+        )
+        profile = ensure_user_profile(cls.new_member)
+        profile.real_name = "신규성도"
+        profile.gender = profile.Gender.FEMALE
+        profile.phone = "010-9999-8888"
+        profile.save(
+            update_fields=["real_name", "gender", "phone", "updated_at"]
         )
 
 
@@ -166,6 +175,19 @@ class GroupMembershipApiTests(APITestCase, _Fixture):
         self.assertFalse(
             RetreatGroupMembership.objects.filter(pk=m.id).exists()
         )
+
+    def test_add_leader_syncs_attendee_gender_from_profile(self):
+        self.client.force_authenticate(self.council)
+        r = self.client.post(
+            self._list_url(),
+            {"username": self.new_member.username, "role": "leader"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        attendee = RetreatAttendee.objects.get(group=self.group, user=self.new_member)
+        self.assertEqual(attendee.name, "신규성도")
+        self.assertEqual(attendee.gender, "female")
+        self.assertEqual(attendee.phone, "010-9999-8888")
 
     def test_outsider_cannot_delete(self):
         self.client.force_authenticate(self.outsider)

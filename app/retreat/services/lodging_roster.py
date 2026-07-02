@@ -20,6 +20,7 @@ from retreat.services.lodging_stay import (
     lodging_stay_eligible_filter,
 )
 from retreat.services.participation import is_participating
+from retreat.services.account_retired import visible_attendees_for
 from users.permissions import visible_retreat_groups_for
 
 User = get_user_model()
@@ -107,7 +108,10 @@ def build_lodging_roster_context(
         output_field=IntegerField(),
     )
     attendees = list(
-        RetreatAttendee.objects.filter(group_id__in=visible_group_ids)
+        visible_attendees_for(
+            user,
+            RetreatAttendee.objects.filter(group_id__in=visible_group_ids),
+        )
         .select_related(
             "group",
             "group__region",

@@ -201,7 +201,7 @@ class SuperuserTabPageTests(_SuperuserMatrixFixture):
         self.assertTrue(r.context["can_link_attendee_user"])
         self.assertTrue(r.context["can_change_status"])
         self.assertContains(r, 'id="retreatAttCheckIn"')
-        self.assertContains(r, 'data-user-picker-clear')
+        self.assertContains(r, 'data-user-link-unlink')
 
 
 class SuperuserDashboardApiTests(_SuperuserMatrixFixture):
@@ -329,6 +329,115 @@ class SuperuserAttendeeApiPageTests(_SuperuserMatrixFixture):
         self.assertEqual(r.status_code, 200, r.content)
         self.pending.refresh_from_db()
         self.assertIsNone(self.pending.user_id)
+
+    def test_unlink_leader_removes_group_membership(self):
+        from retreat.services.group_sync import (
+            sync_attendee_from_membership,
+            sync_membership_from_attendee,
+        )
+        from users.mixins import ensure_user_profile
+
+        profile = ensure_user_profile(self.link_user)
+        profile.real_name = "김실업"
+        profile.save(update_fields=["real_name", "updated_at"])
+        attendee = RetreatAttendee.objects.create(
+            group=self.group_seoul,
+            name="김실업",
+            gender="female",
+            member_role=RetreatAttendee.MemberRole.LEADER,
+            user=self.link_user,
+        )
+        sync_membership_from_attendee(attendee, changed_by=self.superuser)
+        self.assertTrue(
+            RetreatGroupMembership.objects.filter(
+                group=self.group_seoul, user=self.link_user
+            ).exists()
+        )
+
+        detail = reverse("api_retreat_attendee_detail", args=[attendee.id])
+        r = self.api.patch(
+            detail,
+            {"user": None, "member_role": "leader"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        attendee.refresh_from_db()
+        self.assertIsNone(attendee.user_id)
+        self.assertEqual(attendee.member_role, RetreatAttendee.MemberRole.MEMBER)
+        self.assertFalse(
+            RetreatGroupMembership.objects.filter(
+                group=self.group_seoul, user=self.link_user
+            ).exists()
+        )
+
+        # 멤버십이 남아 있어도 동기화가 계정을 다시 붙이지 않아야 한다.
+        orphan_membership = RetreatGroupMembership.objects.create(
+            group=self.group_seoul,
+            user=self.link_user,
+            role=RetreatGroupMembership.Role.LEADER,
+        )
+        sync_attendee_from_membership(orphan_membership, changed_by=self.superuser)
+        attendee.refresh_from_db()
+        self.assertIsNone(attendee.user_id)
+
+    def test_change_leader_user_updates_group_membership(self):
+        from retreat.services.group_sync import sync_membership_from_attendee
+        from users.mixins import ensure_user_profile
+
+        other_user = User.objects.create_user(username="su_other_leader", password="x")
+        other_profile = ensure_user_profile(other_user)
+        other_profile.real_name = "김실업"
+        other_profile.gender = other_profile.Gender.FEMALE
+        other_profile.phone = "01099998888"
+        other_profile.save(
+            update_fields=["real_name", "gender", "phone", "updated_at"]
+        )
+        profile = ensure_user_profile(self.link_user)
+        profile.real_name = "김샬롬"
+        profile.save(update_fields=["real_name", "updated_at"])
+
+        attendee = RetreatAttendee.objects.create(
+            group=self.group_seoul,
+            name="김샬롬",
+            gender="female",
+            member_role=RetreatAttendee.MemberRole.LEADER,
+            user=self.link_user,
+        )
+        sync_membership_from_attendee(attendee, changed_by=self.superuser)
+
+        detail = reverse("api_retreat_attendee_detail", args=[attendee.id])
+        r = self.api.patch(
+            detail,
+            {"user": other_user.id, "member_role": "leader"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        attendee.refresh_from_db()
+        self.assertEqual(attendee.user_id, other_user.id)
+        self.assertEqual(attendee.name, "김실업")
+        self.assertFalse(
+            RetreatGroupMembership.objects.filter(
+                group=self.group_seoul, user=self.link_user
+            ).exists()
+        )
+        self.assertTrue(
+            RetreatGroupMembership.objects.filter(
+                group=self.group_seoul,
+                user=other_user,
+                role=RetreatGroupMembership.Role.LEADER,
+            ).exists()
+        )
+
+        from retreat.services.group_sync import sync_attendee_from_membership
+
+        orphan_membership = RetreatGroupMembership.objects.create(
+            group=self.group_seoul,
+            user=self.link_user,
+            role=RetreatGroupMembership.Role.LEADER,
+        )
+        sync_attendee_from_membership(orphan_membership, changed_by=self.superuser)
+        attendee.refresh_from_db()
+        self.assertEqual(attendee.user_id, other_user.id)
 
     def test_checked_out_can_revert_to_checked_in(self):
         now = timezone.now()
@@ -567,7 +676,7 @@ class SuperuserAdminApiPageTests(_SuperuserMatrixFixture):
         r = self.page.get(reverse("retreat_council", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.context["can_manage_staff"])
-        self.assertContains(r, "집회 운영진")
+        self.assertContains(r, "운영진 관리")
 
         r2 = self.page.get(reverse("retreat_timetable", args=[self.event.id]))
         self.assertEqual(r2.status_code, 200)

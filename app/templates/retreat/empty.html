@@ -1,0 +1,26 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>수련회</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260703a" />
+  </head>
+  <body>
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        {% include 'includes/jcc_page_header.html' with page_title='수련회' subtitle='활성 집회 없음' %}
+        <main>
+          <div class="card jcc-retreat-emptyCard">
+            <h2>진행 중인 수련회가 없습니다</h2>
+            <p class="subtitle">활성 집회가 등록되면 수련회 메뉴에서 이용할 수 있습니다.</p>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

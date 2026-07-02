@@ -549,6 +549,24 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   gap: 0.75rem 1rem;
   align-items: end;
 }
+.jcc-retreat-staffFormGrid .field input[type="text"],
+.jcc-retreat-staffFormGrid .jcc-retreat-userPickerInput {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 12px;
+  padding: 0.62rem 0.85rem;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  font-weight: 600;
+  min-height: calc(0.62rem * 2 + 1.35em + 2px);
+}
+.jcc-retreat-staffFormGrid .jcc-retreat-staffFormActions button {
+  min-height: calc(0.62rem * 2 + 1.35em + 2px);
+  border-radius: 12px;
+  padding: 0.62rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
 .jcc-retreat-staffFormActions {
   display: flex;
   align-items: flex-end;
@@ -1255,6 +1273,11 @@ a.jcc-retreat-summaryCard--link:active {
   color: #64748b;
   background: rgba(148, 163, 184, 0.18);
 }
+.jcc-retreat-checkInBadge--account_retired,
+#pickupTable .jcc-retreat-checkInBadge--account_retired {
+  color: #9f1239;
+  background: rgba(244, 63, 94, 0.12);
+}
 
 .jcc-retreat-userPicker {
   position: relative;
@@ -1284,6 +1307,134 @@ a.jcc-retreat-summaryCard--link:active {
   color: var(--text);
   border-color: var(--muted);
 }
+
+.jcc-retreat-userLinkWrap {
+  position: relative;
+  min-width: 0;
+}
+
+.jcc-retreat-userLinkWrap[data-link-mode="search"] [data-user-link-chip] {
+  display: none !important;
+}
+
+.jcc-retreat-userLinkWrap[data-link-mode="linked"] [data-user-link-search] {
+  display: none !important;
+}
+
+.jcc-retreat-userLinkChip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: unset;
+  padding: 0.62rem 0.55rem 0.62rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, #3182f6 42%, var(--border));
+  background: color-mix(in srgb, #3182f6 10%, var(--card));
+  overflow: visible;
+}
+
+.jcc-retreat-userLinkChipMain {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.jcc-retreat-userLinkIcon {
+  flex-shrink: 0;
+  color: #2563eb;
+}
+
+.jcc-retreat-userLinkLabel {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #2563eb;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jcc-retreat-userLinkUnlink {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: 0;
+  padding: 0 !important;
+  border: 1px solid color-mix(in srgb, #3182f6 38%, var(--border)) !important;
+  border-radius: 8px;
+  background: #fff !important;
+  color: #2563eb !important;
+  box-shadow: none;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.jcc-retreat-userLinkUnlink svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  stroke: #2563eb;
+}
+
+.jcc-retreat-userLinkUnlink:hover {
+  background: color-mix(in srgb, #3182f6 10%, #fff) !important;
+  border-color: #3182f6 !important;
+  color: #1d4ed8 !important;
+}
+
+.jcc-retreat-userLinkUnlink:hover svg {
+  stroke: #1d4ed8;
+}
+
+.jcc-retreat-userLinkUnlink:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+body.has-retreat-bottom-tabs .jcc-retreat-userLinkUnlink {
+  padding: 0 !important;
+  min-width: 2.25rem;
+  font-weight: 400;
+}
+
+.jcc-retreat-modal--attendeeEdit .jcc-retreat-userLinkChip {
+  padding: 0.62rem 0.55rem 0.62rem 0.8rem;
+  gap: 0.4rem;
+}
+
+.jcc-retreat-modal--attendeeEdit .jcc-retreat-userLinkUnlink {
+  width: 1.75rem;
+  height: 1.75rem;
+  min-width: 1.75rem;
+  border-radius: 8px;
+}
+
+.jcc-retreat-modal--attendeeEdit .jcc-retreat-userLinkUnlink svg {
+  width: 16px;
+  height: 16px;
+}
+
+.jcc-retreat-modal--attendeeEdit .jcc-retreat-userLinkLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.jcc-retreat-modal--attendeeEdit .jcc-retreat-userPickerInput {
+  border-radius: 12px;
+  padding: 0.62rem 0.85rem;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
 .jcc-retreat-userPickerInput {
   width: 100%;
 }
@@ -2540,6 +2691,7 @@ a.jcc-retreat-summaryCard--link:active {
   flex-direction: column;
   gap: 0.35rem;
   width: 100%;
+  min-width: 0;
   padding: 0.85rem 0.9rem;
   border-radius: 12px;
   background: var(--card);
@@ -2597,6 +2749,13 @@ a.jcc-retreat-summaryCard--link:active {
 .jcc-retreat-groupMeta {
   font-size: 0.85rem;
   color: var(--muted);
+  min-width: 0;
+}
+.jcc-retreat-groupLeader {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
 }
 
 /* 조 목록 지역·부서 필터 (Notion식 다중선택 칩) */
@@ -4006,6 +4165,50 @@ dialog.jcc-retreat-modal::backdrop {
 }
 .jcc-retreat-confirmModal {
   max-width: 380px;
+}
+.jcc-retreat-confirmModal--unlink {
+  max-width: 400px;
+  text-align: center;
+  padding-top: 0.35rem;
+}
+.jcc-retreat-confirmIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin: 0 auto 0.85rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #3182f6 12%, var(--card));
+  color: #2563eb;
+}
+.jcc-retreat-confirmModal--unlink .jcc-retreat-modalTitle {
+  margin-top: 0;
+  font-size: 1.12rem;
+}
+.jcc-retreat-confirmModal--unlink .jcc-retreat-confirmMsg {
+  margin-bottom: 1.1rem;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+.jcc-retreat-confirmFooter {
+  justify-content: stretch;
+  gap: 0.55rem;
+}
+.jcc-retreat-confirmFooter button {
+  flex: 1 1 0;
+  min-height: 2.75rem;
+  border-radius: 12px;
+  font-weight: 700;
+}
+.jcc-retreat-confirmOk--danger {
+  background: #e5484d !important;
+  border-color: #e5484d !important;
+  color: #fff !important;
+}
+.jcc-retreat-confirmOk--danger:hover {
+  background: #d93d42 !important;
+  border-color: #d93d42 !important;
 }
 .jcc-retreat-confirmMsg {
   margin: 0 0 0.85rem 0;
@@ -5604,7 +5807,7 @@ body.has-retreat-bottom-tabs .toolbar {
 /* 버튼 → Toss 톤: 둥근 라운드, 살짝 넉넉한 패딩
    (커스텀 달력 [jcc-dtp*]·탭·집회선택 등 자체 스타일 버튼은 제외) */
 body.has-retreat-bottom-tabs
-  button:not([class*="jcc-dtp"]):not([class*="jcc-tp-"]):not(.jcc-page-tab):not(.jcc-retreat-eventPickerBtn):not(.jcc-pickup-locBtn):not(.jcc-leftNav-close):not(.jcc-leftNav-desktopToggle):not(.jcc-mobile-menu-btn):not(.jcc-cselect-btn):not(.jcc-retreat-filterChip):not(.jcc-retreat-groupCardEdit):not(.jcc-retreat-filterReset):not(.jcc-retreat-pickupNameBtn):not(.jcc-retreat-addGroupBtn):not(.jcc-retreat-pickupAddBtn):not(.jcc-retreat-ttAddBtn):not(.jcc-retreat-dateField):not(.jcc-retreat-pickupDelete):not(.jcc-retreat-groupEditIcon):not(.jcc-retreat-rowIconBtn):not(.jcc-retreat-lodgingAddRoom),
+  button:not([class*="jcc-dtp"]):not([class*="jcc-tp-"]):not(.jcc-page-tab):not(.jcc-retreat-eventPickerBtn):not(.jcc-pickup-locBtn):not(.jcc-leftNav-close):not(.jcc-leftNav-desktopToggle):not(.jcc-mobile-menu-btn):not(.jcc-cselect-btn):not(.jcc-retreat-filterChip):not(.jcc-retreat-groupCardEdit):not(.jcc-retreat-filterReset):not(.jcc-retreat-pickupNameBtn):not(.jcc-retreat-addGroupBtn):not(.jcc-retreat-pickupAddBtn):not(.jcc-retreat-ttAddBtn):not(.jcc-retreat-dateField):not(.jcc-retreat-pickupDelete):not(.jcc-retreat-groupEditIcon):not(.jcc-retreat-rowIconBtn):not(.jcc-retreat-lodgingAddRoom):not(.jcc-retreat-userLinkUnlink):not(.jcc-retreat-staffDeleteBtn):not(.jcc-retreat-staffNameBtn),
 body.has-retreat-bottom-tabs .btn {
   border-radius: 11px;
   padding: 0.58rem 1.05rem;
@@ -5749,14 +5952,83 @@ body.has-retreat-bottom-tabs main {
   border-radius: 22px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.12);
 }
+#retreatModalOverlay,
+#rosterEditOverlay {
+  --jcc-retreat-modal-control-h: 2.5rem;
+}
 #retreatModalOverlay .jcc-retreat-modalGrid .field input,
 #retreatModalOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field,
-#retreatModalOverlay .jcc-retreat-modal--attendeeEdit textarea,
+#retreatModalOverlay .jcc-retreat-modalGrid .field .jcc-cselect-btn,
+#retreatModalOverlay .jcc-retreat-userPickerInput,
+#retreatModalOverlay .jcc-retreat-userLinkChip,
 #rosterEditOverlay .jcc-retreat-modalGrid .field input,
 #rosterEditOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field,
-#rosterEditOverlay .jcc-retreat-modalGrid .field .jcc-cselect-btn {
+#rosterEditOverlay .jcc-retreat-modalGrid .field .jcc-cselect-btn,
+#rosterEditOverlay .jcc-retreat-userPickerInput,
+#rosterEditOverlay .jcc-retreat-userLinkChip {
+  box-sizing: border-box;
+  height: var(--jcc-retreat-modal-control-h);
+  min-height: var(--jcc-retreat-modal-control-h);
+  max-height: var(--jcc-retreat-modal-control-h);
+  border-radius: 12px;
+  padding: 0 0.8rem;
+}
+#retreatModalOverlay .jcc-retreat-modal--attendeeEdit textarea,
+#rosterEditOverlay .jcc-retreat-modal--attendeeEdit textarea {
   border-radius: 12px;
   padding: 0.62rem 0.8rem;
+}
+#retreatModalOverlay .jcc-retreat-modalGrid .field .jcc-cselect-btn,
+#rosterEditOverlay .jcc-retreat-modalGrid .field .jcc-cselect-btn {
+  display: flex;
+  align-items: center;
+}
+#retreatModalOverlay .jcc-retreat-userLinkWrap[data-link-mode="search"] .jcc-retreat-userLinkChip,
+#rosterEditOverlay .jcc-retreat-userLinkWrap[data-link-mode="search"] .jcc-retreat-userLinkChip {
+  display: none !important;
+}
+#retreatModalOverlay .jcc-retreat-userLinkWrap[data-link-mode="linked"] .jcc-retreat-userLinkChip,
+#rosterEditOverlay .jcc-retreat-userLinkWrap[data-link-mode="linked"] .jcc-retreat-userLinkChip {
+  display: flex !important;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.35rem 0 0.75rem !important;
+  overflow: hidden;
+}
+#retreatModalOverlay .jcc-retreat-userLinkChipMain,
+#rosterEditOverlay .jcc-retreat-userLinkChipMain {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+#retreatModalOverlay .jcc-retreat-userLinkIcon,
+#rosterEditOverlay .jcc-retreat-userLinkIcon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+#retreatModalOverlay .jcc-retreat-userLinkLabel,
+#rosterEditOverlay .jcc-retreat-userLinkLabel {
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+#retreatModalOverlay .jcc-retreat-userLinkUnlink,
+#rosterEditOverlay .jcc-retreat-userLinkUnlink {
+  width: 1.45rem !important;
+  height: 1.45rem !important;
+  min-width: 1.45rem !important;
+  margin: 0;
+  padding: 0 !important;
+  flex-shrink: 0;
+  border-radius: 8px;
+}
+#retreatModalOverlay .jcc-retreat-userLinkUnlink svg,
+#rosterEditOverlay .jcc-retreat-userLinkUnlink svg {
+  width: 14px;
+  height: 14px;
 }
 #retreatModalOverlay .jcc-retreat-modalFooter button,
 #rosterEditOverlay .jcc-retreat-modalFooter button {
@@ -6613,5 +6885,862 @@ body.jcc-retreat-platformGuidePage--pdf .jcc-layout-content {
   .jcc-pgPdfFrame {
     min-height: calc(100dvh - 10rem);
     min-height: calc(100vh - 10rem);
+  }
+}
+
+/* ============================================================
+   운영진 관리 (통합 명단 · Toss 스타일)
+   ============================================================ */
+body.has-retreat-bottom-tabs .jcc-retreat-staffPage {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffPageHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem 1rem;
+  margin-bottom: 0.25rem;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffPageTitle {
+  margin: 0;
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffPageSubtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.92rem;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffAddBtn {
+  border: none;
+  border-radius: 12px;
+  padding: 0.72rem 1.15rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  background: var(--accent, #1d64d8);
+  color: #fff;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--accent, #1d64d8) 28%, transparent);
+  cursor: pointer;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffRosterCard {
+  padding-top: 1.1rem;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding: 0.28rem;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 14px;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffPill {
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.88rem;
+  padding: 0.48rem 0.85rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffPill:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffPill.is-active {
+  background: var(--card, #fff);
+  color: var(--text);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 10%, transparent);
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffPillCount {
+  display: inline-flex;
+  min-width: 1.35rem;
+  justify-content: center;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--muted);
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffPill.is-active .jcc-retreat-staffPillCount {
+  background: color-mix(in srgb, var(--accent, #1d64d8) 14%, transparent);
+  color: var(--accent, #1d64d8);
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffRosterTable th,
+body.has-retreat-bottom-tabs .jcc-retreat-staffRosterTable td {
+  padding: 0.85rem 0.65rem;
+  vertical-align: middle;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffColPhone {
+  white-space: nowrap;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffName {
+  font-weight: 700;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffNameBtn {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffNameBtn:hover,
+body.has-retreat-bottom-tabs .jcc-retreat-staffNameBtn:focus-visible {
+  color: var(--accent, #2563eb);
+  text-decoration: underline;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffColAction {
+  width: 4.5rem;
+  text-align: center;
+  white-space: nowrap;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffRosterTable th.jcc-retreat-staffColAction {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffDeleteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 !important;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffDeleteBtn svg {
+  display: block;
+  width: 1.15rem;
+  height: 1.15rem;
+  stroke: currentColor;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffDeleteBtn:hover,
+body.has-retreat-bottom-tabs .jcc-retreat-staffDeleteBtn:focus-visible {
+  color: #dc2626;
+  background: #fef2f2;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffCardMain .jcc-retreat-staffDeleteBtn {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffCardBody {
+  min-width: 0;
+  flex: 1;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffCardBody .jcc-retreat-staffNameBtn {
+  display: block;
+  width: 100%;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffRoleTag--leader {
+  background: rgba(74, 158, 255, 0.16);
+  color: #2563eb;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffRoleTag--vice_leader {
+  background: rgba(99, 102, 241, 0.16);
+  color: #4f46e5;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffRoleTag--region_admin,
+body.has-retreat-bottom-tabs .jcc-retreat-staffRoleTag--division_admin {
+  background: rgba(16, 185, 129, 0.14);
+  color: #047857;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffRoleTag--region_observer,
+body.has-retreat-bottom-tabs .jcc-retreat-staffRoleTag--division_observer {
+  background: rgba(148, 163, 184, 0.2);
+  color: #475569;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffRoleTag--event_observer {
+  background: rgba(148, 163, 184, 0.2);
+  color: #475569;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffWaitingCard {
+  margin-top: 0.25rem;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffWaitingHead {
+  margin-bottom: 0.85rem;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffWaitingHead .jcc-retreat-sectionTitle {
+  margin-bottom: 0.25rem;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffWaitingList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffWaitingItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffWaitingPerson {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffCardAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #1d64d8) 14%, transparent);
+  color: var(--accent, #1d64d8);
+  font-weight: 800;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffAssignBtn {
+  flex-shrink: 0;
+  border-radius: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffAddBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* 집회 운영진 / 조장·부조장 등록 모달 */
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff {
+  --jcc-staff-modal-control-h: clamp(2.35rem, 7.5vw, 2.55rem);
+  --jcc-staff-modal-gap: clamp(0.65rem, 2.8vw, 0.85rem);
+  --jcc-staff-modal-width: min(32rem, calc(100vw - 1.5rem));
+  width: var(--jcc-staff-modal-width);
+  max-width: var(--jcc-staff-modal-width);
+  padding: clamp(0.95rem, 3.5vw, 1.3rem) clamp(1rem, 4vw, 1.35rem)
+    clamp(1rem, 3.5vw, 1.2rem);
+  border-radius: 16px;
+  overflow: visible;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff.jcc-retreat-modal--staffGroup {
+  --jcc-staff-modal-width: min(28rem, calc(100vw - 1.5rem));
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff.jcc-retreat-modal--staffCombined {
+  --jcc-staff-modal-width: min(32rem, calc(100vw - 1.5rem));
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-retreat-modalBody {
+  padding: 0;
+  overflow: visible;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-retreat-modalTitle {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1rem, 4.2vw, 1.12rem);
+  font-weight: 800;
+  line-height: 1.35;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-retreat-modalSubtitle {
+  margin: 0 0 var(--jcc-staff-modal-gap);
+  font-size: clamp(0.78rem, 3.2vw, 0.88rem);
+  line-height: 1.45;
+  color: var(--muted);
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffModalGrid,
+body.has-retreat-bottom-tabs .jcc-retreat-staffModalFields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jcc-staff-modal-gap);
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffModalRow--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(0.5rem, 2.5vw, 0.75rem);
+  align-items: stretch;
+}
+body.has-retreat-bottom-tabs
+  .jcc-retreat-staffModalFields[data-staff-modal-panel="group"]
+  .jcc-retreat-staffModalRow--split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffModalRow--split > .field[hidden] {
+  display: none !important;
+}
+body.has-retreat-bottom-tabs
+  .jcc-retreat-staffModalRow--split:not(:has(> .field:not([hidden]) ~ .field:not([hidden])))
+  > .field:not([hidden]) {
+  grid-column: 1 / -1;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffModalGrid .field,
+body.has-retreat-bottom-tabs .jcc-retreat-staffModalFields .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  min-width: 0;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffModalGrid .field label,
+body.has-retreat-bottom-tabs .jcc-retreat-staffModalFields .field label {
+  font-size: clamp(0.72rem, 3vw, 0.78rem);
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1.3;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-retreat-userPicker {
+  position: relative;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .field .jcc-cselect {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-retreat-userPickerInput,
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-cselect-btn {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: var(--jcc-staff-modal-control-h);
+  height: var(--jcc-staff-modal-control-h);
+  padding: 0 clamp(0.55rem, 2.4vw, 0.75rem);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: clamp(0.82rem, 3.5vw, 0.92rem);
+  line-height: 1.3;
+  background: color-mix(in srgb, var(--text) 4%, var(--card));
+  color: var(--text);
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-cselect-btn {
+  font-weight: 600;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-cselect-btn:disabled {
+  opacity: 1;
+  cursor: not-allowed;
+  color: var(--text);
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-cselect.is-open .jcc-cselect-btn,
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-retreat-userPickerInput:focus,
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-cselect-btn:focus-visible {
+  outline: none;
+  border-color: var(--accent, #4a9eff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #4a9eff) 18%, transparent);
+}
+body.has-retreat-bottom-tabs .jcc-retreat-userPicker.is-locked .jcc-retreat-userPickerInput {
+  opacity: 1;
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 4%, var(--card));
+  pointer-events: none;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-retreat-staffModalNoteInput {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: clamp(4.75rem, 20vw, 5.75rem);
+  padding: clamp(0.5rem, 2.4vw, 0.65rem) clamp(0.55rem, 2.4vw, 0.75rem);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: clamp(0.82rem, 3.5vw, 0.92rem);
+  line-height: 1.45;
+  resize: vertical;
+  background: color-mix(in srgb, var(--text) 4%, var(--card));
+  color: var(--text);
+  font-family: inherit;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-retreat-staffModalNoteInput:focus {
+  outline: 2px solid var(--accent, #4a9eff);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-retreat-modalFooter {
+  margin-top: clamp(0.85rem, 3vw, 1rem);
+  gap: clamp(0.45rem, 2vw, 0.55rem);
+}
+body.has-retreat-bottom-tabs .jcc-retreat-modal--staff .jcc-retreat-modalFooter button {
+  min-height: var(--jcc-staff-modal-control-h);
+  padding: 0 clamp(0.85rem, 3.5vw, 1.1rem);
+  font-size: clamp(0.82rem, 3.5vw, 0.92rem);
+  border-radius: 8px;
+}
+body.has-retreat-bottom-tabs .jcc-retreat-staffRosterCards {
+  display: none;
+}
+@media (max-width: 640px) {
+  body.has-retreat-bottom-tabs .jcc-retreat-staffRosterTableWrap {
+    display: none;
+  }
+  body.has-retreat-bottom-tabs .jcc-retreat-staffRosterCards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+  body.has-retreat-bottom-tabs .jcc-retreat-staffCard {
+    padding: 0.95rem 1rem;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    background: color-mix(in srgb, var(--text) 3%, transparent);
+  }
+  body.has-retreat-bottom-tabs .jcc-retreat-staffCardMain {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  body.has-retreat-bottom-tabs .jcc-retreat-staffCardMain > div:nth-child(2) {
+    flex: 1;
+    min-width: 0;
+  }
+  body.has-retreat-bottom-tabs .jcc-retreat-staffCardName {
+    font-weight: 800;
+    font-size: 1rem;
+  }
+  body.has-retreat-bottom-tabs .jcc-retreat-staffCardMeta {
+    font-size: 0.85rem;
+    margin-top: 0.15rem;
+  }
+  body.has-retreat-bottom-tabs .jcc-retreat-staffCardActions {
+    display: flex;
+    gap: 0.45rem;
+    margin-top: 0.75rem;
+  }
+  body.has-retreat-bottom-tabs .jcc-retreat-staffCardActions button {
+    flex: 1;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+  body.has-retreat-bottom-tabs .jcc-retreat-staffWaitingItem {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  body.has-retreat-bottom-tabs .jcc-retreat-staffAssignBtn {
+    width: 100%;
+  }
+  body.has-retreat-bottom-tabs .jcc-retreat-staffPills {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  body.has-retreat-bottom-tabs .jcc-retreat-staffPill {
+    flex-shrink: 0;
+  }
+}
+
+/* —— 운영진 참가 허브 —— */
+.jcc-retreat-hub {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.jcc-retreat-hubList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.jcc-retreat-hubCard {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: 16px;
+  border: 1px solid var(--jcc-border, #e5e7eb);
+  background: var(--jcc-surface, #fff);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.jcc-retreat-hubCard--hero {
+  grid-template-columns: 1fr;
+}
+
+.jcc-retreat-hubCard--hero .jcc-retreat-hubCardVisual {
+  min-height: 140px;
+  border-radius: 12px;
+}
+
+.jcc-retreat-hubCardVisual {
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1e3a5f 0%, #3b82f6 55%, #93c5fd 100%);
+  min-height: 100px;
+}
+
+.jcc-retreat-hubCardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.jcc-retreat-hubCardTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.jcc-retreat-hubBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.jcc-retreat-hubBadge--success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.jcc-retreat-hubBadge--info {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.jcc-retreat-hubBadge--warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.jcc-retreat-hubBadge--danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.jcc-retreat-hubBadge--muted {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.jcc-retreat-hubAssigned,
+.jcc-retreat-hubStatusBox {
+  margin-top: 0.85rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.jcc-retreat-hubStatusBox--pending {
+  background: #fffbeb;
+}
+
+.jcc-retreat-hubStatusBox--rejected {
+  background: #fef2f2;
+}
+
+.jcc-retreat-hubStatusBox--open {
+  background: #eff6ff;
+}
+
+.jcc-retreat-hubCardActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.jcc-retreat-hubCta {
+  min-width: 10rem;
+}
+
+.jcc-retreat-hubOps {
+  margin-top: 0.5rem;
+}
+
+.jcc-retreat-hubOpsTitle {
+  font-size: 1.05rem;
+  margin: 0 0 0.75rem;
+}
+
+.jcc-retreat-staffApply {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+}
+
+.jcc-retreat-staffApplyHero {
+  margin-bottom: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.jcc-retreat-staffApplyHeroRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.jcc-retreat-staffApplyHeroRow .jcc-retreat-eventPicker {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+}
+
+.jcc-retreat-staffAppStatusPills {
+  margin-bottom: 1rem;
+}
+
+.jcc-retreat-staffAppStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.jcc-retreat-staffAppStatusBadge--pending {
+  background: color-mix(in srgb, var(--accent, #1d64d8) 12%, transparent);
+  color: var(--accent, #1d64d8);
+}
+
+.jcc-retreat-staffAppStatusBadge--approved {
+  background: color-mix(in srgb, #16a34a 14%, transparent);
+  color: #16a34a;
+}
+
+.jcc-retreat-staffAppStatusBadge--rejected {
+  background: color-mix(in srgb, #dc2626 12%, transparent);
+  color: #dc2626;
+}
+
+.jcc-retreat-staffApplyTitle {
+  font-size: 1.65rem;
+  font-weight: 800;
+  margin: 0 0 0.35rem;
+  letter-spacing: -0.02em;
+}
+
+.jcc-retreat-staffApplyLead {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.jcc-retreat-staffApplyForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.jcc-retreat-staffApplyForm .field {
+  margin: 0;
+}
+
+.jcc-retreat-staffApplyLabel,
+.jcc-retreat-staffApplyForm label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: var(--jcc-text, #111827);
+}
+
+.jcc-retreat-staffApplyFixed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--jcc-border, #e5e7eb);
+  background: #f8fafc;
+  color: var(--jcc-text, #111827);
+}
+
+.jcc-retreat-staffApplyFixedValue {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.jcc-retreat-staffApplyLock {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: #94a3b8;
+}
+
+.jcc-retreat-staffApplyLock svg {
+  width: 100%;
+  height: 100%;
+}
+
+.jcc-retreat-staffApplyRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.jcc-retreat-staffApplySelect,
+.jcc-retreat-staffApplyForm select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 2.25rem 0 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--jcc-border, #e5e7eb);
+  background: #fff;
+  font-size: 0.95rem;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.1rem;
+}
+
+.jcc-retreat-staffApplySelect:focus,
+.jcc-retreat-staffApplyForm select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.jcc-retreat-staffApplyForm textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--jcc-border, #e5e7eb);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.jcc-retreat-staffApplyForm textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.jcc-retreat-staffApplyPastoralNote {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.jcc-retreat-staffApplySubmit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 0.5rem;
+  padding: 0 1.25rem;
+  border: none;
+  border-radius: 14px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.jcc-retreat-staffApplySubmit:hover {
+  background: #1d4ed8;
+}
+
+.jcc-retreat-staffApplySubmit svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.jcc-retreat-staffApplyBack {
+  margin: 0 0 1rem;
+}
+
+.jcc-retreat-staffApplyProfile {
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.jcc-retreat-staffApplyProfileRow {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.jcc-retreat-staffApplyProfileName {
+  font-weight: 700;
+}
+
+.jcc-retreat-staffApplySection + .jcc-retreat-staffApplySection {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--jcc-border, #e5e7eb);
+}
+
+.jcc-retreat-staffApplyActions {
+  margin-top: 0.25rem;
+}
+
+.jcc-retreat-staffApplyPickerRow {
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .jcc-retreat-staffApplyHeroRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .jcc-retreat-staffApplyHeroRow .jcc-retreat-eventPicker {
+    width: 100%;
+  }
+
+  .jcc-retreat-staffApplyHeroRow .jcc-retreat-eventPickerBtn {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.jcc-retreat-staffApplyClosed {
+  padding: 1.25rem;
+}
+
+.jcc-retreat-staffApplyIneligible {
+  padding: 1.25rem;
+}
+
+.jcc-retreat-staffApplyIneligibleMessage {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--jcc-text, #111827);
+}
+
+@media (max-width: 520px) {
+  .jcc-retreat-staffApplyRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .jcc-retreat-hubCard {
+    grid-template-columns: 1fr;
   }
 }

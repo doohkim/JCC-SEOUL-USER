@@ -36,6 +36,9 @@ from retreat.apis import (
     RetreatEventTimetableListCreateView,
     RetreatTimetableEntryDetailView,
     RetreatUserSearchView,
+    RetreatEventStaffCandidatesView,
+    RetreatEventStaffApplicationListView,
+    RetreatStaffApplicationDetailView,
 )
 from retreat.views import (
     RetreatAdminView,
@@ -47,6 +50,8 @@ from retreat.views import (
     RetreatGroupManageView,
     RetreatHomeView,
     RetreatPlatformGuideView,
+    RetreatStaffApplyView,
+    RetreatStaffApplicationsView,
     RetreatLodgingAssignRedirectView,
     RetreatLodgingRosterView,
     RetreatLodgingView,
@@ -113,6 +118,16 @@ urlpatterns = [
         "retreat/<int:event_id>/apply/",
         RetreatApplyView.as_view(),
         name="retreat_apply",
+    ),
+    path(
+        "retreat/<int:event_id>/staff-apply/",
+        RetreatStaffApplyView.as_view(),
+        name="retreat_staff_apply",
+    ),
+    path(
+        "retreat/<int:event_id>/admin/staff-applications/",
+        RetreatStaffApplicationsView.as_view(),
+        name="retreat_staff_applications",
     ),
     path(
         "retreat/<int:event_id>/group/<int:group_id>/",
@@ -248,6 +263,21 @@ urlpatterns = [
         "api/v1/retreat/group-memberships/<int:membership_id>/",
         RetreatGroupMembershipDetailView.as_view(),
         name="api_retreat_group_membership_detail",
+    ),
+    path(
+        "api/v1/retreat/events/<int:event_id>/staff-candidates/",
+        RetreatEventStaffCandidatesView.as_view(),
+        name="api_retreat_event_staff_candidates",
+    ),
+    path(
+        "api/v1/retreat/events/<int:event_id>/staff-applications/",
+        RetreatEventStaffApplicationListView.as_view(),
+        name="api_retreat_event_staff_applications",
+    ),
+    path(
+        "api/v1/retreat/events/<int:event_id>/staff-applications/<int:application_id>/review/",
+        RetreatStaffApplicationDetailView.as_view(),
+        name="api_retreat_staff_application_review",
     ),
     path(
         "api/v1/retreat/users/search/",

@@ -127,6 +127,12 @@ class RetreatAttendee(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    account_retired_at = models.DateTimeField(
+        "계정 탈퇴 일시",
+        null=True,
+        blank=True,
+        help_text="연결 계정 탈퇴로 숨김 처리된 조원. 슈퍼유저만 조회 가능.",
+    )
 
     class Meta:
         verbose_name = "수련회 조원"

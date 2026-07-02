@@ -1,15 +1,23 @@
 from __future__ import annotations
 
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from retreat.apis._common import profile_locked_patch_keys_for
 from retreat.models import RetreatAttendee
+from retreat.services.account_retired import (
+    ACCOUNT_RETIRED_DISPLAY,
+    is_retired_account_row,
+)
 from retreat.services.check_in_stamps import (
     is_attendee_profile_locked,
     is_expected_timestamps_locked,
 )
 from retreat.services.lodging_stay import lodging_stay_display
+from retreat.services.group_sync import apply_attendee_profile_defaults
 from users.validators import normalize_korea_mobile_phone
+
+User = get_user_model()
 
 
 class RetreatAttendeeSerializer(serializers.ModelSerializer):
@@ -29,6 +37,8 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
     lodging_stay_display = serializers.SerializerMethodField()
     expected_timestamps_locked = serializers.SerializerMethodField()
     profile_locked = serializers.SerializerMethodField()
+    account_retired = serializers.SerializerMethodField()
+    account_retired_display = serializers.SerializerMethodField()
 
     class Meta:
         model = RetreatAttendee
@@ -59,6 +69,8 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
             "lodging_stay_display",
             "expected_timestamps_locked",
             "profile_locked",
+            "account_retired",
+            "account_retired_display",
             "sort_order",
         ]
         read_only_fields = [
@@ -73,6 +85,8 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
             "lodging_stay_display",
             "expected_timestamps_locked",
             "profile_locked",
+            "account_retired",
+            "account_retired_display",
         ]
 
     def get_user_label(self, attendee: RetreatAttendee) -> str:
@@ -82,6 +96,27 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
         from users.services.user_display import user_account_link_label
 
         return user_account_link_label(user)
+
+    def to_internal_value(self, data):
+        mutable = dict(data)
+        user_ref = mutable.get("user")
+        if user_ref:
+            user = (
+                user_ref
+                if hasattr(user_ref, "pk")
+                else User.objects.select_related("profile").filter(pk=user_ref).first()
+            )
+            if user:
+                overwrite = self.instance is None
+                if self.instance is not None and "user" in mutable:
+                    overwrite = user.pk != (self.instance.user_id or None)
+                mutable = apply_attendee_profile_defaults(
+                    mutable,
+                    user,
+                    instance=self.instance,
+                    overwrite=overwrite,
+                )
+        return super().to_internal_value(mutable)
 
     def validate_name(self, value: str) -> str:
         v = (value or "").strip()
@@ -106,7 +141,32 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
     def get_profile_locked(self, attendee: RetreatAttendee) -> bool:
         return is_attendee_profile_locked(attendee)
 
+    def get_account_retired(self, attendee: RetreatAttendee) -> bool:
+        return is_retired_account_row(attendee)
+
+    def get_account_retired_display(self, attendee: RetreatAttendee) -> str:
+        return ACCOUNT_RETIRED_DISPLAY if is_retired_account_row(attendee) else ""
+
     def validate(self, attrs):
+        if "user" in (self.initial_data or {}):
+            linked_user = attrs.get("user")
+            if linked_user is not None:
+                overwrite = self.instance is None or linked_user.pk != (
+                    self.instance.user_id or None
+                )
+                attrs = apply_attendee_profile_defaults(
+                    attrs,
+                    linked_user,
+                    instance=self.instance,
+                    overwrite=overwrite,
+                )
+        elif self.instance and self.instance.user_id:
+            attrs = apply_attendee_profile_defaults(
+                attrs,
+                self.instance.user,
+                instance=self.instance,
+                overwrite=False,
+            )
         if self.instance and is_attendee_profile_locked(self.instance):
             user = self.context.get("user")
             group = self.context.get("group")

@@ -24,6 +24,10 @@ class UserProfile(models.Model):
         PASTOR = "pastor", "목사"
         EVANGELIST = "evangelist", "전도사"
 
+    class Gender(models.TextChoices):
+        MALE = "male", "남성"
+        FEMALE = "female", "여성"
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -52,6 +56,13 @@ class UserProfile(models.Model):
         blank=True,
         default="",
         validators=[validate_korea_mobile_phone],
+    )
+    gender = models.CharField(
+        "성별",
+        max_length=10,
+        choices=Gender.choices,
+        blank=True,
+        default="",
     )
     phone_verified = models.BooleanField("휴대폰 인증 완료", default=False)
     phone_verified_at = models.DateTimeField("인증 완료 시각", null=True, blank=True)

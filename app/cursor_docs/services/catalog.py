@@ -10,11 +10,28 @@ from django.conf import settings
 
 CATEGORY_POLICY = "policy"
 CATEGORY_TEMPLATE = "template"
+CATEGORY_PERMISSIONS = "permissions"
 
 _TEMPLATE_RELATIVE_PATHS = (
     "PROMPTS.md",
     "docs/cursor-prompt-templates.md",
 )
+
+_PERMISSIONS_RELATIVE_PATHS = (
+    "docs/retreat-council-permissions.md",
+)
+
+CATEGORY_DETAIL_URL_NAMES = {
+    CATEGORY_POLICY: "cursor_docs_policy_detail",
+    CATEGORY_TEMPLATE: "cursor_docs_template_detail",
+    CATEGORY_PERMISSIONS: "cursor_docs_permissions_detail",
+}
+
+CATEGORY_LIST_URL_NAMES = {
+    CATEGORY_POLICY: "cursor_docs_policy_list",
+    CATEGORY_TEMPLATE: "cursor_docs_template_list",
+    CATEGORY_PERMISSIONS: "cursor_docs_permissions_list",
+}
 
 _FRONTMATTER_RE = re.compile(r"^---\s*\n.*?\n---\s*\n", re.DOTALL)
 _TITLE_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
@@ -70,6 +87,8 @@ def _title_from_content(body: str, relative_path: str) -> str:
 def _badge_from_frontmatter(frontmatter: str, category: str) -> str:
     if category == CATEGORY_TEMPLATE:
         return "템플릿"
+    if category == CATEGORY_PERMISSIONS:
+        return "수련회 권한"
     if not frontmatter:
         return "문서"
     if _ALWAYS_APPLY_RE.search(frontmatter):
@@ -123,6 +142,18 @@ def _resolve_allowed_path(category: str, relative_path: str) -> Path | None:
             return None
         return candidate if candidate.is_file() else None
 
+    if category == CATEGORY_PERMISSIONS:
+        if relative_path not in _PERMISSIONS_RELATIVE_PATHS:
+            return None
+        candidate = (root / relative_path).resolve()
+        try:
+            candidate.relative_to(root.resolve())
+        except ValueError:
+            return None
+        if candidate.suffix.lower() not in {".md", ".mdc"}:
+            return None
+        return candidate if candidate.is_file() else None
+
     return None
 
 
@@ -159,6 +190,13 @@ def list_docs(category: str) -> list[DocEntry]:
     elif category == CATEGORY_TEMPLATE:
         root = _repo_root()
         for rel in _TEMPLATE_RELATIVE_PATHS:
+            absolute = root / rel
+            if absolute.is_file():
+                entries.append(_entry_from_path(category, rel, absolute))
+
+    elif category == CATEGORY_PERMISSIONS:
+        root = _repo_root()
+        for rel in _PERMISSIONS_RELATIVE_PATHS:
             absolute = root / rel
             if absolute.is_file():
                 entries.append(_entry_from_path(category, rel, absolute))

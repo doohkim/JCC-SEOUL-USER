@@ -17,6 +17,7 @@ from retreat.models import (
 )
 from retreat.serializers import RetreatCouncilMembershipSerializer
 from retreat.services.audit import log_retreat_change
+from retreat.services.staff_roster import assert_can_assign_event_staff
 from users.models import Division, Region
 from users.permissions import (
     can_access_retreat_tab,
@@ -112,6 +113,11 @@ class RetreatEventCouncilListCreateView(APIView):
             target = User.objects.filter(username=username).first()
         if target is None:
             raise ValidationError({"user": "사용자를 찾을 수 없습니다."})
+        if not RetreatCouncilMembership.objects.filter(event=event, user=target).exists():
+            try:
+                assert_can_assign_event_staff(target, event, kind="council")
+            except ValueError as exc:
+                raise ValidationError({"user": str(exc)}) from exc
         membership, created = RetreatCouncilMembership.objects.update_or_create(
             event=event,
             user=target,

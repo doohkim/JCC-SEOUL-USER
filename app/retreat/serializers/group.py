@@ -3,6 +3,16 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from retreat.models import RetreatGroup, RetreatGroupMembership, RetreatGroupScope
+from retreat.services.staff_application import primary_affiliation_for
+from users.services.user_display import user_account_link_label
+
+
+def _user_affiliation_ids(user) -> tuple[int | None, int | None]:
+    region, division = primary_affiliation_for(user)
+    return (
+        region.id if region else None,
+        division.id if division else None,
+    )
 
 
 class RetreatGroupMembershipSerializer(serializers.ModelSerializer):
@@ -10,6 +20,10 @@ class RetreatGroupMembershipSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
     display_name = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField()
+    user_real_name = serializers.SerializerMethodField()
+    user_phone = serializers.SerializerMethodField()
+    user_region_id = serializers.SerializerMethodField()
+    user_division_id = serializers.SerializerMethodField()
 
     class Meta:
         model = RetreatGroupMembership
@@ -19,19 +33,40 @@ class RetreatGroupMembershipSerializer(serializers.ModelSerializer):
             "username",
             "display_name",
             "name",
+            "user_real_name",
+            "user_phone",
+            "user_region_id",
+            "user_division_id",
             "role",
             "role_display",
+            "created_at",
         ]
 
     def _display_name(self, obj) -> str:
-        profile = getattr(obj.user, "profile", None)
-        return (getattr(profile, "display_name", "") or "").strip()
+        return user_account_link_label(obj.user)
 
     def get_display_name(self, obj) -> str:
         return self._display_name(obj)
 
     def get_name(self, obj) -> str:
-        return self._display_name(obj) or obj.user.username
+        label = self._display_name(obj)
+        return label if label != obj.user.username else obj.user.username
+
+    def get_user_real_name(self, obj) -> str:
+        profile = getattr(obj.user, "profile", None)
+        return (getattr(profile, "real_name", "") or "").strip()
+
+    def get_user_phone(self, obj) -> str:
+        profile = getattr(obj.user, "profile", None)
+        return (getattr(profile, "phone", "") or "").strip()
+
+    def get_user_region_id(self, obj) -> int | None:
+        region_id, _division_id = _user_affiliation_ids(obj.user)
+        return region_id
+
+    def get_user_division_id(self, obj) -> int | None:
+        _region_id, division_id = _user_affiliation_ids(obj.user)
+        return division_id
 
 
 class RetreatGroupScopeSerializer(serializers.ModelSerializer):

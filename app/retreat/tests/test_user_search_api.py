@@ -50,7 +50,16 @@ class UserSearchApiTests(APITestCase):
         profile_a.display_name = "카카오닉A"
         profile_a.real_name = "김도오"
         profile_a.phone = "010-1234-6804"
-        profile_a.save(update_fields=["display_name", "real_name", "phone", "updated_at"])
+        profile_a.gender = profile_a.Gender.MALE
+        profile_a.save(
+            update_fields=[
+                "display_name",
+                "real_name",
+                "phone",
+                "gender",
+                "updated_at",
+            ]
+        )
         cls.outsider = User.objects.create_user(username="us_outsider", password="x")
 
     def setUp(self):
@@ -70,6 +79,9 @@ class UserSearchApiTests(APITestCase):
         self.assertNotIn(self.target_b.username, usernames)
         matched = next(u for u in r.json() if u["username"] == self.target_a.username)
         self.assertEqual(matched["name"], "김도오-6804")
+        self.assertEqual(matched["real_name"], "김도오")
+        self.assertEqual(matched["gender"], "male")
+        self.assertEqual(matched["phone"], "010-1234-6804")
 
     def test_leader_can_search_by_real_name_and_phone_suffix(self):
         UserDivisionTeam.objects.create(

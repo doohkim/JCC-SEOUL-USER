@@ -16,9 +16,10 @@ class RetreatEventAdmin(admin.ModelAdmin):
         "start_date",
         "end_date",
         "is_active",
+        "staff_applications_open",
         "require_retreat_participation_on_signup",
     ]
-    list_filter = ["is_active", "require_retreat_participation_on_signup"]
+    list_filter = ["is_active", "staff_applications_open", "require_retreat_participation_on_signup"]
     search_fields = ["name"]
     fieldsets = (
         (None, {"fields": ("name", "start_date", "end_date", "is_active")}),
@@ -26,6 +27,12 @@ class RetreatEventAdmin(admin.ModelAdmin):
             "가입신청",
             {
                 "fields": ("require_retreat_participation_on_signup",),
+            },
+        ),
+        (
+            "운영진 모집",
+            {
+                "fields": ("staff_applications_open",),
             },
         ),
     )

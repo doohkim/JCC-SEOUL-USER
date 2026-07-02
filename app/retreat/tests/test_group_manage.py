@@ -1010,3 +1010,27 @@ class PastoralObserverGroupManageTests(_GroupManageFixture):
             reverse("retreat_group_manage", args=[self.event.id, self.group.id])
         )
         self.assertEqual(r.status_code, 403)
+
+
+class AttendeeProfileSyncTests(_GroupManageFixture):
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(self.council_user)
+        self.member = User.objects.create_user(username="gm_profile_sync", password="x")
+        UserProfile.objects.create(
+            user=self.member,
+            real_name="프로필성도",
+            gender=UserProfile.Gender.MALE,
+            phone="01011112222",
+        )
+
+    def test_create_attendee_fills_profile_from_linked_user(self):
+        url = reverse("api_retreat_group_attendees", args=[self.group.id])
+        r = self.client.post(url, {"user": self.member.id}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        attendee = RetreatAttendee.objects.get(pk=r.json()["id"])
+        self.assertEqual(attendee.user_id, self.member.id)
+        self.assertEqual(attendee.name, "프로필성도")
+        self.assertEqual(attendee.gender, "male")
+        self.assertEqual(attendee.phone, "010-1111-2222")
+

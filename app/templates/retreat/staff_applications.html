@@ -1,0 +1,94 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>참가 신청 · {{ event.name }}</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260703k" />
+  </head>
+  <body class="has-retreat-bottom-tabs">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        {% include 'includes/jcc_page_header.html' with page_title='관리' tabs_template='includes/retreat_event_tabs.html' retreat_tab='council' hide_event_picker=True %}
+        <main class="jcc-retreat-staffApplicationsPage">
+          <div class="jcc-retreat-subTabsRow">
+            {% include 'includes/retreat_event_picker.html' %}
+            {% include 'includes/retreat_admin_subtabs.html' with admin_subtab='staff_applications' %}
+          </div>
+
+          <div class="jcc-retreat-staffPageHead">
+            <div>
+              <h1 class="jcc-retreat-staffPageTitle">참가 신청</h1>
+              <p class="jcc-retreat-staffPageSubtitle muted">운영진 참가 신청을 검토하고 승인·반려합니다.</p>
+            </div>
+          </div>
+
+          <div class="card jcc-retreat-adminCard">
+            <div class="jcc-retreat-staffPills jcc-retreat-staffAppStatusPills" id="staffAppStatusPills" role="tablist" aria-label="신청 상태 필터">
+              <button type="button" class="jcc-retreat-staffPill is-active" data-status="pending" role="tab" aria-selected="true">검토 대기</button>
+              <button type="button" class="jcc-retreat-staffPill" data-status="approved" role="tab" aria-selected="false">승인됨</button>
+              <button type="button" class="jcc-retreat-staffPill" data-status="rejected" role="tab" aria-selected="false">반려</button>
+              <button type="button" class="jcc-retreat-staffPill" data-status="all" role="tab" aria-selected="false">전체</button>
+            </div>
+            <div id="staffApplicationsStatus" class="msg" role="status"></div>
+            <div class="jcc-retreat-tableWrap">
+              <table class="jcc-table jcc-retreat-staffApplicationsTable">
+                <thead>
+                  <tr>
+                    <th>이름</th>
+                    <th>지역·부서</th>
+                    <th>조·역할</th>
+                    <th>제출일</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="staffApplicationsTbody">
+                  <tr><td colspan="5">불러오는 중…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+
+    <dialog class="jcc-retreat-modal" id="staffApplicationReviewModal">
+      <form method="dialog" class="jcc-retreat-modalInner" id="staffApplicationReviewForm">
+        <header class="jcc-retreat-modalHead">
+          <h2 id="staffApplicationReviewTitle">신청 검토</h2>
+          <button type="button" class="jcc-retreat-modalClose" data-close-modal aria-label="닫기">×</button>
+        </header>
+        <div class="jcc-retreat-modalBody" id="staffApplicationReviewBody"></div>
+        <div class="field jcc-retreat-staffAppCouncilRoleField" id="staffAppCouncilRoleField" hidden>
+          <label for="staffAppCouncilRole">승인 council 역할</label>
+          <select id="staffAppCouncilRole" name="council_role"></select>
+        </div>
+        <div class="field" id="staffAppRejectReasonField" hidden>
+          <label for="staffAppRejectReason">반려 사유</label>
+          <textarea id="staffAppRejectReason" rows="3" maxlength="500"></textarea>
+        </div>
+        <footer class="jcc-retreat-modalFoot">
+          <button type="button" class="btn" data-close-modal>취소</button>
+          <button type="button" class="btn danger" id="btnStaffAppReject">반려</button>
+          <button type="button" class="btn primary" id="btnStaffAppApprove">승인</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <script>
+      window.RETREAT_STAFF_APPLICATIONS_CTX = {
+        eventId: {{ event.id }},
+        apiListUrl: "{% url 'api_retreat_event_staff_applications' event.id %}",
+        apiReviewUrlTemplate: "{% url 'api_retreat_staff_application_review' event.id 0 %}",
+        councilRoles: {{ council_role_choices_json|safe }},
+        csrfToken: "{{ csrf_token }}"
+      };
+    </script>
+    <script src="{% static 'retreat/staff_applications.js' %}?v=20260703k"></script>
+  </body>
+</html>

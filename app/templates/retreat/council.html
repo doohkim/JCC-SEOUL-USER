@@ -1,177 +1,189 @@
-{% load static phone_tags %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="ko">
   <head>
     {% include 'includes/jcc_theme_head.html' %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>집회 운영진 · {{ event.name }}</title>
+    <title>운영진 관리 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260702a" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260703j" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
         {% include 'includes/jcc_page_header.html' with page_title='관리' tabs_template='includes/retreat_event_tabs.html' retreat_tab='council' hide_event_picker=True %}
-        <main>
+        <main class="jcc-retreat-staffPage">
           <div class="jcc-retreat-subTabsRow">
             {% include 'includes/retreat_event_picker.html' %}
             {% include 'includes/retreat_admin_subtabs.html' with admin_subtab='council' %}
           </div>
-          <div class="jcc-retreat-listTop jcc-retreat-listTop--placeholder" aria-hidden="true"></div>
 
-          {% if can_manage_staff %}
-            <div class="card jcc-retreat-adminCard jcc-retreat-staffAddCard">
-              <h2 class="jcc-retreat-sectionTitle">운영진 추가</h2>
-              <form id="councilAddForm" class="jcc-retreat-staffForm" novalidate>
-                <div class="jcc-retreat-staffFormGrid">
-                  <div class="field jcc-retreat-userPickerField">
-                    <label for="newUsername">사용자</label>
-                    <div class="jcc-retreat-userPicker" id="councilUserPicker">
-                      <input type="text" id="newUsername" class="jcc-retreat-userPickerInput" placeholder="이름 또는 ID 검색" autocomplete="off" data-user-picker-input data-bwignore data-1p-ignore data-lpignore="true" data-form-type="other" />
-                      <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
-                      <input type="hidden" data-user-picker-id />
+          <div class="jcc-retreat-staffPageHead">
+            <div>
+              <h1 class="jcc-retreat-staffPageTitle">운영진 관리</h1>
+              <p class="jcc-retreat-staffPageSubtitle muted">집회 운영진과 조장·부조장을 한곳에서 관리합니다.</p>
+            </div>
+            {% if can_manage_staff %}
+              <div class="jcc-retreat-staffAddBtns">
+                <button type="button" class="jcc-retreat-staffAddBtn" id="btnStaffAddCouncil">+ 집회 운영진</button>
+                <button type="button" class="secondary jcc-retreat-staffAddBtn" id="btnStaffAddGroup">+ 조장·부조장</button>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="card jcc-retreat-adminCard jcc-retreat-staffRosterCard">
+            <div class="jcc-retreat-staffPills" id="staffFilterPills" role="tablist" aria-label="역할 필터">
+              <button type="button" class="jcc-retreat-staffPill is-active" data-filter="all" role="tab" aria-selected="true">전체 <span class="jcc-retreat-staffPillCount" data-count="all">0</span></button>
+              <button type="button" class="jcc-retreat-staffPill" data-filter="event" role="tab" aria-selected="false">집회운영 <span class="jcc-retreat-staffPillCount" data-count="event">0</span></button>
+              <button type="button" class="jcc-retreat-staffPill" data-filter="region_division" role="tab" aria-selected="false">지역·부서 <span class="jcc-retreat-staffPillCount" data-count="region_division">0</span></button>
+              <button type="button" class="jcc-retreat-staffPill" data-filter="leader" role="tab" aria-selected="false">조장·부조장 <span class="jcc-retreat-staffPillCount" data-count="leader">0</span></button>
+              <button type="button" class="jcc-retreat-staffPill" data-filter="pickup" role="tab" aria-selected="false">픽업 <span class="jcc-retreat-staffPillCount" data-count="pickup">0</span></button>
+            </div>
+
+            <div id="staffRosterStatus" class="msg" role="status"></div>
+
+            <div class="jcc-retreat-tableWrap jcc-retreat-staffRosterTableWrap">
+              <table class="jcc-table jcc-retreat-staffRosterTable">
+                <thead>
+                  <tr>
+                    <th>이름</th>
+                    <th class="jcc-retreat-staffColPhone">연락처</th>
+                    <th>소속</th>
+                    <th>역할</th>
+                    <th>메모</th>
+                    <th>등록일</th>
+                    {% if can_manage_staff %}<th class="jcc-retreat-staffColAction">Action</th>{% endif %}
+                  </tr>
+                </thead>
+                <tbody id="staffRosterTbody">
+                  <tr><td colspan="{% if can_manage_staff %}7{% else %}6{% endif %}">불러오는 중…</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="jcc-retreat-staffRosterCards" id="staffRosterCards" aria-live="polite"></div>
+          </div>
+
+          <div class="card jcc-retreat-adminCard jcc-retreat-staffWaitingCard" id="staffWaitingCard">
+            <div class="jcc-retreat-staffWaitingHead">
+              <h2 class="jcc-retreat-sectionTitle">역할 배정 대기</h2>
+              <p class="muted">참가 신청이 승인되었으나 아직 운영 역할이 배정되지 않은 사람입니다.</p>
+            </div>
+            <ul class="jcc-retreat-staffWaitingList" id="staffWaitingList">
+              <li class="muted">불러오는 중…</li>
+            </ul>
+          </div>
+        </main>
+      </div>
+    </div>
+    {% include 'includes/retreat_bottom_tabs.html' %}
+
+    {% if can_manage_staff %}
+      <div class="jcc-retreat-modalOverlay" id="staffModalOverlay" hidden aria-hidden="true">
+        <div class="jcc-retreat-modal jcc-retreat-modal--staff card" role="dialog" aria-modal="true" aria-labelledby="staffModalTitle">
+          <h2 id="staffModalTitle" class="jcc-retreat-modalTitle">운영진 등록</h2>
+          <p class="jcc-retreat-modalSubtitle muted" id="staffModalSubtitle"></p>
+          <form id="staffModalForm" novalidate>
+            <div class="jcc-retreat-modalBody">
+              <div class="jcc-retreat-staffModalGrid">
+                <div class="field jcc-retreat-staffModalField--full" data-staff-modal-panel="shared">
+                  <label for="staffModalUserInput">사용자</label>
+                  <div class="jcc-retreat-userPicker" id="staffModalUserPicker">
+                    <input type="text" id="staffModalUserInput" class="jcc-retreat-userPickerInput" placeholder="클릭하여 목록 보기 · 이름 검색" autocomplete="off" data-user-picker-input data-bwignore data-1p-ignore data-lpignore="true" data-form-type="other" />
+                    <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
+                    <input type="hidden" data-user-picker-id />
+                  </div>
+                </div>
+
+                <div class="jcc-retreat-staffModalFields" data-staff-modal-panel="council">
+                  <div class="jcc-retreat-staffModalRow jcc-retreat-staffModalRow--split">
+                    <div class="field">
+                      <label for="staffModalCouncilRole">운영 역할</label>
+                      <select id="staffModalCouncilRole" data-cselect data-staff-role>
+                        <option value="">선택</option>
+                        {% for code, label in role_choices %}
+                          <option value="{{ code }}">{{ label }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="field" data-staff-scope-region hidden>
+                      <label for="staffModalRegion">담당 지역</label>
+                      <select id="staffModalRegion" data-cselect data-staff-region>
+                        <option value="">선택</option>
+                        {% for r in region_choices %}
+                          <option value="{{ r.id }}">{{ r.name }}</option>
+                        {% endfor %}
+                      </select>
                     </div>
                   </div>
-                  <div class="field">
-                    <label for="newRole">운영 역할</label>
-                    <select id="newRole" data-cselect data-staff-role>
-                      {% for code, label in role_choices %}
-                        <option value="{{ code }}">{{ label }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  <div class="field" data-staff-scope-region hidden>
-                    <label for="newRegion">담당 지역</label>
-                    <select id="newRegion" data-cselect data-staff-region>
-                      <option value="">선택</option>
-                      {% for r in region_choices %}
-                        <option value="{{ r.id }}">{{ r.name }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  <div class="field" data-staff-scope-division hidden>
-                    <label for="newDivision">담당 부서</label>
-                    <select id="newDivision" data-cselect data-staff-division>
+                  <div class="field jcc-retreat-staffModalField--full" data-staff-scope-division hidden>
+                    <label for="staffModalDivision">담당 부서 (지역 · 부서)</label>
+                    <select id="staffModalDivision" data-cselect data-staff-division>
                       <option value="">선택</option>
                       {% for d in division_choices %}
                         <option value="{{ d.id }}" data-region-id="{{ d.region_id }}">{{ d.region.name }} · {{ d.name }}</option>
                       {% endfor %}
                     </select>
                   </div>
-                  <div class="field">
-                    <label for="newNote">메모</label>
-                    <input type="text" id="newNote" maxlength="200" autocomplete="off" />
-                  </div>
-                  <div class="field jcc-retreat-staffFormActions">
-                    <button type="submit">추가</button>
+                  <div class="field jcc-retreat-staffModalField--full">
+                    <label for="staffModalNote">메모</label>
+                    <textarea id="staffModalNote" class="jcc-retreat-staffModalNoteInput" maxlength="200" rows="3" autocomplete="off"></textarea>
                   </div>
                 </div>
-              </form>
-              <div id="councilStatus" class="msg" role="status"></div>
-            </div>
-          {% endif %}
 
-          <div class="card jcc-retreat-adminCard">
-            <div class="jcc-retreat-staffListHead">
-              <h2 class="jcc-retreat-sectionTitle">운영진 명단</h2>
-              <div class="jcc-retreat-staffFilters">
-                <select id="staffFilterRole" data-cselect aria-label="역할 필터">
-                  <option value="">전체 역할</option>
-                  {% for code, label in role_choices %}
-                    <option value="{{ code }}">{{ label }}</option>
-                  {% endfor %}
-                </select>
+                <div class="jcc-retreat-staffModalFields" data-staff-modal-panel="group" hidden>
+                  <div class="jcc-retreat-staffModalRow jcc-retreat-staffModalRow--split">
+                    <div class="field">
+                      <label for="staffModalGroup">조</label>
+                      <select id="staffModalGroup" data-cselect>
+                        <option value="">선택</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="staffModalGroupRole">조 내 역할</label>
+                      <select id="staffModalGroupRole" data-cselect>
+                        {% for code, label in group_role_choices %}
+                          <option value="{{ code }}"{% if code == "leader" %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="jcc-retreat-tableWrap">
-              <table class="jcc-table jcc-retreat-staffTable">
-                <thead>
-                  <tr>
-                    <th>이름</th>
-                    <th>휴대폰</th>
-                    <th>역할</th>
-                    <th>담당 범위</th>
-                    <th>메모</th>
-                    <th>등록일</th>
-                    {% if can_manage_staff %}<th></th>{% endif %}
-                  </tr>
-                </thead>
-                <tbody id="councilTbody">
-                  {% for m in memberships %}
-                    <tr
-                      data-membership-id="{{ m.id }}"
-                      data-role="{{ m.role }}"
-                      data-region-id="{% if m.region_id %}{{ m.region_id }}{% endif %}"
-                      data-division-id="{% if m.division_id %}{{ m.division_id }}{% endif %}"
-                    >
-                      <td>{{ m.user.profile.real_name|default:m.user.username }}</td>
-                      <td>{{ m.user.profile.phone|format_korea_phone }}</td>
-                      <td>
-                        {% if can_manage_staff %}
-                          <select class="council-role-select" data-prev="{{ m.role }}" data-cselect>
-                            {% for code, label in role_choices %}
-                              <option value="{{ code }}" {% if m.role == code %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                          </select>
-                        {% else %}
-                          <span class="jcc-retreat-staffRoleTag jcc-retreat-staffRoleTag--{{ m.role }}">{{ m.get_role_display }}</span>
-                        {% endif %}
-                      </td>
-                      <td class="jcc-retreat-staffScopeCell" data-scope-cell>
-                        {% if can_manage_staff %}
-                          <span class="jcc-retreat-staffScopeDisplay">{{ m.scope_label }}</span>
-                          <div class="jcc-retreat-staffScopeEdit" hidden>
-                            <select class="council-region-select" data-cselect data-prev="{% if m.region_id %}{{ m.region_id }}{% endif %}">
-                              <option value="">지역 선택</option>
-                              {% for r in region_choices %}
-                                <option value="{{ r.id }}" {% if m.region_id == r.id %}selected{% endif %}>{{ r.name }}</option>
-                              {% endfor %}
-                            </select>
-                            <select class="council-division-select" data-cselect data-prev="{% if m.division_id %}{{ m.division_id }}{% endif %}">
-                              <option value="">부서 선택</option>
-                              {% for d in division_choices %}
-                                <option value="{{ d.id }}" data-region-id="{{ d.region_id }}" {% if m.division_id == d.id %}selected{% endif %}>{{ d.region.name }} · {{ d.name }}</option>
-                              {% endfor %}
-                            </select>
-                          </div>
-                        {% else %}
-                          {{ m.scope_label }}
-                        {% endif %}
-                      </td>
-                      <td>
-                        {% if can_manage_staff %}
-                          <input type="text" class="council-note-input" value="{{ m.note }}" maxlength="200" aria-label="메모" />
-                        {% else %}
-                          {{ m.note|default:"-" }}
-                        {% endif %}
-                      </td>
-                      <td>{{ m.created_at|date:"Y-m-d" }}</td>
-                      {% if can_manage_staff %}
-                        <td class="jcc-retreat-staffRowActions">
-                          <button type="button" class="secondary council-save-row" hidden>저장</button>
-                          <button type="button" class="secondary council-delete">삭제</button>
-                        </td>
-                      {% endif %}
-                    </tr>
-                  {% empty %}
-                    <tr><td colspan="{% if can_manage_staff %}7{% else %}6{% endif %}">등록된 운영진이 없습니다.</td></tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+            <div id="staffModalStatus" class="msg" role="status"></div>
+            <div class="jcc-retreat-modalFooter">
+              <button type="button" class="secondary jcc-retreat-btnCancel" id="staffModalCancel">취소</button>
+              <button type="submit" class="jcc-retreat-btnPrimary" id="staffModalSubmit">등록 완료</button>
             </div>
-          </div>
-        </main>
+          </form>
+        </div>
       </div>
-    </div>
-    {% include 'includes/retreat_bottom_tabs.html' %}
+
+      <div class="jcc-retreat-modalOverlay jcc-retreat-confirmOverlay" id="staffConfirmOverlay" hidden aria-hidden="true">
+        <div class="jcc-retreat-modal jcc-retreat-confirmModal card" role="alertdialog" aria-modal="true" aria-labelledby="staffConfirmTitle" aria-describedby="staffConfirmMsg">
+          <h2 id="staffConfirmTitle" class="jcc-retreat-modalTitle">확인</h2>
+          <p id="staffConfirmMsg" class="jcc-retreat-modalSubtitle"></p>
+          <div class="jcc-retreat-modalFooter">
+            <button type="button" class="secondary jcc-retreat-btnCancel" id="staffConfirmCancel">취소</button>
+            <button type="button" class="jcc-retreat-btnPrimary" id="staffConfirmOk">확인</button>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {{ role_choices_json|json_script:"staffRoleChoicesData" }}
+    {{ group_role_choices_json|json_script:"staffGroupRoleChoicesData" }}
+
     <script>
       window.RETREAT_COUNCIL_CTX = {
         eventId: {{ event.id }},
         canManage: {{ can_manage_staff|yesno:"true,false" }},
         apiList: "{% url 'api_retreat_event_council' event.id %}",
         apiDetailBase: "/api/v1/retreat/events/{{ event.id }}/council/",
+        apiStaffCandidates: "{% url 'api_retreat_event_staff_candidates' event.id %}",
         userSearchUrl: "{% url 'api_retreat_user_search' %}",
         roleScopes: {
           event_admin: "event",
@@ -181,10 +193,13 @@
           region_observer: "region",
           division_admin: "division",
           division_observer: "division"
-        }
+        },
+        apiGroups: "{% url 'api_retreat_event_groups' event.id %}",
+        apiGroupMembershipBase: "/api/v1/retreat/groups/",
+        apiGroupMembershipDetailBase: "/api/v1/retreat/group-memberships/"
       };
     </script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_council.js' %}?v=20260702a" defer></script>
+    <script src="{% static 'retreat/retreat_council.js' %}?v=20260703k" defer></script>
   </body>
 </html>

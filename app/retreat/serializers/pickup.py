@@ -4,6 +4,10 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from retreat.models import RetreatAttendee, RetreatPickup, RetreatPickupLocation
+from retreat.services.account_retired import (
+    ACCOUNT_RETIRED_DISPLAY,
+    is_retired_account_row,
+)
 
 
 class RetreatPickupSerializer(serializers.ModelSerializer):
@@ -17,6 +21,8 @@ class RetreatPickupSerializer(serializers.ModelSerializer):
     group_name = serializers.SerializerMethodField()
     check_in_status = serializers.SerializerMethodField()
     check_in_status_display = serializers.SerializerMethodField()
+    account_retired = serializers.SerializerMethodField()
+    account_retired_display = serializers.SerializerMethodField()
 
     class Meta:
         model = RetreatPickup
@@ -41,6 +47,8 @@ class RetreatPickupSerializer(serializers.ModelSerializer):
             "applicant_name",
             "check_in_status",
             "check_in_status_display",
+            "account_retired",
+            "account_retired_display",
             "created_at",
         ]
         read_only_fields = ["id", "number", "applicant_name", "created_at"]
@@ -84,6 +92,12 @@ class RetreatPickupSerializer(serializers.ModelSerializer):
     def get_check_in_status_display(self, obj) -> str:
         att = self._matched_attendee(obj)
         return att.get_check_in_status_display() if att else ""
+
+    def get_account_retired(self, obj) -> bool:
+        return is_retired_account_row(obj)
+
+    def get_account_retired_display(self, obj) -> str:
+        return ACCOUNT_RETIRED_DISPLAY if is_retired_account_row(obj) else ""
 
 
 class RetreatPickupLocationSerializer(serializers.ModelSerializer):

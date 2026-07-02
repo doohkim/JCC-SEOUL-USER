@@ -22,6 +22,12 @@ urlpatterns = [
         name="cursor_docs_template_list",
     ),
     path(
+        "cursor-docs/permissions/",
+        CursorDocListView.as_view(),
+        {"category": "permissions"},
+        name="cursor_docs_permissions_list",
+    ),
+    path(
         "cursor-docs/policy/<slug:slug>/",
         CursorDocDetailView.as_view(),
         {"category": "policy"},
@@ -32,5 +38,11 @@ urlpatterns = [
         CursorDocDetailView.as_view(),
         {"category": "template"},
         name="cursor_docs_template_detail",
+    ),
+    path(
+        "cursor-docs/permissions/<slug:slug>/",
+        CursorDocDetailView.as_view(),
+        {"category": "permissions"},
+        name="cursor_docs_permissions_detail",
     ),
 ]

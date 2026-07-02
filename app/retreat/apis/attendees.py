@@ -28,6 +28,7 @@ from retreat.services.check_in_stamps import (
     apply_attendee_stamp_from_payload,
     is_attendee_profile_locked,
 )
+from retreat.services.attendee_ordering import order_attendees_for_member_list
 from retreat.services.enrollment import enroll_attendee_into_active_sessions
 from retreat.services.group_sync import (
     remove_membership_for_attendee,
@@ -40,6 +41,10 @@ from retreat.services.audit import log_retreat_change, serialize_model_fields
 from retreat.services.lodging import assert_room_can_accept
 from retreat.services.lodging_stay import persist_lodging_stay_status, sync_lodging_stay_status
 from retreat.services.participation import apply_participation_change
+from retreat.services.account_retired import (
+    assert_attendee_visible_to,
+    visible_attendees_for,
+)
 from retreat.services.pickup_attendee import (
     delete_pickups_for_attendee,
     pickups_for_attendee,
@@ -97,7 +102,9 @@ class RetreatGroupAttendeesView(APIView):
 
     def get(self, request, group_id: int):
         group = get_group_or_403(request.user, group_id)
-        attendees = group.attendees.all().order_by("sort_order", "name", "id")
+        attendees = order_attendees_for_member_list(
+            visible_attendees_for(request.user, group.attendees.all())
+        )
         return Response(RetreatAttendeeSerializer(attendees, many=True).data)
 
     def post(self, request, group_id: int):
@@ -164,6 +171,7 @@ class RetreatAttendeeDetailView(APIView):
             pk=attendee_id,
         )
         get_group_or_403(request.user, attendee.group_id)
+        assert_attendee_visible_to(request.user, attendee)
         return attendee
 
     def get(self, request, attendee_id: int):
@@ -212,6 +220,8 @@ class RetreatAttendeeDetailView(APIView):
         before = serialize_model_fields(attendee, _ATTENDEE_FIELDS)
         previous_status = attendee.check_in_status
         previous_participation = attendee.participation_status
+        previous_user_id = attendee.user_id
+        previous_member_role = attendee.member_role
         ser = RetreatAttendeeSerializer(
             attendee,
             data=payload,
@@ -235,6 +245,23 @@ class RetreatAttendeeDetailView(APIView):
                 )
                 assert_room_can_accept(target_room, tmp)
         attendee = ser.save()
+        if (
+            "user" in payload
+            and attendee.user_id is None
+            and previous_user_id
+            and previous_member_role
+            in (
+                RetreatAttendee.MemberRole.LEADER,
+                RetreatAttendee.MemberRole.VICE_LEADER,
+            )
+            and attendee.member_role
+            in (
+                RetreatAttendee.MemberRole.LEADER,
+                RetreatAttendee.MemberRole.VICE_LEADER,
+            )
+        ):
+            attendee.member_role = RetreatAttendee.MemberRole.MEMBER
+            attendee.save(update_fields=["member_role", "updated_at"])
         extra_fields = apply_participation_change(
             attendee,
             previous=previous_participation,
@@ -263,7 +290,12 @@ class RetreatAttendeeDetailView(APIView):
             ]
         )
         if "member_role" in payload or "user" in payload:
-            sync_membership_from_attendee(attendee, changed_by=request.user)
+            sync_membership_from_attendee(
+                attendee,
+                changed_by=request.user,
+                previous_user_id=previous_user_id,
+                previous_member_role=previous_member_role,
+            )
         log_retreat_change(
             user=request.user,
             event=group.event,

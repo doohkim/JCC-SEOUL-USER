@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from retreat.models import (
@@ -14,6 +15,7 @@ from retreat.models import (
     RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
+    RetreatPickup,
 )
 from retreat.services.staff_capabilities import (
     AccessLevel,
@@ -72,7 +74,24 @@ class StaffCapabilitiesUnitTests(_StaffRbacFixture):
         caps = effective_capabilities(admin, self.event)
         self.assertTrue(caps.add_group)
         self.assertEqual(caps.pickup_arrival, AccessLevel.MUTATE)
+        self.assertTrue(caps.delete_pickup)
         self.assertFalse(caps.delete_checked_out_attendee)
+
+    def test_superuser_caps(self):
+        user = User.objects.create_superuser(username="rbac_su_caps", password="x")
+        caps = effective_capabilities(user, self.event)
+        self.assertTrue(caps.delete_checked_out_attendee)
+        self.assertTrue(caps.delete_pickup)
+
+    def test_event_observer_caps(self):
+        obs = self._staff(
+            "rbac_event_obs", RetreatCouncilMembership.Role.EVENT_OBSERVER
+        )
+        caps = effective_capabilities(obs, self.event)
+        self.assertEqual(caps.groups, AccessLevel.VIEW)
+        self.assertFalse(caps.add_group)
+        self.assertEqual(caps.pickup_arrival, AccessLevel.VIEW)
+        self.assertFalse(caps.delete_pickup)
 
     def test_pickup_observer_caps(self):
         obs = self._staff(
@@ -84,8 +103,9 @@ class StaffCapabilitiesUnitTests(_StaffRbacFixture):
         self.assertEqual(
             pickup_tab_access_level(caps, "overview"), AccessLevel.VIEW
         )
+        self.assertFalse(caps.delete_pickup)
 
-    def test_region_admin_scope(self):
+    def test_region_admin_caps(self):
         admin = self._staff(
             "rbac_region",
             RetreatCouncilMembership.Role.REGION_ADMIN,
@@ -94,6 +114,44 @@ class StaffCapabilitiesUnitTests(_StaffRbacFixture):
         caps = effective_capabilities(admin, self.event)
         self.assertEqual(caps.scope.kind, "region")
         self.assertEqual(caps.scope.region_id, self.seoul.id)
+        self.assertTrue(caps.add_attendee)
+        self.assertFalse(caps.link_attendee_user)
+        self.assertEqual(caps.pickup_arrival, AccessLevel.MUTATE)
+        self.assertFalse(caps.delete_pickup)
+        self.assertEqual(caps.lodging, AccessLevel.NONE)
+
+    def test_region_observer_caps(self):
+        obs = self._staff(
+            "rbac_region_obs",
+            RetreatCouncilMembership.Role.REGION_OBSERVER,
+            region=self.seoul,
+        )
+        caps = effective_capabilities(obs, self.event)
+        self.assertEqual(caps.scope.kind, "region")
+        self.assertFalse(caps.add_attendee)
+        self.assertEqual(caps.pickup_arrival, AccessLevel.VIEW)
+
+    def test_division_admin_caps(self):
+        admin = self._staff(
+            "rbac_division",
+            RetreatCouncilMembership.Role.DIVISION_ADMIN,
+            division=self.div_seoul,
+        )
+        caps = effective_capabilities(admin, self.event)
+        self.assertEqual(caps.scope.kind, "division")
+        self.assertEqual(caps.scope.division_id, self.div_seoul.id)
+        self.assertTrue(caps.add_attendee)
+        self.assertFalse(caps.delete_pickup)
+
+    def test_division_observer_caps(self):
+        obs = self._staff(
+            "rbac_division_obs",
+            RetreatCouncilMembership.Role.DIVISION_OBSERVER,
+            division=self.div_seoul,
+        )
+        caps = effective_capabilities(obs, self.event)
+        self.assertEqual(caps.scope.kind, "division")
+        self.assertFalse(caps.add_attendee)
 
 
 class StaffRbacApiTests(_StaffRbacFixture):
@@ -204,3 +262,20 @@ class StaffRbacApiTests(_StaffRbacFixture):
         self.client.force_authenticate(self.superuser)
         url = reverse("api_retreat_attendee_detail", args=[self.checked_out.id])
         self.assertEqual(self.client.delete(url).status_code, 200)
+
+    def test_region_admin_cannot_delete_pickup(self):
+        pickup = RetreatPickup.objects.create(
+            event=self.event,
+            direction=RetreatPickup.Direction.ARRIVAL,
+            number=99,
+            group=self.group_seoul,
+            name="삭제테스트",
+            region=self.seoul,
+            division=self.div_seoul,
+            train_time=timezone.make_aware(datetime(2026, 8, 1, 10, 0)),
+            boarding_place="역",
+            contact="01099998888",
+        )
+        self.client.force_authenticate(self.region_admin)
+        url = reverse("api_retreat_pickup_detail", args=[pickup.id])
+        self.assertEqual(self.client.delete(url).status_code, 403)

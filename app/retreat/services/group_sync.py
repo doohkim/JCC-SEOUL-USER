@@ -13,10 +13,60 @@ from retreat.services.enrollment import enroll_attendee_into_active_sessions
 from retreat.services.lodging_stay import persist_lodging_stay_status
 from retreat.services.pickup_attendee import delete_pickups_for_attendee
 from users.services.user_display import user_display_name
+from users.validators import normalize_korea_mobile_phone
 
 
 def _profile_for(user):
     return getattr(user, "profile", None)
+
+
+def attendee_profile_defaults_for_user(user) -> dict[str, str]:
+    """연결된 사용자 프로필에서 조원 기본 필드를 추출한다."""
+    profile = _profile_for(user)
+    name = user_display_name(user) or user.username
+    if profile and (profile.real_name or "").strip():
+        name = (profile.real_name or "").strip()
+    phone = (getattr(profile, "phone", "") or "").strip()
+    normalized_phone = normalize_korea_mobile_phone(phone) if phone else ""
+    if normalized_phone:
+        phone = normalized_phone
+    gender = (getattr(profile, "gender", "") or "").strip()
+    if gender not in dict(RetreatAttendee.Gender.choices):
+        gender = ""
+    return {"name": name, "phone": phone, "gender": gender}
+
+
+def apply_attendee_profile_defaults(
+    validated_data: dict,
+    user,
+    *,
+    instance=None,
+    overwrite: bool = False,
+) -> dict:
+    """사용자 프로필 값으로 조원 필드를 채운다.
+
+    overwrite=True 이면 계정 연결·변경 시 프로필로 덮어쓴다.
+    """
+    if not user:
+        return validated_data
+    defaults = attendee_profile_defaults_for_user(user)
+    for field in ("name", "phone", "gender"):
+        incoming = validated_data.get(field)
+        if incoming is None and instance is not None:
+            incoming = getattr(instance, field, "")
+        if overwrite:
+            if field == "name":
+                if defaults[field]:
+                    validated_data[field] = defaults[field]
+            elif defaults.get(field):
+                validated_data[field] = defaults[field]
+            continue
+        if field == "name":
+            if not (incoming or "").strip():
+                validated_data[field] = defaults[field]
+        elif not incoming:
+            validated_data[field] = defaults[field]
+    return validated_data
 
 
 def duplicate_event_attendees_for_user(user, *, event_id: int, exclude_pk: int | None = None):
@@ -145,6 +195,30 @@ def consolidate_user_to_event_group(
     sync_profile_retreat_group(user, group)
 
 
+def _delete_group_membership(
+    group: RetreatGroup,
+    user_id: int,
+    *,
+    changed_by,
+) -> None:
+    existing = RetreatGroupMembership.objects.filter(
+        group=group, user_id=user_id
+    ).first()
+    if not existing:
+        return
+    mid = existing.id
+    uid = existing.user_id
+    existing.delete()
+    log_retreat_change(
+        user=changed_by,
+        event=group.event,
+        action=RetreatChangeLog.Action.DELETE,
+        target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
+        target_id=mid,
+        payload_before={"group_id": group.id, "user_id": uid},
+    )
+
+
 def sync_attendee_from_membership(
     membership: RetreatGroupMembership,
     *,
@@ -153,16 +227,18 @@ def sync_attendee_from_membership(
     """운영진 멤버십에 맞춰 조원 행을 생성·갱신한다."""
     user = membership.user
     group = membership.group
-    profile = _profile_for(user)
-    name = user_display_name(user) or user.username
-    if profile and (profile.real_name or "").strip():
-        name = (profile.real_name or "").strip()
-    phone = (getattr(profile, "phone", "") or "").strip()
+    defaults = attendee_profile_defaults_for_user(user)
+    name = defaults["name"]
+    phone = defaults["phone"]
+    gender = defaults["gender"]
 
-    attendee = (
-        RetreatAttendee.objects.filter(group=group, user=user).first()
-        or RetreatAttendee.objects.filter(group=group, name=name).first()
-    )
+    attendee = RetreatAttendee.objects.filter(group=group, user=user).first()
+    if attendee is None:
+        by_name = RetreatAttendee.objects.filter(group=group, name=name).first()
+        if by_name is not None and by_name.user_id != user.id:
+            # 계정 연결 해제·다른 계정 연결된 조원 행은 재연결하지 않는다.
+            return by_name
+        attendee = by_name
     created = attendee is None
     if created:
         attendee = RetreatAttendee(
@@ -175,6 +251,8 @@ def sync_attendee_from_membership(
     attendee.member_role = membership.role
     if phone and not attendee.phone:
         attendee.phone = phone
+    if gender and not attendee.gender:
+        attendee.gender = gender
     if not attendee.name:
         attendee.name = name
     attendee.save()
@@ -198,22 +276,35 @@ def sync_attendee_from_membership(
     return attendee
 
 
-def sync_membership_from_attendee(attendee: RetreatAttendee, *, changed_by) -> None:
+def sync_membership_from_attendee(
+    attendee: RetreatAttendee,
+    *,
+    changed_by,
+    previous_user_id: int | None = None,
+    previous_member_role: str | None = None,
+) -> None:
     """조원 행의 계정·역할에 맞춰 운영진 멤버십을 맞춘다.
 
     - 계정 연결 + 조장/부조장: 멤버십 생성·갱신 (조장 권한 부여)
     - 계정 연결 + 조원: 멤버십 제거
-    - 계정 미연결: 멤버십 없음
+    - 계정 해제: 이전 조장/부조장 사용자 멤버십 제거
+    - 계정 변경: 이전 조장/부조장 사용자 멤버십 제거 후 새 사용자 반영
     """
     group = attendee.group
     user = attendee.user
-    if user is None:
-        return
-
     leader_roles = (
         RetreatAttendee.MemberRole.LEADER,
         RetreatAttendee.MemberRole.VICE_LEADER,
     )
+    prev_role = (previous_member_role or "").strip()
+    current_user_id = user.id if user else None
+    if previous_user_id and previous_user_id != current_user_id:
+        if prev_role in leader_roles or attendee.member_role in leader_roles:
+            _delete_group_membership(group, previous_user_id, changed_by=changed_by)
+
+    if user is None:
+        return
+
     if attendee.member_role in leader_roles:
         membership, created = RetreatGroupMembership.objects.update_or_create(
             group=group,

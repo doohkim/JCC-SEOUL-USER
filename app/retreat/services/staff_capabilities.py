@@ -116,6 +116,7 @@ class RetreatCapabilities:
     pickup_arrival: AccessLevel = AccessLevel.NONE
     pickup_departure: AccessLevel = AccessLevel.NONE
     pickup_select_group: bool = False
+    delete_pickup: bool = False
 
     manage_lodging_rooms: bool = False
     edit_lodging_roster: bool = False
@@ -159,6 +160,7 @@ class RetreatCapabilities:
                 self.pickup_departure, other.pickup_departure
             ),
             pickup_select_group=self.pickup_select_group or other.pickup_select_group,
+            delete_pickup=self.delete_pickup or other.delete_pickup,
             manage_lodging_rooms=self.manage_lodging_rooms or other.manage_lodging_rooms,
             edit_lodging_roster=self.edit_lodging_roster or other.edit_lodging_roster,
             manage_staff=self.manage_staff or other.manage_staff,
@@ -188,10 +190,11 @@ def _event_admin_caps() -> RetreatCapabilities:
         change_check_in=True,
         delete_attendee=True,
         delete_checked_out_attendee=False,
-        pickup_overview=AccessLevel.VIEW,
+        pickup_overview=AccessLevel.MUTATE,
         pickup_arrival=AccessLevel.MUTATE,
         pickup_departure=AccessLevel.MUTATE,
         pickup_select_group=True,
+        delete_pickup=True,
         manage_lodging_rooms=True,
         edit_lodging_roster=True,
         manage_staff=True,
@@ -295,6 +298,7 @@ def _leader_caps() -> RetreatCapabilities:
         delete_attendee=True,
         pickup_arrival=AccessLevel.MUTATE,
         pickup_departure=AccessLevel.MUTATE,
+        delete_pickup=True,
         scope=StaffScope.none(),
     )
 

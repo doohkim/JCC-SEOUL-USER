@@ -105,13 +105,12 @@ class RetireUserTests(AccountRetireFixture):
         self.profile.refresh_from_db()
         self.assertIsNone(self.profile.user_id)
 
-    def test_retire_removes_attendee_rows(self):
+    def test_retire_marks_attendee_rows_hidden(self):
         attendee_id = self.attendee.id
         retire_user(self.target)
-        # 탈퇴 시 조원 명단 행은 제거된다(명단 정리).
-        self.assertFalse(
-            RetreatAttendee.objects.filter(pk=attendee_id).exists()
-        )
+        attendee = RetreatAttendee.objects.get(pk=attendee_id)
+        self.assertIsNotNone(attendee.account_retired_at)
+        self.assertEqual(attendee.user_id, self.target.pk)
 
     def test_retire_removes_group_membership(self):
         retire_user(self.target)

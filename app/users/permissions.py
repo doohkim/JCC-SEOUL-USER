@@ -657,6 +657,7 @@ def can_access_retreat_tab(user: User) -> bool:
     - 슈퍼유저
     - 집회 운영진(어떤 집회든 1건 이상)
     - 조장/부조장(어떤 그룹이든 멤버십 1개 이상)
+    - 가입 승인 완료 사용자 (허브·참가 신청)
     """
 
     if not user or not getattr(user, "is_authenticated", False):
@@ -667,6 +668,12 @@ def can_access_retreat_tab(user: User) -> bool:
         return True
     if user.retreat_group_memberships.exists():
         return True
+    profile = getattr(user, "profile", None)
+    if profile is not None:
+        from users.models import UserProfile
+
+        if profile.onboarding_status == UserProfile.OnboardingStatus.APPROVED:
+            return True
     return False
 
 
@@ -682,15 +689,28 @@ def can_add_retreat_group(user: User, event) -> bool:
     return effective_capabilities(user, event).add_group
 
 
-def can_manage_retreat_pickup(user: User, event) -> bool:
-    """픽업 입회/출회 탭에서 추가·수정·삭제 가능 여부."""
+def can_manage_retreat_pickup(user: User, event, *, tab: str | None = None) -> bool:
+    """픽업 탭에서 추가·수정 가능 여부 (탭별 MUTATE)."""
     if not user or not getattr(user, "is_authenticated", False) or event is None:
         return False
+    from retreat.services.staff_capabilities import pickup_tab_access_level
+
     caps = effective_capabilities(user, event)
-    return (
-        caps.pickup_arrival >= AccessLevel.MUTATE
-        or caps.pickup_departure >= AccessLevel.MUTATE
-    )
+    if tab is None:
+        return (
+            caps.pickup_arrival >= AccessLevel.MUTATE
+            or caps.pickup_departure >= AccessLevel.MUTATE
+            or caps.pickup_overview >= AccessLevel.MUTATE
+        )
+    tab_key = "overview" if tab == "all" else tab
+    return pickup_tab_access_level(caps, tab_key) >= AccessLevel.MUTATE
+
+
+def can_delete_retreat_pickup(user: User, event) -> bool:
+    """픽업 정보 삭제 가능 여부."""
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
+        return False
+    return effective_capabilities(user, event).delete_pickup
 
 
 def can_manage_retreat_pickup_location(user: User, event) -> bool:

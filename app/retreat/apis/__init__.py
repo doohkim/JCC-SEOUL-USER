@@ -26,6 +26,11 @@ from .group_memberships import (
     RetreatGroupMembershipListCreateView,
 )
 from .user_search import RetreatUserSearchView
+from .staff_candidates import RetreatEventStaffCandidatesView
+from .staff_applications import (
+    RetreatEventStaffApplicationListView,
+    RetreatStaffApplicationDetailView,
+)
 from .snapshot_attendees import (
     RetreatSessionGroupSnapshotAttendeesView,
     RetreatSnapshotAttendeeDetailView,
@@ -68,6 +73,9 @@ __all__ = [
     "RetreatGroupMembershipListCreateView",
     "RetreatGroupMembershipDetailView",
     "RetreatUserSearchView",
+    "RetreatEventStaffCandidatesView",
+    "RetreatEventStaffApplicationListView",
+    "RetreatStaffApplicationDetailView",
     "RetreatSessionGroupSnapshotAttendeesView",
     "RetreatSnapshotAttendeeDetailView",
     "RetreatEventLodgingsView",

@@ -24,6 +24,10 @@ from retreat.models import (
 )
 from retreat.serializers import RetreatPickupSerializer
 from retreat.services.audit import log_retreat_change
+from retreat.services.account_retired import (
+    assert_pickup_visible_to,
+    visible_pickups_for,
+)
 from retreat.services.pickup_attendee import (
     pickup_name_eligibility_error,
     pickup_name_on_roster,
@@ -63,7 +67,24 @@ def _assert_can_mutate_pickup(user, event: RetreatEvent, direction: str) -> None
     caps = effective_capabilities(user, event)
     tab = _pickup_tab_for_direction(direction)
     if pickup_tab_access_level(caps, tab) < AccessLevel.MUTATE:
-        raise PermissionDenied("픽업 정보 추가·수정·삭제 권한이 없습니다.")
+        raise PermissionDenied("픽업 정보 추가·수정 권한이 없습니다.")
+
+
+def _assert_can_delete_pickup(user, event: RetreatEvent, direction: str) -> None:
+    _assert_can_mutate_pickup(user, event, direction)
+    caps = effective_capabilities(user, event)
+    if not caps.delete_pickup:
+        raise PermissionDenied("픽업 정보 삭제 권한이 없습니다.")
+
+
+def _assert_pickup_group_in_scope(
+    user, event: RetreatEvent, group: RetreatGroup | None
+) -> None:
+    if group is None:
+        return
+    visible = set(retreat_pickup_visible_group_ids_for(user, event))
+    if group.id not in visible:
+        raise PermissionDenied("담당 범위 밖 조의 픽업은 처리할 수 없습니다.")
 
 
 def _pickup_duplicate_exists(
@@ -152,18 +173,17 @@ class RetreatEventPickupListCreateView(APIView):
         event = get_object_or_404(RetreatEvent, pk=event_id)
         _assert_can_view_pickup(request.user, event)
         direction = _parse_direction(request.query_params.get("direction"))
-        qs = (
+        qs = visible_pickups_for(
+            request.user,
             event.pickups.filter(direction=direction)
             .select_related("group", "region", "division")
-            .order_by("number", "id")
+            .order_by("number", "id"),
         )
-        # 조장/부조장은 본인 조, 목사/전도사는 담당 부서 조만 (회장단·슈퍼유저는 전체)
-        if not can_select_pickup_group(request.user, event):
-            group_ids = retreat_pickup_visible_group_ids_for(request.user, event)
-            if group_ids:
-                qs = qs.filter(group_id__in=group_ids)
-            else:
-                qs = qs.none()
+        visible_ids = retreat_pickup_visible_group_ids_for(request.user, event)
+        if visible_ids:
+            qs = qs.filter(group_id__in=visible_ids)
+        else:
+            qs = qs.none()
         return Response(RetreatPickupSerializer(qs, many=True).data)
 
     def post(self, request, event_id: int):
@@ -239,6 +259,9 @@ class RetreatEventPickupListCreateView(APIView):
         elif group is not None:
             region = group.region
             division = group.division
+
+        if group is not None:
+            _assert_pickup_group_in_scope(request.user, event, group)
 
         if errors:
             raise ValidationError(errors)
@@ -321,8 +344,10 @@ class RetreatPickupDetailView(APIView):
             ),
             pk=pickup_id,
         )
+        assert_pickup_visible_to(request.user, pickup)
         event = pickup.event
         _assert_can_mutate_pickup(request.user, event, pickup.direction)
+        _assert_pickup_group_in_scope(request.user, event, pickup.group)
         can_select = can_select_pickup_group(request.user, event)
         # 조장/부조장은 본인 조의 픽업만 수정 가능
         if not can_select:
@@ -478,7 +503,9 @@ class RetreatPickupDetailView(APIView):
             RetreatPickup.objects.select_related("event"),
             pk=pickup_id,
         )
-        _assert_can_mutate_pickup(request.user, pickup.event, pickup.direction)
+        assert_pickup_visible_to(request.user, pickup)
+        _assert_can_delete_pickup(request.user, pickup.event, pickup.direction)
+        _assert_pickup_group_in_scope(request.user, pickup.event, pickup.group)
         # 조장/부조장은 본인 조의 픽업만 삭제 가능
         if not can_select_pickup_group(request.user, pickup.event):
             group_ids = retreat_pickup_group_ids_for(request.user, pickup.event)

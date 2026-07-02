@@ -24,6 +24,7 @@ from retreat.services.group_sync import (
     clear_leader_role_on_membership_removed,
     sync_attendee_from_membership,
 )
+from retreat.services.staff_roster import assert_can_assign_event_staff
 
 User = get_user_model()
 
@@ -65,6 +66,13 @@ class RetreatGroupMembershipListCreateView(APIView):
         role = _validate_role(
             (request.data.get("role") or RetreatGroupMembership.Role.LEADER).strip()
         )
+        if not RetreatGroupMembership.objects.filter(group=group, user=target).exists():
+            try:
+                assert_can_assign_event_staff(
+                    target, group.event, kind="group", group=group
+                )
+            except ValueError as exc:
+                raise ValidationError({"user": str(exc)}) from exc
 
         membership, created = RetreatGroupMembership.objects.update_or_create(
             group=group,

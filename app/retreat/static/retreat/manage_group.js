@@ -946,9 +946,16 @@
     });
   }
 
-  function openConfirm({ title, message, html, okLabel, cancelLabel }) {
+  function openConfirm({ title, message, html, okLabel, cancelLabel, variant }) {
     if (!confirmOverlay) return Promise.resolve(window.confirm(message || ""));
     if (confirmResolve) confirmResolve(false);
+    const confirmModal = confirmOverlay.querySelector(".jcc-retreat-confirmModal");
+    const confirmIcon = confirmOverlay.querySelector("[data-confirm-icon]");
+    confirmModal?.classList.toggle(
+      "jcc-retreat-confirmModal--unlink",
+      variant === "unlink"
+    );
+    if (confirmIcon) confirmIcon.hidden = variant !== "unlink";
     if (confirmTitleEl) confirmTitleEl.textContent = title || "확인";
     if (confirmMsgEl) {
       if (html) {
@@ -957,7 +964,10 @@
         confirmMsgEl.textContent = message || "";
       }
     }
-    if (confirmOkBtn) confirmOkBtn.textContent = okLabel || "확인";
+    if (confirmOkBtn) {
+      confirmOkBtn.textContent = okLabel || "확인";
+      confirmOkBtn.classList.toggle("jcc-retreat-confirmOk--danger", variant === "unlink");
+    }
     if (confirmCancelBtn) confirmCancelBtn.textContent = cancelLabel || "취소";
     confirmOverlay.hidden = false;
     confirmOverlay.setAttribute("aria-hidden", "false");
@@ -998,6 +1008,11 @@
     if (!confirmOverlay) return;
     confirmOverlay.hidden = true;
     confirmOverlay.setAttribute("aria-hidden", "true");
+    const confirmModal = confirmOverlay.querySelector(".jcc-retreat-confirmModal");
+    const confirmIcon = confirmOverlay.querySelector("[data-confirm-icon]");
+    confirmModal?.classList.remove("jcc-retreat-confirmModal--unlink");
+    if (confirmIcon) confirmIcon.hidden = true;
+    if (confirmOkBtn) confirmOkBtn.classList.remove("jcc-retreat-confirmOk--danger");
     const r = confirmResolve;
     confirmResolve = null;
     if (r) r(!!value);
@@ -1492,11 +1507,36 @@
     }
   }
 
+  function applyUserProfileFromPick(user, { force = false } = {}) {
+    if (!user) return;
+    const realName = (user.real_name || "").trim();
+    if (realName && nameInput && (force || !(nameInput.value || "").trim())) {
+      nameInput.value = realName;
+    }
+    if (user.gender && genderInput && (force || !genderInput.value)) {
+      genderInput.value = user.gender;
+      refreshLodgingOptions(lodgingInput?.value || "");
+    }
+    if (user.phone && phoneInput && (force || !(phoneInput.value || "").trim())) {
+      phoneInput.value = phoneInputValue(user.phone);
+    }
+    clearAttendeeRequiredValidation();
+    syncMissingNoticeFromForm();
+  }
+
   function createUserPicker(root) {
     if (!root || !ctx.urls.userSearchUrl) return null;
+    const field =
+      root.closest("[data-modal-user-link]") ||
+      root.closest(".jcc-retreat-userPickerField");
     const input = root.querySelector("[data-user-picker-input]");
     const list = root.querySelector("[data-user-picker-list]");
     const hidden = root.querySelector("[data-user-picker-id]");
+    const wrap = field?.querySelector("[data-user-link-wrap]");
+    const searchWrap = field?.querySelector("[data-user-link-search]") || root;
+    const linkChip = field?.querySelector("[data-user-link-chip]");
+    const linkLabel = field?.querySelector("[data-user-link-label]");
+    const unlinkBtn = field?.querySelector("[data-user-link-unlink]");
     if (!input || !list || !hidden) return null;
 
     let selected = null;
@@ -1504,6 +1544,36 @@
     let activeIdx = -1;
     let timer = null;
     let lastQuery = "";
+
+    function setLinkMode(mode) {
+      if (wrap) wrap.dataset.linkMode = mode;
+      if (mode === "linked") {
+        if (linkChip) linkChip.hidden = false;
+        if (searchWrap) searchWrap.hidden = true;
+      } else {
+        if (linkChip) linkChip.hidden = true;
+        if (searchWrap) searchWrap.hidden = false;
+      }
+    }
+
+    function showSearch() {
+      setLinkMode("search");
+      if (linkLabel) linkLabel.textContent = "";
+      list.hidden = true;
+      list.innerHTML = "";
+    }
+
+    function showLinked(label) {
+      const text = (label || "").trim();
+      if (!text) {
+        showSearch();
+        return;
+      }
+      if (linkLabel) linkLabel.textContent = text;
+      setLinkMode("linked");
+      list.hidden = true;
+      list.innerHTML = "";
+    }
 
     function filterParams() {
       const params = new URLSearchParams();
@@ -1524,14 +1594,16 @@
       input.value = "";
       list.hidden = true;
       list.innerHTML = "";
+      showSearch();
     }
 
     function setSelected(id, label) {
-      selected = { id: Number(id), name: label || "" };
+      const text = (label || "").trim();
+      selected = { id: Number(id), name: text };
       hidden.value = String(id);
-      input.value = label || "";
-      list.hidden = true;
-      list.innerHTML = "";
+      input.value = text;
+      if (text) showLinked(text);
+      else showSearch();
     }
 
     function renderList() {
@@ -1568,6 +1640,7 @@
     input.addEventListener("input", () => {
       selected = null;
       hidden.value = "";
+      showSearch();
       const q = input.value.trim();
       clearTimeout(timer);
       timer = setTimeout(() => search(q), 180);
@@ -1575,6 +1648,7 @@
 
     // 포커스 시 같은 지역·부서 계정 목록을 바로 보여준다(글씨 없이도).
     input.addEventListener("focus", () => {
+      if (wrap?.dataset.linkMode === "linked") return;
       if (!input.value.trim()) search("");
     });
 
@@ -1584,34 +1658,41 @@
       e.preventDefault();
       const u = items[Number(li.dataset.idx)];
       if (!u) return;
-      selected = u;
-      hidden.value = String(u.id);
-      input.value = u.name || u.display_name || u.username;
-      list.hidden = true;
+      const label = u.name || u.display_name || u.username;
+      applyUserProfileFromPick(u, { force: true });
+      setSelected(u.id, label);
     });
 
     document.addEventListener("click", (e) => {
       if (!root.contains(e.target)) list.hidden = true;
     });
 
-    const clearBtn =
-      root.parentElement?.querySelector("[data-user-picker-clear]") ||
-      root.closest(".jcc-retreat-userPickerField")?.querySelector(
-        "[data-user-picker-clear]"
-      );
-    if (clearBtn) {
-      clearBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        clear();
-        input.focus();
+    unlinkBtn?.addEventListener("click", async (e) => {
+      e.preventDefault();
+      if (unlinkBtn.disabled) return;
+      const ok = await openConfirm({
+        title: "계정 연결 해제",
+        message: "사용자 계정 연결을 해제하시겠습니까?",
+        okLabel: "해제",
+        cancelLabel: "취소",
+        variant: "unlink",
       });
+      if (ok) clear();
+    });
+
+    function setDisabled(disabled) {
+      setModalFieldDisabled(input, disabled);
+      if (unlinkBtn) unlinkBtn.disabled = !!disabled;
     }
+
+    showSearch();
 
     return {
       clear,
       setSelected,
       getSelected: () => selected,
       getId: () => hidden.value || "",
+      setDisabled,
     };
   }
 

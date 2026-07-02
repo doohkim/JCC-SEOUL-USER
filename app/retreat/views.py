@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
@@ -16,7 +16,7 @@ from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views.generic import FormView, TemplateView, View
 
-from retreat.forms import RetreatApplyForm
+from retreat.forms import RetreatApplyForm, RetreatStaffApplicationForm
 from retreat.models import (
     Lodging,
     LodgingRoom,
@@ -26,12 +26,36 @@ from retreat.models import (
     RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
+    RetreatGroupMembership,
     RetreatPickup,
     RetreatSession,
     RetreatSessionAttendee,
+    RetreatStaffApplication,
     RetreatTimetableEntry,
 )
+from retreat.services.event_picker import (
+    inject_picker_context,
+    retreat_event_for_user,
+    set_last_retreat_event,
+)
+from retreat.services.staff_application import (
+    eligible_groups_for_member,
+    event_staff_status,
+    has_retreat_operational_access,
+    member_can_apply_to_event,
+    primary_affiliation_for,
+    staff_applicant_tier,
+    staff_applicant_tier_label,
+)
 from retreat.services.changelog_format import humanize_change_logs
+from retreat.services.account_retired import (
+    ACCOUNT_RETIRED_DISPLAY,
+    can_view_retired_account_data,
+    exclude_retired_attendees_q,
+    is_retired_account_row,
+    visible_attendees_for,
+    visible_pickups_for,
+)
 from retreat.services.staff_capabilities import (
     AccessLevel,
     can_access_retreat_page,
@@ -41,6 +65,7 @@ from users.permissions import (
     can_access_retreat_tab,
     can_change_retreat_check_in,
     can_link_attendee_user,
+    can_delete_retreat_pickup,
     can_manage_retreat_pickup,
     can_manage_retreat_pickup_location,
     can_manage_retreat_sessions,
@@ -97,28 +122,6 @@ class _RetreatAccessMixin(LoginRequiredMixin):
         return super().dispatch(request, *args, **kwargs)
 
 
-def _retreat_dropdown_events(user) -> list[RetreatEvent]:
-    """수련회 상단 집회 드롭다운에 노출할 집회 목록.
-
-    `home` 카드 노출 기준과 동일: 활성 집회 중 사용자가 수련회 회장단/슈퍼유저이거나
-    소속 조가 보이는 집회만 포함한다.
-    """
-    candidates = list(
-        RetreatEvent.objects.filter(is_active=True).order_by("-created_at", "-id")
-    )
-    result: list[RetreatEvent] = []
-    for ev in candidates:
-        if can_view_retreat_all(user, ev):
-            result.append(ev)
-            continue
-        if user.retreat_council_memberships.filter(event=ev).exists():
-            result.append(ev)
-            continue
-        if visible_retreat_groups_for(user, ev).exists():
-            result.append(ev)
-    return result
-
-
 def _inject_retreat_caps(ctx, user, event) -> None:
     caps = effective_capabilities(user, event)
     ctx["retreat_caps"] = caps
@@ -136,13 +139,20 @@ class _RetreatEventMixin(_RetreatAccessMixin):
     """집회 컨텍스트 공통."""
 
     retreat_page: str | None = None
+    retreat_picker_tab: str | None = None
+
+    def get_picker_tab(self) -> str:
+        return self.retreat_picker_tab or self.retreat_page or "dashboard"
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated and self.retreat_page:
             event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"])
             if not can_access_retreat_page(request.user, event, self.retreat_page):
                 raise PermissionDenied("이 화면에 접근할 권한이 없습니다.")
-        return super().dispatch(request, *args, **kwargs)
+        response = super().dispatch(request, *args, **kwargs)
+        if request.user.is_authenticated and kwargs.get("event_id") is not None:
+            set_last_retreat_event(request.session, int(kwargs["event_id"]))
+        return response
 
     def get_event(self) -> RetreatEvent:
         return get_object_or_404(RetreatEvent, pk=self.kwargs["event_id"])
@@ -159,55 +169,212 @@ class _RetreatEventMixin(_RetreatAccessMixin):
         ctx["can_view_retreat_all"] = can_view_retreat_all(user, event)
         _inject_retreat_caps(ctx, user, event)
         ctx["retreat_event_id"] = event.id
-        available = _retreat_dropdown_events(user)
-        if event not in available:
-            available = [event, *available]
-        ctx["available_events"] = available
+        inject_picker_context(
+            ctx,
+            user,
+            event,
+            retreat_tab=self.get_picker_tab(),
+        )
+        return ctx
+
+
+class _RetreatHubEventMixin(_RetreatAccessMixin):
+    """허브·참가 신청 — 운영 capability 없이 활성 집회만."""
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        if request.user.is_authenticated and kwargs.get("event_id") is not None:
+            set_last_retreat_event(request.session, int(kwargs["event_id"]))
+        return response
+
+    def get_event(self) -> RetreatEvent:
+        return get_object_or_404(
+            RetreatEvent,
+            pk=self.kwargs["event_id"],
+            is_active=True,
+        )
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        event = self.get_event()
+        user = self.request.user
+        ctx["event"] = event
+        ctx["hide_retreat_bottom_tabs"] = True
+        ctx["has_operational_access"] = has_retreat_operational_access(user, event)
+        inject_picker_context(ctx, user, event, retreat_tab="staff_apply")
         return ctx
 
 
 class RetreatHomeView(_RetreatAccessMixin, TemplateView):
-    """`/retreat/` — 접근 가능한 최신 생성 집회 대시보드로, 없으면 빈 홈."""
+    """`/retreat/` — 기본 집회로 redirect (활성 집회 없으면 empty)."""
 
-    template_name = "retreat/home.html"
+    template_name = "retreat/empty.html"
 
     def get(self, request, *args, **kwargs):
-        events = _retreat_dropdown_events(request.user)
-        if events:
-            return redirect("retreat_dashboard", event_id=events[0].id)
+        event = retreat_event_for_user(request.user, request.session)
+        if event is None:
+            return super().get(request, *args, **kwargs)
+        if has_retreat_operational_access(request.user, event):
+            return redirect("retreat_dashboard", event_id=event.id)
+        return redirect("retreat_staff_apply", event_id=event.id)
+
+
+class RetreatStaffApplyView(_RetreatHubEventMixin, FormView):
+    """운영진 참가 신청서."""
+
+    template_name = "retreat/staff_apply.html"
+    form_class = RetreatStaffApplicationForm
+
+    def get(self, request, *args, **kwargs):
+        event = get_object_or_404(
+            RetreatEvent, pk=kwargs["event_id"], is_active=True
+        )
+        if event_staff_status(request.user, event) == "closed":
+            return self.render_to_response(self.get_context_data())
         return super().get(request, *args, **kwargs)
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            event = get_object_or_404(
+                RetreatEvent, pk=kwargs["event_id"], is_active=True
+            )
+            status = event_staff_status(request.user, event)
+            if status == "assigned":
+                if has_retreat_operational_access(request.user, event):
+                    return redirect("retreat_dashboard", event_id=event.id)
+                return redirect("retreat_home")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kw = super().get_form_kwargs()
+        event = self.get_event()
+        status = event_staff_status(self.request.user, event)
+        kw["event"] = event
+        kw["user"] = self.request.user
+        kw["read_only"] = status in ("pending", "approved")
+        return kw
+
+    def get_initial(self):
+        initial = super().get_initial()
+        user = self.request.user
+        region, division = primary_affiliation_for(user)
+        if region and division:
+            initial.setdefault("region", region.id)
+            initial.setdefault("division", division.id)
+        application = (
+            RetreatStaffApplication.objects.filter(
+                event=self.get_event(),
+                user=user,
+                status__in=[
+                    RetreatStaffApplication.Status.PENDING,
+                    RetreatStaffApplication.Status.APPROVED,
+                ],
+            )
+            .select_related("region", "division", "group")
+            .order_by("-created_at", "-id")
+            .first()
+        )
+        if application:
+            initial.update(
+                {
+                    "region": application.region_id,
+                    "division": application.division_id,
+                    "group": application.group_id,
+                    "group_role": application.group_role,
+                    "note": application.note,
+                }
+            )
+        return initial
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        event = self.get_event()
         user = self.request.user
-        events = RetreatEvent.objects.filter(is_active=True).order_by(
-            "-created_at", "-id"
+        status = event_staff_status(user, event)
+        form = kwargs.get("form")
+        tier = staff_applicant_tier(user)
+        region, division = primary_affiliation_for(user)
+        can_apply, apply_block_message = member_can_apply_to_event(user, event)
+
+        ctx["staff_status"] = status
+        ctx["read_only"] = status in ("pending", "approved")
+        ctx["is_pastoral"] = form.is_pastoral if form else tier in ("pastor", "evangelist")
+        ctx["applicant_tier"] = tier
+        ctx["applicant_tier_label"] = staff_applicant_tier_label(tier)
+        ctx["fixed_region_name"] = region.name if region else ""
+        ctx["fixed_division_name"] = division.name if division else ""
+        ctx["eligible_groups"] = eligible_groups_for_member(user, event)
+        ctx["can_submit_application"] = can_apply and status == "open" and not ctx["read_only"]
+        ctx["apply_block_message"] = apply_block_message
+        ctx["show_ineligible_card"] = (
+            status in ("open", "rejected")
+            and not ctx["read_only"]
+            and tier == "member"
+            and not can_apply
         )
-
-        cards = []
-        for ev in events:
-            groups_qs = (
-                visible_retreat_groups_for(user, ev)
-                .select_related("region", "division")
-                .annotate(attendee_count=Count("attendees", distinct=True))
-                .order_by("order", "id")
+        ctx["group_role_choices"] = list(RetreatGroupMembership.Role.choices)
+        rejected = (
+            RetreatStaffApplication.objects.filter(
+                event=event,
+                user=user,
+                status=RetreatStaffApplication.Status.REJECTED,
             )
-            groups = list(groups_qs)
-            is_staff_or_council = can_view_retreat_all(user, ev)
-            # 조가 없어도 staff/회장단/슈퍼유저면 집회 카드 노출.
-            if not groups and not is_staff_or_council:
-                continue
-            cards.append(
-                {
-                    "event": ev,
-                    "groups": groups,
-                    "is_staff_or_council": is_staff_or_council,
-                }
-            )
+            .order_by("-reviewed_at", "-id")
+            .first()
+        )
+        ctx["rejection_reason"] = (
+            rejected.rejection_reason if rejected else ""
+        )
+        return ctx
 
-        ctx["event_cards"] = cards
-        ctx["is_retreat_staff_any"] = any(
-            is_retreat_staff(user, c["event"]) for c in cards
+    def form_valid(self, form):
+        if event_staff_status(self.request.user, self.get_event()) != "open":
+            raise PermissionDenied("신청을 제출할 수 없습니다.")
+        try:
+            form.save()
+        except ValidationError as exc:
+            form.add_error(None, exc)
+            return self.form_invalid(form)
+        messages.success(
+            self.request,
+            "신청이 접수되었습니다. 승인 후 운영 화면이 열립니다.",
+        )
+        return redirect("retreat_home")
+
+    def post(self, request, *args, **kwargs):
+        if event_staff_status(request.user, self.get_event()) != "open":
+            raise PermissionDenied("신청을 제출할 수 없습니다.")
+        return super().post(request, *args, **kwargs)
+
+
+class RetreatStaffApplicationsView(_RetreatEventMixin, TemplateView):
+    """관리 > 참가 신청 목록·승인."""
+
+    template_name = "retreat/staff_applications.html"
+    retreat_page = "admin"
+    retreat_picker_tab = "staff_applications"
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"])
+            if not can_manage_staff(request.user, event):
+                raise PermissionDenied("참가 신청 관리 권한이 없습니다.")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        event = ctx["event"]
+        from retreat.models import RetreatCouncilMembership
+
+        ctx["admin_subtab"] = "staff_applications"
+        ctx["council_role_choices"] = list(
+            RetreatCouncilMembership.Role.choices
+        )
+        ctx["council_role_choices_json"] = json.dumps(
+            list(RetreatCouncilMembership.Role.choices)
+        )
+        ctx["total_sessions"], ctx["overall_rate"] = _retreat_session_summary(
+            self.request.user, event
         )
         return ctx
 
@@ -246,6 +413,7 @@ class RetreatRostersView(_RetreatEventMixin, TemplateView):
     """출석부(세션) 목록."""
 
     template_name = "retreat/rosters.html"
+    retreat_picker_tab = "rosters"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -298,6 +466,7 @@ class RetreatCouncilView(_RetreatEventMixin, TemplateView):
 
     template_name = "retreat/council.html"
     retreat_page = "admin"
+    retreat_picker_tab = "council"
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
@@ -311,18 +480,26 @@ class RetreatCouncilView(_RetreatEventMixin, TemplateView):
         event = ctx["event"]
         from users.models import Division, Region
 
-        memberships = list(
-            event.council_memberships.select_related(
-                "user", "user__profile", "region", "division"
-            ).order_by("role", "user__username")
+        from retreat.models import RetreatCouncilMembership, RetreatGroup, RetreatGroupMembership
+
+        event_division_ids = list(
+            RetreatGroup.objects.filter(event=event)
+            .values_list("division_id", flat=True)
+            .distinct()
         )
-        ctx["memberships"] = memberships
         ctx["role_choices"] = RetreatCouncilMembership.Role.choices
-        ctx["region_choices"] = list(Region.objects.order_by("sort_order", "name"))
+        ctx["group_role_choices"] = RetreatGroupMembership.Role.choices
+        ctx["role_choices_json"] = list(RetreatCouncilMembership.Role.choices)
+        ctx["group_role_choices_json"] = list(RetreatGroupMembership.Role.choices)
+        divisions_qs = Division.objects.select_related("region").filter(
+            id__in=event_division_ids
+        )
         ctx["division_choices"] = list(
-            Division.objects.select_related("region").order_by(
-                "region__sort_order", "sort_order", "name"
-            )
+            divisions_qs.order_by("region__sort_order", "sort_order", "name")
+        )
+        region_ids = {d.region_id for d in ctx["division_choices"]}
+        ctx["region_choices"] = list(
+            Region.objects.filter(id__in=region_ids).order_by("sort_order", "name")
         )
         ctx["total_sessions"], ctx["overall_rate"] = _retreat_session_summary(
             self.request.user, event
@@ -335,6 +512,7 @@ class RetreatTimetableView(_RetreatEventMixin, TemplateView):
 
     template_name = "retreat/timetable.html"
     retreat_page = "admin"
+    retreat_picker_tab = "timetable"
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
@@ -393,7 +571,10 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
             tab = RetreatPickup.Direction.ARRIVAL
         ctx["active_pickup_tab"] = tab
 
-        pickups_qs = event.pickups.select_related("group", "region", "division")
+        pickups_qs = visible_pickups_for(
+            user,
+            event.pickups.select_related("group", "region", "division"),
+        )
         if tab == "all":
             # 전체 보기: 입회·출회를 함께 노출 (보기 전용, 열차 시각 기준 정렬)
             pickups_qs = pickups_qs.order_by("train_time", "id")
@@ -428,9 +609,13 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         pickup_group_ids = {p.group_id for p in pickups if p.group_id}
         attendee_map: dict[tuple[int, str], RetreatAttendee] = {}
         if pickup_group_ids:
-            for a in RetreatAttendee.objects.filter(
-                group_id__in=pickup_group_ids
-            ).only("group_id", "name", "check_in_status", "participation_status"):
+            attendee_qs = visible_attendees_for(
+                user,
+                RetreatAttendee.objects.filter(group_id__in=pickup_group_ids),
+            )
+            for a in attendee_qs.only(
+                "group_id", "name", "check_in_status", "participation_status"
+            ):
                 attendee_map.setdefault((a.group_id, a.name), a)
         status_rank = {
             RetreatAttendee.CheckInStatus.PENDING: 0,
@@ -442,6 +627,10 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
             p.check_in_status = att.check_in_status if att else ""
             p.check_in_status_display = (
                 att.get_check_in_status_display() if att else ""
+            )
+            p.account_retired = is_retired_account_row(p)
+            p.account_retired_display = (
+                ACCOUNT_RETIRED_DISPLAY if p.account_retired else ""
             )
 
         # 구분별 입실 상태 필터 (입회/출회 탭에서만 적용):
@@ -471,7 +660,9 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         ctx["pickups"] = pickups
         ctx["pickup_count"] = len(pickups)
 
-        ctx["can_manage_pickup"] = can_manage_retreat_pickup(user, event)
+        ctx["can_manage_pickup"] = can_manage_retreat_pickup(user, event, tab=tab)
+        ctx["can_delete_pickup"] = can_delete_retreat_pickup(user, event)
+        ctx["can_view_retired_account_data"] = can_view_retired_account_data(user)
         ctx["can_select_pickup_group"] = can_select_group
         # 회장단·슈퍼유저만 조를 직접 선택 (그 외에는 본인 조 자동 지정)
         if can_select_group:
@@ -517,8 +708,11 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         if group_list:
             from retreat.services.participation import participating_filter
 
-            for a in participating_filter(
-                RetreatAttendee.objects.filter(group__in=group_list)
+            for a in visible_attendees_for(
+                user,
+                participating_filter(
+                    RetreatAttendee.objects.filter(group__in=group_list)
+                ),
             ).order_by("group_id", "sort_order", "name", "id"):
                 members_map.setdefault(a.group_id, []).append(
                     {
@@ -545,6 +739,7 @@ class RetreatRosterCheckView(_RetreatEventMixin, TemplateView):
     """출석부 체크 화면."""
 
     template_name = "retreat/roster_check.html"
+    retreat_picker_tab = "rosters"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -622,6 +817,7 @@ class RetreatRosterCheckView(_RetreatEventMixin, TemplateView):
 
 class RetreatResultsView(_RetreatEventMixin, TemplateView):
     template_name = "retreat/results.html"
+    retreat_picker_tab = "results"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -657,6 +853,7 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
 
         from retreat.models import RetreatGroupScope
 
+        retired_attendee_q = exclude_retired_attendees_q(prefix="attendees__")
         groups = list(
             visible_retreat_groups_for(user, event)
             .select_related("region", "division")
@@ -669,12 +866,25 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
                 )
             )
             .annotate(
-                attendee_count=Count("attendees", distinct=True),
+                attendee_count=Count(
+                    "attendees",
+                    filter=retired_attendee_q if not can_view_retired_account_data(user) else Q(),
+                    distinct=True,
+                ),
                 participating_count=Count(
                     "attendees",
-                    filter=~Q(
-                        attendees__participation_status=(
-                            RetreatAttendee.ParticipationStatus.ABSENT
+                    filter=(
+                        retired_attendee_q
+                        & ~Q(
+                            attendees__participation_status=(
+                                RetreatAttendee.ParticipationStatus.ABSENT
+                            )
+                        )
+                        if not can_view_retired_account_data(user)
+                        else ~Q(
+                            attendees__participation_status=(
+                                RetreatAttendee.ParticipationStatus.ABSENT
+                            )
                         )
                     ),
                     distinct=True,
@@ -683,34 +893,31 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
             .order_by("order", "id")
         )
 
-        # 조장 이름 모으기 — 조원 행(member_role=leader) + 미동기 운영진 멤버십.
-        leaders_map: dict[int, list[str]] = {}
-        for gid, name in RetreatAttendee.objects.filter(
-            group__in=groups, member_role=RetreatAttendee.MemberRole.LEADER
-        ).values_list("group_id", "name"):
-            leaders_map.setdefault(gid, [])
-            if name and name not in leaders_map[gid]:
-                leaders_map[gid].append(name)
-        for m in RetreatGroupMembership.objects.filter(
-            group__in=groups, role=RetreatGroupMembership.Role.LEADER
-        ).select_related("user", "user__profile"):
-            profile = getattr(m.user, "profile", None)
-            label = (getattr(profile, "real_name", "") or "").strip() or (
-                user_display_name(m.user) or m.user.username
-            )
-            leaders_map.setdefault(m.group_id, [])
-            if label and label not in leaders_map[m.group_id]:
-                leaders_map[m.group_id].append(label)
+        # 조 카드 조장 표시 — 퇴실 제외, 입실·연동·등록 순 우선순위.
+        from collections import defaultdict
+
+        from retreat.services.attendee_ordering import pick_group_card_leader_name
+
+        leaders_by_group: dict[int, list[RetreatAttendee]] = defaultdict(list)
+        leader_attendee_qs = visible_attendees_for(
+            user,
+            RetreatAttendee.objects.filter(
+                group__in=groups, member_role=RetreatAttendee.MemberRole.LEADER
+            ).only("group_id", "name", "check_in_status", "user_id", "id"),
+        )
+        for leader in leader_attendee_qs:
+            leaders_by_group[leader.group_id].append(leader)
         for g in groups:
-            g.leader_names = ", ".join(leaders_map.get(g.id, []))
+            g.leader_names = pick_group_card_leader_name(leaders_by_group.get(g.id, []))
 
         group_ids = [g.id for g in groups]
         participating_q = ~Q(
             participation_status=RetreatAttendee.ParticipationStatus.ABSENT
         )
         if group_ids:
-            status_counts = RetreatAttendee.objects.filter(
-                group_id__in=group_ids
+            status_counts = visible_attendees_for(
+                user,
+                RetreatAttendee.objects.filter(group_id__in=group_ids),
             ).aggregate(
                 count_total=Count("id"),
                 count_participating=Count("id", filter=participating_q),
@@ -801,7 +1008,6 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         from retreat.models import RetreatGroupMembership
 
         can_manage_leaders = can_manage_retreat_group_leaders(user, group)
-        from django.db.models import Case, IntegerField, Value, When
 
         from retreat.apis._common import (
             user_can_delete_attendee,
@@ -829,20 +1035,7 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
             )
         )
         ctx["attendee_role_choices"] = RetreatAttendee.MemberRole.choices
-        role_order = Case(
-            When(member_role=RetreatAttendee.MemberRole.LEADER, then=Value(0)),
-            When(member_role=RetreatAttendee.MemberRole.VICE_LEADER, then=Value(1)),
-            default=Value(2),
-            output_field=IntegerField(),
-        )
-        # 입실 → 입실전 → 퇴실 순.
-        check_in_order = Case(
-            When(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN, then=Value(0)),
-            When(check_in_status=RetreatAttendee.CheckInStatus.PENDING, then=Value(1)),
-            When(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT, then=Value(2)),
-            default=Value(3),
-            output_field=IntegerField(),
-        )
+        from retreat.services.attendee_ordering import order_attendees_for_member_list
 
         from retreat.services.check_in_stamps import (
             is_attendee_profile_locked,
@@ -854,10 +1047,20 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         from retreat.services.participation import is_participating
 
         attendees = list(
-            group.attendees.select_related("lodging_room", "lodging_room__lodging", "user")
-            .order_by(role_order, check_in_order, "sort_order", "name", "id")
+            order_attendees_for_member_list(
+                visible_attendees_for(
+                    user,
+                    group.attendees.select_related(
+                        "lodging_room", "lodging_room__lodging", "user"
+                    ),
+                )
+            )
         )
         for attendee in attendees:
+            attendee.account_retired = is_retired_account_row(attendee)
+            attendee.account_retired_display = (
+                ACCOUNT_RETIRED_DISPLAY if attendee.account_retired else ""
+            )
             attendee.expected_timestamps_locked = is_expected_timestamps_locked(attendee)
             attendee.profile_locked = is_attendee_profile_locked(attendee)
             attendee.expected_check_in_locked = is_expected_check_in_locked(
@@ -869,6 +1072,7 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
             attendee.can_delete = user_can_delete_attendee(user, group, attendee=attendee)
             attendee.lodging_stay_display = lodging_stay_display(attendee)
         ctx["attendees"] = attendees
+        ctx["can_view_retired_account_data"] = can_view_retired_account_data(user)
         ctx["count_total"] = len(attendees)
         ctx["count_participating"] = sum(1 for a in attendees if is_participating(a))
         ctx["count_absent"] = sum(
@@ -981,6 +1185,7 @@ class RetreatLodgingRosterView(_RetreatEventMixin, TemplateView):
     """집회 전체 조원 명단 — 입실·숙소 배정 필터 조회."""
 
     template_name = "retreat/lodging_roster.html"
+    retreat_picker_tab = "lodging_roster"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -1403,12 +1608,11 @@ class RetreatPlatformGuideView(LoginRequiredMixin, UserPassesTestMixin, Template
 
     def get_context_data(self, **kwargs):
         user = self.request.user
-        events = _retreat_dropdown_events(user)
+        event = default_retreat_event_for(user)
 
         ctx = super().get_context_data(**kwargs)
         ctx["page_title"] = "플랫폼 가이드"
         ctx["page_subtitle"] = "수련회 인원체크 프로그램 가이드"
-        event = events[0] if events else None
         ctx["event"] = event
         if event:
             ctx["can_view_retreat_all"] = can_view_retreat_all(user, event)

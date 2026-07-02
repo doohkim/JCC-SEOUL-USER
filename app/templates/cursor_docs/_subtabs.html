@@ -1,7 +1,8 @@
-{% comment %}Cursor Docs 하위 탭 — cursor_docs_tab('policy'|'template'){% endcomment %}
+{% comment %}Cursor Docs 하위 탭 — cursor_docs_tab('policy'|'template'|'permissions'){% endcomment %}
 <div class="jcc-notice-pageTabsRow jcc-pageHeader-tabsRow">
   <nav class="jcc-page-tabs jcc-notice-pageTabs jcc-pageHeader-tabs" aria-label="Cursor Docs 하위 메뉴">
     <a class="jcc-page-tab{% if cursor_docs_tab == 'policy' %} is-active{% endif %}" href="{% url 'cursor_docs_policy_list' %}">정책</a>
     <a class="jcc-page-tab{% if cursor_docs_tab == 'template' %} is-active{% endif %}" href="{% url 'cursor_docs_template_list' %}">템플릿</a>
+    <a class="jcc-page-tab{% if cursor_docs_tab == 'permissions' %} is-active{% endif %}" href="{% url 'cursor_docs_permissions_list' %}">사용자 권한</a>
   </nav>
 </div>

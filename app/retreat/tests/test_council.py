@@ -16,6 +16,7 @@ from retreat.models import (
     RetreatGroupMembership,
     RetreatSession,
 )
+from users.mixins import ensure_user_profile
 from users.models import Division, Region, RoleLevel, UserDivisionTeam
 
 User = get_user_model()
@@ -62,6 +63,10 @@ class _CouncilFixture:
             user=cls.council,
             role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
+        council_profile = ensure_user_profile(cls.council)
+        council_profile.real_name = "회장단관리자"
+        council_profile.phone = "01098765432"
+        council_profile.save(update_fields=["real_name", "phone", "updated_at"])
 
         cls.leader = User.objects.create_user(username="cl_leader", password="x")
         UserDivisionTeam.objects.create(
@@ -135,6 +140,34 @@ class CouncilManagementApiTests(APITestCase, _CouncilFixture):
         self.assertEqual(r.status_code, 403)
 
 
+class CouncilRosterApiFieldTests(APITestCase, _CouncilFixture):
+    @classmethod
+    def setUpTestData(cls):
+        cls.setup_fixture()
+        leader_profile = ensure_user_profile(cls.leader)
+        leader_profile.phone = "01011112222"
+        leader_profile.save(update_fields=["phone", "updated_at"])
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(self.council)
+
+    def test_council_list_includes_user_phone_and_created_at(self):
+        r = self.client.get(reverse("api_retreat_event_council", args=[self.event.id]))
+        self.assertEqual(r.status_code, 200)
+        row = next(item for item in r.json() if item["user"] == self.council.id)
+        self.assertEqual(row["user_phone"], "01098765432")
+        self.assertTrue(row["created_at"])
+
+    def test_group_memberships_include_phone_and_created_at(self):
+        r = self.client.get(reverse("api_retreat_event_groups", args=[self.event.id]))
+        self.assertEqual(r.status_code, 200)
+        group = next(item for item in r.json() if item["id"] == self.group.id)
+        membership = next(m for m in group["memberships"] if m["user"] == self.leader.id)
+        self.assertEqual(membership["user_phone"], "01011112222")
+        self.assertTrue(membership["created_at"])
+
+
 class CouncilPageAccessTests(TestCase, _CouncilFixture):
     @classmethod
     def setUpTestData(cls):
@@ -151,6 +184,8 @@ class CouncilPageAccessTests(TestCase, _CouncilFixture):
         self.client.force_login(self.council)
         r = self.client.get(reverse("retreat_council", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "jcc-retreat-staffColAction")
+        self.assertContains(r, "retreat_council.js")
 
     def test_council_page_forbidden_for_org_president_without_council(self):
         """부서 회장 직급만으로는 회장단 관리 페이지 접근 불가."""
