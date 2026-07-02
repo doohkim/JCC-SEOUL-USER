@@ -7,4 +7,5 @@
 - **엑셀/명단**: 파싱 로직은 `app/registry/importers/`, `app/attendance/importers/`가 단일 진실에 가깝다. 커맨드는 얇게 유지하는 편이 맞다.
 - **API**: `api/v1/attendance/…` 는 `app/attendance/urls.py`, `api/v1/org/…` 는 `app/registry/urls.py`. `config/urls.py` 는 앱별 `urls.py` 만 include 한다.
 - **실행**: Django는 `app/manage.py` 기준 (`cd app && poetry run python manage.py …`).
+- **수련회 권한**: 역할별 UI·API 상세는 [docs/retreat-council-permissions.md](docs/retreat-council-permissions.md). 테스트: `test_superuser_retreat_matrix`, `test_event_admin_retreat_matrix`, `test_event_observer_retreat_matrix`, `test_region_roles_retreat_matrix`, `test_division_roles_retreat_matrix`, `test_pickup_observer_retreat_matrix`, `test_staff_capabilities` (`retreat.tests.*`).
 - **프롬프트 템플릿**: 요청 작성·기록 형식은 [docs/cursor-prompt-templates.md](docs/cursor-prompt-templates.md).

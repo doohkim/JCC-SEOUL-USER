@@ -48,15 +48,77 @@ alwaysApply: false
 
 차석여부 UI/API 필드: `participation_status` (참석/불참).
 
+## event_admin 요약 매트릭스 (탭별)
+
+| 영역 | VIEW | MUTATE | superuser와 차이 |
+|------|------|--------|------------------|
+| 집회 드롭다운 | 운영진·조장 배정 집회 | — | superuser = 모든 활성 집회 |
+| 대시보드 | 전체 조 | — | 동일 |
+| 그룹·조원 | 전체 | CRUD (퇴실 삭제 제외) | **퇴실 조원 DELETE 불가** |
+| 픽업 (전체/입회/출회) | 전체 조 | **전 탭 MUTATE** (추가·수정·삭제) | 동일 |
+| 숙소·명단 | 전체 | 호실 CRUD·roster 배정 | 동일 |
+| 관리 | 운영진·타임테이블·changelog | CRUD | 동일 |
+| 조장/부조장 | 조 관리 + **집회 운영진 페이지** | 지정·해제 | 동일 |
+
+### 집회 드롭다운 노출 (`_retreat_dropdown_events`)
+
+활성 집회 중 **하나라도** 해당하면 포함: (1) 슈퍼유저 (2) `RetreatCouncilMembership` (3) `RetreatGroupMembership`.
+
+## event_observer 요약 매트릭스
+
+| 영역 | VIEW | MUTATE | 비고 |
+|------|------|--------|------|
+| 집회 드롭다운 | 배정 집회만 | — | 미배정 집회 URL → 403 |
+| 대시보드·그룹 | 전체 조 | — | 조 추가·조원 수정 불가 |
+| 픽업 | 전체 조 (3탭) | — | POST/PATCH/DELETE 403 |
+| 숙소 | 페이지·버튼 노출 | API CRUD 403 | `is_retreat_staff`로 버튼 노출, `manage_lodging_rooms`로 API 차단 |
+| 관리 | 운영진·타임테이블·changelog VIEW | POST/DELETE 403 | |
+
+## region_admin / region_observer
+
+| 영역 | region_admin | region_observer |
+|------|--------------|-----------------|
+| scope | 담당 `region` 조만 | 동일 |
+| 대시보드·그룹보드 | scope 내 | VIEW만 |
+| 조원 | 추가·프로필 PATCH | VIEW만 |
+| 입퇴실·user 연동·삭제 | 불가 | 불가 |
+| 픽업 overview | VIEW | VIEW |
+| 픽업 arrival/departure | 추가·PATCH (`delete_pickup=False`) | VIEW만 |
+| 숙소·관리 탭 | 403 | 403 |
+
+## division_admin / division_observer
+
+| 영역 | division_admin | division_observer |
+|------|----------------|-------------------|
+| scope | 담당 `division` 조만 | 동일 |
+| 조원·픽업 | region_admin과 동일 패턴 (부서 scope) | region_observer와 동일 |
+| 숙소·관리 | 403 | 403 |
+
+## pickup_observer 요약 매트릭스
+
+| 영역 | VIEW | MUTATE |
+|------|------|--------|
+| 대시보드·그룹·숙소·관리 | — (403) | — |
+| 픽업 (전체/입회/출회) | 전체 조 | — |
+
+### 픽업 공통 eligibility
+
+- **입회(arrival)**: 조원 명단 + `check_in_status=pending` 만
+- **출회(departure)**: 조원 명단 + `check_in_status=checked_in` 만
+- scope 밖 조 픽업: API POST/PATCH/DELETE → 403 (`_assert_pickup_group_in_scope`)
+
 ## 유저 타입 × 동작 (출처: `app/users/permissions.py` + `staff_capabilities.py`)
 
 - **슈퍼유저**: 수련회 전체 `_superuser_caps()` = `_event_admin_caps()` + `delete_checked_out_attendee=True`.
 - **플랫폼 관리자(`is_staff`)**: 출석 broad, 주차/계정 관리, 부서=소속(UDT). 수련회는 별도 역할 없으면 일반과 동일.
 - **목사/전도사**: 교적(`can_access_member_registry`), 출석·상담 broad. **수련회 탭/변경권 없음** (운영진 명단 필요).
 - **집회 전체 관리자(`event_admin`)**: 집회 전체 VIEW/MUTATE, 퇴실 조원 삭제 **불가**.
-- **집회 전체 관찰자(`event_observer`)**: 전체 VIEW, 쓰기 없음 (changelog VIEW).
-- **지역/부서 관리·관찰자**: 담당 scope 내 조·픽업·조원 프로필 (사용자 연동은 admin만).
-- **픽업 관찰자(`pickup_observer`)**: 픽업 탭 VIEW만.
+- **집회 전체 관찰자(`event_observer`)**: 전체 VIEW, 픽업·조원·관리 **쓰기 없음** (숙소 버튼은 노출·API만 차단).
+- **지역 관리자(`region_admin`)**: 담당 region scope, 조원 프로필·픽업 입회/출회 추가·수정, **픽업 삭제 불가** (`delete_pickup=False`).
+- **지역 관찰자(`region_observer`)**: scope 내 VIEW만.
+- **부서 관리자(`division_admin`)**: 담당 division scope, region_admin과 동일 패턴.
+- **부서 관찰자(`division_observer`)**: scope 내 VIEW만.
+- **픽업 관찰자(`pickup_observer`)**: 픽업 탭 VIEW만, 대시보드/그룹/숙소/관리 NONE.
 - **조장/부조장**: 본인 조 dashboard/groups VIEW, 픽업 MUTATE(본인 조 자동), 조원 추가·프로필·삭제(퇴실 전).
 - **팀장/셀장**: 탭출석부 broad(부서 전체 팀).
 - **팀원/일반**: 주소속 1개 조회만.
@@ -69,13 +131,19 @@ alwaysApply: false
 - 수련회 cap: `effective_capabilities`, `pickup_tab_access_level`, `visible_groups_qs`
 - 수련회 페이지: `can_access_retreat_page`, `can_access_retreat_tab`, `can_view_retreat_all`
 - 수련회 조원: `can_link_attendee_user`, `can_change_retreat_check_in`, `can_delete_checked_out_attendee`, `user_can_delete_attendee`
-- 수련회 픽업: `can_manage_retreat_pickup`, `can_select_pickup_group`, `pickup_name_eligibility_error`
+- 수련회 픽업: `can_manage_retreat_pickup`, `can_delete_retreat_pickup`, `can_select_pickup_group`, `pickup_name_eligibility_error`
 - 수련회 운영진: `can_view_staff`, `can_manage_staff`
 - 상담: `can_access_counseling_manage_tab`, `IsCounselingParticipant`
 
 ## 테스트 참조
 
+- **사람용 상세 문서**: [docs/retreat-council-permissions.md](../../docs/retreat-council-permissions.md) — 역할별 페이지 UI·API 권한
 - `retreat.tests.test_superuser_retreat_matrix` — superuser API·페이지 매트릭스
-- `retreat.tests.test_staff_capabilities` — 역할별 RBAC·event_admin vs superuser 삭제
+- `retreat.tests.test_event_admin_retreat_matrix` — event_admin API·페이지·드롭다운
+- `retreat.tests.test_event_observer_retreat_matrix` — event_observer VIEW-only
+- `retreat.tests.test_region_roles_retreat_matrix` — region_admin/observer scope
+- `retreat.tests.test_division_roles_retreat_matrix` — division_admin/observer scope
+- `retreat.tests.test_pickup_observer_retreat_matrix` — pickup_observer 픽업 VIEW-only
+- `retreat.tests.test_staff_capabilities` — 8역할 cap 단위·API 스모크
 
 여기서는 **매트릭스 + 함수 색인**만 다룹니다.
