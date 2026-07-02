@@ -7470,29 +7470,199 @@ body.has-retreat-bottom-tabs .jcc-retreat-staffRosterCards {
 }
 
 .jcc-retreat-staffApply {
-  max-width: 480px;
+  width: 100%;
+  max-width: 720px;
   margin: 0 auto;
-  padding: 0 1rem 2rem;
+  padding: 0.75rem 1rem 2.5rem;
+  box-sizing: border-box;
+}
+
+/* 슬림 공통 헤더: 햄버거·고정 바만, 제목은 카드 안 h1 */
+body.jcc-retreat-staffApplyPage header.app-header.jcc-retreat-staffApplyHeader {
+  min-height: 3.25rem;
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+
+body.jcc-retreat-staffApplyPage header.jcc-retreat-staffApplyHeader .jcc-detail-titleWrap {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.jcc-retreat-staffApplyCard {
+  margin-top: 0;
+  padding: 1.25rem 1.35rem 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.jcc-retreat-staffApplyCardTitle {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.jcc-retreat-staffApplyCardDesc {
+  margin: 0.4rem 0 1rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.jcc-retreat-staffApplyCard .field {
+  margin-bottom: 0.85rem;
+}
+
+.jcc-retreat-staffApplyCard .jcc-retreat-staffApplyLabel,
+.jcc-retreat-staffApplyCard label {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.jcc-retreat-staffApplyCard .jcc-retreat-sectionTitle {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* 참가 신청서: 모바일에서 햄버거·헤더 고정, 본문만 스크롤 */
+body.jcc-retreat-staffApplyPage header.app-header.jcc-pageHeader {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+@media (max-width: 900px) {
+  body.jcc-retreat-staffApplyPage .jcc-layout {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  body.jcc-retreat-staffApplyPage .jcc-layout-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  body.jcc-retreat-staffApplyPage .jcc-layout-content > .jcc-pageHeader + .jcc-retreat-staffApply {
+    padding-top: 0.5rem;
+  }
+}
+
+@media (min-width: 901px) {
+  body.jcc-retreat-staffApplyPage .jcc-layout-content > .jcc-pageHeader + .jcc-retreat-staffApply {
+    padding-top: 0.75rem;
+  }
+}
+
+.jcc-retreat-staffApplyNotice {
+  margin: 0 0 1.15rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.jcc-retreat-staffApplyNotice--info {
+  background: color-mix(in srgb, var(--accent, #1d64d8) 8%, #fff);
+  color: var(--jcc-text, #111827);
+  border: 1px solid color-mix(in srgb, var(--accent, #1d64d8) 18%, transparent);
+}
+
+.jcc-retreat-staffApplyNotice--warning {
+  background: color-mix(in srgb, #f59e0b 10%, #fff);
+  color: #92400e;
+  border: 1px solid color-mix(in srgb, #f59e0b 24%, transparent);
 }
 
 .jcc-retreat-staffApplyHero {
-  margin-bottom: 0;
+  margin-bottom: 1.25rem;
   min-width: 0;
-  flex: 1 1 auto;
 }
 
-.jcc-retreat-staffApplyHeroRow {
+.jcc-retreat-staffApply .jcc-retreat-eventPicker {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+}
+
+.jcc-retreat-staffApplyCard .field + .jcc-retreat-sectionTitle,
+.jcc-retreat-staffApplyCard .field + .jcc-retreat-staffApplyIneligibleMessage,
+.jcc-retreat-staffApplyCard .field + .muted {
+  margin-top: 0.25rem;
+}
+
+.jcc-retreat-staffApplyClosed .field,
+.jcc-retreat-staffApplyIneligible .field {
+  margin-bottom: 1rem;
+}
+
+.jcc-retreat-staffApply .jcc-retreat-eventPickerBtn {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 2.25rem 0 1rem;
+  background: #fff;
+  border: 1px solid var(--jcc-border, #e5e7eb);
+  border-radius: 12px;
+  color: var(--jcc-text, #111827);
+  font-weight: 500;
+  font-size: 0.95rem;
 }
 
-.jcc-retreat-staffApplyHeroRow .jcc-retreat-eventPicker {
-  flex: 0 0 auto;
-  margin-top: 0.15rem;
+.jcc-retreat-staffApply .jcc-retreat-eventPickerBtn:hover {
+  border-color: #cbd5e1;
+}
+
+.jcc-retreat-staffApply .jcc-retreat-eventPicker.is-open .jcc-retreat-eventPickerBtn {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.jcc-retreat-staffApply .jcc-retreat-eventPickerMenu {
+  left: 0;
+  right: 0;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+@media (min-width: 901px) {
+  .jcc-retreat-staffApply .jcc-retreat-eventPicker {
+    min-width: 0;
+  }
+
+  .jcc-retreat-staffApply .jcc-retreat-eventPickerMenu {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .jcc-retreat-staffApply .jcc-retreat-eventPickerLabel {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .jcc-retreat-staffAppStatusPills {
@@ -7524,6 +7694,302 @@ body.has-retreat-bottom-tabs .jcc-retreat-staffRosterCards {
   color: #dc2626;
 }
 
+.jcc-retreat-staffAppPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.85rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.jcc-retreat-staffAppPill--review {
+  border: none;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--accent, #1d64d8) 12%, transparent);
+  color: var(--accent, #1d64d8);
+}
+
+.jcc-retreat-staffAppPill--review:hover {
+  background: color-mix(in srgb, var(--accent, #1d64d8) 18%, transparent);
+}
+
+.jcc-retreat-staffAppActions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.jcc-retreat-staffAppNameBtn {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.jcc-retreat-staffAppNameBtn:hover {
+  color: var(--accent, #1d64d8);
+  text-decoration: underline;
+}
+
+.jcc-retreat-modal--staffAppReview .jcc-retreat-modalInner {
+  padding: 0;
+  gap: 0;
+}
+
+.jcc-retreat-staffAppModalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.jcc-retreat-staffAppModalHead h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.jcc-retreat-staffAppModalClose {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+  border-radius: 8px;
+}
+
+.jcc-retreat-staffAppModalClose:hover {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.jcc-retreat-staffAppModalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem 1.25rem;
+}
+
+.jcc-retreat-staffAppModalProfile {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.jcc-retreat-staffAppModalAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #1d64d8) 14%, transparent);
+  color: var(--accent, #1d64d8);
+  font-weight: 800;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+
+.jcc-retreat-staffAppModalName {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.jcc-retreat-staffAppModalUsername {
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.jcc-retreat-staffAppModalInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+
+.jcc-retreat-staffAppModalInfoLabel {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+
+.jcc-retreat-staffAppModalInfoValue {
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.jcc-retreat-staffAppModalHint {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.jcc-retreat-staffAppModalReviewFields .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.jcc-retreat-staffAppModalReviewFields .field label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.jcc-retreat-staffAppModalSelect,
+.jcc-retreat-staffAppModalTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+}
+
+.jcc-retreat-staffAppModalSelect {
+  min-height: 2.65rem;
+  padding: 0 2rem 0 0.85rem;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%236b7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+}
+
+.jcc-retreat-staffAppModalTextarea {
+  min-height: 6.5rem;
+  padding: 0.75rem 0.85rem;
+  resize: vertical;
+}
+
+.jcc-retreat-staffAppModalSelect:focus,
+.jcc-retreat-staffAppModalTextarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent, #1d64d8) 35%, transparent);
+  border-color: var(--accent, #1d64d8);
+}
+
+.jcc-retreat-staffAppModalReadonly {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.jcc-retreat-staffAppModalReadonlyRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.88rem;
+}
+
+.jcc-retreat-staffAppModalReadonlyRow--stack {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.jcc-retreat-staffAppModalReadonlyLabel {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.jcc-retreat-staffAppModalReadonlyText {
+  margin: 0;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.jcc-retreat-staffAppModalFoot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.25rem 1.1rem;
+  border-top: 1px solid var(--border);
+}
+
+.jcc-retreat-staffAppModalFoot[hidden],
+.jcc-retreat-staffAppModalReviewFields[hidden],
+.jcc-retreat-staffAppModalReadonly[hidden],
+#staffAppCouncilRoleField[hidden] {
+  display: none !important;
+}
+
+.jcc-retreat-staffAppModalBtnText {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+}
+
+.jcc-retreat-staffAppModalBtnText:hover {
+  color: var(--text);
+}
+
+.jcc-retreat-staffAppModalBtn {
+  border: none;
+  min-width: 4.5rem;
+  min-height: 2.35rem;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.jcc-retreat-staffAppModalBtn--reject {
+  background: color-mix(in srgb, #dc2626 12%, transparent);
+  color: #dc2626;
+}
+
+.jcc-retreat-staffAppModalBtn--reject:hover {
+  background: color-mix(in srgb, #dc2626 18%, transparent);
+}
+
+.jcc-retreat-staffAppModalBtn--approve {
+  background: var(--accent, #1d64d8);
+  color: #fff;
+}
+
+.jcc-retreat-staffAppModalBtn--approve:hover {
+  filter: brightness(1.05);
+}
+
+@media (max-width: 520px) {
+  .jcc-retreat-staffAppModalInfoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .jcc-retreat-staffAppModalFoot {
+    flex-wrap: wrap;
+  }
+}
+
 .jcc-retreat-staffApplyTitle {
   font-size: 1.65rem;
   font-weight: 800;
@@ -7545,6 +8011,7 @@ body.has-retreat-bottom-tabs .jcc-retreat-staffRosterCards {
   border: none;
   background: transparent;
   box-shadow: none;
+  margin: 0;
 }
 
 .jcc-retreat-staffApplyForm .field {
@@ -7699,32 +8166,14 @@ body.has-retreat-bottom-tabs .jcc-retreat-staffRosterCards {
   margin-top: 0.25rem;
 }
 
-.jcc-retreat-staffApplyPickerRow {
-  margin-top: 0.5rem;
-}
-
-@media (max-width: 640px) {
-  .jcc-retreat-staffApplyHeroRow {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .jcc-retreat-staffApplyHeroRow .jcc-retreat-eventPicker {
-    width: 100%;
-  }
-
-  .jcc-retreat-staffApplyHeroRow .jcc-retreat-eventPickerBtn {
-    width: 100%;
-    justify-content: space-between;
-  }
-}
-
-.jcc-retreat-staffApplyClosed {
-  padding: 1.25rem;
-}
-
+.jcc-retreat-staffApplyClosed,
 .jcc-retreat-staffApplyIneligible {
-  padding: 1.25rem;
+  padding: 1.25rem 1.35rem 1.5rem;
+}
+
+.jcc-retreat-staffApplyClosed .jcc-retreat-sectionTitle,
+.jcc-retreat-staffApplyIneligible .jcc-retreat-sectionTitle {
+  margin-top: 0;
 }
 
 .jcc-retreat-staffApplyIneligibleMessage {

@@ -8,7 +8,6 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
-from retreat.models import RetreatCouncilMembership, RetreatGroupMembership
 from retreat.services.account_retired import mark_attendees_retired_for_user
 from users.models import (
     PastoralDivisionAssignment,
@@ -38,7 +37,7 @@ def retire_user(user, *, changed_by=None) -> None:
 
     - 보존: 주차·상담·변경이력 등 User FK CASCADE 대상, 출석부 스냅샷
       (``RetreatSessionAttendee`` 는 ``source_attendee=SET_NULL`` 로 보존)
-    - 연동 제거: RetreatGroupMembership, RetreatCouncilMembership, 소속/직책/동아리/목회담당
+    - 연동 제거: 소속/직책/동아리/목회담당 (수련회 운영진·조장 멤버십은 보존, 슈퍼유저만 조회)
     - 조원 명단(RetreatAttendee): 탈퇴 계정 연동 조원·픽업을 숨김 마킹(슈퍼유저만 조회)
     """
     if user.is_superuser:
@@ -48,10 +47,6 @@ def retire_user(user, *, changed_by=None) -> None:
 
     # 카카오 OAuth 연결 제거 → 동일 uid 재로그인 시 신규 User 생성
     user.social_auth.all().delete()
-
-    # 수련회 조 조장/부조장·회장단 계정 연동 제거
-    RetreatGroupMembership.objects.filter(user=user).delete()
-    RetreatCouncilMembership.objects.filter(user=user).delete()
 
     # 조원 명단: 탈퇴 계정 연동 행·픽업을 숨김 마킹(데이터 보존).
     mark_attendees_retired_for_user(user, when=timezone.now())

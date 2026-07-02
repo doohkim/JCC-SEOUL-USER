@@ -15,6 +15,7 @@ from retreat.models import (
     RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
+    RetreatGroupMembership,
     RetreatPickup,
 )
 from users.models import Division, Region, UserDivisionTeam
@@ -85,6 +86,25 @@ class AccountRetiredVisibilityFixture(TestCase):
             group=cls.group,
             name="활성조원",
             check_in_status=RetreatAttendee.CheckInStatus.PENDING,
+        )
+        RetreatCouncilMembership.objects.create(
+            event=cls.event,
+            user=cls.target,
+            role=RetreatCouncilMembership.Role.DIVISION_OBSERVER,
+            division=cls.div,
+        )
+        RetreatGroupMembership.objects.create(
+            group=cls.group,
+            user=cls.target,
+            role=RetreatGroupMembership.Role.LEADER,
+        )
+        cls.active_staff = User.objects.create_user(
+            username="retired_vis_active_staff", password="x"
+        )
+        RetreatCouncilMembership.objects.create(
+            event=cls.event,
+            user=cls.active_staff,
+            role=RetreatCouncilMembership.Role.EVENT_OBSERVER,
         )
 
     def setUp(self):
@@ -207,3 +227,44 @@ class AccountRetiredVisibilityFixture(TestCase):
         )
         self.assertEqual(pickup_r.status_code, 200, pickup_r.content)
         self.assertNotIn("고아픽업", {row["name"] for row in pickup_r.data})
+
+    def test_superuser_sees_retired_staff_in_council_roster(self):
+        self._retire_target()
+        self.api.force_authenticate(self.superuser)
+        r = self.api.get(reverse("api_retreat_event_council", args=[self.event.id]))
+        self.assertEqual(r.status_code, 200, r.content)
+        user_ids = {row["user"] for row in r.data}
+        self.assertIn(self.target.id, user_ids)
+        retired_row = next(row for row in r.data if row["user"] == self.target.id)
+        self.assertTrue(retired_row["user_account_retired"])
+
+    def test_event_admin_cannot_see_retired_staff_in_council_roster(self):
+        self._retire_target()
+        self.api.force_authenticate(self.event_admin)
+        r = self.api.get(reverse("api_retreat_event_council", args=[self.event.id]))
+        self.assertEqual(r.status_code, 200, r.content)
+        user_ids = {row["user"] for row in r.data}
+        self.assertNotIn(self.target.id, user_ids)
+        self.assertIn(self.active_staff.id, user_ids)
+
+    def test_event_admin_cannot_see_retired_group_leader_in_groups_api(self):
+        self._retire_target()
+        self.api.force_authenticate(self.event_admin)
+        r = self.api.get(reverse("api_retreat_event_groups", args=[self.event.id]))
+        self.assertEqual(r.status_code, 200, r.content)
+        group = next(item for item in r.data if item["id"] == self.group.id)
+        member_user_ids = {m["user"] for m in group["memberships"]}
+        self.assertNotIn(self.target.id, member_user_ids)
+
+    def test_superuser_sees_retired_group_leader_in_groups_api(self):
+        self._retire_target()
+        self.api.force_authenticate(self.superuser)
+        r = self.api.get(reverse("api_retreat_event_groups", args=[self.event.id]))
+        self.assertEqual(r.status_code, 200, r.content)
+        group = next(item for item in r.data if item["id"] == self.group.id)
+        member_user_ids = {m["user"] for m in group["memberships"]}
+        self.assertIn(self.target.id, member_user_ids)
+        retired_row = next(
+            m for m in group["memberships"] if m["user"] == self.target.id
+        )
+        self.assertTrue(retired_row["user_account_retired"])

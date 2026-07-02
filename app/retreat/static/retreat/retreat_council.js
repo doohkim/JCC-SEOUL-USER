@@ -93,10 +93,13 @@
   }
 
   function renderNameCell(row) {
+    const retiredBadge = row.accountRetiredDisplay
+      ? `<span class="jcc-retreat-checkInBadge jcc-retreat-checkInBadge--account_retired">${escapeHtml(row.accountRetiredDisplay)}</span>`
+      : "";
     if (!ctx.canManage) {
-      return `<td><span class="jcc-retreat-staffName">${escapeHtml(row.name)}</span></td>`;
+      return `<td><span class="jcc-retreat-staffName">${escapeHtml(row.name)}</span>${retiredBadge}</td>`;
     }
-    return `<td><button type="button" class="jcc-retreat-staffNameBtn staff-name-btn" data-row-id="${row.kind}-${row.id}">${escapeHtml(row.name)}</button></td>`;
+    return `<td><button type="button" class="jcc-retreat-staffNameBtn staff-name-btn" data-row-id="${row.kind}-${row.id}">${escapeHtml(row.name)}</button>${retiredBadge}</td>`;
   }
 
   function renderDeleteAction(row) {
@@ -664,6 +667,8 @@
           userDivisionId: m.user_division_id,
           note: m.note || "",
           createdAt: m.created_at,
+          accountRetired: !!m.user_account_retired,
+          accountRetiredDisplay: m.user_account_retired_display || "",
         });
       });
 
@@ -686,6 +691,8 @@
             userDivisionId: m.user_division_id,
             note: "",
             createdAt: m.created_at,
+            accountRetired: !!m.user_account_retired,
+            accountRetiredDisplay: m.user_account_retired_display || "",
           });
         });
       });
@@ -758,6 +765,9 @@
           const nameEl = ctx.canManage
             ? `<button type="button" class="jcc-retreat-staffNameBtn staff-name-btn" data-row-id="${row.kind}-${row.id}">${escapeHtml(row.name)}</button>`
             : `<div class="jcc-retreat-staffCardName">${escapeHtml(row.name)}</div>`;
+          const retiredBadge = row.accountRetiredDisplay
+            ? `<span class="jcc-retreat-checkInBadge jcc-retreat-checkInBadge--account_retired">${escapeHtml(row.accountRetiredDisplay)}</span>`
+            : "";
           const metaParts = [phoneDisplay(row.phone) || "—", formatDate(row.createdAt)];
           return (
             `<article class="jcc-retreat-staffCard" data-row-id="${row.kind}-${row.id}">` +
@@ -765,6 +775,7 @@
             `<div class="jcc-retreat-staffCardAvatar" aria-hidden="true">${escapeHtml((row.name || "?").slice(0, 1))}</div>` +
             `<div class="jcc-retreat-staffCardBody">` +
             nameEl +
+            retiredBadge +
             `<div class="jcc-retreat-staffCardMeta muted">${escapeHtml(row.scopeLabel || "—")}</div>` +
             `<div class="jcc-retreat-staffCardMeta muted">${escapeHtml(metaParts.join(" · "))}</div>` +
             `</div>` +

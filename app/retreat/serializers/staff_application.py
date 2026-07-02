@@ -20,6 +20,7 @@ class RetreatStaffApplicationSerializer(serializers.ModelSerializer):
     group_role_display = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     is_pastoral = serializers.SerializerMethodField()
+    approved_council_role_display = serializers.SerializerMethodField()
     suggested_council_role = serializers.SerializerMethodField()
 
     class Meta:
@@ -43,12 +44,20 @@ class RetreatStaffApplicationSerializer(serializers.ModelSerializer):
             "note",
             "rejection_reason",
             "approved_council_role",
+            "approved_council_role_display",
             "is_pastoral",
             "suggested_council_role",
             "created_at",
             "reviewed_at",
         ]
         read_only_fields = fields
+
+    def get_approved_council_role_display(self, obj: RetreatStaffApplication) -> str:
+        if not obj.approved_council_role:
+            return ""
+        return dict(RetreatCouncilMembership.Role.choices).get(
+            obj.approved_council_role, obj.approved_council_role
+        )
 
     def get_user_display_name(self, obj: RetreatStaffApplication) -> str:
         profile = getattr(obj.user, "profile", None)

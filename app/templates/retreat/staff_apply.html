@@ -5,27 +5,16 @@
     {% include 'includes/jcc_theme_head.html' %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>운영진 참가 신청서 · {{ event.name }}</title>
+    <title>참가 신청서 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260703k" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260703r" />
   </head>
-  <body>
+  <body class="jcc-retreat-staffApplyPage">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
+        {% include 'includes/jcc_page_header.html' with page_title='참가 신청서' header_class='jcc-retreat-staffApplyHeader' %}
         <main class="jcc-retreat-staffApply">
-          <div class="jcc-retreat-staffApplyHeroRow">
-            <div class="jcc-retreat-staffApplyHero">
-              <h1 class="jcc-retreat-staffApplyTitle">운영진 참가 신청서</h1>
-              {% if not show_ineligible_card %}
-              <p class="jcc-retreat-staffApplyLead muted">
-                {{ event.name }} 수련회 운영진 활동을 위해 정보를 입력해 주세요.
-              </p>
-              {% endif %}
-            </div>
-            {% include 'includes/retreat_event_picker.html' %}
-          </div>
-
           {% if messages %}
             <div role="status">
               {% for message in messages %}
@@ -35,40 +24,71 @@
           {% endif %}
 
           {% if staff_status == 'closed' %}
-            <div class="card jcc-retreat-staffApplyClosed">
+            <div class="card jcc-retreat-staffApplyCard jcc-retreat-staffApplyClosed">
+              <h1 class="jcc-retreat-staffApplyCardTitle">참가 신청서</h1>
+              <p class="jcc-retreat-staffApplyCardDesc muted">집회 운영진 활동 참가를 위해 정보를 확인해 주세요.</p>
+              {% if picker_entries %}
+              <div class="field">
+                <span class="jcc-retreat-staffApplyLabel">집회</span>
+                {% include 'includes/retreat_event_picker.html' %}
+              </div>
+              {% endif %}
               <h2 class="jcc-retreat-sectionTitle">모집 마감</h2>
               <p class="muted">현재 이 집회는 운영진 모집이 진행되지 않습니다. 부서·집회 운영진에게 문의해 주세요.</p>
             </div>
           {% elif show_ineligible_card %}
-            <div class="card jcc-retreat-staffApplyIneligible" role="status">
+            <div class="card jcc-retreat-staffApplyCard jcc-retreat-staffApplyIneligible" role="status">
+              <h1 class="jcc-retreat-staffApplyCardTitle">참가 신청서</h1>
+              <p class="jcc-retreat-staffApplyCardDesc muted">집회 운영진 활동 참가를 위해 정보를 확인해 주세요.</p>
+              {% if picker_entries %}
+              <div class="field">
+                <span class="jcc-retreat-staffApplyLabel">집회</span>
+                {% include 'includes/retreat_event_picker.html' %}
+              </div>
+              {% endif %}
               <h2 class="jcc-retreat-sectionTitle">신청 불가</h2>
               <p class="jcc-retreat-staffApplyIneligibleMessage">{{ apply_block_message }}</p>
             </div>
           {% else %}
-            {% if staff_status == 'pending' %}
-              <div class="msg msg--info" role="status">제출한 신청을 검토 중입니다. 내용만 확인할 수 있습니다.</div>
-            {% elif staff_status == 'approved' %}
-              <div class="msg msg--info" role="status">
-                참가 신청이 승인되었습니다. 집회 운영진이 역할을 배정할 때까지 기다려 주세요.
-                운영진 명단에서 제외된 경우에도 승인은 유지되며, 다시 역할 배정 대기 상태입니다.
-              </div>
-            {% elif rejection_reason and staff_status == 'open' %}
-              <div class="msg msg--warning" role="status">이전 신청이 반려되었습니다. 사유: {{ rejection_reason }}</div>
-            {% elif staff_status == 'rejected' %}
-              <div class="msg msg--warning" role="status">신청이 반려되었습니다.{% if rejection_reason %} 사유: {{ rejection_reason }}{% endif %}</div>
-            {% endif %}
+            <div class="card jcc-retreat-staffApplyCard">
+              <h1 class="jcc-retreat-staffApplyCardTitle">참가 신청서</h1>
+              <p class="jcc-retreat-staffApplyCardDesc muted">
+                {{ event.name }} 수련회 운영진 활동을 위해 정보를 입력해 주세요.
+              </p>
+              {% if staff_status == 'pending' %}
+                <div class="jcc-retreat-staffApplyNotice jcc-retreat-staffApplyNotice--info" role="status">
+                  제출한 신청을 검토 중입니다. 내용만 확인할 수 있습니다.
+                </div>
+              {% elif staff_status == 'approved' %}
+                <div class="jcc-retreat-staffApplyNotice jcc-retreat-staffApplyNotice--info" role="status">
+                  참가 신청이 승인되었습니다. 집회 운영진이 역할을 배정할 때까지 기다려 주세요.
+                  운영진 명단에서 제외된 경우에도 승인은 유지되며, 다시 역할 배정 대기 상태입니다.
+                </div>
+              {% elif rejection_reason and staff_status == 'open' %}
+                <div class="jcc-retreat-staffApplyNotice jcc-retreat-staffApplyNotice--warning" role="status">
+                  이전 신청이 반려되었습니다. 사유: {{ rejection_reason }}
+                </div>
+              {% elif staff_status == 'rejected' %}
+                <div class="jcc-retreat-staffApplyNotice jcc-retreat-staffApplyNotice--warning" role="status">
+                  신청이 반려되었습니다.{% if rejection_reason %} 사유: {{ rejection_reason }}{% endif %}
+                </div>
+              {% endif %}
 
             <form method="post" class="jcc-retreat-staffApplyForm" id="staffApplyForm" novalidate>
               {% csrf_token %}
 
               <div class="field">
                 <span class="jcc-retreat-staffApplyLabel">집회</span>
+                {% if picker_entries %}
+                  {% include 'includes/retreat_event_picker.html' %}
+                {% else %}
                 <div class="jcc-retreat-staffApplyFixed" aria-readonly="true">
                   <span class="jcc-retreat-staffApplyFixedValue">{{ event.name }}</span>
                   <span class="jcc-retreat-staffApplyLock" aria-hidden="true" title="변경할 수 없음">
                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 10V8a5 5 0 0110 0v2M6 10h12v10H6V10z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
                   </span>
                 </div>
+                {% endif %}
               </div>
 
               <div class="field">
@@ -145,6 +165,7 @@
                 </div>
               {% endif %}
             </form>
+            </div>
           {% endif %}
         </main>
       </div>

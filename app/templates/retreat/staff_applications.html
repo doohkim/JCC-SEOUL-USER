@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>참가 신청 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260703k" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260703m" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -57,25 +57,51 @@
     </div>
     {% include 'includes/retreat_bottom_tabs.html' %}
 
-    <dialog class="jcc-retreat-modal" id="staffApplicationReviewModal">
+    <dialog class="jcc-retreat-modal jcc-retreat-modal--staffAppReview" id="staffApplicationReviewModal">
       <form method="dialog" class="jcc-retreat-modalInner" id="staffApplicationReviewForm">
-        <header class="jcc-retreat-modalHead">
+        <header class="jcc-retreat-staffAppModalHead">
           <h2 id="staffApplicationReviewTitle">신청 검토</h2>
-          <button type="button" class="jcc-retreat-modalClose" data-close-modal aria-label="닫기">×</button>
+          <button type="button" class="jcc-retreat-staffAppModalClose" data-close-modal aria-label="닫기">×</button>
         </header>
-        <div class="jcc-retreat-modalBody" id="staffApplicationReviewBody"></div>
-        <div class="field jcc-retreat-staffAppCouncilRoleField" id="staffAppCouncilRoleField" hidden>
-          <label for="staffAppCouncilRole">승인 council 역할</label>
-          <select id="staffAppCouncilRole" name="council_role"></select>
+        <div class="jcc-retreat-staffAppModalBody">
+          <div class="jcc-retreat-staffAppModalProfile">
+            <span class="jcc-retreat-staffAppModalAvatar" id="staffAppModalAvatar" aria-hidden="true"></span>
+            <div class="jcc-retreat-staffAppModalProfileText">
+              <div class="jcc-retreat-staffAppModalName" id="staffAppModalName"></div>
+              <div class="jcc-retreat-staffAppModalUsername muted" id="staffAppModalUsername"></div>
+            </div>
+          </div>
+          <div class="jcc-retreat-staffAppModalInfoGrid" id="staffAppModalInfoGrid"></div>
+          <div class="jcc-retreat-staffAppModalReadonly" id="staffAppModalReadonly" hidden></div>
+          <div class="jcc-retreat-staffAppModalReviewFields" id="staffAppModalReviewFields">
+            <div class="field jcc-retreat-staffAppCouncilRoleField" id="staffAppCouncilRoleField" hidden>
+              <label for="staffAppCouncilRole">승인 시 집회 운영 역할</label>
+              <select id="staffAppCouncilRole" name="council_role" class="jcc-retreat-staffAppModalSelect">
+                <option value="">역할을 선택해주세요</option>
+              </select>
+            </div>
+            <div class="field" id="staffAppRejectReasonField">
+              <label for="staffAppRejectReason">
+                반려 사유
+                <span class="jcc-retreat-staffAppModalHint">(반려 시에만 작성)</span>
+              </label>
+              <textarea
+                id="staffAppRejectReason"
+                class="jcc-retreat-staffAppModalTextarea"
+                rows="4"
+                maxlength="500"
+                placeholder="반려 사유를 입력하세요."
+              ></textarea>
+            </div>
+          </div>
         </div>
-        <div class="field" id="staffAppRejectReasonField" hidden>
-          <label for="staffAppRejectReason">반려 사유</label>
-          <textarea id="staffAppRejectReason" rows="3" maxlength="500"></textarea>
-        </div>
-        <footer class="jcc-retreat-modalFoot">
-          <button type="button" class="btn" data-close-modal>취소</button>
-          <button type="button" class="btn danger" id="btnStaffAppReject">반려</button>
-          <button type="button" class="btn primary" id="btnStaffAppApprove">승인</button>
+        <footer class="jcc-retreat-staffAppModalFoot" id="staffAppModalFootReview">
+          <button type="button" class="jcc-retreat-staffAppModalBtnText" data-close-modal>취소</button>
+          <button type="button" class="jcc-retreat-staffAppModalBtn jcc-retreat-staffAppModalBtn--reject" id="btnStaffAppReject">반려</button>
+          <button type="button" class="jcc-retreat-staffAppModalBtn jcc-retreat-staffAppModalBtn--approve" id="btnStaffAppApprove">승인</button>
+        </footer>
+        <footer class="jcc-retreat-staffAppModalFoot" id="staffAppModalFootReadonly" hidden>
+          <button type="button" class="jcc-retreat-staffAppModalBtn jcc-retreat-staffAppModalBtn--approve" data-close-modal>닫기</button>
         </footer>
       </form>
     </dialog>
@@ -89,6 +115,6 @@
         csrfToken: "{{ csrf_token }}"
       };
     </script>
-    <script src="{% static 'retreat/staff_applications.js' %}?v=20260703k"></script>
+    <script src="{% static 'retreat/staff_applications.js' %}?v=20260703m"></script>
   </body>
 </html>

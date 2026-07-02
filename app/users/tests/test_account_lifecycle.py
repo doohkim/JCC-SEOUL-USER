@@ -112,11 +112,16 @@ class RetireUserTests(AccountRetireFixture):
         self.assertIsNotNone(attendee.account_retired_at)
         self.assertEqual(attendee.user_id, self.target.pk)
 
-    def test_retire_removes_group_membership(self):
+    def test_retire_preserves_group_membership_for_superuser(self):
+        membership_id = RetreatGroupMembership.objects.get(
+            user_id=self.target.pk
+        ).id
         retire_user(self.target)
-        self.assertFalse(
-            RetreatGroupMembership.objects.filter(user_id=self.target.pk).exists()
+        self.assertTrue(
+            RetreatGroupMembership.objects.filter(pk=membership_id).exists()
         )
+        self.target.refresh_from_db()
+        self.assertIsNotNone(self.target.retired_at)
 
     def test_retire_removes_division_team(self):
         retire_user(self.target)

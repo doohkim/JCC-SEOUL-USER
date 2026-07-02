@@ -16,6 +16,7 @@ from retreat.models import (
     RetreatEvent,
 )
 from retreat.serializers import RetreatCouncilMembershipSerializer
+from retreat.services.account_retired import assert_user_visible_to, visible_user_linked_for
 from retreat.services.audit import log_retreat_change
 from retreat.services.staff_roster import assert_can_assign_event_staff
 from users.models import Division, Region
@@ -86,6 +87,7 @@ class RetreatEventCouncilListCreateView(APIView):
         qs = event.council_memberships.select_related(
             "user", "user__profile", "region", "division"
         ).order_by("role", "user__username")
+        qs = visible_user_linked_for(request.user, qs, user_prefix="user")
         return Response(RetreatCouncilMembershipSerializer(qs, many=True).data)
 
     def post(self, request, event_id: int):
@@ -168,6 +170,7 @@ class RetreatCouncilMembershipDetailView(APIView):
 
     def patch(self, request, event_id: int, membership_id: int):
         m = self._get(event_id, membership_id)
+        assert_user_visible_to(request.user, m.user)
         _assert_can_manage(request.user, m.event)
         role = (request.data.get("role") or m.role).strip()
         note = request.data.get("note", m.note)
@@ -207,6 +210,7 @@ class RetreatCouncilMembershipDetailView(APIView):
 
     def delete(self, request, event_id: int, membership_id: int):
         m = self._get(event_id, membership_id)
+        assert_user_visible_to(request.user, m.user)
         _assert_can_manage(request.user, m.event)
         before = {
             "staff": True,

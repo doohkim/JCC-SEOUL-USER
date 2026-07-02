@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
@@ -21,6 +21,7 @@ from retreat.models import (
     RetreatGroupScope,
 )
 from retreat.serializers import RetreatEventSerializer, RetreatGroupSerializer
+from retreat.services.account_retired import visible_user_linked_for
 from retreat.services.audit import log_retreat_change
 from users.models import Division
 from users.permissions import visible_retreat_groups_for
@@ -28,11 +29,25 @@ from users.permissions import visible_retreat_groups_for
 User = get_user_model()
 
 
-def _serialize_group(group: RetreatGroup) -> dict:
+def _memberships_prefetch(viewer):
+    qs = RetreatGroupMembership.objects.select_related(
+        "user", "user__profile"
+    ).order_by("role", "user__username")
+    return Prefetch(
+        "memberships",
+        queryset=visible_user_linked_for(viewer, qs, user_prefix="user"),
+    )
+
+
+def _serialize_group(group: RetreatGroup, viewer) -> dict:
     return RetreatGroupSerializer(
         RetreatGroup.objects.filter(pk=group.pk)
         .select_related("region", "division")
-        .prefetch_related("memberships__user", "extra_scopes__region", "extra_scopes__division")
+        .prefetch_related(
+            _memberships_prefetch(viewer),
+            "extra_scopes__region",
+            "extra_scopes__division",
+        )
         .annotate(attendee_count=Count("attendees", distinct=True))
         .first()
     ).data
@@ -234,8 +249,7 @@ class RetreatEventGroupListView(APIView):
             visible_retreat_groups_for(request.user, event)
             .select_related("region", "division")
             .prefetch_related(
-                "memberships__user",
-                "memberships__user__profile",
+                _memberships_prefetch(request.user),
                 "extra_scopes__region",
                 "extra_scopes__division",
             )
@@ -281,12 +295,12 @@ class RetreatEventGroupListView(APIView):
                         created.append(group)
             except ValidationError:
                 raise
-            serialized = [_serialize_group(g) for g in created]
+            serialized = [_serialize_group(g, request.user) for g in created]
             return Response(serialized, status=status.HTTP_201_CREATED)
 
         group = _create_single_group(event, request.user, request.data)
         return Response(
-            _serialize_group(group),
+            _serialize_group(group, request.user),
             status=status.HTTP_201_CREATED,
         )
 
@@ -395,10 +409,10 @@ class RetreatGroupDetailView(APIView):
 
     def get(self, request, group_id: int):
         group = get_group_or_403(request.user, group_id)
-        return Response(_serialize_group(group))
+        return Response(_serialize_group(group, request.user))
 
     def patch(self, request, group_id: int):
         group = get_group_or_403(request.user, group_id)
         assert_can_add_group(request.user, group.event)
         group = _update_group(group, request.user, request.data)
-        return Response(_serialize_group(group))
+        return Response(_serialize_group(group, request.user))

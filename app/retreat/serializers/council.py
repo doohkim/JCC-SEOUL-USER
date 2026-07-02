@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from retreat.models import RetreatCouncilMembership
+from retreat.services.account_retired import ACCOUNT_RETIRED_DISPLAY, is_retired_user
 from retreat.services.staff_application import primary_affiliation_for
 
 User = get_user_model()
@@ -16,6 +17,8 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
     user_phone = serializers.SerializerMethodField()
     user_region_id = serializers.SerializerMethodField()
     user_division_id = serializers.SerializerMethodField()
+    user_account_retired = serializers.SerializerMethodField()
+    user_account_retired_display = serializers.SerializerMethodField()
     role_display = serializers.CharField(source="get_role_display", read_only=True)
     scope_label = serializers.CharField(read_only=True)
     region_name = serializers.CharField(source="region.name", read_only=True, default="")
@@ -34,6 +37,8 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
             "user_phone",
             "user_region_id",
             "user_division_id",
+            "user_account_retired",
+            "user_account_retired_display",
             "role",
             "role_display",
             "region",
@@ -67,6 +72,12 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
     def get_user_division_id(self, obj: RetreatCouncilMembership) -> int | None:
         _region, division = primary_affiliation_for(obj.user)
         return division.id if division else None
+
+    def get_user_account_retired(self, obj: RetreatCouncilMembership) -> bool:
+        return is_retired_user(obj.user)
+
+    def get_user_account_retired_display(self, obj: RetreatCouncilMembership) -> str:
+        return ACCOUNT_RETIRED_DISPLAY if is_retired_user(obj.user) else ""
 
     def validate(self, attrs):
         role = attrs.get("role") or getattr(self.instance, "role", None)

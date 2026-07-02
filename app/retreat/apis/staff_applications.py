@@ -14,6 +14,7 @@ from retreat.serializers.staff_application import (
     RetreatStaffApplicationReviewSerializer,
     RetreatStaffApplicationSerializer,
 )
+from retreat.services.account_retired import visible_user_linked_for
 from retreat.services.staff_application import (
     apply_staff_application,
     reject_staff_application,
@@ -48,6 +49,7 @@ class RetreatEventStaffApplicationListView(APIView):
         )
         if status_filter and status_filter != "all":
             qs = qs.filter(status=status_filter)
+        qs = visible_user_linked_for(request.user, qs, user_prefix="user")
         data = RetreatStaffApplicationSerializer(qs, many=True).data
         return Response({"results": data})
 

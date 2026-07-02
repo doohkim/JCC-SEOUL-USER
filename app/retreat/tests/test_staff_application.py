@@ -263,11 +263,12 @@ class StaffApplicationPageTests(StaffApplicationFixture):
         self.client.force_login(self.applicant)
         r = self.client.get(reverse("retreat_staff_apply", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "운영진 참가 신청서")
+        self.assertContains(r, "참가 신청서")
         self.assertContains(r, self.div_youth.name)
         self.assertContains(r, "성도")
         self.assertNotContains(r, "신청자 정보")
-        self.assertContains(r, 'class="jcc-retreat-staffApplyHeroRow"')
+        self.assertContains(r, "jcc-retreat-staffApplyCardTitle")
+        self.assertContains(r, "jcc-pageHeader")
         self.assertContains(r, 'id="retreatEventPicker"')
 
     def test_staff_apply_approved_hides_submit_and_shows_waiting_message(self):

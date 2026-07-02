@@ -20,6 +20,7 @@ from retreat.apis._common import assert_can_manage_group_leaders, get_group_or_4
 from retreat.models import RetreatChangeLog, RetreatGroupMembership
 from retreat.serializers import RetreatGroupMembershipSerializer
 from retreat.services.audit import log_retreat_change
+from retreat.services.account_retired import assert_user_visible_to, visible_user_linked_for
 from retreat.services.group_sync import (
     clear_leader_role_on_membership_removed,
     sync_attendee_from_membership,
@@ -53,7 +54,10 @@ class RetreatGroupMembershipListCreateView(APIView):
 
     def get(self, request, group_id: int):
         group = get_group_or_403(request.user, group_id)
-        qs = group.memberships.select_related("user").order_by("role", "user__username")
+        qs = group.memberships.select_related("user", "user__profile").order_by(
+            "role", "user__username"
+        )
+        qs = visible_user_linked_for(request.user, qs, user_prefix="user")
         return Response(RetreatGroupMembershipSerializer(qs, many=True).data)
 
     def post(self, request, group_id: int):
@@ -114,6 +118,7 @@ class RetreatGroupMembershipDetailView(APIView):
 
     def patch(self, request, membership_id: int):
         membership = self._get(membership_id)
+        assert_user_visible_to(request.user, membership.user)
         assert_can_manage_group_leaders(request.user, membership.group)
         role = _validate_role(
             (request.data.get("role") or membership.role).strip()
@@ -144,6 +149,7 @@ class RetreatGroupMembershipDetailView(APIView):
 
     def delete(self, request, membership_id: int):
         membership = self._get(membership_id)
+        assert_user_visible_to(request.user, membership.user)
         assert_can_manage_group_leaders(request.user, membership.group)
         before = {
             "group_id": membership.group_id,

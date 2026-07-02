@@ -3,6 +3,7 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from retreat.models import RetreatGroup, RetreatGroupMembership, RetreatGroupScope
+from retreat.services.account_retired import ACCOUNT_RETIRED_DISPLAY, is_retired_user
 from retreat.services.staff_application import primary_affiliation_for
 from users.services.user_display import user_account_link_label
 
@@ -24,6 +25,8 @@ class RetreatGroupMembershipSerializer(serializers.ModelSerializer):
     user_phone = serializers.SerializerMethodField()
     user_region_id = serializers.SerializerMethodField()
     user_division_id = serializers.SerializerMethodField()
+    user_account_retired = serializers.SerializerMethodField()
+    user_account_retired_display = serializers.SerializerMethodField()
 
     class Meta:
         model = RetreatGroupMembership
@@ -37,6 +40,8 @@ class RetreatGroupMembershipSerializer(serializers.ModelSerializer):
             "user_phone",
             "user_region_id",
             "user_division_id",
+            "user_account_retired",
+            "user_account_retired_display",
             "role",
             "role_display",
             "created_at",
@@ -67,6 +72,12 @@ class RetreatGroupMembershipSerializer(serializers.ModelSerializer):
     def get_user_division_id(self, obj) -> int | None:
         _region_id, division_id = _user_affiliation_ids(obj.user)
         return division_id
+
+    def get_user_account_retired(self, obj) -> bool:
+        return is_retired_user(obj.user)
+
+    def get_user_account_retired_display(self, obj) -> str:
+        return ACCOUNT_RETIRED_DISPLAY if is_retired_user(obj.user) else ""
 
 
 class RetreatGroupScopeSerializer(serializers.ModelSerializer):
