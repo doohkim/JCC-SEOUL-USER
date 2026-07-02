@@ -269,6 +269,7 @@
         .forEach((tr) => {
           syncRowExpectedInputs(tr);
           syncParticipationRow(tr);
+          syncRowProfileIncomplete(tr);
         });
     }
     recomputeSummary();
@@ -378,6 +379,81 @@
       hint.textContent = message;
     } else if (hint) {
       hint.remove();
+    }
+  }
+
+  const missingNoticeEl = document.getElementById("retreatAttMissingNotice");
+
+  function getAttendeeMissingRequired(profile) {
+    const missing = [];
+    if (!(profile?.name || "").trim()) {
+      missing.push({ key: "name", label: "실명", input: nameInput });
+    }
+    if (!(profile?.gender || "").trim()) {
+      missing.push({ key: "gender", label: "성별", input: genderInput });
+    }
+    return missing;
+  }
+
+  function clearAttendeeRequiredValidation() {
+    [nameInput, genderInput].forEach((input) => {
+      if (!input) return;
+      input.classList.remove("is-invalid");
+      setFieldError(input, "");
+    });
+    if (missingNoticeEl) {
+      missingNoticeEl.hidden = true;
+      missingNoticeEl.textContent = "";
+    }
+  }
+
+  function showAttendeeMissingRequired(profile) {
+    clearAttendeeRequiredValidation();
+    const missing = getAttendeeMissingRequired(profile);
+    if (!missing.length) return missing;
+    if (missingNoticeEl) {
+      missingNoticeEl.hidden = false;
+      missingNoticeEl.textContent = `다음 항목을 입력해 주세요: ${missing
+        .map((m) => m.label)
+        .join(", ")}`;
+    }
+    missing.forEach((m) => {
+      if (!m.input) return;
+      m.input.classList.add("is-invalid");
+      setFieldError(m.input, "입력되지 않았습니다.");
+    });
+    return missing;
+  }
+
+  function syncMissingNoticeFromForm() {
+    if (!missingNoticeEl) return;
+    const missing = getAttendeeMissingRequired({
+      name: nameInput?.value || "",
+      gender: genderInput?.value || "",
+    });
+    if (!missing.length) {
+      missingNoticeEl.hidden = true;
+      missingNoticeEl.textContent = "";
+      return;
+    }
+    missingNoticeEl.hidden = false;
+    missingNoticeEl.textContent = `다음 항목을 입력해 주세요: ${missing
+      .map((m) => m.label)
+      .join(", ")}`;
+  }
+
+  function syncRowProfileIncomplete(tr) {
+    if (!tr || !ctx.canEditAttendee) return;
+    const name = tr.querySelector("[data-name]")?.textContent?.trim() || "";
+    const gender = tr.dataset.gender || "";
+    const incomplete = !name || !gender;
+    tr.classList.toggle("is-profile-incomplete", incomplete);
+    const editBtn = tr.querySelector("[data-edit]");
+    if (!editBtn) return;
+    if (incomplete) {
+      editBtn.setAttribute("title", "필수 정보(실명·성별)가 입력되지 않았습니다.");
+    } else {
+      editBtn.removeAttribute("title");
     }
   }
 
@@ -557,6 +633,7 @@
     syncRowExpectedInputs(tr);
     updateStatusBadge(tr);
     updateRowEditButton(tr);
+    syncRowProfileIncomplete(tr);
     recomputeSummary();
   }
 
@@ -763,6 +840,8 @@
     attendeePicker = createUserPicker(
       form ? form.querySelector("[data-user-picker]") : null
     );
+    const userLinkField = form?.querySelector("[data-modal-user-link]");
+    if (userLinkField) userLinkField.hidden = !ctx.canLinkAttendeeUser;
     if (addBtn)
       addBtn.addEventListener("click", () =>
         openModal("create", { checkIn: "pending" })
@@ -779,6 +858,21 @@
     if (genderInput) {
       genderInput.addEventListener("change", () => {
         refreshLodgingOptions(lodgingInput?.value || "");
+        if (genderInput.classList.contains("is-invalid")) {
+          genderInput.classList.remove("is-invalid");
+          setFieldError(genderInput, "");
+          syncMissingNoticeFromForm();
+        }
+      });
+    }
+    if (nameInput) {
+      nameInput.addEventListener("input", () => {
+        if (!nameInput.classList.contains("is-invalid")) return;
+        if ((nameInput.value || "").trim()) {
+          nameInput.classList.remove("is-invalid");
+          setFieldError(nameInput, "");
+          syncMissingNoticeFromForm();
+        }
       });
     }
   }
@@ -1115,6 +1209,19 @@
     markStampInvalid(expectedInInput, false);
     markStampInvalid(expectedOutInput, false);
     setFieldError(expectedOutInput, "");
+    clearAttendeeRequiredValidation();
+    let missingRequired = [];
+    if (
+      mode === "edit" &&
+      ctx.canEditAttendee &&
+      !viewOnly &&
+      !statusOnlyEdit
+    ) {
+      missingRequired = showAttendeeMissingRequired({
+        name: payload?.name || "",
+        gender: payload?.gender || "",
+      });
+    }
     applyModalProfileLock(profileLocked, viewOnly, statusOnlyEdit);
     refreshLodgingOptions(payload?.lodgingRoom || "");
     if (roleInput) roleInput.value = payload?.memberRole || "member";
@@ -1145,9 +1252,11 @@
         ? cancelBtn
         : statusOnlyEdit
           ? checkInInput || expectedOutInput
-          : showProfileFields && mode === "create"
-            ? nameInput
-            : checkInInput || nameInput;
+          : missingRequired.length
+            ? missingRequired[0].input
+            : showProfileFields && mode === "create"
+              ? nameInput
+              : checkInInput || nameInput;
     requestAnimationFrame(() => focusEl?.focus());
   }
 
@@ -1231,12 +1340,14 @@
       }
       if (includeProfile && !payload.name) {
         submitBtn.disabled = false;
+        showAttendeeMissingRequired({ name: "", gender: payload.gender });
         showToast("실명은 필수입니다.", true);
         nameInput?.focus();
         return;
       }
-      if (includeProfile && modalMode === "create" && !payload.gender) {
+      if (includeProfile && !payload.gender) {
         submitBtn.disabled = false;
+        showAttendeeMissingRequired({ name: payload.name, gender: "" });
         showToast("성별은 필수입니다.", true);
         genderInput?.focus();
         return;
@@ -1482,6 +1593,19 @@
     document.addEventListener("click", (e) => {
       if (!root.contains(e.target)) list.hidden = true;
     });
+
+    const clearBtn =
+      root.parentElement?.querySelector("[data-user-picker-clear]") ||
+      root.closest(".jcc-retreat-userPickerField")?.querySelector(
+        "[data-user-picker-clear]"
+      );
+    if (clearBtn) {
+      clearBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        clear();
+        input.focus();
+      });
+    }
 
     return {
       clear,

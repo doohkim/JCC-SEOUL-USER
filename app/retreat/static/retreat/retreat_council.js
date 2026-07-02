@@ -1,11 +1,12 @@
 (function () {
   "use strict";
   const ctx = window.RETREAT_COUNCIL_CTX;
-  if (!ctx || !ctx.canManage) return;
+  if (!ctx) return;
 
   const statusEl = document.getElementById("councilStatus");
   const tbody = document.getElementById("councilTbody");
   const form = document.getElementById("councilAddForm");
+  const roleScopes = ctx.roleScopes || {};
 
   function csrf() {
     const m = document.cookie.match(/csrftoken=([^;]+)/);
@@ -26,9 +27,77 @@
       .replace(/"/g, "&quot;");
   }
 
-  function createUserPicker(root, searchUrl, extraParams) {
+  function scopeKind(role) {
+    return roleScopes[role] || "event";
+  }
+
+  function toggleScopeFields(role, regionWrap, divisionWrap) {
+    const kind = scopeKind(role);
+    if (regionWrap) regionWrap.hidden = kind !== "region" && kind !== "division";
+    if (divisionWrap) divisionWrap.hidden = kind !== "division";
+  }
+
+  function filterDivisionsByRegion(selectEl, regionId) {
+    if (!selectEl) return;
+    Array.from(selectEl.options).forEach((opt, idx) => {
+      if (idx === 0) {
+        opt.hidden = false;
+        return;
+      }
+      const rid = opt.dataset.regionId;
+      opt.hidden = Boolean(regionId && rid && String(rid) !== String(regionId));
+    });
+    if (
+      selectEl.value &&
+      selectEl.selectedOptions[0] &&
+      selectEl.selectedOptions[0].hidden
+    ) {
+      selectEl.value = "";
+      window.JccCustomSelect?.refresh?.(
+        selectEl.closest(".jcc-cselect") || selectEl.parentNode
+      );
+    }
+  }
+
+  function bindRowScopeEditors(tr) {
+    if (!ctx.canManage || !tr) return;
+    const roleSel = tr.querySelector(".council-role-select");
+    const regionSel = tr.querySelector(".council-region-select");
+    const divSel = tr.querySelector(".council-division-select");
+    const scopeEdit = tr.querySelector(".jcc-retreat-staffScopeEdit");
+    const scopeDisplay = tr.querySelector(".jcc-retreat-staffScopeDisplay");
+    const saveBtn = tr.querySelector(".council-save-row");
+
+    function syncRowScopeVisibility() {
+      const kind = scopeKind(roleSel?.value || tr.dataset.role);
+      if (scopeEdit) scopeEdit.hidden = kind === "event";
+      if (scopeDisplay) scopeDisplay.hidden = kind !== "event";
+      if (regionSel) regionSel.hidden = kind === "division" || kind === "event";
+      if (divSel) divSel.hidden = kind !== "division";
+      if (regionSel && kind === "division") {
+        filterDivisionsByRegion(divSel, regionSel.value);
+      }
+    }
+
+    roleSel?.addEventListener("change", () => {
+      syncRowScopeVisibility();
+      if (saveBtn) saveBtn.hidden = false;
+    });
+    regionSel?.addEventListener("change", () => {
+      filterDivisionsByRegion(divSel, regionSel.value);
+      if (saveBtn) saveBtn.hidden = false;
+    });
+    divSel?.addEventListener("change", () => {
+      if (saveBtn) saveBtn.hidden = false;
+    });
+    tr.querySelector(".council-note-input")?.addEventListener("input", () => {
+      if (saveBtn) saveBtn.hidden = false;
+    });
+    syncRowScopeVisibility();
+  }
+
+  function createUserPicker(root, searchUrl) {
     if (!root || !searchUrl) return null;
-    extraParams = extraParams || {};
     const input = root.querySelector("[data-user-picker-input]");
     const list = root.querySelector("[data-user-picker-list]");
     const hidden = root.querySelector("[data-user-picker-id]");
@@ -39,13 +108,6 @@
     let timer = null;
     let lastQuery = "";
 
-    function clear() {
-      selected = null;
-      hidden.value = "";
-      input.value = "";
-      closeList();
-    }
-
     function closeList() {
       list.hidden = true;
       list.innerHTML = "";
@@ -53,7 +115,8 @@
 
     function renderList() {
       if (!items.length) {
-        list.innerHTML = '<li class="muted" role="option" aria-disabled="true">결과 없음</li>';
+        list.innerHTML =
+          '<li class="muted" role="option" aria-disabled="true">결과 없음</li>';
         list.hidden = false;
         return;
       }
@@ -70,17 +133,8 @@
       lastQuery = q;
       try {
         const params = new URLSearchParams();
-        if (q) {
-          params.set("q", q);
-          params.set("limit", "30");
-        } else {
-          // 검색어가 없으면 전체 계정 노출.
-          params.set("all", "1");
-          params.set("limit", "1000");
-        }
-        Object.keys(extraParams).forEach((k) => {
-          if (extraParams[k]) params.set(k, extraParams[k]);
-        });
+        if (q) params.set("q", q);
+        params.set("limit", "30");
         const r = await fetch(`${searchUrl}?${params.toString()}`, {
           credentials: "same-origin",
         });
@@ -126,28 +180,59 @@
     });
 
     return {
-      clear,
       getSelected: () => selected,
       getTypedValue: () => input.value.trim(),
     };
   }
 
-  const userPicker = createUserPicker(
-    document.getElementById("councilUserPicker"),
-    ctx.userSearchUrl,
-    { signup_source: "kakao" }
-  );
+  const addRole = document.querySelector("[data-staff-role]");
+  const addRegionWrap = document.querySelector("[data-staff-scope-region]");
+  const addDivisionWrap = document.querySelector("[data-staff-scope-division]");
+  const addRegion = document.querySelector("[data-staff-region]");
+  const addDivision = document.querySelector("[data-staff-division]");
 
-  if (form) {
+  if (addRole) {
+    addRole.addEventListener("change", () => {
+      toggleScopeFields(addRole.value, addRegionWrap, addDivisionWrap);
+    });
+    toggleScopeFields(addRole.value, addRegionWrap, addDivisionWrap);
+  }
+  addRegion?.addEventListener("change", () => {
+    filterDivisionsByRegion(addDivision, addRegion.value);
+  });
+
+  const userPicker = ctx.canManage
+    ? createUserPicker(
+        document.getElementById("councilUserPicker"),
+        ctx.userSearchUrl
+      )
+    : null;
+
+  if (ctx.canManage && form) {
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const selected = userPicker && userPicker.getSelected();
       const typed = userPicker
         ? userPicker.getTypedValue()
-        : document.getElementById("newUsername").value.trim();
-      const role = document.getElementById("newRole").value;
-      const note = document.getElementById("newNote").value.trim();
+        : document.getElementById("newUsername")?.value.trim();
+      const role = addRole?.value || "event_admin";
+      const note = document.getElementById("newNote")?.value.trim() || "";
       const body = { role, note };
+      const kind = scopeKind(role);
+      if (kind === "region") {
+        body.region = addRegion?.value ? Number(addRegion.value) : null;
+        if (!body.region) {
+          showStatus("담당 지역을 선택하세요.", true);
+          return;
+        }
+      }
+      if (kind === "division") {
+        body.division = addDivision?.value ? Number(addDivision.value) : null;
+        if (!body.division) {
+          showStatus("담당 부서를 선택하세요.", true);
+          return;
+        }
+      }
       if (selected && selected.id) {
         body.user_id = selected.id;
       } else if (typed) {
@@ -168,7 +253,16 @@
         });
         if (!r.ok) {
           const err = await r.json().catch(() => ({}));
-          throw new Error(err.user || err.detail || "추가 실패");
+          const msg =
+            err.scope ||
+            err.region ||
+            err.division ||
+            err.user ||
+            err.detail ||
+            "추가 실패";
+          throw new Error(
+            typeof msg === "string" ? msg : JSON.stringify(msg)
+          );
         }
         window.location.reload();
       } catch (err) {
@@ -177,34 +271,58 @@
     });
   }
 
-  if (tbody) {
-    tbody.addEventListener("click", async (e) => {
-      const btn = e.target.closest(".council-delete");
-      if (!btn) return;
-      const tr = btn.closest("tr[data-membership-id]");
-      const mid = tr && tr.dataset.membershipId;
-      if (!mid) return;
-      if (!confirm("회장단에서 제거하시겠습니까?")) return;
-      try {
-        const r = await fetch(`${ctx.apiDetailBase}${mid}/`, {
-          method: "DELETE",
-          credentials: "same-origin",
-          headers: { "X-CSRFToken": csrf() },
-        });
-        if (!r.ok) throw new Error(await r.text());
-        tr.remove();
-      } catch (err) {
-        showStatus("삭제 실패", true);
-        console.error(err);
-      }
+  const filterRole = document.getElementById("staffFilterRole");
+  filterRole?.addEventListener("change", () => {
+    const val = filterRole.value;
+    tbody?.querySelectorAll("tr[data-membership-id]").forEach((tr) => {
+      tr.hidden = Boolean(val && tr.dataset.role !== val);
     });
+  });
 
-    tbody.addEventListener("change", async (e) => {
-      const sel = e.target.closest(".council-role-select");
-      if (!sel) return;
-      const tr = sel.closest("tr[data-membership-id]");
-      const mid = tr && tr.dataset.membershipId;
-      const role = sel.value;
+  if (ctx.canManage && tbody) {
+    tbody.querySelectorAll("tr[data-membership-id]").forEach(bindRowScopeEditors);
+
+    tbody.addEventListener("click", async (e) => {
+      const del = e.target.closest(".council-delete");
+      if (del) {
+        const tr = del.closest("tr[data-membership-id]");
+        const mid = tr && tr.dataset.membershipId;
+        if (!mid) return;
+        if (!confirm("운영진에서 제거하시겠습니까?")) return;
+        try {
+          const r = await fetch(`${ctx.apiDetailBase}${mid}/`, {
+            method: "DELETE",
+            credentials: "same-origin",
+            headers: { "X-CSRFToken": csrf() },
+          });
+          if (!r.ok) throw new Error(await r.text());
+          tr.remove();
+        } catch (err) {
+          showStatus("삭제 실패", true);
+          console.error(err);
+        }
+        return;
+      }
+
+      const save = e.target.closest(".council-save-row");
+      if (!save) return;
+      const tr = save.closest("tr[data-membership-id]");
+      const mid = tr?.dataset.membershipId;
+      if (!mid) return;
+      const role = tr.querySelector(".council-role-select")?.value;
+      const note = tr.querySelector(".council-note-input")?.value?.trim() || "";
+      const body = { role, note };
+      const kind = scopeKind(role);
+      if (kind === "region") {
+        const rid = tr.querySelector(".council-region-select")?.value;
+        body.region = rid ? Number(rid) : null;
+      } else if (kind === "division") {
+        const did = tr.querySelector(".council-division-select")?.value;
+        body.division = did ? Number(did) : null;
+      } else {
+        body.region = null;
+        body.division = null;
+      }
       try {
         const r = await fetch(`${ctx.apiDetailBase}${mid}/`, {
           method: "PATCH",
@@ -213,17 +331,17 @@
             "Content-Type": "application/json",
             "X-CSRFToken": csrf(),
           },
-          body: JSON.stringify({ role }),
+          body: JSON.stringify(body),
         });
-        if (!r.ok) throw new Error(await r.text());
-        sel.dataset.prev = role;
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error(err.detail || err.scope || "저장 실패");
+        }
+        save.hidden = true;
         showStatus("저장됨");
+        window.location.reload();
       } catch (err) {
-        sel.value = sel.dataset.prev;
-        if (window.JccCustomSelect)
-          window.JccCustomSelect.refresh(sel.closest(".jcc-cselect") || sel.parentNode);
-        showStatus("저장 실패", true);
-        console.error(err);
+        showStatus(String(err.message || err), true);
       }
     });
   }

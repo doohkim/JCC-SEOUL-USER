@@ -40,7 +40,7 @@ class RetreatTimetableTests(TestCase):
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
         # 부서 회장 직급만 — 수련회 회장단 아님.

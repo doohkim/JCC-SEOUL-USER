@@ -1,4 +1,4 @@
-"""수련회 회장단 명단 관리 API."""
+"""집회 운영진 명단 관리 API."""
 
 from __future__ import annotations
 
@@ -17,10 +17,11 @@ from retreat.models import (
 )
 from retreat.serializers import RetreatCouncilMembershipSerializer
 from retreat.services.audit import log_retreat_change
+from users.models import Division, Region
 from users.permissions import (
     can_access_retreat_tab,
-    is_retreat_council,
-    is_retreat_staff,
+    can_manage_staff,
+    can_view_staff,
 )
 
 User = get_user_model()
@@ -33,14 +34,46 @@ def _assert_event_access(user) -> None:
 
 def _assert_can_view(user, event: RetreatEvent) -> None:
     _assert_event_access(user)
-    if not (user.is_superuser or is_retreat_council(user, event) or is_retreat_staff(user, event)):
-        raise PermissionDenied("회장단 명단 조회 권한이 없습니다.")
+    if not (user.is_superuser or can_view_staff(user, event)):
+        raise PermissionDenied("집회 운영진 명단 조회 권한이 없습니다.")
 
 
 def _assert_can_manage(user, event: RetreatEvent) -> None:
     _assert_event_access(user)
-    if not is_retreat_council(user, event):
-        raise PermissionDenied("회장단 등록·삭제는 회장단(또는 슈퍼유저)만 가능합니다.")
+    if not can_manage_staff(user, event):
+        raise PermissionDenied("집회 운영진 등록·삭제는 집회 전체 관리자만 가능합니다.")
+
+
+def _validate_staff_scope(
+    role: str,
+    *,
+    region_id: int | None,
+    division_id: int | None,
+) -> tuple[int | None, int | None]:
+    if role in RetreatCouncilMembership.EVENT_WIDE_ROLES:
+        if region_id or division_id:
+            raise ValidationError(
+                {"scope": "집회 전체·픽업 관찰 역할에는 담당 범위를 지정할 수 없습니다."}
+            )
+        return None, None
+    if role in RetreatCouncilMembership.REGION_SCOPED_ROLES:
+        if not region_id:
+            raise ValidationError({"region": "지역 역할에는 담당 지역이 필요합니다."})
+        if division_id:
+            raise ValidationError({"division": "지역 역할에는 부서를 지정할 수 없습니다."})
+        if not Region.objects.filter(pk=region_id).exists():
+            raise ValidationError({"region": "존재하지 않는 지역입니다."})
+        return region_id, None
+    if role in RetreatCouncilMembership.DIVISION_SCOPED_ROLES:
+        if not division_id:
+            raise ValidationError({"division": "부서 역할에는 담당 부서가 필요합니다."})
+        division = Division.objects.filter(pk=division_id).select_related("region").first()
+        if division is None:
+            raise ValidationError({"division": "존재하지 않는 부서입니다."})
+        if region_id and region_id != division.region_id:
+            raise ValidationError({"region": "담당 지역과 부서의 지역이 일치하지 않습니다."})
+        return division.region_id, division_id
+    raise ValidationError({"role": "올바르지 않은 역할입니다."})
 
 
 class RetreatEventCouncilListCreateView(APIView):
@@ -49,9 +82,9 @@ class RetreatEventCouncilListCreateView(APIView):
     def get(self, request, event_id: int):
         event = get_object_or_404(RetreatEvent, pk=event_id)
         _assert_can_view(request.user, event)
-        qs = event.council_memberships.select_related("user").order_by(
-            "role", "user__username"
-        )
+        qs = event.council_memberships.select_related(
+            "user", "user__profile", "region", "division"
+        ).order_by("role", "user__username")
         return Response(RetreatCouncilMembershipSerializer(qs, many=True).data)
 
     def post(self, request, event_id: int):
@@ -59,10 +92,19 @@ class RetreatEventCouncilListCreateView(APIView):
         _assert_can_manage(request.user, event)
         username = (request.data.get("username") or "").strip()
         user_id = request.data.get("user_id")
-        role = (request.data.get("role") or RetreatCouncilMembership.Role.MEMBER).strip()
+        role = (
+            request.data.get("role") or RetreatCouncilMembership.Role.EVENT_ADMIN
+        ).strip()
         note = (request.data.get("note") or "").strip()
         if role not in dict(RetreatCouncilMembership.Role.choices):
             raise ValidationError({"role": "올바르지 않은 역할입니다."})
+        region_id = request.data.get("region") or request.data.get("region_id")
+        division_id = request.data.get("division") or request.data.get("division_id")
+        region_id = int(region_id) if region_id else None
+        division_id = int(division_id) if division_id else None
+        region_id, division_id = _validate_staff_scope(
+            role, region_id=region_id, division_id=division_id
+        )
         target = None
         if user_id:
             target = User.objects.filter(pk=user_id).first()
@@ -76,6 +118,8 @@ class RetreatEventCouncilListCreateView(APIView):
             defaults={
                 "role": role,
                 "note": note,
+                "region_id": region_id,
+                "division_id": division_id,
             },
         )
         if created:
@@ -90,9 +134,11 @@ class RetreatEventCouncilListCreateView(APIView):
             target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
             target_id=membership.id,
             payload_after={
-                "council": True,
+                "staff": True,
                 "user_id": target.id,
                 "role": role,
+                "region_id": region_id,
+                "division_id": division_id,
                 "note": note,
             },
         )
@@ -107,7 +153,9 @@ class RetreatCouncilMembershipDetailView(APIView):
 
     def _get(self, event_id: int, membership_id: int) -> RetreatCouncilMembership:
         return get_object_or_404(
-            RetreatCouncilMembership.objects.select_related("event", "user"),
+            RetreatCouncilMembership.objects.select_related(
+                "event", "user", "region", "division"
+            ),
             pk=membership_id,
             event_id=event_id,
         )
@@ -119,23 +167,48 @@ class RetreatCouncilMembershipDetailView(APIView):
         note = request.data.get("note", m.note)
         if role not in dict(RetreatCouncilMembership.Role.choices):
             raise ValidationError({"role": "올바르지 않은 역할입니다."})
+        region_id = request.data.get("region", m.region_id)
+        division_id = request.data.get("division", m.division_id)
+        if "region_id" in request.data:
+            region_id = request.data.get("region_id")
+        if "division_id" in request.data:
+            division_id = request.data.get("division_id")
+        region_id = int(region_id) if region_id else None
+        division_id = int(division_id) if division_id else None
+        region_id, division_id = _validate_staff_scope(
+            role, region_id=region_id, division_id=division_id
+        )
         m.role = role
         m.note = note
-        m.save(update_fields=["role", "note"])
+        m.region_id = region_id
+        m.division_id = division_id
+        m.save(update_fields=["role", "note", "region_id", "division_id"])
         log_retreat_change(
             user=request.user,
             event=m.event,
             action=RetreatChangeLog.Action.UPDATE,
             target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
             target_id=m.id,
-            payload_after={"council": True, "role": role, "note": note},
+            payload_after={
+                "staff": True,
+                "role": role,
+                "region_id": region_id,
+                "division_id": division_id,
+                "note": note,
+            },
         )
         return Response(RetreatCouncilMembershipSerializer(m).data)
 
     def delete(self, request, event_id: int, membership_id: int):
         m = self._get(event_id, membership_id)
         _assert_can_manage(request.user, m.event)
-        before = {"council": True, "user_id": m.user_id, "role": m.role}
+        before = {
+            "staff": True,
+            "user_id": m.user_id,
+            "role": m.role,
+            "region_id": m.region_id,
+            "division_id": m.division_id,
+        }
         event = m.event
         mid = m.id
         m.delete()

@@ -82,7 +82,7 @@ class _PageFixture(TestCase):
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
         cls.superuser = User.objects.create_user(
@@ -221,9 +221,10 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertTrue(r.context["can_edit_attendee"])
         self.assertTrue(r.context["can_delete_attendee"])
         self.assertFalse(r.context["can_change_status"])
+        self.assertFalse(r.context["can_link_attendee_user"])
         self.assertContains(r, 'data-expected-field="expected_check_in_at"')
         self.assertContains(r, 'id="btnAddAttendee"')
-        self.assertContains(r, "사용자 연동")
+        self.assertNotContains(r, "사용자 연동")
         self.assertNotContains(r, "읽기 전용")
         self.assertContains(r, 'data-sort-key="role"')
 
@@ -316,7 +317,7 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertIn(self.event.id, available_ids)
         self.assertIn(other_event.id, available_ids)
         self.assertNotIn(hidden_event.id, available_ids)
-        self.assertContains(r, 'id="retreatEventSwitcher"')
+        self.assertContains(r, 'id="retreatEventPicker"')
         self.assertContains(
             r, reverse("retreat_dashboard", args=[other_event.id])
         )
@@ -401,13 +402,11 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertTrue(r.context["can_manage_sessions"])
         self.assertContains(r, "출석부 만들기")
 
-    def test_admin_default_tab_is_sessions(self):
+    def test_admin_default_tab_is_groups(self):
         self.client.force_login(self.superuser)
         r = self.client.get(reverse("retreat_admin", args=[self.event.id]))
-        self.assertEqual(r.context["active_tab"], "sessions")
-        self.assertIn(self.session, list(r.context["sessions"]))
-        # 출석부 탭이 기본이라 조 rows 는 비어 있다.
-        self.assertEqual(r.context["rows"], [])
+        self.assertEqual(r.context["active_tab"], "groups")
+        self.assertIn(self.group.id, [row["group"].id for row in r.context["rows"]])
 
     def test_admin_groups_tab_renders_rows(self):
         self.client.force_login(self.superuser)

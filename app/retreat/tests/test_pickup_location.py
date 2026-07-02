@@ -63,7 +63,7 @@ class _PickupLocationFixture(TestCase):
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
         cls.leader = User.objects.create_user(username="ploc_leader", password="x")
@@ -179,11 +179,10 @@ class PickupLocationPageTests(_PickupLocationFixture):
         self.assertNotContains(r, "탑승장소 관리")
         self.assertIn("장성역", r.context["pickup_location_choices_json"])
 
-    def test_pastor_cannot_see_manage_ui(self):
+    def test_pastor_without_staff_cannot_access_pickup_page(self):
         self.page_client.force_login(self.pastor)
         r = self.page_client.get(reverse("retreat_pickup", args=[self.event.id]))
-        self.assertEqual(r.status_code, 200)
-        self.assertFalse(r.context["can_manage_pickup_location"])
+        self.assertEqual(r.status_code, 403)
 
 
 class PickupBoardingPlaceValidationTests(_PickupLocationFixture):

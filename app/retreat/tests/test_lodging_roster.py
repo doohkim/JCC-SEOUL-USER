@@ -70,7 +70,7 @@ class _LodgingRosterFixture(TestCase):
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.staff,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
         cls.lodging = Lodging.objects.create(event=cls.event, name="본관")

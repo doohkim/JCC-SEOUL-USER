@@ -1,5 +1,5 @@
 /**
- * 숙소 관리 페이지 — 숙소/호실 CRUD 모달
+ * 숙소 관리 페이지 — 숙소/객실 CRUD 모달
  */
 (function () {
   "use strict";
@@ -21,7 +21,7 @@
   const lodgingAddressInput = document.getElementById("lodgingAddressInput");
   const lodgingMemoInput = document.getElementById("lodgingMemoInput");
 
-  // 호실 모달
+  // 객실 모달
   const roomOverlay = document.getElementById("roomModalOverlay");
   const roomForm = document.getElementById("roomForm");
   const roomTitle = document.getElementById("roomModalTitle");
@@ -117,7 +117,7 @@
     roomMode = mode;
     roomTargetLodgingId = lodgingId || null;
     roomTargetId = payload?.id || null;
-    if (roomTitle) roomTitle.textContent = mode === "edit" ? "호실 수정" : "호실 추가";
+    if (roomTitle) roomTitle.textContent = mode === "edit" ? "객실 수정" : "객실 추가";
     if (roomSubmit) roomSubmit.textContent = mode === "edit" ? "수정" : "저장";
     if (roomNumberInput) roomNumberInput.value = payload?.number || "";
     if (roomCapacityInput) {
@@ -353,7 +353,7 @@
           "PATCH",
           payload
         );
-        showToast("호실 수정됨");
+        showToast("객실 수정됨");
       } else if (roomTargetLodgingId) {
         await api(
           ctx.urls.lodgingRoomsTemplate.replace(
@@ -363,7 +363,7 @@
           "POST",
           payload
         );
-        showToast("호실 추가됨");
+        showToast("객실 추가됨");
       }
       window.location.reload();
     } catch (err) {
@@ -374,7 +374,7 @@
   }
 
   async function confirmDeleteLodging(lodgingId) {
-    if (!window.confirm("숙소를 삭제할까요? 호실도 함께 삭제됩니다.")) return;
+    if (!window.confirm("숙소를 삭제할까요? 객실도 함께 삭제됩니다.")) return;
     try {
       await api(
         ctx.urls.lodgingDetailTemplate.replace("__id__", String(lodgingId)),
@@ -388,7 +388,7 @@
   }
 
   async function confirmDeleteRoom(roomId) {
-    if (!window.confirm("호실을 삭제할까요? 배정된 조원은 미배정으로 돌아갑니다."))
+    if (!window.confirm("객실을 삭제할까요? 배정된 조원은 미배정으로 돌아갑니다."))
       return;
     try {
       await api(

@@ -51,7 +51,7 @@ class _Fixture:
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
         cls.leader = User.objects.create_user(username="gm_leader", password="x")

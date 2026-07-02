@@ -50,7 +50,7 @@ class _PlatformGuideFixture(TestCase):
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
         cls.stranger = User.objects.create_user(username="platform_guide_stranger", password="x")
         UserDivisionTeam.objects.create(

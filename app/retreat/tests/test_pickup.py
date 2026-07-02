@@ -69,7 +69,7 @@ class _PickupFixture(TestCase):
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
         cls.leader = User.objects.create_user(username="pickup_leader", password="x")
@@ -87,6 +87,9 @@ class _PickupFixture(TestCase):
 
         cls.stranger = User.objects.create_user(username="pickup_stranger", password="x")
 
+    def _attendee(self, group, name, **kwargs):
+        return RetreatAttendee.objects.create(group=group, name=name, **kwargs)
+
     def setUp(self):
         self.client = APIClient()
         self.page_client = Client()
@@ -101,7 +104,10 @@ class PickupPageTests(_PickupFixture):
         r = self.page_client.get(self._url())
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.context["can_manage_pickup"])
+        self.assertFalse(r.context["can_select_pickup_group"])
+        self.assertEqual(r.context["leader_group_id"], self.group.id)
         self.assertContains(r, "입회")
+        self.assertContains(r, 'data-leader-member-select')
 
     def test_council_can_view_pickup_page(self):
         self.page_client.force_login(self.council)
@@ -124,6 +130,8 @@ class PickupApiTests(_PickupFixture):
         return reverse("api_retreat_pickup_detail", args=[pickup_id])
 
     def test_leader_can_create_pickup_with_auto_number(self):
+        self._attendee(self.group, "홍길동")
+        self._attendee(self.group, "김철수")
         self.client.force_login(self.leader)
         r = self.client.post(
             self._list_url(),
@@ -164,6 +172,7 @@ class PickupApiTests(_PickupFixture):
         self.assertEqual(r2.data["number"], 2)
 
     def test_duplicate_pickup_same_group_name_rejected(self):
+        self._attendee(self.group, "김비투")
         RetreatPickup.objects.create(
             event=self.event,
             direction=RetreatPickup.Direction.ARRIVAL,
@@ -199,6 +208,11 @@ class PickupApiTests(_PickupFixture):
         )
 
     def test_same_name_different_direction_allowed(self):
+        self._attendee(
+            self.group,
+            "김비투",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+        )
         RetreatPickup.objects.create(
             event=self.event,
             direction=RetreatPickup.Direction.ARRIVAL,
@@ -224,6 +238,7 @@ class PickupApiTests(_PickupFixture):
         self.assertEqual(r.status_code, 201, r.content)
 
     def test_create_requires_mandatory_fields(self):
+        self._attendee(self.group, "이름만")
         self.client.force_login(self.council)
         r = self.client.post(
             self._list_url(),
@@ -309,6 +324,7 @@ class PickupApiTests(_PickupFixture):
 
     def test_leader_group_is_forced_to_own_group(self):
         """조장이 다른 조 id 를 보내도 무시되고 본인 조로 저장된다."""
+        self._attendee(self.group, "강제조")
         self.client.force_login(self.leader)
         r = self.client.post(
             self._list_url(),
@@ -383,6 +399,11 @@ class PickupApiTests(_PickupFixture):
         self.assertEqual(len(r.data), 2)
 
     def test_council_can_select_group(self):
+        self._attendee(
+            self.group2,
+            "회장선택",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+        )
         self.client.force_login(self.council)
         r = self.client.post(
             self._list_url(),
@@ -398,6 +419,121 @@ class PickupApiTests(_PickupFixture):
         )
         self.assertEqual(r.status_code, 201, r.content)
         self.assertEqual(r.data["group"], self.group2.id)
+
+    def test_leader_cannot_create_pickup_for_non_roster_name(self):
+        self.client.force_login(self.leader)
+        r = self.client.post(
+            self._list_url(),
+            {
+                "direction": RetreatPickup.Direction.ARRIVAL,
+                "name": "명단외",
+                "train_time": "2026-08-01T10:00",
+                "boarding_place": "역",
+                "contact": "010-1234-5678",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("name", r.data)
+
+    def test_council_cannot_create_pickup_for_non_roster_name(self):
+        self.client.force_login(self.council)
+        r = self.client.post(
+            self._list_url(),
+            {
+                "direction": RetreatPickup.Direction.ARRIVAL,
+                "name": "명단외",
+                "group": self.group.id,
+                "train_time": "2026-08-01T10:00",
+                "boarding_place": "역",
+                "contact": "010-1234-5678",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("name", r.data)
+
+    def test_absent_attendee_cannot_be_pickup_target(self):
+        self._attendee(
+            self.group,
+            "불참자",
+            participation_status=RetreatAttendee.ParticipationStatus.ABSENT,
+        )
+        self.client.force_login(self.leader)
+        r = self.client.post(
+            self._list_url(),
+            {
+                "direction": RetreatPickup.Direction.ARRIVAL,
+                "name": "불참자",
+                "train_time": "2026-08-01T10:00",
+                "boarding_place": "역",
+                "contact": "010-1234-5678",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("name", r.data)
+
+    def test_arrival_rejects_checked_in_attendee(self):
+        self._attendee(
+            self.group,
+            "입실자",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+        )
+        self.client.force_login(self.council)
+        r = self.client.post(
+            self._list_url(),
+            {
+                "direction": RetreatPickup.Direction.ARRIVAL,
+                "name": "입실자",
+                "group": self.group.id,
+                "train_time": "2026-08-01T10:00",
+                "boarding_place": "역",
+                "contact": "010-1234-5678",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("name", r.data)
+
+    def test_departure_rejects_pending_attendee(self):
+        self._attendee(self.group, "입실전")
+        self.client.force_login(self.council)
+        r = self.client.post(
+            self._list_url(),
+            {
+                "direction": RetreatPickup.Direction.DEPARTURE,
+                "name": "입실전",
+                "group": self.group.id,
+                "train_time": "2026-08-01T10:00",
+                "boarding_place": "역",
+                "contact": "010-1234-5678",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("name", r.data)
+
+    def test_departure_accepts_checked_in_attendee(self):
+        self._attendee(
+            self.group,
+            "출회대상",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+        )
+        self.client.force_login(self.council)
+        r = self.client.post(
+            self._list_url(),
+            {
+                "direction": RetreatPickup.Direction.DEPARTURE,
+                "name": "출회대상",
+                "group": self.group.id,
+                "train_time": "2026-08-01T10:00",
+                "boarding_place": "역",
+                "contact": "010-1234-5678",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
 
     def test_leader_cannot_delete_other_group_pickup(self):
         pickup = RetreatPickup.objects.create(
@@ -417,6 +553,7 @@ class PickupApiTests(_PickupFixture):
 
     def test_leader_region_division_forced_from_group(self):
         """조장이 다른 지역·부서를 보내도 본인 조의 지역·부서로 저장된다."""
+        self._attendee(self.group, "지역강제")
         other_div = Division.objects.create(
             region=self.seoul, code="pickup_other", name="기타부"
         )
@@ -439,6 +576,7 @@ class PickupApiTests(_PickupFixture):
         self.assertEqual(r.data["division"], self.group.division_id)
 
     def test_invalid_phone_rejected(self):
+        self._attendee(self.group, "잘못된번호")
         self.client.force_login(self.council)
         r = self.client.post(
             self._list_url(),
@@ -455,6 +593,7 @@ class PickupApiTests(_PickupFixture):
         self.assertIn("contact", r.data)
 
     def test_phone_is_normalized(self):
+        self._attendee(self.group, "정규화")
         self.client.force_login(self.council)
         r = self.client.post(
             self._list_url(),
@@ -471,6 +610,8 @@ class PickupApiTests(_PickupFixture):
         self.assertEqual(r.data["contact"], "010-1234-5678")
 
     def test_leader_can_edit_own_pickup(self):
+        self._attendee(self.group, "수정전")
+        self._attendee(self.group, "수정후")
         pickup = RetreatPickup.objects.create(
             event=self.event,
             direction=RetreatPickup.Direction.ARRIVAL,
@@ -535,6 +676,8 @@ class PickupApiTests(_PickupFixture):
         self.assertEqual(pickup.name, "남의조")
 
     def test_council_can_edit_group(self):
+        self._attendee(self.group, "조변경")
+        self._attendee(self.group2, "조변경")
         pickup = RetreatPickup.objects.create(
             event=self.event,
             direction=RetreatPickup.Direction.ARRIVAL,

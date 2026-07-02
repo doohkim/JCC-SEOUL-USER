@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>픽업 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260619a" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260701a" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -74,11 +74,21 @@
                   <tr>
                     <th class="num">No.</th>
                     <th>구분</th>
+                    {% if active_pickup_tab == 'all' %}
+                    <th class="jcc-retreat-sortable" data-sort-key="name" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">이름</span></th>
+                    <th class="jcc-retreat-pickupStatusCol jcc-retreat-sortable" data-sort-key="status" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">상태</span></th>
+                    {% else %}
                     <th>이름</th>
                     <th class="jcc-retreat-pickupStatusCol">상태</th>
+                    {% endif %}
                     <th class="jcc-retreat-pickupContactCol">연락처</th>
+                    {% if active_pickup_tab == 'all' %}
+                    <th class="jcc-retreat-sortable" data-sort-key="train_time" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">열차 시각</span></th>
+                    <th class="jcc-retreat-sortable" data-sort-key="boarding_place" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">탑승장소</span></th>
+                    {% else %}
                     <th>열차 시각</th>
                     <th>탑승장소</th>
+                    {% endif %}
                     {% if can_manage_pickup %}<th class="jcc-retreat-pickupManageCol">ACTION</th>{% endif %}
                   </tr>
                 </thead>
@@ -180,8 +190,10 @@
               </div>
               {% else %}
               <div class="field">
-                <label for="pickupName">이름 *</label>
-                <input type="text" id="pickupName" name="name" required maxlength="60" autocomplete="off" />
+                <label for="pickupName">조원 *</label>
+                <select id="pickupName" name="name" required autocomplete="off" data-cselect data-member-select data-leader-member-select>
+                  <option value="">선택</option>
+                </select>
               </div>
               {% endif %}
               <div class="field">
@@ -270,6 +282,7 @@
         canManage: {{ can_manage_pickup|yesno:"true,false" }},
         canManageLocation: {{ can_manage_pickup_location|yesno:"true,false" }},
         canSelectGroup: {{ can_select_pickup_group|yesno:"true,false" }},
+        leaderGroupId: {% if leader_group_id %}{{ leader_group_id }}{% else %}null{% endif %},
         apiList: "{% url 'api_retreat_event_pickups' event.id %}",
         apiDetailBase: "/api/v1/retreat/pickups/",
         apiLocationList: "{% url 'api_retreat_event_pickup_locations' event.id %}",
@@ -280,6 +293,6 @@
     <script src="{% static 'retreat/datetime_picker.js' %}?v=20260619a" defer></script>
     <script src="{% static 'retreat/date_filter.js' %}?v=20260615a" defer></script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/pickup.js' %}?v=20260622a" defer></script>
+    <script src="{% static 'retreat/pickup.js' %}?v=20260701b" defer></script>
   </body>
 </html>

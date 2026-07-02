@@ -64,7 +64,7 @@ class SnapshotAttendeeApiTests(TestCase):
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
         cls.other_event = RetreatEvent.objects.create(

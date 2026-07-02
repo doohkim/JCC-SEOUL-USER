@@ -35,9 +35,9 @@ def is_expected_check_out_locked(attendee, user, group) -> bool:
         return True
     if getattr(user, "is_superuser", False):
         return False
-    from users.permissions import is_retreat_council
+    from users.permissions import can_change_retreat_check_in
 
-    if group and is_retreat_council(user, group.event):
+    if group and can_change_retreat_check_in(user, group.event):
         return False
     return True
 

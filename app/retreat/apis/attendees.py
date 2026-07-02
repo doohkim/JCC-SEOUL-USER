@@ -18,6 +18,7 @@ from retreat.apis._common import (
     assert_can_change_check_in_status,
     assert_can_delete_attendee,
     assert_can_edit_attendee_details,
+    assert_can_link_attendee_user,
     assert_check_in_status_transition,
     get_group_or_403,
     profile_locked_patch_keys_for,
@@ -32,7 +33,7 @@ from retreat.services.group_sync import (
     remove_membership_for_attendee,
     sync_membership_from_attendee,
 )
-from users.permissions import can_change_retreat_check_in
+from users.permissions import can_change_retreat_check_in, can_link_attendee_user
 from retreat.models import RetreatAttendee, RetreatChangeLog, RetreatGroup
 from retreat.serializers import RetreatAttendeeSerializer
 from retreat.services.audit import log_retreat_change, serialize_model_fields
@@ -67,7 +68,7 @@ _ATTENDEE_FIELDS = [
 
 
 def _sanitize_attendee_payload(user, group: RetreatGroup, data):
-    """권한 없는 입·퇴실 관련 키는 제거한다."""
+    """권한 없는 키는 제거한다."""
     payload = deepcopy(dict(data))
     if not can_change_retreat_check_in(user, group.event):
         payload.pop("check_in_status", None)
@@ -76,6 +77,8 @@ def _sanitize_attendee_payload(user, group: RetreatGroup, data):
     elif not user_can_edit_attendee_timestamps(user, group):
         payload.pop("checked_in_at", None)
         payload.pop("checked_out_at", None)
+    if not can_link_attendee_user(user, group.event):
+        payload.pop("user", None)
     return payload
 
 
@@ -183,6 +186,8 @@ class RetreatAttendeeDetailView(APIView):
         raw_keys = set(request.data.keys())
         if raw_keys & _CHECK_IN_STATUS_KEYS:
             assert_can_change_check_in_status(request.user, group)
+        if "user" in raw_keys:
+            assert_can_link_attendee_user(request.user, group)
         payload = _sanitize_attendee_payload(request.user, group, request.data)
         keys = set(payload.keys())
         detail_keys = keys & _ATTENDEE_DETAIL_PATCH_KEYS

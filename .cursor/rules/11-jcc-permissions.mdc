@@ -14,30 +14,68 @@ alwaysApply: false
 권한·노출·조회 범위·버튼 표시·API 접근·탭 노출이 **조금이라도** 관련되면, **구현 전 Plan 모드**에서 유저 타입별 권한을 **전체 매트릭스**로 질문한다.
 
 질문에 반드시 포함할 유저 타입:
-1. 슈퍼유저(`is_superuser`) 2. 플랫폼 관리자(`is_staff`)
-3. 목사/전도사(`pastor`/`evangelist`) 4. 회장/부회장/총무
-5. 팀장/셀장 6. 팀원/일반 7. 수련회 회장단(`RetreatCouncilMembership`)
-8. 조장/부조장(`RetreatGroupMembership`) 9. 비로그인/비활성
+1. 슈퍼유저(`is_superuser`) — `event_admin`과 동일 + **퇴실 조원 삭제**
+2. 플랫폼 관리자(`is_staff`, 수련회 역할 없음)
+3. 집회 운영진 8역할 (`RetreatCouncilMembership.Role`)
+   - `event_admin`, `event_observer`
+   - `region_admin`, `region_observer` (담당 `region` FK)
+   - `division_admin`, `division_observer` (담당 `division` FK)
+   - `pickup_observer` (픽업 탭만 VIEW, 대시보드 NONE)
+4. 조장/부조장 (`RetreatGroupMembership`) — 운영진 cap과 **합집합**
+5. 팀장/셀장 · 팀원/일반 (출석·교적 범위)
+6. 비로그인/비활성
+
+**제거·주의**: 목사/전도사는 **수련회 자동 접근 없음**. 부서 회장/부회장/총무(`RoleLevel`)만으로는 수련회 admin·운영진 API 불가.
 
 각 타입별로 **조회 가능 범위**와 **변경(쓰기) 가능 여부**를 구분해 확인한다.
 
-## 유저 타입 × 동작 (출처: `app/users/permissions.py`)
+## 수련회 단일 진실
 
-- **슈퍼유저**: 전부.
-- **플랫폼 관리자(`is_staff`)**: 출석 broad, 주차/계정 관리, 부서=소속(UDT).
-- **목사/전도사**: 교적(`can_access_member_registry`, 부서=`registry_divisions_for`), 출석 대시보드=목회담당, 탭출석부 broad, 상담관리, 수련회 전체보기/마감조회. **수련회 변경권은 회장단 명단만.**
-- **회장/부회장/총무**: 탭출석부 broad(부서 전체 팀).
-- **팀장/셀장**: 탭출석부 본인 팀만, 출석 대시보드 주소속 1개.
+- **Capability 정책**: `app/retreat/services/staff_capabilities.py` — `RetreatCapabilities`, `ROLE_POLICIES`, `effective_capabilities`, `visible_groups_qs`
+- **얇은 래퍼**: `app/users/permissions.py` — `can_access_retreat_page`, `can_manage_retreat_pickup`, `can_link_attendee_user` 등
+- **조장/부조장**: `RetreatGroupMembership` + `_leader_caps()`가 운영진 membership cap과 merge
+
+## superuser 요약 매트릭스 (탭별)
+
+| 영역 | VIEW | MUTATE | 비고 |
+|------|------|--------|------|
+| 대시보드 | ✓ | — | 전체 조 |
+| 조(그룹) | ✓ | ✓ | 조 추가·수정·조원 CRUD |
+| 픽업 | ✓ (overview/arrival/departure) | ✓ | 전체 조, 입회=`pending`·출회=`checked_in`만 API 허용 |
+| 숙소·명단 | ✓ | ✓ | 호실 CRUD, roster 배정 |
+| 관리(admin) | ✓ | ✓ | 출석부·집회 운영진·타임테이블·changelog |
+| 조원 삭제 | — | ✓ | **퇴실(`checked_out`) 포함** — `event_admin`과 유일한 차이 |
+
+차석여부 UI/API 필드: `participation_status` (참석/불참).
+
+## 유저 타입 × 동작 (출처: `app/users/permissions.py` + `staff_capabilities.py`)
+
+- **슈퍼유저**: 수련회 전체 `_superuser_caps()` = `_event_admin_caps()` + `delete_checked_out_attendee=True`.
+- **플랫폼 관리자(`is_staff`)**: 출석 broad, 주차/계정 관리, 부서=소속(UDT). 수련회는 별도 역할 없으면 일반과 동일.
+- **목사/전도사**: 교적(`can_access_member_registry`), 출석·상담 broad. **수련회 탭/변경권 없음** (운영진 명단 필요).
+- **집회 전체 관리자(`event_admin`)**: 집회 전체 VIEW/MUTATE, 퇴실 조원 삭제 **불가**.
+- **집회 전체 관찰자(`event_observer`)**: 전체 VIEW, 쓰기 없음 (changelog VIEW).
+- **지역/부서 관리·관찰자**: 담당 scope 내 조·픽업·조원 프로필 (사용자 연동은 admin만).
+- **픽업 관찰자(`pickup_observer`)**: 픽업 탭 VIEW만.
+- **조장/부조장**: 본인 조 dashboard/groups VIEW, 픽업 MUTATE(본인 조 자동), 조원 추가·프로필·삭제(퇴실 전).
+- **팀장/셀장**: 탭출석부 broad(부서 전체 팀).
 - **팀원/일반**: 주소속 1개 조회만.
-- **수련회 회장단(event)**: 조 생성/세션 관리/체크인 변경/픽업 조 선택/전체 조.
-- **조장/부조장(group)**: 픽업(본인 조 자동)/본인 조 운영진/본인 조만/진행중 세션만.
 
 ## 함수 색인
 
 - 출석: `visible_divisions_for`, `dashboard_divisions_for`
 - 드롭다운: `membership_divisions_for`, `visible_teams_for`
 - 교적: `IsPastoralRegistryStaff`, `registry_divisions_for`
-- 수련회: `is_retreat_council`, `can_manage_retreat_pickup`, `visible_retreat_groups_for`, `can_change_retreat_check_in`
+- 수련회 cap: `effective_capabilities`, `pickup_tab_access_level`, `visible_groups_qs`
+- 수련회 페이지: `can_access_retreat_page`, `can_access_retreat_tab`, `can_view_retreat_all`
+- 수련회 조원: `can_link_attendee_user`, `can_change_retreat_check_in`, `can_delete_checked_out_attendee`, `user_can_delete_attendee`
+- 수련회 픽업: `can_manage_retreat_pickup`, `can_select_pickup_group`, `pickup_name_eligibility_error`
+- 수련회 운영진: `can_view_staff`, `can_manage_staff`
 - 상담: `can_access_counseling_manage_tab`, `IsCounselingParticipant`
+
+## 테스트 참조
+
+- `retreat.tests.test_superuser_retreat_matrix` — superuser API·페이지 매트릭스
+- `retreat.tests.test_staff_capabilities` — 역할별 RBAC·event_admin vs superuser 삭제
 
 여기서는 **매트릭스 + 함수 색인**만 다룹니다.

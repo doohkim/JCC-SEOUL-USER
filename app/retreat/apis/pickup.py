@@ -24,25 +24,46 @@ from retreat.models import (
 )
 from retreat.serializers import RetreatPickupSerializer
 from retreat.services.audit import log_retreat_change
+from retreat.services.pickup_attendee import (
+    pickup_name_eligibility_error,
+    pickup_name_on_roster,
+)
 from users.models import Division, Region
+from retreat.services.staff_capabilities import (
+    AccessLevel,
+    effective_capabilities,
+    pickup_tab_access_level,
+)
 from users.permissions import (
     can_access_retreat_tab,
-    can_manage_retreat_pickup,
     can_select_pickup_group,
     retreat_pickup_group_ids_for,
     retreat_pickup_visible_group_ids_for,
 )
 
 
-def _assert_can_view(user, event: RetreatEvent) -> None:
+def _pickup_tab_for_direction(direction: str) -> str:
+    if direction == RetreatPickup.Direction.ARRIVAL:
+        return "arrival"
+    if direction == RetreatPickup.Direction.DEPARTURE:
+        return "departure"
+    return "overview"
+
+
+def _assert_can_view_pickup(user, event: RetreatEvent) -> None:
     if not can_access_retreat_tab(user):
         raise PermissionDenied("수련회 화면 접근 권한이 없습니다.")
+    caps = effective_capabilities(user, event)
+    if caps.pickup < AccessLevel.VIEW:
+        raise PermissionDenied("픽업 화면 접근 권한이 없습니다.")
 
 
-def _assert_can_manage(user, event: RetreatEvent) -> None:
-    _assert_can_view(user, event)
-    if not can_manage_retreat_pickup(user, event):
-        raise PermissionDenied("픽업 정보 추가·삭제 권한이 없습니다.")
+def _assert_can_mutate_pickup(user, event: RetreatEvent, direction: str) -> None:
+    _assert_can_view_pickup(user, event)
+    caps = effective_capabilities(user, event)
+    tab = _pickup_tab_for_direction(direction)
+    if pickup_tab_access_level(caps, tab) < AccessLevel.MUTATE:
+        raise PermissionDenied("픽업 정보 추가·수정·삭제 권한이 없습니다.")
 
 
 def _pickup_duplicate_exists(
@@ -129,7 +150,7 @@ class RetreatEventPickupListCreateView(APIView):
 
     def get(self, request, event_id: int):
         event = get_object_or_404(RetreatEvent, pk=event_id)
-        _assert_can_view(request.user, event)
+        _assert_can_view_pickup(request.user, event)
         direction = _parse_direction(request.query_params.get("direction"))
         qs = (
             event.pickups.filter(direction=direction)
@@ -147,9 +168,9 @@ class RetreatEventPickupListCreateView(APIView):
 
     def post(self, request, event_id: int):
         event = get_object_or_404(RetreatEvent, pk=event_id)
-        _assert_can_manage(request.user, event)
-
         direction = _parse_direction(request.data.get("direction"))
+        _assert_can_mutate_pickup(request.user, event, direction)
+
         name = (request.data.get("name") or "").strip()
         raw_train_time = (request.data.get("train_time") or "").strip()
         boarding_place = (request.data.get("boarding_place") or "").strip()
@@ -223,6 +244,14 @@ class RetreatEventPickupListCreateView(APIView):
             raise ValidationError(errors)
         contact = contact_norm
 
+        if group is not None and not pickup_name_on_roster(group, name):
+            raise ValidationError(
+                {"name": "조원 명단에 있는 이름만 차량 요청할 수 있습니다."}
+            )
+        elig_err = pickup_name_eligibility_error(group, name, direction)
+        if elig_err:
+            raise ValidationError({"name": elig_err})
+
         place_err = _validate_boarding_place(event, boarding_place)
         if place_err:
             errors["boarding_place"] = place_err
@@ -293,7 +322,7 @@ class RetreatPickupDetailView(APIView):
             pk=pickup_id,
         )
         event = pickup.event
-        _assert_can_manage(request.user, event)
+        _assert_can_mutate_pickup(request.user, event, pickup.direction)
         can_select = can_select_pickup_group(request.user, event)
         # 조장/부조장은 본인 조의 픽업만 수정 가능
         if not can_select:
@@ -396,6 +425,17 @@ class RetreatPickupDetailView(APIView):
         if errors:
             raise ValidationError(errors)
         if update_fields:
+            if pickup.group is not None and not pickup_name_on_roster(
+                pickup.group, pickup.name
+            ):
+                raise ValidationError(
+                    {"name": "조원 명단에 있는 이름만 차량 요청할 수 있습니다."}
+                )
+            elig_err = pickup_name_eligibility_error(
+                pickup.group, pickup.name, pickup.direction
+            )
+            if elig_err:
+                raise ValidationError({"name": elig_err})
             if _pickup_duplicate_exists(
                 event,
                 pickup.direction,
@@ -438,7 +478,7 @@ class RetreatPickupDetailView(APIView):
             RetreatPickup.objects.select_related("event"),
             pk=pickup_id,
         )
-        _assert_can_manage(request.user, pickup.event)
+        _assert_can_mutate_pickup(request.user, pickup.event, pickup.direction)
         # 조장/부조장은 본인 조의 픽업만 삭제 가능
         if not can_select_pickup_group(request.user, pickup.event):
             group_ids = retreat_pickup_group_ids_for(request.user, pickup.event)

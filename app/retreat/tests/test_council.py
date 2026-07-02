@@ -60,7 +60,7 @@ class _CouncilFixture:
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
         cls.leader = User.objects.create_user(username="cl_leader", password="x")
@@ -111,7 +111,7 @@ class CouncilManagementApiTests(APITestCase, _CouncilFixture):
         url = reverse("api_retreat_event_council", args=[self.event.id])
         r = self.client.post(
             url,
-            {"username": self.extra.username, "role": "member"},
+            {"username": self.extra.username, "role": "event_admin"},
             format="json",
         )
         self.assertEqual(r.status_code, 201)

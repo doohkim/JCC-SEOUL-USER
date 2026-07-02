@@ -12,11 +12,11 @@ from rest_framework.views import APIView
 from retreat.models import RetreatChangeLog, RetreatEvent, RetreatTimetableEntry
 from retreat.serializers import RetreatTimetableEntrySerializer
 from retreat.services.audit import log_retreat_change
+from retreat.services.staff_capabilities import AccessLevel, effective_capabilities
 from users.permissions import (
     can_access_retreat_tab,
-    is_retreat_council,
-    is_retreat_staff,
 )
+
 
 def _log_payload(entry: RetreatTimetableEntry) -> dict:
     return {
@@ -37,18 +37,15 @@ def _assert_event_access(user) -> None:
 
 def _assert_can_view(user, event: RetreatEvent) -> None:
     _assert_event_access(user)
-    if not (
-        user.is_superuser
-        or is_retreat_council(user, event)
-        or is_retreat_staff(user, event)
-    ):
+    caps = effective_capabilities(user, event)
+    if not (user.is_superuser or caps.admin >= AccessLevel.VIEW):
         raise PermissionDenied("타임테이블 조회 권한이 없습니다.")
 
 
 def _assert_can_manage(user, event: RetreatEvent) -> None:
     _assert_event_access(user)
-    if not is_retreat_council(user, event):
-        raise PermissionDenied("타임테이블 편집은 회장단(또는 슈퍼유저)만 가능합니다.")
+    if not effective_capabilities(user, event).manage_timetable:
+        raise PermissionDenied("타임테이블 편집은 집회 전체 관리자만 가능합니다.")
 
 
 class RetreatEventTimetableListCreateView(APIView):

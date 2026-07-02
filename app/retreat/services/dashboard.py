@@ -48,12 +48,10 @@ def _group_queryset(event: RetreatEvent, user, *, restrict_to_user_groups: bool)
 
 
 def _is_event_wide_for_user(user, event: RetreatEvent) -> bool:
-    """집회 전체 조 집계·보기 — 슈퍼유저·해당 집회 회장단."""
-    if user.is_superuser:
-        return True
-    from users.permissions import is_retreat_council
+    """집회 전체 조 집계·보기 — 슈퍼유저·집회 전체 범위 운영진."""
+    from users.permissions import can_view_retreat_all
 
-    return is_retreat_council(user, event)
+    return can_view_retreat_all(user, event)
 
 
 def _event_group_ids(event: RetreatEvent) -> list[int]:

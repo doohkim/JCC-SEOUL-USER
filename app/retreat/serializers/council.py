@@ -10,7 +10,13 @@ User = get_user_model()
 
 class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source="user.username", read_only=True)
+    user_display_name = serializers.SerializerMethodField()
     role_display = serializers.CharField(source="get_role_display", read_only=True)
+    scope_label = serializers.CharField(read_only=True)
+    region_name = serializers.CharField(source="region.name", read_only=True, default="")
+    division_name = serializers.CharField(
+        source="division.name", read_only=True, default=""
+    )
 
     class Meta:
         model = RetreatCouncilMembership
@@ -18,8 +24,46 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
             "id",
             "user",
             "user_username",
+            "user_display_name",
             "role",
             "role_display",
+            "region",
+            "division",
+            "region_name",
+            "division_name",
+            "scope_label",
             "note",
             "created_at",
         ]
+        read_only_fields = ["scope_label", "region_name", "division_name"]
+
+    def get_user_display_name(self, obj: RetreatCouncilMembership) -> str:
+        profile = getattr(obj.user, "profile", None)
+        if profile and getattr(profile, "real_name", ""):
+            return profile.real_name
+        return obj.user.username
+
+    def validate(self, attrs):
+        role = attrs.get("role") or getattr(self.instance, "role", None)
+        region = attrs.get("region", getattr(self.instance, "region", None))
+        division = attrs.get("division", getattr(self.instance, "division", None))
+        if role in RetreatCouncilMembership.EVENT_WIDE_ROLES:
+            if region or division:
+                raise serializers.ValidationError(
+                    "집회 전체·픽업 관찰 역할에는 담당 범위를 지정할 수 없습니다."
+                )
+        elif role in RetreatCouncilMembership.REGION_SCOPED_ROLES:
+            if not region:
+                raise serializers.ValidationError(
+                    {"region": "지역 역할에는 담당 지역이 필요합니다."}
+                )
+            if division:
+                raise serializers.ValidationError(
+                    {"division": "지역 역할에는 부서를 지정할 수 없습니다."}
+                )
+        elif role in RetreatCouncilMembership.DIVISION_SCOPED_ROLES:
+            if not division:
+                raise serializers.ValidationError(
+                    {"division": "부서 역할에는 담당 부서가 필요합니다."}
+                )
+        return attrs

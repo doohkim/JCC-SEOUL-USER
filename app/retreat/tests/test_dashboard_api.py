@@ -686,7 +686,7 @@ class RetreatDashboardApiTests(APITestCase):
 
 
 class RetreatDashboardPastoralScopeTests(APITestCase):
-    """목사·전도사: 담당 지역·부서 조만 대시보드에 집계."""
+    """부서 관리자: 담당 부서 조만 대시보드에 집계."""
 
     @classmethod
     def setUpTestData(cls):
@@ -698,7 +698,7 @@ class RetreatDashboardPastoralScopeTests(APITestCase):
             region=cls.seoul, code="dash_past_univ", name="대학부"
         )
         cls.event = RetreatEvent.objects.create(
-            name="목회 담당 집계",
+            name="부서 관리자 집계",
             start_date=date(2026, 6, 1),
             end_date=date(2026, 6, 2),
         )
@@ -714,21 +714,20 @@ class RetreatDashboardPastoralScopeTests(APITestCase):
             division=cls.div_univ,
             name="대학1조",
         )
-        cls.rl_pastor, _ = RoleLevel.objects.get_or_create(
-            code="pastor",
-            defaults={"name": "목사", "level": 80, "sort_order": 10},
+        cls.division_admin = User.objects.create_user(
+            username="dash_div_admin", password="x"
         )
-        cls.pastor = User.objects.create_user(username="dash_pastor", password="x")
-        cls.pastor.role_level = cls.rl_pastor
-        cls.pastor.save()
-        PastoralDivisionAssignment.objects.create(
-            user=cls.pastor, division=cls.div_youth, is_primary=True
+        RetreatCouncilMembership.objects.create(
+            event=cls.event,
+            user=cls.division_admin,
+            role=RetreatCouncilMembership.Role.DIVISION_ADMIN,
+            division=cls.div_youth,
         )
 
     def setUp(self):
         self.client = APIClient()
 
-    def test_pastor_dashboard_summary_scoped_to_assigned_division(self):
+    def test_division_admin_dashboard_summary_scoped_to_assigned_division(self):
         now = timezone.now()
         RetreatAttendee.objects.create(
             group=self.group_youth,
@@ -764,7 +763,7 @@ class RetreatDashboardPastoralScopeTests(APITestCase):
             boarding_place="역",
             contact="010",
         )
-        self.client.force_authenticate(self.pastor)
+        self.client.force_authenticate(self.division_admin)
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])
         data = self.client.get(url).json()
         self.assertEqual(len(data["by_group"]), 1)
@@ -772,8 +771,8 @@ class RetreatDashboardPastoralScopeTests(APITestCase):
         self.assertEqual(data["summary"]["lodging_unassigned"], 1)
         self.assertEqual(data["summary"]["car_today"], 1)
 
-    def test_pastor_group_board_excludes_other_division(self):
-        self.client.force_authenticate(self.pastor)
+    def test_division_admin_group_board_excludes_other_division(self):
+        self.client.force_authenticate(self.division_admin)
         url = reverse("api_retreat_event_group_board", args=[self.event.id])
         data = self.client.get(url).json()
         group_ids = {g["group_id"] for g in data["groups"]}

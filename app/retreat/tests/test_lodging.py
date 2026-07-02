@@ -95,7 +95,7 @@ class _LodgingFixture(TestCase):
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.staff,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
         cls.outsider = User.objects.create_user(
@@ -537,9 +537,14 @@ class LodgingAssignRedirectTests(_LodgingFixture):
         self.assertNotContains(r, "지역·부서별")
         self.assertNotContains(r, "방배정")
         self.assertContains(r, 'id="lodgingManageFilterBar"')
+        self.assertContains(r, ">정원</span>")
+        self.assertContains(r, 'data-lodging-filter="vacancy"')
         self.assertContains(r, "잔여 객실")
+        self.assertContains(r, 'data-lodging-filter="full"')
+        self.assertContains(r, ">만실</button>")
         self.assertContains(r, 'data-lodging-filter-preset="vacancy"')
         self.assertContains(r, 'id="lodgingVacancyFilterEmpty"')
+        self.assertContains(r, "선택한 조건에 맞는 객실이 없습니다.")
         self.assertContains(r, "lodging_manage_filter.js")
 
     def test_leader_blocked_from_lodging_page(self):

@@ -1,5 +1,5 @@
 /**
- * 숙소·호수 관리 — 잔여 객실만 필터 (요약 바 + 칩 토글)
+ * 숙소·객실 관리 — 정원 상태 필터 (잔여 객실 / 만실, 상호 배타)
  */
 (function () {
   "use strict";
@@ -17,12 +17,14 @@
   const resetBtn = document.getElementById("lodgingManageFilterReset");
   const emptyMsg = document.getElementById("lodgingVacancyFilterEmpty");
   const vacancyChip = filterBar?.querySelector('[data-lodging-filter="vacancy"]');
+  const fullChip = filterBar?.querySelector('[data-lodging-filter="full"]');
   const summaryVacancyBtn = document.getElementById("lodgingSummaryVacancy");
   const lodgingCards = Array.from(
     document.querySelectorAll(".jcc-retreat-lodgingCard")
   );
 
-  let vacancyOnly = false;
+  /** @type {"all" | "vacancy" | "full"} */
+  let filterMode = "all";
 
   function loadStored() {
     try {
@@ -38,30 +40,39 @@
     try {
       sessionStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ vacancy: vacancyOnly })
+        JSON.stringify({ mode: filterMode })
       );
     } catch (e) {}
   }
 
   function syncUrl() {
     const params = new URLSearchParams(location.search);
-    if (vacancyOnly) params.set("vacancy", "1");
-    else params.delete("vacancy");
+    params.delete("vacancy");
+    params.delete("full");
+    if (filterMode === "vacancy") params.set("vacancy", "1");
+    else if (filterMode === "full") params.set("full", "1");
     const qs = params.toString();
     const next = qs ? `${location.pathname}?${qs}` : location.pathname;
     window.history.replaceState(null, "", next);
   }
 
-  function setActiveUI(active) {
-    if (vacancyChip) {
-      vacancyChip.classList.toggle("is-active", active);
-      vacancyChip.setAttribute("aria-pressed", active ? "true" : "false");
-    }
+  function setChipState(chip, active) {
+    if (!chip) return;
+    chip.classList.toggle("is-active", active);
+    chip.setAttribute("aria-pressed", active ? "true" : "false");
+  }
+
+  function setActiveUI() {
+    setChipState(vacancyChip, filterMode === "vacancy");
+    setChipState(fullChip, filterMode === "full");
     if (summaryVacancyBtn) {
-      summaryVacancyBtn.classList.toggle("is-active", active);
-      summaryVacancyBtn.setAttribute("aria-pressed", active ? "true" : "false");
+      summaryVacancyBtn.classList.toggle("is-active", filterMode === "vacancy");
+      summaryVacancyBtn.setAttribute(
+        "aria-pressed",
+        filterMode === "vacancy" ? "true" : "false"
+      );
     }
-    if (resetBtn) resetBtn.disabled = !active;
+    if (resetBtn) resetBtn.disabled = filterMode === "all";
   }
 
   function cardVisibleRoomCount(card) {
@@ -70,10 +81,16 @@
     ).length;
   }
 
+  function rowMatchesFilter(row) {
+    const hasVacancy = row.dataset.roomHasVacancy === "1";
+    if (filterMode === "vacancy") return hasVacancy;
+    if (filterMode === "full") return !hasVacancy;
+    return true;
+  }
+
   function applyFilter() {
     roomRows.forEach((row) => {
-      const hasVacancy = row.dataset.roomHasVacancy === "1";
-      row.hidden = vacancyOnly && !hasVacancy;
+      row.hidden = !rowMatchesFilter(row);
     });
 
     lodgingCards.forEach((card) => {
@@ -86,37 +103,41 @@
         card.hidden = false;
         return;
       }
-      card.hidden = vacancyOnly && cardVisibleRoomCount(card) === 0;
+      card.hidden = filterMode !== "all" && cardVisibleRoomCount(card) === 0;
     });
 
     const visibleRooms = roomRows.filter((row) => !row.hidden).length;
     if (emptyMsg) {
-      emptyMsg.hidden = !vacancyOnly || visibleRooms > 0;
+      emptyMsg.hidden = filterMode === "all" || visibleRooms > 0;
     }
 
-    setActiveUI(vacancyOnly);
+    setActiveUI();
     persist();
     syncUrl();
   }
 
-  function setVacancyOnly(next) {
-    vacancyOnly = !!next;
+  function setFilterMode(next) {
+    filterMode = next === "vacancy" || next === "full" ? next : "all";
     applyFilter();
   }
 
-  function toggleVacancy() {
-    setVacancyOnly(!vacancyOnly);
+  function toggleFilter(mode) {
+    if (filterMode === mode) setFilterMode("all");
+    else setFilterMode(mode);
   }
 
   function clearFilter() {
-    setVacancyOnly(false);
+    setFilterMode("all");
   }
 
   if (vacancyChip) {
-    vacancyChip.addEventListener("click", toggleVacancy);
+    vacancyChip.addEventListener("click", () => toggleFilter("vacancy"));
+  }
+  if (fullChip) {
+    fullChip.addEventListener("click", () => toggleFilter("full"));
   }
   if (summaryVacancyBtn) {
-    summaryVacancyBtn.addEventListener("click", toggleVacancy);
+    summaryVacancyBtn.addEventListener("click", () => toggleFilter("vacancy"));
   }
   if (resetBtn) {
     resetBtn.addEventListener("click", clearFilter);
@@ -125,9 +146,19 @@
   function initFromUrlOrStorage() {
     const params = new URLSearchParams(location.search);
     const stored = loadStored();
-    const vacancyParam = params.get("vacancy") || (stored && stored.vacancy);
-    vacancyOnly =
-      vacancyParam === "1" || vacancyParam === true || vacancyParam === "true";
+    if (params.get("full") === "1") {
+      filterMode = "full";
+    } else if (
+      params.get("vacancy") === "1" ||
+      (stored && stored.mode === "vacancy") ||
+      (stored && stored.vacancy === true)
+    ) {
+      filterMode = "vacancy";
+    } else if (stored && stored.mode === "full") {
+      filterMode = "full";
+    } else {
+      filterMode = "all";
+    }
     applyFilter();
   }
 

@@ -39,7 +39,7 @@
         <main>
           <div class="jcc-retreat-subTabsRow">
             {% include 'includes/retreat_event_picker.html' with retreat_tab='manage_groups' %}
-            {% if can_edit_attendee %}
+            {% if can_add_attendee %}
               <button type="button" class="jcc-retreat-addGroupBtn jcc-retreat-addMemberBtn" id="btnAddAttendee" aria-label="조원 추가">
                 <svg class="jcc-retreat-addGroupBtn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -75,7 +75,7 @@
                     <th class="jcc-retreat-attCol-expected jcc-retreat-sortable" data-sort-key="expected_in" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">입실 시각</span></th>
                     <th class="jcc-retreat-attCol-expected jcc-retreat-sortable" data-sort-key="expected_out" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">퇴실 시각</span></th>
                     <th class="jcc-retreat-attCol-lodging">숙소</th>
-                    {% if can_edit_attendee %}
+                    {% if can_link_attendee_user %}
                     <th class="jcc-retreat-attCol-user">사용자 연동</th>
                     {% endif %}
                     {% if can_edit_attendee %}
@@ -144,7 +144,7 @@
                         {% endif %}
                       </td>
                       <td class="jcc-retreat-attCol-lodging" data-lodging-cell>{% if a.lodging_stay_status == 'active' %}{{ a.lodging_stay_display }}{% elif a.lodging_stay_display %}<span class="muted">{{ a.lodging_stay_display }}</span>{% else %}<span class="muted">-</span>{% endif %}</td>
-                      {% if can_edit_attendee %}
+                      {% if can_link_attendee_user %}
                       <td class="jcc-retreat-attCol-user" data-user-cell>
                         {% if a.user_id %}
                           <span class="jcc-retreat-roleTag jcc-retreat-roleTag--linked">연동</span>
@@ -222,6 +222,13 @@
               <h2 id="retreatModalTitle" class="jcc-retreat-modalTitle">조원 추가</h2>
               <form id="retreatAttendeeForm" novalidate>
                 <div class="jcc-retreat-modalBody">
+                <div
+                  class="jcc-retreat-modalMissingNotice"
+                  id="retreatAttMissingNotice"
+                  data-modal-missing-notice
+                  role="status"
+                  hidden
+                ></div>
                 <div class="jcc-retreat-modalGrid">
                   {% if can_change_status %}
                     <div class="field jcc-retreat-modalField--full" data-modal-status-only>
@@ -242,12 +249,17 @@
                         {% endfor %}
                       </select>
                     </div>
-                    <div class="field jcc-retreat-userPickerField" data-modal-edit-only>
+                  {% endif %}
+                  {% if can_link_attendee_user %}
+                    <div class="field jcc-retreat-userPickerField" data-modal-edit-only data-modal-user-link>
                       <label for="retreatAttUserInput">사용자 계정 연결 (선택)</label>
-                      <div class="jcc-retreat-userPicker" data-user-picker>
-                        <input type="text" id="retreatAttUserInput" class="jcc-retreat-userPickerInput" placeholder="이름 또는 username 검색" maxlength="150" autocomplete="off" data-user-picker-input data-bwignore data-1p-ignore data-lpignore="true" data-form-type="other">
-                        <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
-                        <input type="hidden" data-user-picker-id>
+                      <div class="jcc-retreat-userPickerRow">
+                        <div class="jcc-retreat-userPicker" data-user-picker>
+                          <input type="text" id="retreatAttUserInput" class="jcc-retreat-userPickerInput" placeholder="이름 또는 username 검색" maxlength="150" autocomplete="off" data-user-picker-input data-bwignore data-1p-ignore data-lpignore="true" data-form-type="other">
+                          <ul class="jcc-retreat-userPickerList" data-user-picker-list hidden role="listbox"></ul>
+                          <input type="hidden" data-user-picker-id>
+                        </div>
+                        <button type="button" class="jcc-retreat-userPickerClear" data-user-picker-clear aria-label="사용자 연동 해제" title="연동 해제">×</button>
                       </div>
                       <small class="muted" data-user-picker-hint>비워두면 계정 연결 없이 추가됩니다.</small>
                     </div>
@@ -327,6 +339,8 @@
         groupDivisionIds: [{{ group.division_id }}{% for s in group.extra_scopes.all %}, {{ s.division_id }}{% endfor %}],
         canChangeStatus: {{ can_change_status|yesno:"true,false" }},
         canEditAttendee: {{ can_edit_attendee|yesno:"true,false" }},
+        canAddAttendee: {{ can_add_attendee|yesno:"true,false" }},
+        canLinkAttendeeUser: {{ can_link_attendee_user|yesno:"true,false" }},
         canDeleteAttendee: {{ can_delete_attendee|yesno:"true,false" }},
         canManageLeaders: {{ can_manage_leaders|yesno:"true,false" }},
         csrfToken: "{{ csrf_token }}",
@@ -352,7 +366,7 @@
     <script src="{% static 'retreat/datetime_picker.js' %}?v=20260619a" defer></script>
     <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
     <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618b" defer></script>
-    <script src="{% static 'retreat/manage_group.js' %}?v=20260629b" defer></script>
+    <script src="{% static 'retreat/manage_group.js' %}?v=20260702a" defer></script>
     <script>
       // 조원 수정 모달은 열릴 때 select 값을 프로그램으로 채우므로, 표시될 때 커스텀 드롭다운 라벨을 다시 동기화한다.
       document.addEventListener("DOMContentLoaded", function () {

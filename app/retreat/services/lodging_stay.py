@@ -93,7 +93,17 @@ def active_lodging_occupant_filter(qs: QuerySet) -> QuerySet:
 def lodging_stay_eligible_filter(qs: QuerySet) -> QuerySet:
     """숙박 대상만."""
     S = RetreatAttendee.LodgingStayStatus
-    return qs.filter(lodging_stay_status__in=(S.ACTIVE, S.UNASSIGNED))
+    P = RetreatAttendee.ParticipationStatus
+    C = RetreatAttendee.CheckInStatus
+    synced = Q(lodging_stay_status__in=(S.ACTIVE, S.UNASSIGNED))
+    computed = Q(
+        lodging_stay_status__isnull=True,
+        participation_status=P.PARTICIPATING,
+    ) & ~Q(check_in_status=C.CHECKED_OUT) & (
+        Q(lodging_room__isnull=False)
+        | Q(expected_check_in_at__isnull=False, lodging_room__isnull=True)
+    )
+    return qs.filter(synced | computed)
 
 
 def count_active_occupants_for_room(room, *, exclude_pk: int | None = None) -> int:

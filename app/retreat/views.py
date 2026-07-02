@@ -32,15 +32,24 @@ from retreat.models import (
     RetreatTimetableEntry,
 )
 from retreat.services.changelog_format import humanize_change_logs
+from retreat.services.staff_capabilities import (
+    AccessLevel,
+    can_access_retreat_page,
+    effective_capabilities,
+)
 from users.permissions import (
     can_access_retreat_tab,
     can_change_retreat_check_in,
+    can_link_attendee_user,
     can_manage_retreat_pickup,
     can_manage_retreat_pickup_location,
     can_manage_retreat_sessions,
+    can_manage_staff,
     can_select_pickup_group,
     can_view_retreat_all,
+    can_view_staff,
     is_retreat_council,
+    is_retreat_event_admin,
     is_retreat_group_leader,
     is_retreat_staff,
     retreat_pickup_group_ids_for,
@@ -102,13 +111,38 @@ def _retreat_dropdown_events(user) -> list[RetreatEvent]:
         if can_view_retreat_all(user, ev):
             result.append(ev)
             continue
+        if user.retreat_council_memberships.filter(event=ev).exists():
+            result.append(ev)
+            continue
         if visible_retreat_groups_for(user, ev).exists():
             result.append(ev)
     return result
 
 
+def _inject_retreat_caps(ctx, user, event) -> None:
+    caps = effective_capabilities(user, event)
+    ctx["retreat_caps"] = caps
+    ctx["can_manage_staff"] = caps.manage_staff
+    ctx["can_view_staff"] = caps.view_staff
+    ctx["can_link_attendee_user"] = caps.link_attendee_user
+    ctx["can_show_dashboard_tab"] = caps.dashboard >= AccessLevel.VIEW
+    ctx["can_show_groups_tab"] = caps.groups >= AccessLevel.VIEW
+    ctx["can_show_pickup_tab"] = caps.pickup >= AccessLevel.VIEW
+    ctx["can_show_lodging_tab"] = can_view_retreat_all(user, event)
+    ctx["can_show_admin_tab"] = caps.admin >= AccessLevel.VIEW
+
+
 class _RetreatEventMixin(_RetreatAccessMixin):
     """집회 컨텍스트 공통."""
+
+    retreat_page: str | None = None
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and self.retreat_page:
+            event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"])
+            if not can_access_retreat_page(request.user, event, self.retreat_page):
+                raise PermissionDenied("이 화면에 접근할 권한이 없습니다.")
+        return super().dispatch(request, *args, **kwargs)
 
     def get_event(self) -> RetreatEvent:
         return get_object_or_404(RetreatEvent, pk=self.kwargs["event_id"])
@@ -119,10 +153,11 @@ class _RetreatEventMixin(_RetreatAccessMixin):
         user = self.request.user
         ctx["event"] = event
         ctx["is_retreat_council"] = bool(
-            user.is_superuser or is_retreat_council(user, event)
+            user.is_superuser or is_retreat_event_admin(user, event)
         )
         ctx["is_retreat_staff"] = is_retreat_staff(user, event)
         ctx["can_view_retreat_all"] = can_view_retreat_all(user, event)
+        _inject_retreat_caps(ctx, user, event)
         ctx["retreat_event_id"] = event.id
         available = _retreat_dropdown_events(user)
         if event not in available:
@@ -179,6 +214,7 @@ class RetreatHomeView(_RetreatAccessMixin, TemplateView):
 
 class RetreatDashboardView(_RetreatEventMixin, TemplateView):
     template_name = "retreat/dashboard.html"
+    retreat_page = "dashboard"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -258,28 +294,36 @@ def _retreat_session_summary(user, event):
 
 
 class RetreatCouncilView(_RetreatEventMixin, TemplateView):
-    """수련회 회장단 명단·관리 페이지."""
+    """집회 운영진 명단·관리 페이지."""
 
     template_name = "retreat/council.html"
+    retreat_page = "admin"
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
             event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"])
-            user = request.user
-            if not is_retreat_staff(user, event):
-                raise PermissionDenied("회장단 페이지 접근 권한이 없습니다.")
+            if not can_view_staff(request.user, event):
+                raise PermissionDenied("집회 운영진 페이지 접근 권한이 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         event = ctx["event"]
+        from users.models import Division, Region
+
         memberships = list(
-            event.council_memberships.select_related("user", "user__profile").order_by(
-                "role", "user__username"
-            )
+            event.council_memberships.select_related(
+                "user", "user__profile", "region", "division"
+            ).order_by("role", "user__username")
         )
         ctx["memberships"] = memberships
         ctx["role_choices"] = RetreatCouncilMembership.Role.choices
+        ctx["region_choices"] = list(Region.objects.order_by("sort_order", "name"))
+        ctx["division_choices"] = list(
+            Division.objects.select_related("region").order_by(
+                "region__sort_order", "sort_order", "name"
+            )
+        )
         ctx["total_sessions"], ctx["overall_rate"] = _retreat_session_summary(
             self.request.user, event
         )
@@ -290,12 +334,13 @@ class RetreatTimetableView(_RetreatEventMixin, TemplateView):
     """수련회 타임테이블(일정표) 조회·관리 페이지."""
 
     template_name = "retreat/timetable.html"
+    retreat_page = "admin"
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
             event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"])
-            user = request.user
-            if not is_retreat_staff(user, event):
+            caps = effective_capabilities(request.user, event)
+            if not (request.user.is_superuser or caps.admin >= AccessLevel.VIEW):
                 raise PermissionDenied("타임테이블 페이지 접근 권한이 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -333,6 +378,7 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
     """수련회 픽업(입회/출회) 정보 수집 페이지."""
 
     template_name = "retreat/pickup.html"
+    retreat_page = "pickup"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -428,9 +474,23 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         ctx["can_manage_pickup"] = can_manage_retreat_pickup(user, event)
         ctx["can_select_pickup_group"] = can_select_group
         # 회장단·슈퍼유저만 조를 직접 선택 (그 외에는 본인 조 자동 지정)
-        ctx["group_choices"] = (
-            list(event.groups.order_by("order", "name")) if can_select_group else []
-        )
+        if can_select_group:
+            group_list = list(event.groups.order_by("order", "name"))
+            leader_group_id = None
+        else:
+            leader_group_ids = list(retreat_pickup_group_ids_for(user, event))
+            group_list = (
+                list(
+                    event.groups.filter(id__in=leader_group_ids).order_by(
+                        "order", "name"
+                    )
+                )
+                if leader_group_ids
+                else []
+            )
+            leader_group_id = leader_group_ids[0] if leader_group_ids else None
+        ctx["group_choices"] = group_list
+        ctx["leader_group_id"] = leader_group_id
         from users.models import Division, Region
 
         ctx["region_choices"] = list(Region.objects.order_by("sort_order", "name"))
@@ -578,6 +638,7 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
     """출석부와 분리된 조·조원(입퇴실) 관리 — 조 목록."""
 
     template_name = "retreat/manage_groups.html"
+    retreat_page = "groups"
 
     def get_context_data(self, **kwargs):
         from users.models import Division, Region
@@ -702,6 +763,7 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
     """단일 조 조원 명단 — 입퇴실 상태·시각 관리 (출석부 없음)."""
 
     template_name = "retreat/manage_group_detail.html"
+    retreat_page = "groups"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -831,8 +893,11 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
             if a.check_in_status == RetreatAttendee.CheckInStatus.CHECKED_OUT
         )
         ctx["participation_choices"] = RetreatAttendee.ParticipationStatus.choices
+        caps = effective_capabilities(user, event)
         ctx["can_edit_attendee"] = user_can_edit_attendee_details(user, group)
-        ctx["can_change_status"] = can_change_retreat_check_in(user, event)
+        ctx["can_add_attendee"] = caps.add_attendee or is_retreat_group_leader(user, group)
+        ctx["can_change_status"] = caps.change_check_in
+        ctx["can_link_attendee_user"] = caps.link_attendee_user
         ctx["can_delete_attendee"] = user_can_delete_attendee(user, group)
         ctx["back_url"] = reverse("retreat_group_manage_list", args=[event.id])
         ctx["back_label"] = "조 목록"
@@ -851,6 +916,7 @@ class RetreatLodgingView(_RetreatEventMixin, TemplateView):
     """집회별 숙소·호실 CRUD 페이지."""
 
     template_name = "retreat/lodging.html"
+    retreat_page = "lodging"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -1194,23 +1260,17 @@ class RetreatGroupDetailView(_RetreatAccessMixin, TemplateView):
 
 
 class RetreatAdminView(_RetreatEventMixin, TemplateView):
-    """슈퍼유저·해당 집회 회장단만 접근."""
+    """변경 이력 등 관리 화면."""
 
     template_name = "retreat/admin.html"
+    retreat_page = "admin"
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
             event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"])
-            user = request.user
-            role_code = getattr(getattr(user, "role_level", None), "code", "")
-            allowed = user.is_superuser or is_retreat_council(user, event)
-            if not allowed:
-                raise PermissionDenied(
-                    "수련회 관리 화면 접근 권한이 없습니다. "
-                    f"(user={user.username}, is_superuser={user.is_superuser}, "
-                    f"role_level={role_code or '-'}, "
-                    f"council={is_retreat_council(user, event)})"
-                )
+            caps = effective_capabilities(request.user, event)
+            if not (request.user.is_superuser or caps.view_changelog):
+                raise PermissionDenied("수련회 관리 화면 접근 권한이 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):

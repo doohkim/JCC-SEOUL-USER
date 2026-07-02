@@ -10,7 +10,13 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from retreat.models import RetreatAttendee, RetreatEvent, RetreatGroup, RetreatGroupMembership
+from retreat.models import (
+    RetreatAttendee,
+    RetreatCouncilMembership,
+    RetreatEvent,
+    RetreatGroup,
+    RetreatGroupMembership,
+)
 from users.models import Division, Region, RoleLevel, UserDivisionTeam
 
 User = get_user_model()
@@ -49,6 +55,12 @@ class CheckInStampApiTests(TestCase):
         UserDivisionTeam.objects.create(
             user=cls.staff, division=cls.division, is_primary=True
         )
+        cls.council = User.objects.create_user(username="stamp_council", password="x")
+        RetreatCouncilMembership.objects.create(
+            event=cls.event,
+            user=cls.council,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
+        )
 
         cls.attendee = RetreatAttendee.objects.create(
             group=cls.group,
@@ -66,7 +78,7 @@ class CheckInStampApiTests(TestCase):
         )
 
     def test_toggle_check_out_sets_checked_out_at(self):
-        self.client.force_login(self.leader)
+        self.client.force_login(self.council)
         before = timezone.now()
         response = self.client.patch(
             self._detail_url(),
@@ -81,6 +93,15 @@ class CheckInStampApiTests(TestCase):
         self.assertIsNotNone(self.attendee.checked_out_at)
         self.assertGreaterEqual(self.attendee.checked_out_at, before)
 
+    def test_leader_cannot_toggle_check_in_status(self):
+        self.client.force_login(self.leader)
+        response = self.client.patch(
+            self._detail_url(),
+            {"check_in_status": RetreatAttendee.CheckInStatus.CHECKED_OUT},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403, response.content)
+
     def test_leader_cannot_set_timestamp_directly(self):
         self.client.force_login(self.leader)
         manual = timezone.now().isoformat()
@@ -89,12 +110,12 @@ class CheckInStampApiTests(TestCase):
             {"checked_in_at": manual},
             format="json",
         )
-        self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.status_code, 403, response.content)
         self.attendee.refresh_from_db()
         self.assertIsNone(self.attendee.checked_in_at)
 
     def test_staff_can_set_timestamp_directly(self):
-        self.client.force_login(self.staff)
+        self.client.force_login(self.council)
         manual = timezone.make_aware(datetime(2026, 6, 2, 14, 30, 0))
         response = self.client.patch(
             self._detail_url(),
@@ -131,7 +152,7 @@ class CheckInStampApiTests(TestCase):
             name="대기조원",
             check_in_status=RetreatAttendee.CheckInStatus.PENDING,
         )
-        self.client.force_login(self.leader)
+        self.client.force_login(self.council)
         before = timezone.now()
         response = self.client.patch(
             self._detail_url(pending.id),

@@ -202,7 +202,7 @@ class RetreatPermissionsTests(_BaseFixture):
         RetreatCouncilMembership.objects.create(
             event=self.event,
             user=council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
         groups = visible_retreat_groups_for(council, self.event)
         self.assertEqual(
@@ -210,12 +210,9 @@ class RetreatPermissionsTests(_BaseFixture):
             {self.group_seoul_1.id, self.group_seoul_2.id, self.group_incheon_1.id},
         )
 
-    def test_pastor_sees_pastoral_division_groups_only(self):
+    def test_pastor_without_staff_sees_no_groups(self):
         groups = visible_retreat_groups_for(self.pastor, self.event)
-        self.assertEqual(
-            set(groups.values_list("id", flat=True)),
-            {self.group_seoul_1.id, self.group_seoul_2.id},
-        )
+        self.assertEqual(set(groups.values_list("id", flat=True)), set())
 
     def test_pastor_without_assignment_sees_no_groups(self):
         unassigned = User.objects.create_user(username="pastor_none", password="x")
@@ -258,7 +255,7 @@ class RetreatPermissionsTests(_BaseFixture):
         RetreatCouncilMembership.objects.create(
             event=self.event,
             user=council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
         self.assertTrue(is_retreat_staff(council, self.event))
 
@@ -271,8 +268,8 @@ class RetreatPermissionsTests(_BaseFixture):
     def test_dept_head_cannot_access_retreat_tab(self):
         self.assertFalse(can_access_retreat_tab(self.staff_univ))
 
-    def test_pastor_can_access_retreat_tab(self):
-        self.assertTrue(can_access_retreat_tab(self.pastor))
+    def test_pastor_cannot_access_retreat_tab_without_staff(self):
+        self.assertFalse(can_access_retreat_tab(self.pastor))
 
     def test_leader_can_access_retreat_tab(self):
         self.assertTrue(can_access_retreat_tab(self.leader_seoul_1))
@@ -291,7 +288,7 @@ class RetreatPermissionsTests(_BaseFixture):
         RetreatCouncilMembership.objects.create(
             event=self.event,
             user=council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
         self.assertTrue(can_change_retreat_check_in(council, self.event))
 
@@ -435,7 +432,7 @@ class RetreatAttendeeDeletePermissionTests(_BaseFixture):
         RetreatCouncilMembership.objects.create(
             event=self.event,
             user=council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
         self.client.force_authenticate(council)
         r = self.client.delete(self.url)

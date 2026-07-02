@@ -61,7 +61,7 @@ class _GroupManageFixture(TestCase):
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.council_user,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
         cls.pastor = User.objects.create_user(username="gm_pastor", password="x")
@@ -85,7 +85,7 @@ class _GroupManageFixture(TestCase):
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.pastor_council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
         cls.leader = User.objects.create_user(username="gm_leader", password="x")
@@ -661,8 +661,17 @@ class AttendeeCheckInStatusEditTests(_GroupManageFixture):
         self.attendee.refresh_from_db()
         self.assertEqual(self.attendee.check_in_status, "checked_in")
 
-    def test_council_can_delete_checked_out_attendee(self):
+    def test_event_admin_cannot_delete_checked_out_attendee(self):
         self.client.force_authenticate(self.council_user)
+        r = self.client.delete(self.url)
+        self.assertEqual(r.status_code, 403, r.content)
+        self.assertTrue(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())
+
+    def test_superuser_can_delete_checked_out_attendee(self):
+        superuser = User.objects.create_user(
+            username="gm_super_del", password="x", is_superuser=True
+        )
+        self.client.force_authenticate(superuser)
         r = self.client.delete(self.url)
         self.assertEqual(r.status_code, 200, r.content)
         self.assertFalse(RetreatAttendee.objects.filter(pk=self.attendee.id).exists())
@@ -922,7 +931,7 @@ class AttendeeCreateCreatedByTests(_GroupManageFixture):
 
 
 class PastoralObserverGroupManageTests(_GroupManageFixture):
-    """목사·전도사(회장단 제외): 담당 부서 조 열람만, 변경 불가."""
+    """목사·전도사: 운영진 미등록 시 수련회 접근 불가. 조장이면 본인 조만 수정 가능."""
 
     def setUp(self):
         self.client = APIClient()
@@ -933,20 +942,18 @@ class PastoralObserverGroupManageTests(_GroupManageFixture):
             "api_retreat_attendee_detail", args=[self.attendee.id]
         )
 
-    def test_pastor_observer_can_list_groups(self):
+    def test_pastor_without_staff_sees_empty_group_list(self):
         self.client.force_authenticate(self.pastor)
         r = self.client.get(reverse("api_retreat_event_groups", args=[self.event.id]))
         self.assertEqual(r.status_code, 200, r.content)
-        ids = {g["id"] for g in r.json()}
-        self.assertEqual(ids, {self.group.id})
+        self.assertEqual(r.json(), [])
 
-    def test_pastor_observer_can_get_attendees(self):
+    def test_pastor_without_staff_cannot_get_attendees(self):
         self.client.force_authenticate(self.pastor)
         r = self.client.get(
             reverse("api_retreat_group_attendees", args=[self.group.id])
         )
-        self.assertEqual(r.status_code, 200, r.content)
-        self.assertEqual(len(r.json()), 1)
+        self.assertEqual(r.status_code, 403, r.content)
 
     def test_leader_can_post_attendee(self):
         self.client.force_authenticate(self.leader)
@@ -969,8 +976,8 @@ class PastoralObserverGroupManageTests(_GroupManageFixture):
         )
         self.assertEqual(r.status_code, 403, r.content)
 
-    def test_pastor_observer_cannot_patch_attendee_even_as_group_leader(self):
-        """목사·전도사는 조장 멤버십이 있어도 회장단이 아니면 수정 불가."""
+    def test_pastor_leader_can_patch_attendee(self):
+        """조장 멤버십이 있으면 운영진 등록 없이도 본인 조 조원 수정 가능."""
         RetreatGroupMembership.objects.create(
             user=self.pastor,
             group=self.group,
@@ -980,7 +987,9 @@ class PastoralObserverGroupManageTests(_GroupManageFixture):
         r = self.client.patch(
             self.attendee_url, {"name": "목사조장변경"}, format="json"
         )
-        self.assertEqual(r.status_code, 403, r.content)
+        self.assertEqual(r.status_code, 200, r.content)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.name, "목사조장변경")
 
     def test_pastor_council_can_patch_attendee(self):
         """회장단에 등록된 목사는 조원 수정 가능."""
@@ -992,7 +1001,7 @@ class PastoralObserverGroupManageTests(_GroupManageFixture):
         self.attendee.refresh_from_db()
         self.assertEqual(self.attendee.name, "회장단목사수정")
 
-    def test_pastor_observer_manage_page_is_readonly(self):
+    def test_pastor_without_staff_cannot_access_manage_page(self):
         from django.test import Client
 
         client = Client()
@@ -1000,7 +1009,4 @@ class PastoralObserverGroupManageTests(_GroupManageFixture):
         r = client.get(
             reverse("retreat_group_manage", args=[self.event.id, self.group.id])
         )
-        self.assertEqual(r.status_code, 200)
-        self.assertFalse(r.context["can_edit_attendee"])
-        self.assertFalse(r.context["can_delete_attendee"])
-        self.assertNotContains(r, 'id="btnAddAttendee"')
+        self.assertEqual(r.status_code, 403)

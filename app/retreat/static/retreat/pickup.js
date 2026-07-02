@@ -121,6 +121,9 @@
     nameEl && nameEl.tagName === "SELECT" && nameEl.hasAttribute("data-member-select")
       ? nameEl
       : null;
+  const isLeaderMemberSelect =
+    !!memberSelect && memberSelect.hasAttribute("data-leader-member-select");
+  const leaderGroupId = ctx.leaderGroupId != null ? String(ctx.leaderGroupId) : "";
 
   function parseJsonEl(id, fallback) {
     try {
@@ -250,15 +253,6 @@
       }
       memberSelect.appendChild(opt);
     });
-    // 편집 시 기존 이름이 명단에 없으면 그대로 보존
-    if (selectedName && !matched) {
-      const opt = document.createElement("option");
-      opt.value = selectedName;
-      opt.textContent = `${selectedName} (명단 외)`;
-      opt.dataset.phone = "";
-      opt.selected = true;
-      memberSelect.appendChild(opt);
-    }
     refreshCustomSelects();
   }
 
@@ -463,17 +457,15 @@
     const div = editItem ? editItem.division || "" : "";
     const grp = editItem ? editItem.group || "" : "";
     if (memberSelect) {
-      // 캐스케이딩 플로우: 지역→부서→조→조원 순서로 복원
-      if (regionSelect) regionSelect.value = reg;
-      fillDivisionSelect(reg, div);
-      fillGroupSelect(reg, div, grp);
-      fillMemberSelect(grp, editItem ? editItem.name : "");
-    } else {
-      // 조장 플로우: 이름은 자유 입력
-      setVal("pickupName", editItem ? editItem.name : "");
-      if (regionSelect) regionSelect.value = reg;
-      fillDivisionSelect(regionSelect ? regionSelect.value : null, div);
-      if (groupSelect) groupSelect.value = grp;
+      if (isLeaderMemberSelect) {
+        fillMemberSelect(leaderGroupId, editItem ? editItem.name : "");
+      } else {
+        // 캐스케이딩 플로우: 지역→부서→조→조원 순서로 복원
+        if (regionSelect) regionSelect.value = reg;
+        fillDivisionSelect(reg, div);
+        fillGroupSelect(reg, div, grp);
+        fillMemberSelect(grp, editItem ? editItem.name : "");
+      }
     }
     fillBoardingPlaceSelect(editItem ? editItem.boardingPlace : null);
 
@@ -551,12 +543,14 @@
     applyRowData(tr, item);
     tbody.appendChild(tr);
     refreshPickupCount();
+    applyPickupSort();
   }
 
   function updateRow(item) {
     if (!tbody) return;
     const tr = tbody.querySelector(`tr[data-pickup-id="${item.id}"]`);
     if (tr) applyRowData(tr, item);
+    applyPickupSort();
   }
 
   if (btnAdd) btnAdd.addEventListener("click", () => openModal());
@@ -581,7 +575,7 @@
       const contact =
         document.getElementById("pickupContact")?.value.trim() || "";
       const note = document.getElementById("pickupNote")?.value.trim() || "";
-      const group = groupSelect?.value || "";
+      const group = groupSelect?.value || (isLeaderMemberSelect ? leaderGroupId : "");
       const region = regionSelect?.value || "";
       const division = divisionSelect?.value || "";
 
@@ -592,7 +586,7 @@
           .trim() || "열차 시각";
 
       const missing = [];
-      if (memberSelect) {
+      if (memberSelect && !isLeaderMemberSelect) {
         if (!region) missing.push(["pickupRegion", "지역을 선택해 주세요."]);
         if (!division) missing.push(["pickupDivision", "부서를 선택해 주세요."]);
         if (!group) missing.push(["pickupGroup", "조를 선택해 주세요."]);
@@ -756,6 +750,103 @@
     });
   }
   }
+
+  // --- 전체 탭: 컬럼 헤더 클릭 정렬 ----------------------------------------
+  const pickupSortTbody = document.getElementById("pickupTbody");
+  const PICKUP_STATUS_ORDER = { pending: 0, checked_in: 1, checked_out: 2 };
+  let pickupSortKey = null;
+  let pickupSortDir = "asc";
+
+  function pickupSortValue(tr, key) {
+    switch (key) {
+      case "name":
+        return (tr.dataset.name || "").trim();
+      case "status":
+        return PICKUP_STATUS_ORDER[tr.dataset.checkInStatus] ?? 99;
+      case "train_time": {
+        const iso = tr.dataset.trainTime || "";
+        if (!iso) return Number.POSITIVE_INFINITY;
+        const t = new Date(iso).getTime();
+        return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
+      }
+      case "boarding_place":
+        return (tr.dataset.boardingPlace || "").trim();
+      default:
+        return 0;
+    }
+  }
+
+  function comparePickupRows(a, b, key) {
+    const va = pickupSortValue(a, key);
+    const vb = pickupSortValue(b, key);
+    if (typeof va === "number" && typeof vb === "number") {
+      return va - vb;
+    }
+    return String(va).localeCompare(String(vb), "ko");
+  }
+
+  function renumberPickupRows() {
+    if (!pickupSortTbody || ctx.direction !== "all") return;
+    let n = 0;
+    pickupSortTbody.querySelectorAll("tr[data-pickup-id]").forEach((tr) => {
+      n += 1;
+      const numCell = tr.querySelector("td.num");
+      if (numCell) numCell.textContent = String(n);
+    });
+  }
+
+  function applyPickupSort() {
+    if (!pickupSortTbody || !pickupSortKey || ctx.direction !== "all") return;
+    const rows = Array.from(
+      pickupSortTbody.querySelectorAll("tr[data-pickup-id]")
+    );
+    const factor = pickupSortDir === "desc" ? -1 : 1;
+    rows
+      .sort((a, b) => {
+        const c = comparePickupRows(a, b, pickupSortKey);
+        if (c !== 0) return c * factor;
+        const na = (a.dataset.name || "").trim();
+        const nb = (b.dataset.name || "").trim();
+        return na.localeCompare(nb, "ko");
+      })
+      .forEach((tr) => pickupSortTbody.appendChild(tr));
+    renumberPickupRows();
+  }
+
+  function bindPickupSorting() {
+    if (ctx.direction !== "all") return;
+    const headers = document.querySelectorAll(
+      "#pickupTable .jcc-retreat-sortable[data-sort-key]"
+    );
+    if (!headers.length) return;
+    headers.forEach((th) => {
+      th.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const key = th.dataset.sortKey;
+        if (pickupSortKey === key) {
+          pickupSortDir = pickupSortDir === "asc" ? "desc" : "asc";
+        } else {
+          pickupSortKey = key;
+          pickupSortDir = "asc";
+        }
+        headers.forEach((h) => {
+          if (h === th) {
+            h.dataset.sortDir = pickupSortDir;
+            h.setAttribute(
+              "aria-sort",
+              pickupSortDir === "asc" ? "ascending" : "descending"
+            );
+          } else {
+            delete h.dataset.sortDir;
+            h.setAttribute("aria-sort", "none");
+          }
+        });
+        applyPickupSort();
+      });
+    });
+  }
+
+  bindPickupSorting();
 
   if (ctx.canManageLocation) initLocationManagement();
 

@@ -53,7 +53,7 @@ class ClosedSessionVisibilityTests(TestCase):
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.council,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
         role, _ = RoleLevel.objects.get_or_create(
@@ -96,17 +96,10 @@ class ClosedSessionVisibilityTests(TestCase):
         self.closed.refresh_from_db()
         self.assertEqual(self.closed.status, RetreatSession.Status.ACTIVE)
 
-    def test_pastor_sees_closed_session_read_only(self):
+    def test_pastor_without_staff_cannot_list_sessions(self):
         self.client.force_authenticate(self.pastor)
         response = self.client.get(self._sessions_url())
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(self.closed.id, {row["id"] for row in response.json()})
-
-        reopen_url = reverse(
-            "api_retreat_session_reopen",
-            args=[self.event.id, self.closed.id],
-        )
-        self.assertEqual(self.client.post(reopen_url).status_code, 403)
+        self.assertEqual(response.status_code, 403)
 
     def test_closed_session_bulk_upsert_forbidden(self):
         self.client.force_authenticate(self.council)

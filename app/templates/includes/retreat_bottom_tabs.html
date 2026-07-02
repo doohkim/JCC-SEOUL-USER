@@ -1,5 +1,6 @@
-{% comment %}수련회 전용 모바일 하단 탭 (Toss 앱 스타일) — event, can_view_retreat_all, is_retreat_staff 필요{% endcomment %}
+{% comment %}수련회 전용 모바일 하단 탭 — event, can_show_*_tab 필요{% endcomment %}
 <nav class="jcc-bottomTabs jcc-retreatBottomTabs" id="jccRetreatBottomTabs" aria-label="수련회 메뉴">
+  {% if can_show_dashboard_tab %}
   <a
     class="jcc-bottomTab"
     href="{% url 'retreat_dashboard' event.id %}"
@@ -10,6 +11,8 @@
     </svg>
     <span>대시보드</span>
   </a>
+  {% endif %}
+  {% if can_show_groups_tab %}
   <a
     class="jcc-bottomTab"
     href="{% url 'retreat_group_manage_list' event.id %}"
@@ -20,6 +23,8 @@
     </svg>
     <span>그룹</span>
   </a>
+  {% endif %}
+  {% if can_show_pickup_tab %}
   <a
     class="jcc-bottomTab"
     href="{% url 'retreat_pickup' event.id %}"
@@ -32,7 +37,8 @@
     </svg>
     <span>픽업</span>
   </a>
-  {% if can_view_retreat_all %}
+  {% endif %}
+  {% if can_show_lodging_tab %}
     <a
       class="jcc-bottomTab"
       href="{% url 'retreat_lodging' event.id %}"
@@ -44,7 +50,7 @@
       <span>숙소</span>
     </a>
   {% endif %}
-  {% if is_retreat_staff %}
+  {% if can_show_admin_tab %}
     <a
       class="jcc-bottomTab"
       href="{% url 'retreat_council' event.id %}"

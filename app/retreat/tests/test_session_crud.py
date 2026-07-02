@@ -44,7 +44,7 @@ class RetreatSessionApiTests(APITestCase):
         RetreatCouncilMembership.objects.create(
             event=cls.event,
             user=cls.staff,
-            role=RetreatCouncilMembership.Role.CHAIRPERSON,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
         cls.leader = User.objects.create_user(username="sess_leader", password="x")
         UserDivisionTeam.objects.create(

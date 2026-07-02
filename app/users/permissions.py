@@ -609,11 +609,37 @@ class IsCounselingPastor(BasePermission):
 
 
 # ---------------------------------------------------------------------------
-# 수련회(Retreat) 권한 — 평시 출석·조직 직급(부서 회장단)과 완전 분리.
-# 수련회 회장단 = ``RetreatCouncilMembership`` 명단만. RoleLevel president 등은 무관.
+# 수련회(Retreat) 권한 — 평시 출석·조직 직급과 분리.
+# 집회 운영진 = ``RetreatCouncilMembership`` 역할·범위. 정책은 staff_capabilities.
 # ---------------------------------------------------------------------------
 
-_RETREAT_PASTORAL_ROLE_LEVEL_CODES = {"pastor", "evangelist"}
+from retreat.services.staff_capabilities import (  # noqa: E402
+    AccessLevel,
+    effective_capabilities,
+    get_staff_membership,
+    staff_capabilities,
+    visible_groups_qs,
+)
+
+
+def get_retreat_capabilities(user: User, event):
+    """집회 단위 effective capability (운영진 ∪ 조장)."""
+    return effective_capabilities(user, event)
+
+
+def is_retreat_event_admin(user: User, event) -> bool:
+    """집회 전체 관리자 또는 슈퍼유저."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if user.is_superuser:
+        return True
+    if event is None:
+        return False
+    from retreat.models import RetreatCouncilMembership
+
+    return user.retreat_council_memberships.filter(
+        event=event, role=RetreatCouncilMembership.Role.EVENT_ADMIN
+    ).exists()
 
 
 def is_retreat_group_leader(user: User, group) -> bool:
@@ -626,11 +652,10 @@ def is_retreat_group_leader(user: User, group) -> bool:
 
 
 def can_access_retreat_tab(user: User) -> bool:
-    """좌측/모바일 '수련회' 메뉴 노출 여부 (event 단위가 아닌 일반 가시 체크).
+    """좌측/모바일 '수련회' 메뉴 노출 여부.
 
     - 슈퍼유저
-    - 수련회 회장단(어떤 집회의 회장단이든 1개 이상)
-    - 목사·전도사 (RoleLevel)
+    - 집회 운영진(어떤 집회든 1건 이상)
     - 조장/부조장(어떤 그룹이든 멤버십 1개 이상)
     """
 
@@ -640,72 +665,44 @@ def can_access_retreat_tab(user: User) -> bool:
         return True
     if user.retreat_council_memberships.exists():
         return True
-    role_code = getattr(getattr(user, "role_level", None), "code", "")
-    if role_code in _RETREAT_PASTORAL_ROLE_LEVEL_CODES:
-        return True
     if user.retreat_group_memberships.exists():
         return True
     return False
 
 
 def is_retreat_council(user: User, event) -> bool:
-    """해당 집회의 수련회 회장단(``RetreatCouncilMembership``)인지."""
-    if not user or not getattr(user, "is_authenticated", False):
-        return False
-    if user.is_superuser:
-        return True
-    if event is None:
-        return False
-    return user.retreat_council_memberships.filter(event=event).exists()
+    """하위 호환: 집회 전체 관리자(``event_admin``) 또는 슈퍼유저."""
+    return is_retreat_event_admin(user, event)
 
 
 def can_add_retreat_group(user: User, event) -> bool:
-    """조 생성 권한 — 슈퍼유저·해당 집회 회장단만 (목사·전도사·조장 제외)."""
-    if not user or not getattr(user, "is_authenticated", False):
+    """조 생성 권한."""
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
         return False
-    if user.is_superuser:
-        return True
-    if event is None:
-        return False
-    return is_retreat_council(user, event)
+    return effective_capabilities(user, event).add_group
 
 
 def can_manage_retreat_pickup(user: User, event) -> bool:
-    """픽업 정보 추가·삭제 — 슈퍼유저·회장단·해당 집회 조장/부조장."""
-    if not user or not getattr(user, "is_authenticated", False):
+    """픽업 입회/출회 탭에서 추가·수정·삭제 가능 여부."""
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
         return False
-    if user.is_superuser:
-        return True
-    if event is None:
-        return False
-    if is_retreat_council(user, event):
-        return True
-    return user.retreat_group_memberships.filter(group__event=event).exists()
+    caps = effective_capabilities(user, event)
+    return (
+        caps.pickup_arrival >= AccessLevel.MUTATE
+        or caps.pickup_departure >= AccessLevel.MUTATE
+    )
 
 
 def can_manage_retreat_pickup_location(user: User, event) -> bool:
-    """탑승장소 목록 관리(읽기/추가/수정/삭제) — 슈퍼유저 + 해당 집회 회장단만."""
-    if not user or not getattr(user, "is_authenticated", False):
-        return False
-    if user.is_superuser:
-        return True
-    if event is None:
-        return False
-    return is_retreat_council(user, event)
+    """탑승장소 목록 관리 — 집회 전체 관리자·슈퍼유저."""
+    return is_retreat_event_admin(user, event)
 
 
 def can_select_pickup_group(user: User, event) -> bool:
-    """픽업 등록 시 '조'를 직접 선택할 수 있는지 — 슈퍼유저·해당 집회 회장단만.
-
-    조장/부조장은 조를 선택하지 못하고 본인 조로 자동 지정된다.
-    """
-    if not user or not getattr(user, "is_authenticated", False):
+    """픽업 등록 시 조/지역/부서 직접 선택."""
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
         return False
-    if user.is_superuser:
-        return True
-    if event is None:
-        return False
-    return is_retreat_council(user, event)
+    return effective_capabilities(user, event).pickup_select_group
 
 
 def retreat_pickup_group_ids_for(user: User, event) -> set[int]:
@@ -723,59 +720,41 @@ def retreat_pickup_group_ids_for(user: User, event) -> set[int]:
 
 
 def retreat_pickup_visible_group_ids_for(user: User, event) -> list[int]:
-    """픽업 목록 조회 범위 — 회장단·슈퍼유저는 전체, 조장은 본인 조, 목사/전도사는 담당 부서 조."""
+    """픽업 목록 조회 범위."""
     if not user or not getattr(user, "is_authenticated", False) or event is None:
         return []
-    if can_select_pickup_group(user, event):
+    caps = effective_capabilities(user, event)
+    if caps.pickup_select_group and caps.scope.kind == "event":
         from retreat.models import RetreatGroup
 
         return list(
             RetreatGroup.objects.filter(event=event).values_list("id", flat=True)
         )
-    leader_ids = list(retreat_pickup_group_ids_for(user, event))
-    if leader_ids:
-        return leader_ids
-    return list(visible_retreat_groups_for(user, event).values_list("id", flat=True))
+    return list(visible_groups_qs(user, event).values_list("id", flat=True))
 
 
 def is_retreat_pastoral_observer(user: User, event) -> bool:
-    """목사·전도사이며 해당 집회 회장단·슈퍼유저가 아닐 때 — 조·조원 열람만 가능."""
-    if not user or not getattr(user, "is_authenticated", False):
-        return False
-    if user.is_superuser:
-        return False
-    if event is not None and is_retreat_council(user, event):
-        return False
-    role_code = getattr(getattr(user, "role_level", None), "code", "")
-    return role_code in _RETREAT_PASTORAL_ROLE_LEVEL_CODES
+    """[deprecated] 목사·전도사 수련회 권한 제거 — 항상 False."""
+    return False
 
 
 def can_manage_retreat_group_leaders(user: User, group) -> bool:
-    """조 운영진(조장·부조장) 추가·수정·삭제 — 슈퍼유저·회장단·본인 조 운영진."""
-    if not user or not getattr(user, "is_authenticated", False):
+    """조 운영진(조장·부조장) 추가·수정·삭제."""
+    if not user or not getattr(user, "is_authenticated", False) or group is None:
         return False
-    if group is None:
-        return False
-    if is_retreat_pastoral_observer(user, group.event):
-        return False
-    if user.is_superuser:
-        return True
-    if is_retreat_council(user, group.event):
+    caps = effective_capabilities(user, group.event)
+    if caps.edit_group:
         return True
     return is_retreat_group_leader(user, group)
 
 
 def can_manage_retreat_sessions(user: User, event) -> bool:
-    """출석부(세션) 생성·수정·삭제 권한 — 회장단/슈퍼유저만."""
-    return is_retreat_council(user, event)
+    """출석부(세션) 생성·수정·삭제 — 집회 전체 관리자·슈퍼유저."""
+    return is_retreat_event_admin(user, event)
 
 
 def visible_retreat_sessions_for(user: User, event):
-    """현재 사용자가 볼 수 있는 수련회 출석부 범위.
-
-    - 슈퍼유저/회장단/목사·전도사: 진행중 + 마감 모두 조회.
-    - 조장·부조장 및 그 외 수련회 탭 접근자: 진행중만 조회.
-    """
+    """현재 사용자가 볼 수 있는 수련회 출석부 범위."""
 
     from retreat.models import RetreatSession  # 순환 의존 회피
 
@@ -783,18 +762,16 @@ def visible_retreat_sessions_for(user: User, event):
         return RetreatSession.objects.none()
 
     base = RetreatSession.objects.filter(event=event)
-    if user.is_superuser or is_retreat_council(user, event):
+    caps = effective_capabilities(user, event)
+    if user.is_superuser or caps.manage_timetable or is_retreat_event_admin(user, event):
         return base
-
-    role_code = getattr(getattr(user, "role_level", None), "code", "")
-    if role_code in _RETREAT_PASTORAL_ROLE_LEVEL_CODES:
+    if caps.view_changelog or caps.admin >= AccessLevel.VIEW:
         return base
-
     return base.filter(status=RetreatSession.Status.ACTIVE)
 
 
 def is_retreat_council_any(user: User) -> bool:
-    """탭 노출용: 어떤 활성 집회의 회장단이든 1개 이상 가지는가."""
+    """탭 노출용: 어떤 활성 집회의 운영진이든 1개 이상."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if user.is_superuser:
@@ -802,111 +779,61 @@ def is_retreat_council_any(user: User) -> bool:
     return user.retreat_council_memberships.exists()
 
 
-def _user_division_ids(user: User) -> set[int]:
-    return set(user.division_teams.values_list("division_id", flat=True).distinct())
-
-
-def _user_pastoral_division_ids(user: User) -> set[int]:
-    return set(user.pastoral_divisions.values_list("division_id", flat=True).distinct())
-
-
-def _user_region_ids_via_divisions(user: User) -> set[int]:
-    """사용자 소속/담당 부서가 속한 region id 집합."""
-    div_ids = _user_division_ids(user) | _user_pastoral_division_ids(user)
-    if not div_ids:
-        return set()
-    return set(
-        Division.objects.filter(pk__in=div_ids)
-        .values_list("region_id", flat=True)
-        .distinct()
-    )
-
-
 def is_retreat_staff(user: User, event) -> bool:
-    """수련회 관리(회장단·슈퍼유저) 판정 — 관리 탭·변경 이력 등.
-
-  ``RetreatCouncilMembership`` 명단(또는 슈퍼유저)만 True. 직급/기능직책 자동 부여 없음.
-    """
-    if not user or not getattr(user, "is_authenticated", False):
+    """관리 탭·변경 이력 등 — admin 탭 VIEW 이상."""
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
         return False
     if user.is_superuser:
         return True
-    if event is None:
-        return False
-    return is_retreat_council(user, event)
+    return effective_capabilities(user, event).admin >= AccessLevel.VIEW
 
 
 def can_view_retreat_all(user: User, event) -> bool:
-    """집회 전체 데이터 조회(대시보드·숙소 탭 등) — 회장단·슈퍼유저만.
-
-    목사·전도사는 ``visible_retreat_groups_for`` 로 담당 지역·부서 조만 조회한다.
-    """
-    if not user or not getattr(user, "is_authenticated", False):
+    """숙소 탭·집회 전체 숙소 데이터 — lodging VIEW + event scope."""
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
         return False
-    if user.is_superuser:
-        return True
-    if event is not None and is_retreat_council(user, event):
-        return True
-    return False
+    caps = effective_capabilities(user, event)
+    return caps.lodging >= AccessLevel.VIEW and caps.scope.kind == "event"
 
 
 def can_change_retreat_check_in(user: User, event) -> bool:
-    """입·퇴실 상태 변경 — 회장단·슈퍼유저만."""
-    if not user or not getattr(user, "is_authenticated", False):
+    """입·퇴실 상태 변경."""
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
         return False
-    if user.is_superuser:
-        return True
-    if event is None:
+    return effective_capabilities(user, event).change_check_in
+
+
+def can_link_attendee_user(user: User, event) -> bool:
+    """조원 사용자 계정 연동."""
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
         return False
-    return is_retreat_council(user, event)
+    return effective_capabilities(user, event).link_attendee_user
+
+
+def can_manage_staff(user: User, event) -> bool:
+    """집회 운영진 명단 등록·수정·삭제."""
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
+        return False
+    return effective_capabilities(user, event).manage_staff
+
+
+def can_view_staff(user: User, event) -> bool:
+    """집회 운영진 명단 조회."""
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
+        return False
+    return effective_capabilities(user, event).view_staff
+
+
+def can_delete_checked_out_attendee(user: User, event) -> bool:
+    """퇴실 상태 조원 삭제 — 슈퍼유저만."""
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
+        return False
+    return effective_capabilities(user, event).delete_checked_out_attendee
 
 
 def visible_retreat_groups_for(user: User, event):
-    """현재 사용자가 볼 수 있는 RetreatGroup 쿼리셋.
-
-    전체 보기 (집회 내 모든 조):
-      - 슈퍼유저
-      - 수련회 회장단(회장·부회장·총무·임원) — event 단위 등록
-
-    담당 지역·부서 (목회 담당 부서 매핑):
-      - 목사·전도사 (PastoralDivisionAssignment)
-
-    본인 소속만:
-      - 조장/부조장: 자신이 멤버십을 가진 그룹만
-      - 그 외: 빈 쿼리셋
-    """
-
-    from retreat.models import RetreatGroup  # 순환 의존 회피
-
-    if not user or not getattr(user, "is_authenticated", False) or event is None:
-        return RetreatGroup.objects.none()
-
-    base = RetreatGroup.objects.filter(event=event)
-
-    # 전체 보기 권한
-    if user.is_superuser:
-        return base
-    if user.retreat_council_memberships.filter(event=event).exists():
-        return base
-
-    role_code = getattr(getattr(user, "role_level", None), "code", "")
-    if role_code in _RETREAT_PASTORAL_ROLE_LEVEL_CODES:
-        div_ids = list(
-            _pastoral_assigned_divisions(user).values_list("id", flat=True)
-        )
-        if not div_ids:
-            return base.none()
-        return base.filter(division_id__in=div_ids)
-
-    leader_group_ids = set(
-        user.retreat_group_memberships.filter(group__event=event).values_list(
-            "group_id", flat=True
-        )
-    )
-
-    if leader_group_ids:
-        return base.filter(pk__in=leader_group_ids)
-    return base.none()
+    """현재 사용자가 볼 수 있는 RetreatGroup 쿼리셋."""
+    return visible_groups_qs(user, event)
 
 
 class IsRetreatGroupLeaderOrStaff(BasePermission):
