@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>참가 신청서 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260706c" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260706d" />
   </head>
   <body class="jcc-retreat-staffApplyPage">
     <div class="jcc-layout">
@@ -135,7 +135,7 @@
                   {{ form.application_track }}
                   {% if form.application_track.errors %}<p class="error">{{ form.application_track.errors.0 }}</p>{% endif %}
                 </div>
-                <div class="jcc-retreat-staffApplyRow" id="staffApplyMemberFields"{% if form.application_track.value == 'council' %} hidden{% endif %}>
+                <div class="jcc-retreat-staffApplyRow jcc-retreat-staffApplySplitRow" id="staffApplyMemberFields"{% if form.application_track.value == 'council' %} hidden{% endif %}>
                   <div class="field" id="staffApplyGroupField">
                     <label for="id_group">조</label>
                     {{ form.group }}
