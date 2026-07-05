@@ -91,10 +91,7 @@
   }
 
   function groupOptionLabel(g) {
-    const region = g.region_name || "";
-    const division = g.division_name || "";
-    const suffix = region && division ? ` (${region} · ${division})` : "";
-    return `${g.name || ""}${suffix}`;
+    return g.name || "";
   }
 
   function populateGroupRoles(selected) {

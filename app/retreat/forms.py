@@ -84,9 +84,11 @@ class RetreatStaffApplicationForm(forms.Form):
             self.fields["group_role"].widget = forms.HiddenInput()
         else:
             self.eligible_groups = eligible_groups_for_member(user, event)
-            self.fields["group"].queryset = RetreatGroup.objects.filter(
+            group_field = self.fields["group"]
+            group_field.queryset = RetreatGroup.objects.filter(
                 pk__in=[g.id for g in self.eligible_groups]
             ).order_by("order", "id")
+            group_field.label_from_instance = lambda obj: obj.name
             for name in ("application_track", "group", "group_role"):
                 self.fields[name].widget.attrs["data-cselect"] = ""
             if not read_only:
