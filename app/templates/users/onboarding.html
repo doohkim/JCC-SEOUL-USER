@@ -19,7 +19,7 @@
     .fieldGrid { display:grid; grid-template-columns:1fr 1fr; gap:.65rem .75rem; }
     @media (max-width:520px) { .fieldGrid { grid-template-columns:1fr; } }
     label { display:block; margin-bottom:.3rem; color:var(--muted); font-size:.85rem; font-weight:500; }
-    select, input[type="text"], input[type="tel"] {
+    input[type="text"], input[type="tel"] {
       width:100%;
       background:var(--input-elev-0);
       border:1px solid var(--border);
@@ -28,11 +28,110 @@
       padding:.65rem .75rem;
       font-size:.92rem;
     }
-    select:focus, input[type="text"]:focus, input[type="tel"]:focus {
+    input[type="text"]:focus, input[type="tel"]:focus {
       outline:none;
       border-color:var(--accent);
       box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent);
     }
+    @keyframes jccOnboardingPickerIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: none; }
+    }
+    .jcc-cselect-native {
+      position: absolute !important;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .jcc-cselect { position: relative; display: block; width: 100%; min-width: 0; }
+    .card .jcc-cselect-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 2.65rem;
+      padding: 0 0.75rem;
+      background: var(--input-elev-0, var(--card));
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-weight: 500;
+      font-size: 0.92rem;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .card .jcc-cselect-btn:hover,
+    .card .jcc-cselect.is-open .jcc-cselect-btn,
+    .card .jcc-cselect-btn:focus-visible {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+    }
+    .jcc-cselect.is-placeholder .jcc-cselect-label { color: var(--muted); }
+    .jcc-cselect-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .jcc-cselect-caret {
+      display: inline-flex;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: var(--muted);
+      transition: transform 0.15s ease;
+    }
+    .jcc-cselect-caret svg { width: 100%; height: 100%; }
+    .jcc-cselect.is-open .jcc-cselect-caret { transform: rotate(180deg); }
+    .jcc-cselect-menu {
+      position: fixed;
+      z-index: 2500;
+      margin: 0;
+      padding: 0.35rem;
+      list-style: none;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.08);
+      max-height: min(18rem, 60vh);
+      overflow-y: auto;
+      animation: jccOnboardingPickerIn 0.12s ease;
+    }
+    .jcc-cselect-opt {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+      padding: 0.6rem 0.7rem;
+      border-radius: 10px;
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+    .jcc-cselect-opt:hover,
+    .jcc-cselect-opt.is-focus {
+      background: color-mix(in srgb, var(--text) 7%, transparent);
+    }
+    .jcc-cselect-opt.is-selected { color: var(--accent); font-weight: 800; }
+    .jcc-cselect-check {
+      display: inline-flex;
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      opacity: 0;
+    }
+    .jcc-cselect-check svg { width: 100%; height: 100%; }
+    .jcc-cselect-opt.is-selected .jcc-cselect-check { opacity: 1; }
     .actions { margin-top:1.25rem; display:flex; justify-content:flex-end; }
     button { border:none; border-radius:10px; background:var(--accent); color:#fff; padding:.65rem 1.15rem; font-weight:600; cursor:pointer; font-size:.92rem; }
     .msg { margin-top:.5rem; color:var(--muted); font-size:.88rem; }
@@ -108,6 +207,7 @@
       </form>
     </div>
   </div>
+  <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c"></script>
   <script>
     (function() {
       const region = document.getElementById("id_requested_region");
@@ -121,6 +221,11 @@
       const applicantRole = document.getElementById("id_requested_applicant_role");
       const teamField = document.getElementById("teamField");
       const pastoralRoles = new Set(["pastor", "evangelist"]);
+
+      function refreshSelects() {
+        if (!window.JccCustomSelect) return;
+        window.JccCustomSelect.refresh(document.querySelector(".card") || document);
+      }
 
       function isPastoralApplicant() {
         return !!(applicantRole && pastoralRoles.has(applicantRole.value));
@@ -136,6 +241,7 @@
           teamField.hidden = pastoral;
           if (pastoral) clearTeamInput();
         }
+        refreshSelects();
       }
 
       function renderDivisions() {
@@ -157,6 +263,7 @@
           division.value = selectedDivision;
         }
         renderTeams();
+        refreshSelects();
       }
 
       function renderTeams() {
@@ -177,6 +284,7 @@
         if (rows.some((r) => String(r.id) === selectedTeam)) {
           team.value = selectedTeam;
         }
+        refreshSelects();
       }
 
       if (region) region.addEventListener("change", renderDivisions);

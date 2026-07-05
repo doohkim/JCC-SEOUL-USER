@@ -394,6 +394,14 @@ class OnboardingRequestForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["gender"].empty_label = "성별을 선택해 주세요"
+        for name in (
+            "gender",
+            "requested_region",
+            "requested_division",
+            "requested_team",
+            "requested_applicant_role",
+        ):
+            self.fields[name].widget.attrs.setdefault("data-cselect", "")
 
     def clean(self):
         cleaned = super().clean()
