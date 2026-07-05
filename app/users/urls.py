@@ -16,12 +16,13 @@ from users.views import (
     DivisionAccountActivityLogView,
     DivisionAccountRoleManageView,
     KakaoAuthEntryView,
-    OnboardingApplicationActivityLogView,
-    OnboardingApplicationsListView,
-    OnboardingApprovalListView,
     UserLogoutView,
     UserOnboardingView,
     UserProfileView,
+)
+
+_account_roles_redirect = RedirectView.as_view(
+    pattern_name="user_division_account_roles", permanent=False
 )
 
 urlpatterns = [
@@ -32,21 +33,28 @@ urlpatterns = [
     path("onboarding/", UserOnboardingView.as_view(), name="user_onboarding"),
     path(
         "accounts/manage/applications/",
-        OnboardingApplicationsListView.as_view(),
+        _account_roles_redirect,
         name="user_onboarding_applications",
     ),
     path(
         "accounts/manage/applications/activity-log/",
-        OnboardingApplicationActivityLogView.as_view(),
+        _account_roles_redirect,
         name="user_onboarding_application_activity_log",
     ),
     path(
         "onboarding/approvals/",
-        RedirectView.as_view(pattern_name="user_onboarding_applications", permanent=False),
+        _account_roles_redirect,
         name="user_onboarding_approvals",
     ),
-    path("accounts/manage/", RedirectView.as_view(pattern_name="user_division_account_roles", permanent=False)),
-    path("accounts/manage/roles/", DivisionAccountRoleManageView.as_view(), name="user_division_account_roles"),
+    path(
+        "accounts/manage/",
+        RedirectView.as_view(pattern_name="user_division_account_roles", permanent=False),
+    ),
+    path(
+        "accounts/manage/roles/",
+        DivisionAccountRoleManageView.as_view(),
+        name="user_division_account_roles",
+    ),
     path(
         "accounts/manage/roles/activity-log/",
         DivisionAccountActivityLogView.as_view(),
@@ -54,10 +62,14 @@ urlpatterns = [
     ),
     path(
         "accounts/manage/approvals/",
-        RedirectView.as_view(pattern_name="user_onboarding_applications", permanent=False),
+        _account_roles_redirect,
         name="user_account_approvals",
     ),
-    path("api/v1/users/roles/assignable/", AssignableRoleOptionsApiView.as_view(), name="api_user_assignable_roles"),
+    path(
+        "api/v1/users/roles/assignable/",
+        AssignableRoleOptionsApiView.as_view(),
+        name="api_user_assignable_roles",
+    ),
     # 모바일 앱 인증
     path("api/v1/auth/kakao/", KakaoMobileLoginView.as_view(), name="api_auth_kakao_mobile"),
     path("api/v1/auth/me/", MobileMeView.as_view(), name="api_auth_me"),

@@ -5,7 +5,7 @@ from __future__ import annotations
 from django import forms
 from django.core.exceptions import ValidationError
 
-from retreat.models import RetreatEvent, RetreatGroup, RetreatGroupMembership, RetreatStaffApplication
+from retreat.models import RetreatEvent, RetreatGroup, RetreatGroupMembership, RetreatStaffApplication, StaffApplicationTrack
 from retreat.services.staff_application import (
     eligible_groups_for_member,
     is_pastoral_staff_applicant,
@@ -37,6 +37,11 @@ class RetreatApplyForm(forms.Form):
 
 
 class RetreatStaffApplicationForm(forms.Form):
+    application_track = forms.ChoiceField(
+        label="신청 유형",
+        choices=[("", "선택"), *StaffApplicationTrack.choices],
+        required=False,
+    )
     region = forms.IntegerField(widget=forms.HiddenInput)
     division = forms.IntegerField(widget=forms.HiddenInput)
     group = forms.ModelChoiceField(
@@ -49,17 +54,6 @@ class RetreatStaffApplicationForm(forms.Form):
         label="직책",
         choices=[("", "선택"), *RetreatGroupMembership.Role.choices],
         required=False,
-    )
-    note = forms.CharField(
-        label="지원 동기 및 한마디",
-        required=False,
-        max_length=500,
-        widget=forms.Textarea(
-            attrs={
-                "rows": 4,
-                "placeholder": "운영진으로 참여하고 싶은 이유를 간략히 적어주세요.",
-            }
-        ),
     )
 
     def __init__(
@@ -85,13 +79,20 @@ class RetreatStaffApplicationForm(forms.Form):
             self.fields["division"].initial = self.affiliation_division.id
 
         if self.is_pastoral:
+            self.fields["application_track"].widget = forms.HiddenInput()
             self.fields["group"].widget = forms.HiddenInput()
             self.fields["group_role"].widget = forms.HiddenInput()
         else:
-            eligible = eligible_groups_for_member(user, event)
+            self.eligible_groups = eligible_groups_for_member(user, event)
             self.fields["group"].queryset = RetreatGroup.objects.filter(
-                pk__in=[g.id for g in eligible]
+                pk__in=[g.id for g in self.eligible_groups]
             ).order_by("order", "id")
+            for name in ("application_track", "group", "group_role"):
+                self.fields[name].widget.attrs["data-cselect"] = ""
+            if not read_only:
+                self.fields["application_track"].initial = (
+                    StaffApplicationTrack.GROUP_LEADERSHIP
+                )
 
         if read_only:
             for field in self.fields.values():
@@ -126,22 +127,44 @@ class RetreatStaffApplicationForm(forms.Form):
         cleaned["division"] = division
 
         if not self.is_pastoral:
-            can_apply, message = member_can_apply_to_event(self.user, self.event)
+            eligible_groups = getattr(self, "eligible_groups", None)
+            can_apply, message = member_can_apply_to_event(
+                self.user, self.event, eligible_groups=eligible_groups
+            )
             if not can_apply:
                 raise ValidationError(message)
+            track = (cleaned.get("application_track") or "").strip()
+            if track not in StaffApplicationTrack.values:
+                if not track:
+                    track = StaffApplicationTrack.GROUP_LEADERSHIP
+                else:
+                    raise ValidationError(
+                        {"application_track": "신청 유형을 선택해 주세요."}
+                    )
+            cleaned["application_track"] = track
             group = cleaned.get("group")
             group_role = cleaned.get("group_role")
-            if not group:
-                raise ValidationError({"group": "조를 선택해 주세요."})
-            if not group_role:
-                raise ValidationError({"group_role": "직책을 선택해 주세요."})
-            try:
-                validate_member_group_choice(
-                    self.user, self.event, group, division=division
-                )
-            except ValueError as exc:
-                raise ValidationError({"group": str(exc)}) from exc
+            if track == StaffApplicationTrack.GROUP_LEADERSHIP:
+                if not group:
+                    raise ValidationError({"group": "조를 선택해 주세요."})
+                if not group_role:
+                    raise ValidationError({"group_role": "직책을 선택해 주세요."})
+                try:
+                    validate_member_group_choice(
+                        self.user,
+                        self.event,
+                        group,
+                        region=region,
+                        division=division,
+                        eligible_groups=eligible_groups,
+                    )
+                except ValueError as exc:
+                    raise ValidationError({"group": str(exc)}) from exc
+            else:
+                cleaned["group"] = None
+                cleaned["group_role"] = ""
         else:
+            cleaned["application_track"] = StaffApplicationTrack.COUNCIL
             cleaned["group"] = None
             cleaned["group_role"] = ""
         return cleaned
@@ -159,13 +182,18 @@ class RetreatStaffApplicationForm(forms.Form):
         region = self.cleaned_data["region"]
         division = self.cleaned_data["division"]
         group = self.cleaned_data.get("group")
+        track = self.cleaned_data.get("application_track") or StaffApplicationTrack.COUNCIL
         return RetreatStaffApplication.objects.create(
             event=self.event,
             user=self.user,
             region=region,
             division=division,
-            group=None if self.is_pastoral else group,
-            group_role="" if self.is_pastoral else self.cleaned_data.get("group_role"),
-            note=(self.cleaned_data.get("note") or "").strip(),
+            application_track=track,
+            group=None if track != StaffApplicationTrack.GROUP_LEADERSHIP else group,
+            group_role=(
+                ""
+                if track != StaffApplicationTrack.GROUP_LEADERSHIP
+                else self.cleaned_data.get("group_role")
+            ),
             status=RetreatStaffApplication.Status.PENDING,
         )

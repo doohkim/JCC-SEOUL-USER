@@ -57,7 +57,7 @@
   <div class="jcc-leftNav-sectionLabel">메뉴</div>
 
   <div class="jcc-leftNav-tabs">
-    {% if user|can_access_retreat_tab %}
+    {% if user|can_access_retreat_nav_tab %}
       <a class="jcc-leftNav-item" href="{% url 'retreat_home' %}" data-tab="retreat">
         <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
           <path d="M3 21l3-9 6 6-9 3z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>

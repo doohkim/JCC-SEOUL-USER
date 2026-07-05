@@ -934,50 +934,6 @@
           </div>
         </section>
 
-        <section class="jcc-account-editSection" id="accountSignupApplicationSection" hidden>
-          <h3 class="jcc-account-editSection__title">가입 신청 정보</h3>
-          <div class="jcc-account-editField">
-            <label>승인 상태</label>
-            <div class="jcc-account-editReadonly" id="accountSignupStatus">-</div>
-          </div>
-          <div class="jcc-account-editField">
-            <label>신청 지역</label>
-            <div class="jcc-account-editReadonly" id="accountSignupRegion">-</div>
-          </div>
-          <div class="jcc-account-editField">
-            <label>신청 부서</label>
-            <div class="jcc-account-editReadonly" id="accountSignupDivision">-</div>
-          </div>
-          <div class="jcc-account-editField" id="accountSignupTeamField">
-            <label>신청 팀</label>
-            <div class="jcc-account-editReadonly" id="accountSignupTeam">-</div>
-          </div>
-          <div class="jcc-account-editField">
-            <label>신청 직급</label>
-            <div class="jcc-account-editReadonly" id="accountSignupApplicantRole">-</div>
-          </div>
-          <div class="jcc-account-editField" id="accountSignupRetreatParticipationField">
-            <label>수련회 참석</label>
-            <div class="jcc-account-editReadonly" id="accountSignupRetreatParticipation">-</div>
-          </div>
-          <div class="jcc-account-editField" id="accountSignupRetreatEventField" hidden>
-            <label>수련회 집회</label>
-            <div class="jcc-account-editReadonly" id="accountSignupRetreatEvent">-</div>
-          </div>
-          <div class="jcc-account-editField" id="accountSignupRetreatGroupField" hidden>
-            <label>수련회 조</label>
-            <div class="jcc-account-editReadonly" id="accountSignupRetreatGroup">-</div>
-          </div>
-          <div class="jcc-account-editField" id="accountSignupNoteField" hidden>
-            <label>메모</label>
-            <div class="jcc-account-editReadonly" id="accountSignupNote">-</div>
-          </div>
-          <div class="jcc-account-editField">
-            <label>신청 갱신</label>
-            <div class="jcc-account-editReadonly" id="accountSignupUpdatedAt">-</div>
-          </div>
-        </section>
-
         <section class="jcc-account-editSection">
           <h3 class="jcc-account-editSection__title">소속</h3>
           <div class="jcc-account-editField">
@@ -1005,30 +961,6 @@
             </select>
           </div>
         </section>
-
-        {% if active_retreat_event %}
-        <section class="jcc-account-editSection">
-          <h3 class="jcc-account-editSection__title">수련회</h3>
-          <div class="jcc-account-editField">
-            <label>수련회 집회</label>
-            <div class="jcc-account-editReadonly" id="accountEditEventName">{{ active_retreat_event.name }}</div>
-          </div>
-          <div class="jcc-account-editField">
-            <label for="accountEditRetreatGroup">수련회 조</label>
-            <select id="accountEditRetreatGroup" class="jcc-row-retreat-group" name="retreat_group_id" data-cselect aria-label="수련회 조">
-              <option value="">조 미지정</option>
-            </select>
-          </div>
-          <div class="jcc-account-editField">
-            <label for="accountEditRetreatRole">수련회 역할</label>
-            <select id="accountEditRetreatRole" name="retreat_role" data-cselect aria-label="수련회 역할">
-              {% for code, label in retreat_role_choices %}
-                <option value="{{ code }}">{{ label }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        </section>
-        {% endif %}
 
         <section class="jcc-account-editSection">
           <h3 class="jcc-account-editSection__title">권한</h3>
@@ -1135,7 +1067,6 @@
   <script id="jccAccountDetailsJson" type="application/json">{{ account_details_json|safe }}</script>
   <script id="jccAccountDivisionsJson" type="application/json">{{ divisions_json|safe }}</script>
   <script id="jccAccountTeamsMapJson" type="application/json">{{ teams_map_json|safe }}</script>
-  {% if active_retreat_event %}<script id="jccAccountRetreatGroupsJson" type="application/json">{{ retreat_groups_json|safe }}</script>{% endif %}
   <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c"></script>
   <script src="{% static 'retreat/phone_format.js' %}?v=20260617a"></script>
   <script>
@@ -1163,8 +1094,6 @@
 
       const divisions = JSON.parse(document.getElementById("jccAccountDivisionsJson").textContent);
       const teamsMap = JSON.parse(document.getElementById("jccAccountTeamsMapJson").textContent);
-      const retreatEl = document.getElementById("jccAccountRetreatGroupsJson");
-      const retreatGroups = retreatEl ? JSON.parse(retreatEl.textContent) : [];
       const canMoveDivision = {{ can_move_division|yesno:"true,false" }};
 
       let accountDetails = {};
@@ -1177,7 +1106,6 @@
       const regionSel = document.getElementById("accountEditRegion");
       const divisionSel = document.getElementById("accountEditDivision");
       const teamSel = document.getElementById("accountEditTeam");
-      const retreatSel = document.getElementById("accountEditRetreatGroup");
       const rolePickerEl = document.getElementById("accountEditRolePicker");
       const phoneInput = document.getElementById("accountEditPhone");
       if (phoneInput && window.JccPhoneFormat) {
@@ -1454,39 +1382,23 @@
         });
       }
 
-      function fillRetreatSelect(divisionId, selectedId) {
-        if (!retreatSel) return;
-        const current = String(selectedId || "");
-        retreatSel.innerHTML = '<option value="">조 미지정</option>';
-        retreatGroups
-          .filter((g) => String(g.division_id) === String(divisionId))
-          .forEach((g) => {
-            const opt = document.createElement("option");
-            opt.value = g.id;
-            opt.textContent = g.label;
-            if (String(g.id) === current) opt.selected = true;
-            retreatSel.appendChild(opt);
-          });
-      }
-
-      function syncFromRegion(selectedDivisionId, selectedTeamId, selectedRetreatId) {
+      function syncFromRegion(selectedDivisionId, selectedTeamId) {
         fillDivisionSelect(selectedDivisionId);
-        syncFromDivision(selectedTeamId, selectedRetreatId);
+        syncFromDivision(selectedTeamId);
       }
 
-      function syncFromDivision(selectedTeamId, selectedRetreatId) {
+      function syncFromDivision(selectedTeamId) {
         const divisionId = divisionSel.value;
         fillTeamSelect(divisionId, selectedTeamId);
-        fillRetreatSelect(divisionId, selectedRetreatId);
         updatePermSummary();
         refreshCustomSelects(form);
       }
 
       if (regionSel && canMoveDivision) {
-        regionSel.addEventListener("change", () => syncFromRegion("", "", ""));
+        regionSel.addEventListener("change", () => syncFromRegion("", ""));
       }
       if (divisionSel && canMoveDivision) {
-        divisionSel.addEventListener("change", () => syncFromDivision("", ""));
+        divisionSel.addEventListener("change", () => syncFromDivision(""));
       }
       teamSel.addEventListener("change", updatePermSummary);
       document.getElementById("accountEditRoleLevel").addEventListener("change", updatePermSummary);
@@ -1624,65 +1536,6 @@
         mountRolePicker(cachedRoles, assigned);
       }
 
-      function fillSignupApplication(app) {
-        const section = document.getElementById("accountSignupApplicationSection");
-        if (!section) return;
-        const hasApp = !!(app && app.has_application);
-        section.hidden = !hasApp;
-        if (!hasApp) return;
-
-        const setText = (id, value) => {
-          const el = document.getElementById(id);
-          if (el) el.textContent = value || "-";
-        };
-
-        setText("accountSignupStatus", app.onboarding_status_label);
-        setText("accountSignupRegion", app.region_name);
-        setText("accountSignupDivision", app.division_name);
-        setText("accountSignupApplicantRole", app.applicant_role_label);
-        setText("accountSignupUpdatedAt", app.application_updated_at);
-
-        const teamField = document.getElementById("accountSignupTeamField");
-        if (teamField) {
-          teamField.hidden = !!app.is_pastoral_applicant;
-        }
-        setText(
-          "accountSignupTeam",
-          app.is_pastoral_applicant ? "" : (app.team_name || "미선택")
-        );
-
-        const participationField = document.getElementById("accountSignupRetreatParticipationField");
-        const eventField = document.getElementById("accountSignupRetreatEventField");
-        const groupField = document.getElementById("accountSignupRetreatGroupField");
-        if (app.is_pastoral_applicant) {
-          if (participationField) participationField.hidden = true;
-          if (eventField) eventField.hidden = true;
-          if (groupField) groupField.hidden = true;
-        } else {
-          if (participationField) participationField.hidden = false;
-          setText(
-            "accountSignupRetreatParticipation",
-            app.retreat_participation ? "참석" : "미참석"
-          );
-          const showRetreat = !!app.retreat_participation;
-          if (eventField) {
-            eventField.hidden = !showRetreat;
-            setText("accountSignupRetreatEvent", app.retreat_event_name);
-          }
-          if (groupField) {
-            groupField.hidden = !showRetreat;
-            setText("accountSignupRetreatGroup", app.retreat_group_name || "-");
-          }
-        }
-
-        const noteField = document.getElementById("accountSignupNoteField");
-        const note = (app.onboarding_note || "").trim();
-        if (noteField) {
-          noteField.hidden = !note;
-          setText("accountSignupNote", note);
-        }
-      }
-
       async function openModal(userId) {
         const d = accountDetails[String(userId)] || accountDetails[userId];
         if (!d) return;
@@ -1691,8 +1544,6 @@
         const displayTitle = d.real_name || d.display_name || d.username || "계정";
         titleEl.textContent = displayTitle;
         subtitleEl.textContent = d.kakao_uid ? "kakao id · " + d.kakao_uid : (d.username || "");
-
-        fillSignupApplication(d.signup_application || {});
 
         document.getElementById("accountEditUserId").value = userId;
         document.getElementById("accountEditRealName").value = d.real_name || "";
@@ -1709,13 +1560,7 @@
         if (hiddenDiv) {
           hiddenDiv.value = d.division_id ? String(d.division_id) : "";
         }
-        syncFromRegion(d.division_id, d.team_id, d.retreat_group_id);
-
-        const retreatRoleSel = document.getElementById("accountEditRetreatRole");
-        if (retreatRoleSel) {
-          retreatRoleSel.value = d.retreat_role || "participant";
-        }
-
+        syncFromRegion(d.division_id, d.team_id);
         document.getElementById("accountEditAtt").checked = !!d.can_manage_attendance;
         document.getElementById("accountEditParking").checked = !!d.can_manage_parking;
         document.getElementById("accountEditAccounts").checked = !!d.can_manage_accounts;

@@ -151,23 +151,7 @@ def remove_stale_memberships_for_user_in_event(
 
 
 def sync_profile_retreat_group(user, group: RetreatGroup) -> bool:
-    """프로필의 수련회 조·집회 요청을 현재 배정 조와 맞춘다."""
-    profile = _profile_for(user)
-    if profile is None:
-        return False
-    update_fields: list[str] = []
-    if profile.requested_retreat_group_id != group.id:
-        profile.requested_retreat_group = group
-        update_fields.append("requested_retreat_group")
-    if profile.requested_retreat_event_id != group.event_id:
-        profile.requested_retreat_event = group.event
-        update_fields.append("requested_retreat_event")
-    if not profile.requested_retreat_participation:
-        profile.requested_retreat_participation = True
-        update_fields.append("requested_retreat_participation")
-    if update_fields:
-        profile.save(update_fields=[*update_fields, "updated_at"])
-        return True
+    """레거시 프로필 미러 — 런타임 단일 진실은 집회별 멤버십 테이블."""
     return False
 
 

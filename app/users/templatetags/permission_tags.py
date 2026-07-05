@@ -21,14 +21,6 @@ def can_manage_division_accounts_tab(user):
     return bool(user and can_manage_division_accounts(user))
 
 
-@register.filter(name="can_access_onboarding_approvals_tab")
-def can_access_onboarding_approvals_tab(user):
-    """계정관리 내 '승인 절차' 탭 — 스태프·계정 관리 기능권한."""
-    from users.permissions import can_access_onboarding_approvals
-
-    return bool(user and can_access_onboarding_approvals(user))
-
-
 @register.filter(name="can_access_attendance_tab")
 def can_access_attendance_tab(user):
     """탭 출석부 ``/attendance/team/roster/``."""
@@ -121,9 +113,17 @@ def can_access_counseling_manage_tab_filter(user):
     return can_access_counseling_manage_tab(user)
 
 
+@register.filter(name="can_access_retreat_nav_tab")
+def can_access_retreat_nav_tab_filter(user):
+    """좌측 '수련회' 탭 — 가입 완료 사용자."""
+    from users.permissions import can_access_retreat_nav_tab
+
+    return bool(user and can_access_retreat_nav_tab(user))
+
+
 @register.filter(name="can_access_retreat_tab")
 def can_access_retreat_tab_filter(user):
-    """좌측 '수련회' 탭 — 조장/부조장 또는 운영진(staff)·회장단·슈퍼유저."""
+    """수련회 운영 화면·API — 조장/부조장 또는 운영진(staff)·회장단·슈퍼유저."""
     from users.permissions import can_access_retreat_tab
 
     return can_access_retreat_tab(user)

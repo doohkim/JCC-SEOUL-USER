@@ -98,7 +98,7 @@ class RetreatChangelogTests(APITestCase):
         url = reverse("api_retreat_event_changelog", args=[self.event.id])
         self.assertEqual(self.client.get(url).status_code, 403)
 
-    def test_changelog_ok_for_event_observer(self):
+    def test_changelog_forbidden_for_event_observer(self):
         from retreat.models import RetreatCouncilMembership
 
         observer = User.objects.create_user(username="log_observer", password="x")
@@ -109,4 +109,4 @@ class RetreatChangelogTests(APITestCase):
         )
         self.client.force_authenticate(observer)
         url = reverse("api_retreat_event_changelog", args=[self.event.id])
-        self.assertEqual(self.client.get(url).status_code, 200)
+        self.assertEqual(self.client.get(url).status_code, 403)

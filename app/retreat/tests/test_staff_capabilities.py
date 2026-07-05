@@ -90,6 +90,9 @@ class StaffCapabilitiesUnitTests(_StaffRbacFixture):
         caps = effective_capabilities(obs, self.event)
         self.assertEqual(caps.groups, AccessLevel.VIEW)
         self.assertFalse(caps.add_group)
+        self.assertEqual(caps.admin, AccessLevel.NONE)
+        self.assertFalse(caps.view_staff)
+        self.assertFalse(caps.view_changelog)
         self.assertEqual(caps.pickup_arrival, AccessLevel.VIEW)
         self.assertFalse(caps.delete_pickup)
 
@@ -202,14 +205,10 @@ class StaffRbacApiTests(_StaffRbacFixture):
         r = self.client.patch(url, {"name": "변경"}, format="json")
         self.assertEqual(r.status_code, 403, r.content)
 
-    def test_event_observer_can_view_staff_cannot_add(self):
+    def test_event_observer_cannot_access_council_api(self):
         self.client.force_authenticate(self.event_observer)
         url = reverse("api_retreat_event_council", args=[self.event.id])
-        self.assertEqual(self.client.get(url).status_code, 200)
-        r = self.client.post(
-            url, {"username": "blocked_user", "role": "event_admin"}, format="json"
-        )
-        self.assertEqual(r.status_code, 403, r.content)
+        self.assertEqual(self.client.get(url).status_code, 403)
 
     def test_region_admin_cannot_access_out_of_scope_group(self):
         self.client.force_authenticate(self.region_admin)

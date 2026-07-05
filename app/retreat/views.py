@@ -32,8 +32,10 @@ from retreat.models import (
     RetreatSessionAttendee,
     RetreatStaffApplication,
     RetreatTimetableEntry,
+    StaffApplicationTrack,
 )
 from retreat.services.event_picker import (
+    default_retreat_landing_url,
     inject_picker_context,
     retreat_event_for_user,
     set_last_retreat_event,
@@ -62,6 +64,7 @@ from retreat.services.staff_capabilities import (
     effective_capabilities,
 )
 from users.permissions import (
+    can_access_retreat_staff_apply,
     can_access_retreat_tab,
     can_change_retreat_check_in,
     can_link_attendee_user,
@@ -73,6 +76,7 @@ from users.permissions import (
     can_select_pickup_group,
     can_view_retreat_all,
     can_view_staff,
+    can_access_retreat_admin,
     is_retreat_council,
     is_retreat_event_admin,
     is_retreat_group_leader,
@@ -111,6 +115,33 @@ def safe_retreat_back_url(request, event_id: int) -> str:
     return path
 
 
+class _RetreatStaffApplyAccessMixin(LoginRequiredMixin):
+    """로그인 + 가입 완료(참가 신청서 제출 가능)."""
+
+    login_url = reverse_lazy("user_login")
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not can_access_retreat_staff_apply(
+            request.user
+        ):
+            raise PermissionDenied("참가 신청을 이용할 권한이 없습니다.")
+        return super().dispatch(request, *args, **kwargs)
+
+
+class _RetreatEntryMixin(LoginRequiredMixin):
+    """`/retreat/` 진입 — 운영진·조장 또는 참가 신청 가능 사용자."""
+
+    login_url = reverse_lazy("user_login")
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not (
+            can_access_retreat_tab(request.user)
+            or can_access_retreat_staff_apply(request.user)
+        ):
+            raise PermissionDenied("수련회 화면을 이용할 권한이 없습니다.")
+        return super().dispatch(request, *args, **kwargs)
+
+
 class _RetreatAccessMixin(LoginRequiredMixin):
     """로그인 + 수련회 탭 접근 권한(수련회 회장단·목사·조장 등)."""
 
@@ -132,7 +163,7 @@ def _inject_retreat_caps(ctx, user, event) -> None:
     ctx["can_show_groups_tab"] = caps.groups >= AccessLevel.VIEW
     ctx["can_show_pickup_tab"] = caps.pickup >= AccessLevel.VIEW
     ctx["can_show_lodging_tab"] = can_view_retreat_all(user, event)
-    ctx["can_show_admin_tab"] = caps.admin >= AccessLevel.VIEW
+    ctx["can_show_admin_tab"] = can_access_retreat_admin(user, event)
 
 
 class _RetreatEventMixin(_RetreatAccessMixin):
@@ -178,7 +209,7 @@ class _RetreatEventMixin(_RetreatAccessMixin):
         return ctx
 
 
-class _RetreatHubEventMixin(_RetreatAccessMixin):
+class _RetreatHubEventMixin(_RetreatStaffApplyAccessMixin):
     """허브·참가 신청 — 운영 capability 없이 활성 집회만."""
 
     def dispatch(self, request, *args, **kwargs):
@@ -205,7 +236,7 @@ class _RetreatHubEventMixin(_RetreatAccessMixin):
         return ctx
 
 
-class RetreatHomeView(_RetreatAccessMixin, TemplateView):
+class RetreatHomeView(_RetreatEntryMixin, TemplateView):
     """`/retreat/` — 기본 집회로 redirect (활성 집회 없으면 empty)."""
 
     template_name = "retreat/empty.html"
@@ -215,7 +246,7 @@ class RetreatHomeView(_RetreatAccessMixin, TemplateView):
         if event is None:
             return super().get(request, *args, **kwargs)
         if has_retreat_operational_access(request.user, event):
-            return redirect("retreat_dashboard", event_id=event.id)
+            return redirect(default_retreat_landing_url(request.user, event))
         return redirect("retreat_staff_apply", event_id=event.id)
 
 
@@ -241,7 +272,7 @@ class RetreatStaffApplyView(_RetreatHubEventMixin, FormView):
             status = event_staff_status(request.user, event)
             if status == "assigned":
                 if has_retreat_operational_access(request.user, event):
-                    return redirect("retreat_dashboard", event_id=event.id)
+                    return redirect(default_retreat_landing_url(request.user, event))
                 return redirect("retreat_home")
         return super().dispatch(request, *args, **kwargs)
 
@@ -279,10 +310,14 @@ class RetreatStaffApplyView(_RetreatHubEventMixin, FormView):
                 {
                     "region": application.region_id,
                     "division": application.division_id,
+                    "application_track": application.application_track,
                     "group": application.group_id,
                     "group_role": application.group_role,
-                    "note": application.note,
                 }
+            )
+        else:
+            initial.setdefault(
+                "application_track", StaffApplicationTrack.GROUP_LEADERSHIP
             )
         return initial
 
@@ -294,7 +329,10 @@ class RetreatStaffApplyView(_RetreatHubEventMixin, FormView):
         form = kwargs.get("form")
         tier = staff_applicant_tier(user)
         region, division = primary_affiliation_for(user)
-        can_apply, apply_block_message = member_can_apply_to_event(user, event)
+        eligible_groups = eligible_groups_for_member(user, event)
+        can_apply, apply_block_message = member_can_apply_to_event(
+            user, event, eligible_groups=eligible_groups
+        )
 
         ctx["staff_status"] = status
         ctx["read_only"] = status in ("pending", "approved")
@@ -303,7 +341,7 @@ class RetreatStaffApplyView(_RetreatHubEventMixin, FormView):
         ctx["applicant_tier_label"] = staff_applicant_tier_label(tier)
         ctx["fixed_region_name"] = region.name if region else ""
         ctx["fixed_division_name"] = division.name if division else ""
-        ctx["eligible_groups"] = eligible_groups_for_member(user, event)
+        ctx["eligible_groups"] = eligible_groups
         ctx["can_submit_application"] = can_apply and status == "open" and not ctx["read_only"]
         ctx["apply_block_message"] = apply_block_message
         ctx["show_ineligible_card"] = (
@@ -372,6 +410,11 @@ class RetreatStaffApplicationsView(_RetreatEventMixin, TemplateView):
         )
         ctx["council_role_choices_json"] = json.dumps(
             list(RetreatCouncilMembership.Role.choices)
+        )
+        from retreat.models import RetreatGroupMembership
+
+        ctx["group_role_choices_json"] = json.dumps(
+            list(RetreatGroupMembership.Role.choices)
         )
         ctx["total_sessions"], ctx["overall_rate"] = _retreat_session_summary(
             self.request.user, event
@@ -471,7 +514,7 @@ class RetreatCouncilView(_RetreatEventMixin, TemplateView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
             event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"])
-            if not can_view_staff(request.user, event):
+            if not can_access_retreat_admin(request.user, event):
                 raise PermissionDenied("집회 운영진 페이지 접근 권한이 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -517,8 +560,7 @@ class RetreatTimetableView(_RetreatEventMixin, TemplateView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
             event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"])
-            caps = effective_capabilities(request.user, event)
-            if not (request.user.is_superuser or caps.admin >= AccessLevel.VIEW):
+            if not can_access_retreat_admin(request.user, event):
                 raise PermissionDenied("타임테이블 페이지 접근 권한이 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -1473,8 +1515,7 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
             event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"])
-            caps = effective_capabilities(request.user, event)
-            if not (request.user.is_superuser or caps.view_changelog):
+            if not can_access_retreat_admin(request.user, event):
                 raise PermissionDenied("수련회 관리 화면 접근 권한이 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 

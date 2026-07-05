@@ -3,7 +3,65 @@
 from __future__ import annotations
 
 from retreat.services.onboarding import is_pastoral_applicant
-from users.models import PastoralDivisionAssignment, RoleLevel, UserProfile
+from users.models import PastoralDivisionAssignment, RoleLevel, UserDivisionTeam, UserProfile
+
+
+def approve_onboarding_profile(
+    profile: UserProfile,
+    *,
+    changed_by=None,
+    onboarding_note: str = "",
+    retreat_event_id_raw: str = "",
+    retreat_group_id_raw: str = "",
+) -> str | None:
+    """가입 신청 승인 — 소속 반영·목회자 setup·APPROVED. 오류 시 메시지 반환."""
+    if profile is None or not profile.requested_division_id:
+        return "신청 부서를 먼저 지정해 주세요."
+
+    team = profile.requested_team
+    if team is not None and team.division_id != profile.requested_division_id:
+        return "신청 팀은 신청 부서에 속해야 합니다."
+
+    from retreat.services.onboarding import (
+        resolve_requested_retreat_assignment,
+        sync_retreat_attendee_from_onboarding_profile,
+    )
+
+    if (retreat_event_id_raw or "").strip() or (retreat_group_id_raw or "").strip():
+        retreat_err = resolve_requested_retreat_assignment(
+            profile,
+            division=profile.requested_division,
+            event_id_raw=(retreat_event_id_raw or "").strip(),
+            group_id_raw=(retreat_group_id_raw or "").strip(),
+        )
+        if retreat_err:
+            return retreat_err
+
+    UserDivisionTeam.objects.update_or_create(
+        user=profile.user,
+        division=profile.requested_division,
+        defaults={"team": team, "is_primary": True, "sort_order": 0},
+    )
+    apply_pastoral_account_setup(profile.user, profile)
+    profile.onboarding_status = UserProfile.OnboardingStatus.APPROVED
+    profile.onboarding_note = (onboarding_note or "").strip()
+    update_fields = ["onboarding_status", "onboarding_note", "updated_at"]
+    if (retreat_event_id_raw or "").strip() or (retreat_group_id_raw or "").strip():
+        update_fields.extend(
+            [
+                "requested_retreat_participation",
+                "requested_retreat_event",
+                "requested_retreat_group",
+                "requested_retreat_role",
+            ]
+        )
+    profile.save(update_fields=update_fields)
+    sync_retreat_attendee_from_onboarding_profile(
+        user=profile.user,
+        profile=profile,
+        changed_by=changed_by,
+    )
+    return None
 
 
 def apply_pastoral_account_setup(user, profile) -> None:
@@ -23,57 +81,3 @@ def apply_pastoral_account_setup(user, profile) -> None:
             division_id=profile.requested_division_id,
             defaults={"is_primary": True, "sort_order": 0},
         )
-
-
-def signup_application_detail(profile) -> dict:
-    """계정 탭 팝업용 가입 신청서 읽기 전용 요약."""
-    if profile is None or not profile.requested_division_id:
-        return {"has_application": False}
-
-    div = profile.requested_division
-    region_name = ""
-    if div and div.region_id:
-        region_name = getattr(div.region, "name", "") or ""
-
-    applicant_role = profile.requested_applicant_role or UserProfile.ApplicantRole.MEMBER
-    applicant_role_label = dict(UserProfile.ApplicantRole.choices).get(
-        applicant_role, "성도"
-    )
-    is_pastoral = is_pastoral_applicant(profile)
-    status_labels = dict(UserProfile.OnboardingStatus.choices)
-
-    retreat_group_name = ""
-    if is_pastoral:
-        retreat_group_name = "목회자 — 조원 자동 배정 없음"
-    elif profile.requested_retreat_group_id:
-        retreat_group_name = profile.requested_retreat_group.name
-
-    application_updated_at = ""
-    if getattr(profile, "updated_at", None):
-        from django.utils import timezone
-
-        application_updated_at = timezone.localtime(profile.updated_at).strftime(
-            "%Y-%m-%d %H:%M"
-        )
-
-    return {
-        "has_application": True,
-        "onboarding_status": profile.onboarding_status,
-        "onboarding_status_label": status_labels.get(
-            profile.onboarding_status, profile.onboarding_status
-        ),
-        "region_name": region_name,
-        "division_name": div.name if div else "",
-        "team_name": profile.requested_team.name if profile.requested_team_id else "",
-        "applicant_role_label": applicant_role_label,
-        "is_pastoral_applicant": is_pastoral,
-        "retreat_participation": bool(profile.requested_retreat_participation),
-        "retreat_event_name": (
-            profile.requested_retreat_event.name
-            if profile.requested_retreat_event_id
-            else ""
-        ),
-        "retreat_group_name": retreat_group_name,
-        "onboarding_note": (profile.onboarding_note or "").strip(),
-        "application_updated_at": application_updated_at,
-    }

@@ -39,6 +39,14 @@ class PickupObserverAccessTests(CouncilMatrixFixture):
         )
         self.assertEqual(r.status_code, 403)
 
+    def test_home_redirects_to_pickup_arrival(self):
+        r = self.page.get(reverse("retreat_home"))
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(
+            r.url,
+            reverse("retreat_pickup", args=[self.event.id]) + "?tab=arrival",
+        )
+
 
 class PickupObserverApiTests(CouncilMatrixFixture):
     def setUp(self):

@@ -12,6 +12,7 @@ from retreat.services.staff_application import (
     has_retreat_operational_access,
     user_assigned_to_event,
 )
+from retreat.services.staff_capabilities import can_access_retreat_page
 
 SESSION_LAST_RETREAT_EVENT_ID = "retreat_last_event_id"
 
@@ -97,10 +98,42 @@ def url_for_retreat_tab(retreat_tab: str, event_id: int) -> str:
     return reverse("retreat_dashboard", args=[event_id])
 
 
-def picker_target_url(user: User, event: RetreatEvent, *, retreat_tab: str) -> str:
-    if has_retreat_operational_access(user, event):
-        return url_for_retreat_tab(retreat_tab, event.id)
+_PICKER_TAB_PAGES = {
+    "dashboard": "dashboard",
+    "manage_groups": "groups",
+    "pickup": "pickup",
+    "lodging": "lodging",
+    "lodging_roster": "lodging",
+    "admin": "admin",
+    "council": "admin",
+    "timetable": "admin",
+    "results": "dashboard",
+    "rosters": "groups",
+}
+
+
+def default_retreat_landing_url(user: User, event: RetreatEvent) -> str:
+    """첫 접근 가능한 수련회 화면 URL — dashboard → groups → pickup → lodging → 신청서."""
+    from users.permissions import can_view_retreat_all
+
+    if can_access_retreat_page(user, event, "dashboard"):
+        return reverse("retreat_dashboard", args=[event.id])
+    if can_access_retreat_page(user, event, "groups"):
+        return reverse("retreat_group_manage_list", args=[event.id])
+    if can_access_retreat_page(user, event, "pickup"):
+        return reverse("retreat_pickup", args=[event.id]) + "?tab=arrival"
+    if can_view_retreat_all(user, event):
+        return reverse("retreat_lodging", args=[event.id])
     return reverse("retreat_staff_apply", args=[event.id])
+
+
+def picker_target_url(user: User, event: RetreatEvent, *, retreat_tab: str) -> str:
+    if not has_retreat_operational_access(user, event):
+        return reverse("retreat_staff_apply", args=[event.id])
+    page = _PICKER_TAB_PAGES.get(retreat_tab or "dashboard", "dashboard")
+    if can_access_retreat_page(user, event, page):
+        return url_for_retreat_tab(retreat_tab, event.id)
+    return default_retreat_landing_url(user, event)
 
 
 def picker_entries(user: User, *, retreat_tab: str) -> list[dict]:

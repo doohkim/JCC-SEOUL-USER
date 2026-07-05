@@ -22,6 +22,7 @@ from retreat.models import (
     RetreatTimetableEntry,
 )
 from retreat.services.staff_capabilities import AccessLevel, effective_capabilities
+from users.mixins import ensure_user_profile
 from users.models import Division, Region, UserDivisionTeam
 
 User = get_user_model()
@@ -81,6 +82,11 @@ class _EventAdminMatrixFixture(TestCase):
         )
 
         cls.link_user = User.objects.create_user(username="ea_link_target", password="x")
+        link_profile = ensure_user_profile(cls.link_user)
+        link_profile.real_name = "연동실명"
+        link_profile.phone = "010-1111-2222"
+        link_profile.gender = "female"
+        link_profile.save(update_fields=["real_name", "phone", "gender", "updated_at"])
         cls.leader_candidate = User.objects.create_user(
             username="ea_leader_pick", password="x"
         )
@@ -145,7 +151,7 @@ class _EventAdminMatrixFixture(TestCase):
 
 
 class EventAdminDropdownTests(_EventAdminMatrixFixture):
-    """집회 드롭다운 — 운영진 배정 집회만."""
+    """집회 드롭다운 — 활성 집회 전체."""
 
     def test_event_admin_sees_all_active_events_in_picker(self):
         r = self.page.get(reverse("retreat_dashboard", args=[self.event.id]))
@@ -335,8 +341,25 @@ class EventAdminAttendeeApiPageTests(_EventAdminMatrixFixture):
         )
         self.assertEqual(r2.status_code, 200, r2.content)
         attendee = RetreatAttendee.objects.get(pk=attendee_id)
-        self.assertEqual(attendee.name, "이름변경")
+        self.assertEqual(attendee.name, "연동실명")
+        self.assertEqual(attendee.phone, "010-1111-2222")
+        self.assertEqual(attendee.gender, "female")
         self.assertEqual(attendee.participation_status, "absent")
+        self.assertEqual(attendee.user_id, self.link_user.id)
+
+    def test_link_user_overwrites_manual_name(self):
+        attendee = RetreatAttendee.objects.create(
+            group=self.group_seoul, name="수동입력"
+        )
+        detail = reverse("api_retreat_attendee_detail", args=[attendee.id])
+        r = self.api.patch(
+            detail,
+            {"name": "이름변경", "user": self.link_user.id},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        attendee.refresh_from_db()
+        self.assertEqual(attendee.name, "연동실명")
         self.assertEqual(attendee.user_id, self.link_user.id)
 
     def test_unlink_attendee_user(self):
@@ -455,7 +478,6 @@ class EventAdminAdminApiPageTests(_EventAdminMatrixFixture):
         self.assertTrue(r.context["can_manage_staff"])
         self.assertContains(r, "운영진 관리")
         self.assertContains(r, "staffRosterTbody")
-        self.assertContains(r, "staffWaitingList")
         self.assertContains(r, "btnStaffAddCouncil")
         self.assertContains(r, "staffModalOverlay")
 

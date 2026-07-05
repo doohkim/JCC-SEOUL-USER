@@ -10,15 +10,21 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from retreat.models import (
+    RetreatAttendee,
     RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
     RetreatGroupMembership,
+    RetreatGroupScope,
     RetreatStaffApplication,
+    StaffApplicationTrack,
 )
 from retreat.services.staff_application import (
     apply_staff_application,
+    delete_staff_application_if_unassigned,
+    eligible_groups_for_member,
     event_staff_status,
+    member_can_apply_to_event,
     reject_staff_application,
 )
 from users.mixins import ensure_user_profile
@@ -90,40 +96,91 @@ class StaffApplicationServiceTests(StaffApplicationFixture):
             user=self.applicant,
             region=self.seoul,
             division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
             group=self.group,
             group_role=RetreatGroupMembership.Role.LEADER,
             status=RetreatStaffApplication.Status.PENDING,
         )
         self.assertEqual(event_staff_status(self.applicant, self.event), "pending")
         apply_staff_application(application, reviewer=self.admin)
-        self.assertFalse(
-            RetreatGroupMembership.objects.filter(
-                user=self.applicant, group=self.group
-            ).exists()
+        membership = RetreatGroupMembership.objects.get(
+            user=self.applicant, group=self.group
         )
-        self.assertEqual(event_staff_status(self.applicant, self.event), "approved")
+        self.assertEqual(membership.role, RetreatGroupMembership.Role.LEADER)
+        attendee = RetreatAttendee.objects.get(
+            user=self.applicant, group=self.group
+        )
+        self.assertEqual(attendee.member_role, RetreatGroupMembership.Role.LEADER)
+        self.assertEqual(event_staff_status(self.applicant, self.event), "assigned")
 
-    def test_pastoral_application_approval_without_membership(self):
+    def test_pastoral_application_approval_creates_council_membership(self):
         application = RetreatStaffApplication.objects.create(
             event=self.event,
             user=self.pastor,
             region=self.seoul,
             division=self.div_youth,
+            application_track=StaffApplicationTrack.COUNCIL,
             status=RetreatStaffApplication.Status.PENDING,
         )
         apply_staff_application(application, reviewer=self.admin)
-        self.assertFalse(
-            RetreatCouncilMembership.objects.filter(
-                event=self.event, user=self.pastor
-            ).exists()
+        membership = RetreatCouncilMembership.objects.get(
+            event=self.event, user=self.pastor
         )
+        self.assertEqual(
+            membership.role, RetreatCouncilMembership.Role.DIVISION_OBSERVER
+        )
+        self.assertEqual(membership.division_id, self.div_youth.id)
         application.refresh_from_db()
         self.assertEqual(application.status, RetreatStaffApplication.Status.APPROVED)
         self.assertEqual(
             application.approved_council_role,
             RetreatCouncilMembership.Role.DIVISION_OBSERVER,
         )
-        self.assertEqual(event_staff_status(self.pastor, self.event), "approved")
+        self.assertEqual(event_staff_status(self.pastor, self.event), "assigned")
+
+    def test_vice_leader_approval_creates_membership_and_attendee(self):
+        application = RetreatStaffApplication.objects.create(
+            event=self.event,
+            user=self.applicant,
+            region=self.seoul,
+            division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
+            group=self.group,
+            group_role=RetreatGroupMembership.Role.VICE_LEADER,
+            status=RetreatStaffApplication.Status.PENDING,
+        )
+        apply_staff_application(application, reviewer=self.admin)
+        membership = RetreatGroupMembership.objects.get(
+            user=self.applicant, group=self.group
+        )
+        self.assertEqual(membership.role, RetreatGroupMembership.Role.VICE_LEADER)
+        attendee = RetreatAttendee.objects.get(
+            user=self.applicant, group=self.group
+        )
+        self.assertEqual(
+            attendee.member_role, RetreatGroupMembership.Role.VICE_LEADER
+        )
+
+    def test_member_council_track_approval_creates_council_membership(self):
+        application = RetreatStaffApplication.objects.create(
+            event=self.event,
+            user=self.applicant,
+            region=self.seoul,
+            division=self.div_youth,
+            application_track=StaffApplicationTrack.COUNCIL,
+            status=RetreatStaffApplication.Status.PENDING,
+        )
+        apply_staff_application(application, reviewer=self.admin)
+        membership = RetreatCouncilMembership.objects.get(
+            event=self.event, user=self.applicant
+        )
+        self.assertEqual(
+            membership.role, RetreatCouncilMembership.Role.DIVISION_OBSERVER
+        )
+        self.assertEqual(membership.division_id, self.div_youth.id)
+        self.assertFalse(
+            RetreatGroupMembership.objects.filter(user=self.applicant).exists()
+        )
 
     def test_reject_allows_reapply_when_open(self):
         application = RetreatStaffApplication.objects.create(
@@ -131,6 +188,7 @@ class StaffApplicationServiceTests(StaffApplicationFixture):
             user=self.applicant,
             region=self.seoul,
             division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
             group=self.group,
             group_role=RetreatGroupMembership.Role.VICE_LEADER,
             status=RetreatStaffApplication.Status.PENDING,
@@ -144,6 +202,7 @@ class StaffApplicationServiceTests(StaffApplicationFixture):
             user=self.applicant,
             region=self.seoul,
             division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
             group=self.group,
             group_role=RetreatGroupMembership.Role.LEADER,
             status=RetreatStaffApplication.Status.PENDING,
@@ -154,6 +213,7 @@ class StaffApplicationServiceTests(StaffApplicationFixture):
                 user=self.applicant,
                 region=self.seoul,
                 division=self.div_youth,
+                application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
                 group=self.group,
                 group_role=RetreatGroupMembership.Role.VICE_LEADER,
                 status=RetreatStaffApplication.Status.PENDING,
@@ -165,11 +225,19 @@ class StaffApplicationPageTests(StaffApplicationFixture):
         super().setUp()
         self.client = Client()
 
-    def test_home_redirects_approved_applicant_to_staff_apply(self):
+    def test_retreat_home_redirects_approved_applicant_to_staff_apply(self):
         self.client.force_login(self.applicant)
         r = self.client.get(reverse("retreat_home"))
         self.assertEqual(r.status_code, 302)
-        self.assertIn(f"/retreat/{self.event.id}/staff-apply/", r.url)
+        self.assertEqual(
+            r["Location"],
+            reverse("retreat_staff_apply", args=[self.event.id]),
+        )
+
+    def test_staff_apply_accessible_for_approved_applicant(self):
+        self.client.force_login(self.applicant)
+        r = self.client.get(reverse("retreat_staff_apply", args=[self.event.id]))
+        self.assertEqual(r.status_code, 200)
 
     def test_staff_apply_closed_shows_notice_without_redirect(self):
         self.event.staff_applications_open = False
@@ -185,11 +253,11 @@ class StaffApplicationPageTests(StaffApplicationFixture):
         r = self.client.post(
             reverse("retreat_staff_apply", args=[self.event.id]),
             {
+                "application_track": StaffApplicationTrack.GROUP_LEADERSHIP,
                 "region": str(self.seoul.id),
                 "division": str(self.div_youth.id),
                 "group": str(self.group.id),
                 "group_role": RetreatGroupMembership.Role.LEADER,
-                "note": "지원합니다",
             },
         )
         self.assertEqual(r.status_code, 302)
@@ -200,6 +268,25 @@ class StaffApplicationPageTests(StaffApplicationFixture):
             1,
         )
 
+    def test_staff_apply_submit_uses_default_group_leadership_track(self):
+        self.client.force_login(self.applicant)
+        r = self.client.post(
+            reverse("retreat_staff_apply", args=[self.event.id]),
+            {
+                "region": str(self.seoul.id),
+                "division": str(self.div_youth.id),
+                "group": str(self.group.id),
+                "group_role": RetreatGroupMembership.Role.LEADER,
+            },
+        )
+        self.assertEqual(r.status_code, 302)
+        application = RetreatStaffApplication.objects.get(
+            user=self.applicant, event=self.event
+        )
+        self.assertEqual(
+            application.application_track, StaffApplicationTrack.GROUP_LEADERSHIP
+        )
+
     def test_staff_apply_pastoral_submit_without_group(self):
         self.client.force_login(self.pastor)
         r = self.client.post(
@@ -207,13 +294,13 @@ class StaffApplicationPageTests(StaffApplicationFixture):
             {
                 "region": str(self.seoul.id),
                 "division": str(self.div_youth.id),
-                "note": "목회자 지원",
             },
         )
         self.assertEqual(r.status_code, 302)
         application = RetreatStaffApplication.objects.get(
             user=self.pastor, event=self.event
         )
+        self.assertEqual(application.application_track, StaffApplicationTrack.COUNCIL)
         self.assertIsNone(application.group_id)
         self.assertEqual(application.group_role, "")
 
@@ -232,6 +319,7 @@ class StaffApplicationPageTests(StaffApplicationFixture):
         r = self.client.post(
             reverse("retreat_staff_apply", args=[self.event.id]),
             {
+                "application_track": StaffApplicationTrack.GROUP_LEADERSHIP,
                 "region": str(self.seoul.id),
                 "division": str(self.div_youth.id),
                 "group": str(other_group.id),
@@ -244,6 +332,37 @@ class StaffApplicationPageTests(StaffApplicationFixture):
                 user=self.applicant, event=self.event
             ).exists()
         )
+
+    def test_staff_apply_council_track_submit(self):
+        self.client.force_login(self.applicant)
+        r = self.client.post(
+            reverse("retreat_staff_apply", args=[self.event.id]),
+            {
+                "application_track": StaffApplicationTrack.COUNCIL,
+                "region": str(self.seoul.id),
+                "division": str(self.div_youth.id),
+            },
+        )
+        self.assertEqual(r.status_code, 302)
+        application = RetreatStaffApplication.objects.get(
+            user=self.applicant, event=self.event
+        )
+        self.assertEqual(application.application_track, StaffApplicationTrack.COUNCIL)
+        self.assertIsNone(application.group_id)
+
+    def test_staff_apply_council_track_hides_group_fields_on_get(self):
+        RetreatStaffApplication.objects.create(
+            event=self.event,
+            user=self.applicant,
+            region=self.seoul,
+            division=self.div_youth,
+            application_track=StaffApplicationTrack.COUNCIL,
+            status=RetreatStaffApplication.Status.PENDING,
+        )
+        self.client.force_login(self.applicant)
+        r = self.client.get(reverse("retreat_staff_apply", args=[self.event.id]))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'id="staffApplyMemberFields" hidden')
 
     def test_staff_apply_member_without_groups_shows_message(self):
         self.group.delete()
@@ -270,13 +389,19 @@ class StaffApplicationPageTests(StaffApplicationFixture):
         self.assertContains(r, "jcc-retreat-staffApplyCardTitle")
         self.assertContains(r, "jcc-pageHeader")
         self.assertContains(r, 'id="retreatEventPicker"')
+        self.assertContains(
+            r,
+            f'value="{StaffApplicationTrack.GROUP_LEADERSHIP}" selected',
+        )
+        self.assertContains(r, "조 운영진")
 
-    def test_staff_apply_approved_hides_submit_and_shows_waiting_message(self):
+    def test_staff_apply_approved_hides_submit_and_shows_notice(self):
         RetreatStaffApplication.objects.create(
             event=self.event,
             user=self.applicant,
             region=self.seoul,
             division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
             group=self.group,
             group_role=RetreatGroupMembership.Role.LEADER,
             status=RetreatStaffApplication.Status.APPROVED,
@@ -285,13 +410,108 @@ class StaffApplicationPageTests(StaffApplicationFixture):
         r = self.client.get(reverse("retreat_staff_apply", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "참가 신청이 승인되었습니다")
-        self.assertContains(r, "역할 배정 대기")
+        self.assertContains(r, "다시 신청할 수 있습니다")
+        self.assertNotContains(r, "역할 배정 대기")
         self.assertNotContains(r, "참가 신청하기")
 
     def test_dashboard_forbidden_without_assignment(self):
         self.client.force_login(self.applicant)
         r = self.client.get(reverse("retreat_dashboard", args=[self.event.id]))
         self.assertEqual(r.status_code, 403)
+
+
+class StaffApplicationScopeTests(StaffApplicationFixture):
+    """조 담당 범위(대표+보조) 기준 신청 자격."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.host_div = Division.objects.create(
+            region=cls.seoul, code="sa_host_div", name="주관부서"
+        )
+        cls.host_group = RetreatGroup.objects.create(
+            event=cls.event,
+            region=cls.seoul,
+            division=cls.host_div,
+            name="주관 1조",
+            order=2,
+        )
+        cls.extra_scope_user = User.objects.create_user(
+            username="staff_extra_scope", password="x"
+        )
+        UserDivisionTeam.objects.create(
+            user=cls.extra_scope_user, division=cls.div_youth, is_primary=True
+        )
+        profile = ensure_user_profile(cls.extra_scope_user)
+        profile.onboarding_status = UserProfile.OnboardingStatus.APPROVED
+        profile.save()
+
+        cls.unscoped_div = Division.objects.create(
+            region=cls.seoul, code="sa_unscoped_div", name="미배정부서"
+        )
+        cls.unscoped_user = User.objects.create_user(
+            username="staff_unscoped", password="x"
+        )
+        UserDivisionTeam.objects.create(
+            user=cls.unscoped_user, division=cls.unscoped_div, is_primary=True
+        )
+        unscoped_profile = ensure_user_profile(cls.unscoped_user)
+        unscoped_profile.onboarding_status = UserProfile.OnboardingStatus.APPROVED
+        unscoped_profile.save()
+
+    def setUp(self):
+        super().setUp()
+        self.client = Client()
+
+    def test_eligible_via_extra_scope_only(self):
+        RetreatGroupScope.objects.create(
+            group=self.host_group,
+            region=self.seoul,
+            division=self.div_youth,
+        )
+        self.group.delete()
+        groups = eligible_groups_for_member(self.extra_scope_user, self.event)
+        self.assertEqual([g.id for g in groups], [self.host_group.id])
+        can_apply, _message = member_can_apply_to_event(
+            self.extra_scope_user, self.event, eligible_groups=groups
+        )
+        self.assertTrue(can_apply)
+
+    def test_extra_scope_user_can_submit_application(self):
+        RetreatGroupScope.objects.create(
+            group=self.host_group,
+            region=self.seoul,
+            division=self.div_youth,
+        )
+        self.group.delete()
+        self.client.force_login(self.extra_scope_user)
+        r = self.client.post(
+            reverse("retreat_staff_apply", args=[self.event.id]),
+            {
+                "application_track": StaffApplicationTrack.GROUP_LEADERSHIP,
+                "region": str(self.seoul.id),
+                "division": str(self.div_youth.id),
+                "group": str(self.host_group.id),
+                "group_role": RetreatGroupMembership.Role.VICE_LEADER,
+            },
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(
+            RetreatStaffApplication.objects.filter(
+                user=self.extra_scope_user, event=self.event, group=self.host_group
+            ).exists()
+        )
+
+    def test_unscoped_division_shows_ineligible(self):
+        self.client.force_login(self.unscoped_user)
+        r = self.client.get(reverse("retreat_staff_apply", args=[self.event.id]))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "신청 불가")
+        self.assertNotContains(r, 'id="staffApplyForm"')
+
+    def test_representative_scope_still_eligible(self):
+        groups = eligible_groups_for_member(self.applicant, self.event)
+        self.assertEqual([g.id for g in groups], [self.group.id])
 
 
 class StaffApplicationApiTests(StaffApplicationFixture):
@@ -303,6 +523,7 @@ class StaffApplicationApiTests(StaffApplicationFixture):
             user=self.applicant,
             region=self.seoul,
             division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
             group=self.group,
             group_role=RetreatGroupMembership.Role.LEADER,
             status=RetreatStaffApplication.Status.PENDING,
@@ -315,6 +536,34 @@ class StaffApplicationApiTests(StaffApplicationFixture):
         )
         self.assertEqual(r.status_code, 200)
         self.assertEqual(len(r.json()["results"]), 1)
+        row = r.json()["results"][0]
+        self.assertFalse(row["is_council_track"])
+        self.assertFalse(row["is_pastoral"])
+        self.assertEqual(row["application_track_display"], "조 운영진")
+
+    def test_admin_list_council_track_flags(self):
+        RetreatStaffApplication.objects.create(
+            event=self.event,
+            user=self.pastor,
+            region=self.seoul,
+            division=self.div_youth,
+            application_track=StaffApplicationTrack.COUNCIL,
+            status=RetreatStaffApplication.Status.PENDING,
+        )
+        self.client.force_login(self.admin)
+        r = self.client.get(
+            reverse("api_retreat_event_staff_applications", args=[self.event.id])
+        )
+        self.assertEqual(r.status_code, 200)
+        results = r.json()["results"]
+        self.assertEqual(len(results), 2)
+        pastoral_row = next(row for row in results if row["is_pastoral"])
+        self.assertTrue(pastoral_row["is_council_track"])
+        self.assertEqual(pastoral_row["application_track_display"], "집회 운영진")
+        self.assertTrue(pastoral_row["suggested_council_role"])
+        group_row = next(row for row in results if not row["is_pastoral"])
+        self.assertFalse(group_row["is_council_track"])
+        self.assertEqual(group_row["application_track_display"], "조 운영진")
 
     def test_admin_lists_approved_applications(self):
         apply_staff_application(self.application, reviewer=self.admin)
@@ -341,8 +590,166 @@ class StaffApplicationApiTests(StaffApplicationFixture):
         self.assertEqual(r.status_code, 200)
         self.application.refresh_from_db()
         self.assertEqual(self.application.status, RetreatStaffApplication.Status.APPROVED)
-        self.assertFalse(
-            RetreatGroupMembership.objects.filter(
+        membership = RetreatGroupMembership.objects.get(
+            user=self.applicant, group=self.group
+        )
+        self.assertEqual(membership.role, RetreatGroupMembership.Role.LEADER)
+        self.assertTrue(
+            RetreatAttendee.objects.filter(
                 user=self.applicant, group=self.group
             ).exists()
+        )
+
+
+class StaffApplicationApprovalOverrideTests(StaffApplicationFixture):
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.alt_group = RetreatGroup.objects.create(
+            event=cls.event,
+            region=cls.seoul,
+            division=cls.div_youth,
+            name="2조",
+            order=2,
+        )
+
+    def test_approve_with_different_eligible_group(self):
+        application = RetreatStaffApplication.objects.create(
+            event=self.event,
+            user=self.applicant,
+            region=self.seoul,
+            division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
+            group=self.group,
+            group_role=RetreatGroupMembership.Role.LEADER,
+            status=RetreatStaffApplication.Status.PENDING,
+        )
+        apply_staff_application(
+            application,
+            reviewer=self.admin,
+            group_id=self.alt_group.id,
+            group_role=RetreatGroupMembership.Role.VICE_LEADER,
+        )
+        application.refresh_from_db()
+        self.assertEqual(application.group_id, self.alt_group.id)
+        self.assertEqual(application.group_role, RetreatGroupMembership.Role.VICE_LEADER)
+        membership = RetreatGroupMembership.objects.get(
+            user=self.applicant, group=self.alt_group
+        )
+        self.assertEqual(membership.role, RetreatGroupMembership.Role.VICE_LEADER)
+
+    def test_approve_rejects_ineligible_group(self):
+        other_div = Division.objects.create(
+            region=self.seoul, code="sa_other_div", name="어린이부"
+        )
+        other_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=other_div,
+            name="어린이 1조",
+            order=3,
+        )
+        application = RetreatStaffApplication.objects.create(
+            event=self.event,
+            user=self.applicant,
+            region=self.seoul,
+            division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
+            group=self.group,
+            group_role=RetreatGroupMembership.Role.LEADER,
+            status=RetreatStaffApplication.Status.PENDING,
+        )
+        with self.assertRaises(ValueError):
+            apply_staff_application(
+                application,
+                reviewer=self.admin,
+                group_id=other_group.id,
+                group_role=RetreatGroupMembership.Role.LEADER,
+            )
+
+
+class StaffApplicationReapplyTests(StaffApplicationFixture):
+    def setUp(self):
+        super().setUp()
+        self.api = APIClient()
+
+    def test_membership_delete_clears_application_and_allows_resubmit(self):
+        application = RetreatStaffApplication.objects.create(
+            event=self.event,
+            user=self.applicant,
+            region=self.seoul,
+            division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
+            group=self.group,
+            group_role=RetreatGroupMembership.Role.LEADER,
+            status=RetreatStaffApplication.Status.PENDING,
+        )
+        apply_staff_application(application, reviewer=self.admin)
+        membership = RetreatGroupMembership.objects.get(
+            user=self.applicant, group=self.group
+        )
+        self.api.force_authenticate(self.admin)
+        r = self.api.delete(
+            reverse("api_retreat_group_membership_detail", args=[membership.id])
+        )
+        self.assertEqual(r.status_code, 204)
+        self.assertFalse(
+            RetreatStaffApplication.objects.filter(
+                event=self.event,
+                user=self.applicant,
+                status=RetreatStaffApplication.Status.APPROVED,
+            ).exists()
+        )
+        self.assertEqual(event_staff_status(self.applicant, self.event), "open")
+
+        client = Client()
+        client.force_login(self.applicant)
+        r2 = client.post(
+            reverse("retreat_staff_apply", args=[self.event.id]),
+            {
+                "application_track": StaffApplicationTrack.GROUP_LEADERSHIP,
+                "region": str(self.seoul.id),
+                "division": str(self.div_youth.id),
+                "group": str(self.group.id),
+                "group_role": RetreatGroupMembership.Role.VICE_LEADER,
+            },
+        )
+        self.assertEqual(r2.status_code, 302)
+
+    def test_group_delete_keeps_application_when_council_remains(self):
+        application = RetreatStaffApplication.objects.create(
+            event=self.event,
+            user=self.applicant,
+            region=self.seoul,
+            division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
+            group=self.group,
+            group_role=RetreatGroupMembership.Role.LEADER,
+            status=RetreatStaffApplication.Status.PENDING,
+        )
+        apply_staff_application(application, reviewer=self.admin)
+        RetreatCouncilMembership.objects.create(
+            event=self.event,
+            user=self.applicant,
+            role=RetreatCouncilMembership.Role.EVENT_OBSERVER,
+        )
+        membership = RetreatGroupMembership.objects.get(
+            user=self.applicant, group=self.group
+        )
+        self.api.force_authenticate(self.admin)
+        r = self.api.delete(
+            reverse("api_retreat_group_membership_detail", args=[membership.id])
+        )
+        self.assertEqual(r.status_code, 204)
+        self.assertTrue(
+            RetreatStaffApplication.objects.filter(
+                event=self.event,
+                user=self.applicant,
+                status=RetreatStaffApplication.Status.APPROVED,
+            ).exists()
+        )
+        self.assertFalse(
+            delete_staff_application_if_unassigned(
+                self.applicant, self.event, actor=self.admin
+            )
         )

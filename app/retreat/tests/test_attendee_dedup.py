@@ -122,7 +122,7 @@ class AttendeeDedupOnboardingTests(_AttendeeDedupFixture):
             RetreatAttendee.LodgingStayStatus.NO_STAY,
         )
 
-    def test_consolidate_updates_profile_requested_retreat_group(self):
+    def test_consolidate_does_not_mirror_profile_requested_retreat_group(self):
         applicant = User.objects.create_user(username="dedup_profile", password="x")
         profile = UserProfile.objects.create(
             user=applicant,
@@ -147,8 +147,12 @@ class AttendeeDedupOnboardingTests(_AttendeeDedupFixture):
             appoint_leadership=True,
         )
         profile.refresh_from_db()
-        self.assertEqual(profile.requested_retreat_group_id, self.group2.id)
-        self.assertEqual(profile.requested_retreat_event_id, self.event.id)
+        self.assertEqual(profile.requested_retreat_group_id, self.group1.id)
+        self.assertTrue(
+            RetreatAttendee.objects.filter(
+                group=self.group2, user=applicant, member_role="leader"
+            ).exists()
+        )
 
 
 class AttendeeDedupMembershipApiTests(_AttendeeDedupFixture):

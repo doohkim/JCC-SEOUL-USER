@@ -65,16 +65,6 @@
 
             <div class="jcc-retreat-staffRosterCards" id="staffRosterCards" aria-live="polite"></div>
           </div>
-
-          <div class="card jcc-retreat-adminCard jcc-retreat-staffWaitingCard" id="staffWaitingCard">
-            <div class="jcc-retreat-staffWaitingHead">
-              <h2 class="jcc-retreat-sectionTitle">역할 배정 대기</h2>
-              <p class="muted">참가 신청이 승인되었으나 아직 운영 역할이 배정되지 않은 사람입니다.</p>
-            </div>
-            <ul class="jcc-retreat-staffWaitingList" id="staffWaitingList">
-              <li class="muted">불러오는 중…</li>
-            </ul>
-          </div>
         </main>
       </div>
     </div>
@@ -183,7 +173,6 @@
         canManage: {{ can_manage_staff|yesno:"true,false" }},
         apiList: "{% url 'api_retreat_event_council' event.id %}",
         apiDetailBase: "/api/v1/retreat/events/{{ event.id }}/council/",
-        apiStaffCandidates: "{% url 'api_retreat_event_staff_candidates' event.id %}",
         userSearchUrl: "{% url 'api_retreat_user_search' %}",
         roleScopes: {
           event_admin: "event",

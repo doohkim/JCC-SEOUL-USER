@@ -7,7 +7,6 @@
   const statusEl = document.getElementById("staffRosterStatus");
   const rosterTbody = document.getElementById("staffRosterTbody");
   const rosterCards = document.getElementById("staffRosterCards");
-  const waitingList = document.getElementById("staffWaitingList");
   const filterPills = document.getElementById("staffFilterPills");
   const modalOverlay = document.getElementById("staffModalOverlay");
   const modalForm = document.getElementById("staffModalForm");
@@ -805,100 +804,6 @@
     renderRoster(btn.dataset.filter || "all");
   });
 
-  async function loadWaitingCandidates() {
-    if (!waitingList || !ctx.apiStaffCandidates) return;
-    try {
-      const r = await fetch(ctx.apiStaffCandidates, { credentials: "same-origin" });
-      if (!r.ok) throw new Error(await r.text());
-      const candidates = await r.json();
-      if (!candidates.length) {
-        waitingList.innerHTML =
-          '<li class="muted">배정 대기 중인 승인 신청자가 없습니다.</li>';
-        return;
-      }
-      waitingList.innerHTML = candidates
-        .map((c) => {
-          const roleHint = c.is_pastoral
-            ? "집회 운영진"
-            : [c.group_name, c.group_role === "vice_leader" ? "부조장" : c.group_role === "leader" ? "조장" : ""]
-                .filter(Boolean)
-                .join(" · ");
-          const subtitle = [roleHint || c.division_name, c.region_name ? c.division_name : ""]
-            .filter(Boolean)
-            .join(" · ") || c.division_name;
-          const assignAttrs = [
-            `data-user-id="${c.user_id}"`,
-            `data-is-pastoral="${c.is_pastoral ? "1" : "0"}"`,
-            c.group_id ? `data-group-id="${c.group_id}"` : "",
-            c.suggested_council_role
-              ? `data-suggested-council-role="${escapeHtml(c.suggested_council_role)}"`
-              : "",
-            c.group_role ? `data-group-role="${escapeHtml(c.group_role)}"` : "",
-          ]
-            .filter(Boolean)
-            .join(" ");
-          return `<li class="jcc-retreat-staffWaitingItem">
-              <div class="jcc-retreat-staffWaitingPerson">
-                <span class="jcc-retreat-staffCardAvatar" aria-hidden="true">${escapeHtml((c.name || "?").slice(0, 1))}</span>
-                <div>
-                  <div class="jcc-retreat-staffCardName">${escapeHtml(c.name)}</div>
-                  <div class="muted">${escapeHtml(subtitle)}</div>
-                </div>
-              </div>
-              ${
-                ctx.canManage
-                  ? `<button type="button" class="secondary jcc-retreat-staffAssignBtn" ${assignAttrs}>지금 배정</button>`
-                  : ""
-              }
-            </li>`;
-        })
-        .join("");
-    } catch (err) {
-      console.error(err);
-      waitingList.innerHTML = '<li class="muted">배정 대기 목록을 불러오지 못했습니다.</li>';
-    }
-  }
-
-  waitingList?.addEventListener("click", async (e) => {
-    const btn = e.target.closest(".jcc-retreat-staffAssignBtn");
-    if (!btn) return;
-    const userId = Number(btn.dataset.userId);
-    const isPastoral = btn.dataset.isPastoral === "1";
-    let name = "";
-    let groupRole = btn.dataset.groupRole || "";
-    let suggestedCouncilRole = btn.dataset.suggestedCouncilRole || "";
-    let regionId = null;
-    let divisionId = null;
-    try {
-      const r = await fetch(ctx.apiStaffCandidates, { credentials: "same-origin" });
-      if (r.ok) {
-        const candidates = await r.json();
-        const found = candidates.find((c) => c.user_id === userId);
-        name = found?.name || "";
-        groupRole = groupRole || found?.group_role || "";
-        suggestedCouncilRole =
-          suggestedCouncilRole || found?.suggested_council_role || "";
-        regionId = found?.region_id || null;
-        divisionId = found?.division_id || null;
-      }
-    } catch (_) {
-      /* ignore */
-    }
-    openModal({
-      mode: isPastoral ? "council" : "group",
-      groupId: btn.dataset.groupId ? Number(btn.dataset.groupId) : null,
-      groupRole,
-      suggestedCouncilRole,
-      isPastoral,
-      user: {
-        user_id: userId,
-        name,
-        region_id: regionId,
-        division_id: divisionId,
-      },
-    });
-  });
-
   async function saveCouncilMembership({ userId, membershipId, role, note }) {
     const body = { role, note: note || "" };
     const scope = scopeKind(role);
@@ -1022,7 +927,7 @@
 
       closeModal();
       showStatus(editingRow ? "저장됨" : "등록됨");
-      await Promise.all([loadRoster(), loadWaitingCandidates()]);
+      await loadRoster();
     } catch (err) {
       showModalStatus(String(err.message || err), true);
     }
@@ -1045,8 +950,8 @@
         headers: { "X-CSRFToken": csrf() },
       });
       if (!r.ok) throw new Error(await r.text());
-      showStatus("명단에서 제거했습니다. 승인된 참가 신청은 유지되며 역할 배정 대기에 표시됩니다.");
-      await Promise.all([loadRoster(), loadWaitingCandidates()]);
+      showStatus("명단에서 제거했습니다. 배정이 모두 해제되면 참가 신청서가 삭제되어 재신청할 수 있습니다.");
+      await loadRoster();
     } catch (err) {
       showStatus("삭제 실패", true);
       console.error(err);
@@ -1073,5 +978,4 @@
   bindRosterActions(rosterCards);
 
   loadRoster();
-  loadWaitingCandidates();
 })();

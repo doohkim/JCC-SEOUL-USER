@@ -163,6 +163,11 @@ class RetreatGroupMembershipDetailView(APIView):
             membership, changed_by=request.user
         )
         membership.delete()
+        from retreat.services.staff_application import delete_staff_application_if_unassigned
+
+        delete_staff_application_if_unassigned(
+            membership.user, event, actor=request.user
+        )
         log_retreat_change(
             user=request.user,
             event=event,

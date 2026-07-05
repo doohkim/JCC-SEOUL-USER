@@ -11,12 +11,18 @@ class EventObserverDropdownTests(CouncilMatrixFixture):
     def setUp(self):
         self.auth_as(self.event_observer)
 
-    def test_sees_assigned_event_only(self):
+    def test_sees_all_active_events_in_picker(self):
         r = self.page.get(reverse("retreat_dashboard", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
         available_ids = {ev.id for ev in r.context["available_events"]}
         self.assertIn(self.event.id, available_ids)
-        self.assertNotIn(self.other_event.id, available_ids)
+        self.assertIn(self.other_event.id, available_ids)
+        self.assertContains(
+            r, reverse("retreat_staff_apply", args=[self.other_event.id])
+        )
+        self.assertNotContains(
+            r, reverse("retreat_dashboard", args=[self.other_event.id])
+        )
 
     def test_unassigned_event_forbidden(self):
         r = self.page.get(reverse("retreat_dashboard", args=[self.other_event.id]))
@@ -36,12 +42,24 @@ class EventObserverPageTests(CouncilMatrixFixture):
             reverse("retreat_pickup", args=[self.event.id]) + "?tab=all",
             reverse("retreat_lodging", args=[self.event.id]),
             reverse("retreat_lodging_roster", args=[self.event.id]),
-            reverse("retreat_council", args=[self.event.id]),
-            reverse("retreat_timetable", args=[self.event.id]),
         ]
         for url in pages:
             with self.subTest(url=url):
                 self.assertEqual(self.page.get(url).status_code, 200)
+
+    def test_admin_pages_forbidden(self):
+        pages = [
+            reverse("retreat_council", args=[self.event.id]),
+            reverse("retreat_timetable", args=[self.event.id]),
+            reverse("retreat_admin", args=[self.event.id]),
+        ]
+        for url in pages:
+            with self.subTest(url=url):
+                self.assertEqual(self.page.get(url).status_code, 403)
+
+    def test_admin_tab_hidden(self):
+        r = self.page.get(reverse("retreat_dashboard", args=[self.event.id]))
+        self.assertFalse(r.context["can_show_admin_tab"])
 
     def test_group_list_no_add_button(self):
         r = self.page.get(reverse("retreat_group_manage_list", args=[self.event.id]))
@@ -69,15 +87,16 @@ class EventObserverPageTests(CouncilMatrixFixture):
         self.assertNotContains(r, "btnPickupAdd")
         self.assertNotContains(r, "data-pickup-delete")
 
-    def test_lodging_buttons_visible_but_read_only_context(self):
+    def test_lodging_read_only_no_manage_buttons(self):
         r = self.page.get(reverse("retreat_lodging", args=[self.event.id]))
-        self.assertTrue(r.context["can_manage_lodging"])
-        self.assertContains(r, "btnAddLodging")
+        self.assertFalse(r.context["can_manage_lodging"])
+        self.assertNotContains(r, "btnAddLodging")
 
-    def test_council_view_only(self):
-        r = self.page.get(reverse("retreat_council", args=[self.event.id]))
-        self.assertTrue(r.context["can_view_staff"])
-        self.assertFalse(r.context["can_manage_staff"])
+    def test_council_and_admin_forbidden(self):
+        self.assertEqual(
+            self.page.get(reverse("retreat_council", args=[self.event.id])).status_code,
+            403,
+        )
 
 
 class EventObserverApiTests(CouncilMatrixFixture):
@@ -122,13 +141,13 @@ class EventObserverApiTests(CouncilMatrixFixture):
         r = self.api.post(url, {"name": "신규숙소"}, format="json")
         self.assertEqual(r.status_code, 403)
 
-    def test_council_get_ok_post_forbidden(self):
+    def test_council_get_forbidden(self):
         url = reverse("api_retreat_event_council", args=[self.event.id])
-        self.assertEqual(self.api.get(url).status_code, 200)
-        r = self.api.post(
-            url, {"username": "blocked", "role": "event_admin"}, format="json"
-        )
-        self.assertEqual(r.status_code, 403)
+        self.assertEqual(self.api.get(url).status_code, 403)
+
+    def test_timetable_get_forbidden(self):
+        url = reverse("api_retreat_event_timetable", args=[self.event.id])
+        self.assertEqual(self.api.get(url).status_code, 403)
 
     def test_timetable_post_forbidden(self):
         url = reverse("api_retreat_event_timetable", args=[self.event.id])
@@ -144,9 +163,9 @@ class EventObserverApiTests(CouncilMatrixFixture):
         )
         self.assertEqual(r.status_code, 403)
 
-    def test_changelog_view_ok(self):
+    def test_changelog_view_forbidden(self):
         url = reverse("api_retreat_event_changelog", args=[self.event.id])
-        self.assertEqual(self.api.get(url).status_code, 200)
+        self.assertEqual(self.api.get(url).status_code, 403)
 
     def test_dashboard_includes_all_groups(self):
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])

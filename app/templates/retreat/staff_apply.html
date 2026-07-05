@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>참가 신청서 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260703r" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260706c" />
   </head>
   <body class="jcc-retreat-staffApplyPage">
     <div class="jcc-layout">
@@ -61,8 +61,7 @@
                 </div>
               {% elif staff_status == 'approved' %}
                 <div class="jcc-retreat-staffApplyNotice jcc-retreat-staffApplyNotice--info" role="status">
-                  참가 신청이 승인되었습니다. 집회 운영진이 역할을 배정할 때까지 기다려 주세요.
-                  운영진 명단에서 제외된 경우에도 승인은 유지되며, 다시 역할 배정 대기 상태입니다.
+                  참가 신청이 승인되었습니다. 운영진 명단에서 배정이 모두 해제되면 신청서가 삭제되어 다시 신청할 수 있습니다.
                 </div>
               {% elif rejection_reason and staff_status == 'open' %}
                 <div class="jcc-retreat-staffApplyNotice jcc-retreat-staffApplyNotice--warning" role="status">
@@ -131,7 +130,12 @@
                   목사님·전도사님은 승인 후 운영진 관리 화면에서 역할이 배정됩니다.
                 </p>
               {% else %}
-                <div class="jcc-retreat-staffApplyRow" id="staffApplyMemberFields">
+                <div class="field" id="staffApplyTrackField">
+                  <label for="id_application_track">신청 유형</label>
+                  {{ form.application_track }}
+                  {% if form.application_track.errors %}<p class="error">{{ form.application_track.errors.0 }}</p>{% endif %}
+                </div>
+                <div class="jcc-retreat-staffApplyRow" id="staffApplyMemberFields"{% if form.application_track.value == 'council' %} hidden{% endif %}>
                   <div class="field" id="staffApplyGroupField">
                     <label for="id_group">조</label>
                     {{ form.group }}
@@ -144,11 +148,6 @@
                   </div>
                 </div>
               {% endif %}
-
-              <div class="field">
-                <label for="id_note">지원 동기 및 한마디</label>
-                {{ form.note }}
-              </div>
 
               {% if form.non_field_errors %}
                 <div class="msg msg--error">{{ form.non_field_errors.0 }}</div>
@@ -178,7 +177,8 @@
         isPastoral: {{ is_pastoral|yesno:"true,false" }}
       };
     </script>
-    <script src="{% static 'retreat/staff_apply.js' %}?v=20260703d"></script>
+    <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
+    <script src="{% static 'retreat/staff_apply.js' %}?v=20260706c" defer></script>
     {% endif %}
   </body>
 </html>

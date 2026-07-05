@@ -11,11 +11,58 @@ from retreat.models import (
     RetreatGroup,
     RetreatGroupMembership,
 )
+from users.models import Division, Region
 
 if TYPE_CHECKING:
     from users.models import User
 
 StaffAssignKind = Literal["council", "group"]
+
+
+class CouncilScopeError(ValueError):
+    """council 역할·담당 범위 검증 실패 (field는 API ValidationError 키)."""
+
+    def __init__(self, field: str, message: str):
+        self.field = field
+        super().__init__(message)
+
+
+def resolve_council_staff_scope(
+    role: str,
+    *,
+    region_id: int | None,
+    division_id: int | None,
+) -> tuple[int | None, int | None]:
+    """council 역할에 맞는 region_id·division_id 반환."""
+    if role in RetreatCouncilMembership.EVENT_WIDE_ROLES:
+        if region_id or division_id:
+            raise CouncilScopeError(
+                "scope",
+                "집회 전체·픽업 관찰 역할에는 담당 범위를 지정할 수 없습니다.",
+            )
+        return None, None
+    if role in RetreatCouncilMembership.REGION_SCOPED_ROLES:
+        if not region_id:
+            raise CouncilScopeError("region", "지역 역할에는 담당 지역이 필요합니다.")
+        if division_id:
+            raise CouncilScopeError(
+                "division", "지역 역할에는 부서를 지정할 수 없습니다."
+            )
+        if not Region.objects.filter(pk=region_id).exists():
+            raise CouncilScopeError("region", "존재하지 않는 지역입니다.")
+        return region_id, None
+    if role in RetreatCouncilMembership.DIVISION_SCOPED_ROLES:
+        if not division_id:
+            raise CouncilScopeError("division", "부서 역할에는 담당 부서가 필요합니다.")
+        division = Division.objects.filter(pk=division_id).select_related("region").first()
+        if division is None:
+            raise CouncilScopeError("division", "존재하지 않는 부서입니다.")
+        if region_id and region_id != division.region_id:
+            raise CouncilScopeError(
+                "region", "담당 지역과 부서의 지역이 일치하지 않습니다."
+            )
+        return division.region_id, division_id
+    raise CouncilScopeError("role", "올바르지 않은 역할입니다.")
 
 
 @dataclass(frozen=True)

@@ -73,10 +73,16 @@ class RetreatStaffApplicationDetailView(APIView):
                 council_role = (
                     serializer.validated_data.get("council_role") or ""
                 ).strip() or None
+                group_id = serializer.validated_data.get("group_id")
+                group_role = (
+                    serializer.validated_data.get("group_role") or ""
+                ).strip() or None
                 application = apply_staff_application(
                     application,
                     reviewer=request.user,
                     council_role=council_role,
+                    group_id=group_id,
+                    group_role=group_role,
                 )
             else:
                 application = reject_staff_application(

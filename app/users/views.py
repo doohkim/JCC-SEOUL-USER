@@ -3,7 +3,6 @@ from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.core.paginator import Paginator
 from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -28,18 +27,14 @@ from users.models import (
     UserProfile,
 )
 from users.permissions import (
-    can_access_onboarding_approvals,
     can_manage_division_accounts,
     is_platform_admin,
     membership_divisions_for,
-    onboarding_approval_divisions_for,
 )
 from users.validators import normalize_korea_mobile_phone, validate_korea_mobile_phone
 from retreat.models import (
     RetreatAttendee,
     RetreatChangeLog,
-    RetreatEvent,
-    RetreatGroup,
     RetreatGroupMembership,
 )
 from users.services.user_display import kakao_nickname_map_for_user_ids, user_display_name
@@ -487,10 +482,6 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
             UserProfile.ApplicantRole.PASTOR,
             UserProfile.ApplicantRole.EVANGELIST,
         )
-        ctx["is_pending_locked"] = bool(
-            profile.onboarding_status == UserProfile.OnboardingStatus.PENDING
-            and profile.requested_division_id
-        )
         ctx["next_url"] = self.request.GET.get("next", "")
         divisions_map = {}
         for d in Division.objects.select_related("region").order_by(
@@ -511,14 +502,8 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
     def form_valid(self, form):
         profile = ensure_user_profile(self.request.user)
         if profile.onboarding_status == UserProfile.OnboardingStatus.APPROVED:
-            messages.info(self.request, "이미 승인된 계정입니다. 화면이 자동 갱신됩니다.")
+            messages.info(self.request, "이미 가입이 완료된 계정입니다.")
             return HttpResponseRedirect(reverse_lazy("notice_list"))
-        if (
-            profile.onboarding_status == UserProfile.OnboardingStatus.PENDING
-            and profile.requested_division_id
-        ):
-            messages.info(self.request, "이미 신청이 접수되어 승인 대기 중입니다.")
-            return HttpResponseRedirect(self.get_success_url())
 
         profile.real_name = (form.cleaned_data["real_name"] or "").strip()
         profile.phone = (form.cleaned_data["phone"] or "").strip()
@@ -534,30 +519,39 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
         profile.requested_applicant_role = form.cleaned_data.get(
             "requested_applicant_role", UserProfile.ApplicantRole.MEMBER
         )
-        profile.onboarding_status = UserProfile.OnboardingStatus.PENDING
-        profile.onboarding_note = ""
         profile.requested_retreat_participation = False
         profile.requested_retreat_event = None
         profile.requested_retreat_group = None
         profile.requested_retreat_role = ""
-        update_fields = [
-            "real_name",
-            "phone",
-            "gender",
-            "requested_division",
-            "requested_team",
-            "requested_applicant_role",
-            "onboarding_status",
-            "onboarding_note",
-            "requested_retreat_participation",
-            "requested_retreat_event",
-            "requested_retreat_group",
-            "requested_retreat_role",
-            "updated_at",
-        ]
-        profile.save(update_fields=update_fields)
-        messages.success(self.request, "소속 신청이 접수되었습니다. 관리자 승인 후 이용 가능합니다.")
-        return super().form_valid(form)
+        profile.save(
+            update_fields=[
+                "real_name",
+                "phone",
+                "gender",
+                "requested_division",
+                "requested_team",
+                "requested_applicant_role",
+                "requested_retreat_participation",
+                "requested_retreat_event",
+                "requested_retreat_group",
+                "requested_retreat_role",
+                "updated_at",
+            ]
+        )
+
+        from users.services.onboarding_approval import approve_onboarding_profile
+
+        err = approve_onboarding_profile(profile, changed_by=self.request.user)
+        if err:
+            messages.error(self.request, err)
+            return self.form_invalid(form)
+
+        messages.success(
+            self.request,
+            "가입이 완료되었습니다. 함께보기에서 공지를 확인할 수 있습니다.",
+        )
+        target = self.request.GET.get("next") or reverse_lazy("notice_list")
+        return HttpResponseRedirect(target)
 
 
 class UserLogoutView(TemplateView):
@@ -679,667 +673,6 @@ class UserProfileView(LoginRequiredMixin, FormView):
         return super().form_valid(form)
 
 
-class OnboardingApplicationsListView(LoginRequiredMixin, TemplateView):
-    """목사/전도사/관리자용 가입신청서 조회·승인 페이지."""
-
-    template_name = "users/onboarding_applications.html"
-    login_url = reverse_lazy("user_login")
-    ALL_DIVISIONS_CODE = "__all__"
-
-    def dispatch(self, request, *args, **kwargs):
-        if not can_access_onboarding_approvals(request.user):
-            raise PermissionDenied("가입신청서 페이지 권한이 없습니다.")
-        if not onboarding_approval_divisions_for(request.user).exists():
-            raise PermissionDenied("담당 부서가 없어 가입신청서를 이용할 수 없습니다.")
-        return super().dispatch(request, *args, **kwargs)
-
-    _page_size = 20
-
-    def _applications_query_base(self) -> str:
-        q = {}
-        for key in ("date_from", "date_to", "division_code", "q", "region_id", "status"):
-            v = (self.request.GET.get(key) or "").strip()
-            if v:
-                q[key] = v
-        return urlencode(q)
-
-    def _applications_list_redirect(self, request) -> str:
-        q = {}
-        for key in ("date_from", "date_to", "division_code", "q", "region_id", "status", "page"):
-            v = (request.POST.get(key) or request.GET.get(key) or "").strip()
-            if v:
-                q[key] = v
-        list_status = (request.POST.get("list_status") or "").strip()
-        if list_status and "status" not in q:
-            q["status"] = list_status
-        base = reverse("user_onboarding_applications")
-        return f"{base}?{urlencode(q)}" if q else base
-
-    def _allowed_division_ids(self) -> set[int]:
-        return set(
-            onboarding_approval_divisions_for(self.request.user).values_list("pk", flat=True)
-        )
-
-    def _resolve_active_division(self):
-        divisions = onboarding_approval_divisions_for(self.request.user).order_by(
-            "region__sort_order", "sort_order", "name"
-        )
-        if not divisions.exists():
-            return None, divisions
-
-        requested_code = (
-            self.request.GET.get("division_code") or self.request.POST.get("division_code") or ""
-        ).strip()
-
-        if requested_code == self.ALL_DIVISIONS_CODE:
-            if is_platform_admin(self.request.user) or divisions.count() > 1:
-                return None, divisions
-            requested_code = ""
-
-        if requested_code:
-            active = divisions.filter(code=requested_code).first()
-            if active is not None:
-                return active, divisions
-
-        primary = primary_membership_division(self.request.user, within=divisions)
-        if primary is not None:
-            return primary, divisions
-
-        if divisions.count() == 1:
-            return divisions.first(), divisions
-
-        if is_platform_admin(self.request.user):
-            return None, divisions
-
-        return prefer_own_division(self.request.user, divisions), divisions
-
-    def _parse_updated_at_range(self):
-        """updated_at 기준 [start, end] 일 단위(현지). 기본 최근 90일."""
-        today = timezone.localdate()
-        raw_from = (self.request.GET.get("date_from") or "").strip()
-        raw_to = (self.request.GET.get("date_to") or "").strip()
-        if not raw_from and not raw_to:
-            resolved_from = (today - timedelta(days=90)).isoformat()
-            resolved_to = today.isoformat()
-        elif not raw_from:
-            resolved_to = raw_to or today.isoformat()
-            resolved_from = resolved_to
-        elif not raw_to:
-            resolved_from = raw_from
-            resolved_to = resolved_from
-        else:
-            resolved_from = raw_from
-            resolved_to = raw_to
-
-        try:
-            start_date = datetime.strptime(resolved_from, "%Y-%m-%d").date()
-        except ValueError:
-            start_date = today - timedelta(days=90)
-            resolved_from = start_date.isoformat()
-        try:
-            end_date = datetime.strptime(resolved_to, "%Y-%m-%d").date()
-        except ValueError:
-            end_date = today
-            resolved_to = end_date.isoformat()
-
-        if end_date < start_date:
-            end_date = start_date
-            resolved_to = end_date.isoformat()
-
-        tz = timezone.get_current_timezone()
-        start_dt = timezone.make_aware(datetime.combine(start_date, time.min), tz)
-        end_exclusive = end_date + timedelta(days=1)
-        end_dt = timezone.make_aware(datetime.combine(end_exclusive, time.min), tz)
-        return start_dt, end_dt, resolved_from, resolved_to
-
-    def _post_update_profile(self, request, profile, allowed_ids, next_url):
-        if profile.requested_division_id and profile.requested_division_id not in allowed_ids:
-            messages.error(request, "담당 부서 신청 건만 수정할 수 있습니다.")
-            return HttpResponseRedirect(next_url)
-
-        division_id_raw = (request.POST.get("requested_division_id") or "").strip()
-        if not division_id_raw.isdigit():
-            messages.error(request, "부서를 선택해 주세요.")
-            return HttpResponseRedirect(next_url)
-
-        division = Division.objects.filter(pk=int(division_id_raw)).first()
-        if division is None:
-            messages.error(request, "선택한 부서를 찾을 수 없습니다.")
-            return HttpResponseRedirect(next_url)
-        if division.id not in allowed_ids:
-            messages.error(request, "담당 부서가 아닌 소속은 지정할 수 없습니다.")
-            return HttpResponseRedirect(next_url)
-
-        team_id_raw = (request.POST.get("requested_team_id") or "").strip()
-        team = None
-        if team_id_raw.isdigit():
-            team = Team.objects.filter(pk=int(team_id_raw), division=division).first()
-            if team is None:
-                messages.error(request, "선택한 팀은 해당 부서에 속해야 합니다.")
-                return HttpResponseRedirect(next_url)
-
-        phone_raw = (request.POST.get("phone") or "").strip()
-        if phone_raw:
-            try:
-                validate_korea_mobile_phone(phone_raw)
-            except ValidationError:
-                messages.error(request, "휴대폰 번호 형식이 올바르지 않습니다.")
-                return HttpResponseRedirect(next_url)
-        normalized = normalize_korea_mobile_phone(phone_raw)
-        phone = normalized if normalized is not None else phone_raw
-
-        retreat_event_id_raw = (request.POST.get("requested_retreat_event_id") or "").strip()
-        retreat_group_id_raw = (request.POST.get("requested_retreat_group_id") or "").strip()
-
-        from retreat.services.onboarding import resolve_requested_retreat_assignment
-
-        retreat_err = resolve_requested_retreat_assignment(
-            profile,
-            division=division,
-            event_id_raw=retreat_event_id_raw,
-            group_id_raw=retreat_group_id_raw,
-        )
-        if retreat_err:
-            messages.error(request, retreat_err)
-            return HttpResponseRedirect(next_url)
-
-        profile.real_name = (request.POST.get("real_name") or "").strip()
-        profile.display_name = (request.POST.get("display_name") or "").strip()
-        profile.phone = phone
-        profile.requested_division = division
-        profile.requested_team = team
-        profile.save(
-            update_fields=[
-                "real_name",
-                "display_name",
-                "phone",
-                "requested_division",
-                "requested_team",
-                "requested_retreat_participation",
-                "requested_retreat_event",
-                "requested_retreat_group",
-                "requested_retreat_role",
-                "updated_at",
-            ]
-        )
-        label = profile.real_name or user_display_name(profile.user) if profile.user_id else "신청자"
-        messages.success(request, f"{label} 가입신청서 정보를 저장했습니다.")
-        if profile.onboarding_status == UserProfile.OnboardingStatus.APPROVED:
-            from retreat.services.onboarding import sync_retreat_attendee_from_onboarding_profile
-
-            sync_retreat_attendee_from_onboarding_profile(
-                user=profile.user,
-                profile=profile,
-                changed_by=request.user,
-            )
-        return HttpResponseRedirect(next_url)
-
-    def post(self, request, *args, **kwargs):
-        action = request.POST.get("action", "").strip()
-        profile_id = request.POST.get("profile_id", "").strip()
-        next_url = self._applications_list_redirect(request)
-        allowed_ids = self._allowed_division_ids()
-        if not profile_id.isdigit():
-            messages.error(request, "대상 정보가 올바르지 않습니다.")
-            return HttpResponseRedirect(next_url)
-
-        profile = (
-            UserProfile.objects.select_related("user", "requested_division", "requested_team")
-            .filter(pk=int(profile_id))
-            .first()
-        )
-        if profile is None:
-            messages.error(request, "대상 사용자를 찾을 수 없습니다.")
-            return HttpResponseRedirect(next_url)
-
-        if action == "update_profile":
-            return self._post_update_profile(request, profile, allowed_ids, next_url)
-
-        posted_status = (request.POST.get("onboarding_status") or "").strip()
-        if action == "save":
-            if posted_status == UserProfile.OnboardingStatus.APPROVED:
-                action = "approve"
-            elif posted_status == UserProfile.OnboardingStatus.REJECTED:
-                action = "reject"
-
-        division_id = (request.POST.get("requested_division_id") or "").strip()
-        team_id = (request.POST.get("requested_team_id") or "").strip()
-        if division_id.isdigit():
-            division = Division.objects.filter(pk=int(division_id)).first()
-            if division is None:
-                messages.error(request, "선택한 부서를 찾을 수 없습니다.")
-                return HttpResponseRedirect(next_url)
-            if division.id not in allowed_ids:
-                messages.error(request, "담당 부서가 아닌 소속은 지정할 수 없습니다.")
-                return HttpResponseRedirect(next_url)
-            profile.requested_division = division
-            if team_id.isdigit():
-                team = Team.objects.filter(pk=int(team_id)).first()
-                if team and team.division_id == division.id:
-                    profile.requested_team = team
-                else:
-                    profile.requested_team = None
-            else:
-                profile.requested_team = None
-            profile.save(update_fields=["requested_division", "requested_team", "updated_at"])
-
-        status_from_action = {
-            "approve": UserProfile.OnboardingStatus.APPROVED,
-            "reject": UserProfile.OnboardingStatus.REJECTED,
-            "save": "",
-            "update_status": "",
-        }
-        if action not in status_from_action:
-            messages.error(request, "처리할 수 없는 요청입니다.")
-            return HttpResponseRedirect(next_url)
-
-        selected_status = status_from_action[action] or (request.POST.get("onboarding_status") or "").strip()
-        allowed_statuses = {
-            UserProfile.OnboardingStatus.PENDING,
-            UserProfile.OnboardingStatus.APPROVED,
-            UserProfile.OnboardingStatus.REJECTED,
-        }
-        if selected_status not in allowed_statuses:
-            messages.error(
-                request,
-                "승인 상태를 선택해 주세요."
-                if action == "save" and not selected_status
-                else "상태 선택 값이 올바르지 않습니다.",
-            )
-            return HttpResponseRedirect(next_url)
-        if not profile.requested_division_id:
-            messages.error(request, "신청 부서를 먼저 지정해 주세요.")
-            return HttpResponseRedirect(next_url)
-        if profile.requested_division_id not in allowed_ids:
-            messages.error(request, "담당 부서 신청 건만 수정할 수 있습니다.")
-            return HttpResponseRedirect(next_url)
-
-        note = (request.POST.get("note") or "").strip()
-
-        if selected_status == UserProfile.OnboardingStatus.APPROVED:
-            team = profile.requested_team
-            if team is not None and team.division_id != profile.requested_division_id:
-                messages.error(request, "신청 팀은 신청 부서에 속해야 합니다.")
-                return HttpResponseRedirect(next_url)
-
-            from retreat.services.onboarding import (
-                resolve_requested_retreat_assignment,
-                sync_retreat_attendee_from_onboarding_profile,
-            )
-
-            retreat_err = resolve_requested_retreat_assignment(
-                profile,
-                division=profile.requested_division,
-                event_id_raw=(request.POST.get("requested_retreat_event_id") or "").strip(),
-                group_id_raw=(request.POST.get("requested_retreat_group_id") or "").strip(),
-            )
-            if retreat_err:
-                messages.error(request, retreat_err)
-                return HttpResponseRedirect(next_url)
-
-            retreat_update_fields = []
-            if (request.POST.get("requested_retreat_event_id") or "").strip() or (
-                request.POST.get("requested_retreat_group_id") or ""
-            ).strip():
-                retreat_update_fields = [
-                    "requested_retreat_participation",
-                    "requested_retreat_event",
-                    "requested_retreat_group",
-                    "requested_retreat_role",
-                    "updated_at",
-                ]
-
-            UserDivisionTeam.objects.update_or_create(
-                user=profile.user,
-                division=profile.requested_division,
-                defaults={"team": team, "is_primary": True, "sort_order": 0},
-            )
-            from users.services.onboarding_approval import apply_pastoral_account_setup
-
-            apply_pastoral_account_setup(profile.user, profile)
-            profile.onboarding_status = UserProfile.OnboardingStatus.APPROVED
-            profile.onboarding_note = note
-            profile.save(
-                update_fields=["onboarding_status", "onboarding_note", "updated_at"]
-                + retreat_update_fields
-            )
-            sync_retreat_attendee_from_onboarding_profile(
-                user=profile.user,
-                profile=profile,
-                changed_by=request.user,
-            )
-            messages.success(request, f"{user_display_name(profile.user)} 계정 상태를 승인 완료로 저장했습니다.")
-            return HttpResponseRedirect(next_url)
-
-        if selected_status == UserProfile.OnboardingStatus.REJECTED:
-            profile.onboarding_status = UserProfile.OnboardingStatus.REJECTED
-            profile.onboarding_note = note or "소속 정보를 확인 후 다시 신청해 주세요."
-            profile.save(update_fields=["onboarding_status", "onboarding_note", "updated_at"])
-            messages.info(request, f"{user_display_name(profile.user)} 계정 상태를 반려로 저장했습니다.")
-            return HttpResponseRedirect(next_url)
-
-        profile.onboarding_status = UserProfile.OnboardingStatus.PENDING
-        profile.onboarding_note = note
-        profile.save(update_fields=["onboarding_status", "onboarding_note", "updated_at"])
-        messages.success(request, f"{user_display_name(profile.user)} 계정 상태를 승인 대기로 저장했습니다.")
-        return HttpResponseRedirect(next_url)
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        active_division, allowed_divisions = self._resolve_active_division()
-        start_dt, end_dt, date_from, date_to = self._parse_updated_at_range()
-
-        role_code = getattr(getattr(self.request.user, "role_level", None), "code", "")
-        ctx["can_choose_onboarding_division"] = allowed_divisions.count() > 1
-        ctx["allowed_divisions"] = list(
-            allowed_divisions.select_related("region").order_by(
-                "region__sort_order", "sort_order", "name"
-            )
-        )
-        ctx["active_division"] = active_division
-        ctx["active_division_code"] = (
-            active_division.code if active_division else self.ALL_DIVISIONS_CODE
-        )
-        ctx["all_divisions_code"] = self.ALL_DIVISIONS_CODE
-        ctx["date_from"] = date_from
-        ctx["date_to"] = date_to
-        ctx["onboarding_status_choices"] = [
-            (UserProfile.OnboardingStatus.PENDING, "승인 대기"),
-            (UserProfile.OnboardingStatus.APPROVED, "승인 완료"),
-            (UserProfile.OnboardingStatus.REJECTED, "반려"),
-        ]
-        ctx["status_filter"] = (self.request.GET.get("status") or "").strip()
-        ctx["search_query"] = (self.request.GET.get("q") or "").strip()
-        region_id_raw = (self.request.GET.get("region_id") or "").strip()
-        if "region_id" in self.request.GET:
-            ctx["active_region_id"] = region_id_raw if region_id_raw.isdigit() else ""
-        elif active_division and active_division.region_id:
-            ctx["active_region_id"] = str(active_division.region_id)
-        else:
-            ctx["active_region_id"] = ""
-
-        scoped = (
-            UserProfile.objects.select_related(
-                "user",
-                "requested_division",
-                "requested_division__region",
-                "requested_team",
-                "requested_retreat_event",
-                "requested_retreat_group",
-            )
-            .exclude(user__is_staff=True)
-            .exclude(user__is_superuser=True)
-            .filter(user__isnull=False, user__is_active=True)
-        )
-        if active_division is not None:
-            scoped = scoped.filter(requested_division_id=active_division.id)
-        else:
-            scoped = scoped.filter(requested_division_id__in=self._allowed_division_ids())
-
-        if ctx["active_region_id"]:
-            scoped = scoped.filter(requested_division__region_id=int(ctx["active_region_id"]))
-
-        search_q = ctx["search_query"]
-        if search_q:
-            from django.db.models import Q
-
-            scoped = scoped.filter(
-                Q(real_name__icontains=search_q)
-                | Q(phone__icontains=search_q)
-                | Q(requested_team__name__icontains=search_q)
-                | Q(requested_division__name__icontains=search_q)
-                | Q(requested_division__region__name__icontains=search_q)
-                | Q(user__username__icontains=search_q)
-            )
-
-        _apps_order = ("-user__date_joined", "-id")
-        status_filter = ctx["status_filter"]
-        if status_filter == UserProfile.OnboardingStatus.PENDING:
-            application_profiles = scoped.filter(
-                onboarding_status=UserProfile.OnboardingStatus.PENDING
-            ).order_by(*_apps_order)
-        elif status_filter == UserProfile.OnboardingStatus.APPROVED:
-            application_profiles = scoped.filter(
-                onboarding_status=UserProfile.OnboardingStatus.APPROVED,
-                updated_at__gte=start_dt,
-                updated_at__lt=end_dt,
-            ).order_by(*_apps_order)
-        elif status_filter == UserProfile.OnboardingStatus.REJECTED:
-            application_profiles = scoped.filter(
-                onboarding_status=UserProfile.OnboardingStatus.REJECTED,
-                updated_at__gte=start_dt,
-                updated_at__lt=end_dt,
-            ).order_by(*_apps_order)
-        else:
-            from django.db.models import Q
-
-            application_profiles = scoped.filter(
-                Q(onboarding_status=UserProfile.OnboardingStatus.PENDING)
-                | Q(
-                    onboarding_status__in=[
-                        UserProfile.OnboardingStatus.APPROVED,
-                        UserProfile.OnboardingStatus.REJECTED,
-                    ],
-                    updated_at__gte=start_dt,
-                    updated_at__lt=end_dt,
-                )
-            ).order_by(*_apps_order)
-
-        page_raw = (self.request.GET.get("page") or "1").strip()
-        page_num = int(page_raw) if page_raw.isdigit() and int(page_raw) > 0 else 1
-        paginator = Paginator(application_profiles, self._page_size)
-        page_obj = paginator.get_page(page_num)
-        application_profiles_page = list(page_obj.object_list)
-
-        pending_profiles = [p for p in application_profiles_page if p.onboarding_status == UserProfile.OnboardingStatus.PENDING]
-        approved_profiles = [p for p in application_profiles_page if p.onboarding_status == UserProfile.OnboardingStatus.APPROVED]
-        rejected_profiles = [p for p in application_profiles_page if p.onboarding_status == UserProfile.OnboardingStatus.REJECTED]
-
-        user_ids = {p.user_id for p in application_profiles_page if p.user_id}
-        kakao_map = kakao_nickname_map_for_user_ids(user_ids)
-        label_map = {}
-        real_name_map = {}
-        if user_ids:
-            for u in User.objects.filter(pk__in=user_ids).select_related("profile"):
-                label_map[u.id] = user_display_name(u, kakao_map=kakao_map)
-                prof = getattr(u, "profile", None)
-                real_name_map[u.id] = (getattr(prof, "real_name", "") or "").strip()
-
-        ctx["pending_profiles"] = pending_profiles
-        ctx["rejected_profiles"] = rejected_profiles
-        ctx["approved_profiles"] = approved_profiles
-        ctx["application_profiles"] = application_profiles_page
-        ctx["page_obj"] = page_obj
-        ctx["paginator"] = paginator
-        ctx["is_paginated"] = paginator.num_pages > 1
-        ctx["applications_query_base"] = self._applications_query_base()
-        ctx["page_size"] = self._page_size
-        ctx["user_label_map"] = label_map
-        ctx["user_real_name_map"] = real_name_map
-
-        status_label = {code: label for code, label in ctx["onboarding_status_choices"]}
-
-        def _fmt_dt(value):
-            if not value:
-                return ""
-            return timezone.localtime(value).strftime("%Y-%m-%d %H:%M")
-
-        def _profile_label(p):
-            # 연결 계정이 있으면 계정 표시명, 없으면 프로필 자체 필드로 폴백.
-            if p.user_id and label_map.get(p.user_id):
-                return label_map[p.user_id]
-            return (
-                (p.display_name or "").strip()
-                or (p.real_name or "").strip()
-                or "(계정 미연결)"
-            )
-
-        profile_label_map = {}
-        profile_real_name_map = {}
-        profile_kakao_map = {}
-        profile_account_map = {}
-        detail_map = {}
-        for p in application_profiles_page:
-            label = _profile_label(p)
-            real_name = (p.real_name or "").strip()
-            # 셀에는 실명을 우선 표시하고, 없으면 표시명/계정명으로 폴백한다.
-            profile_label_map[p.id] = real_name or label
-            profile_real_name_map[p.id] = real_name
-            profile_kakao_map[p.id] = kakao_map.get(p.user_id, "")
-            profile_account_map[p.id] = (getattr(p.user, "username", "") or "").strip()
-            div = p.requested_division
-            region_name = ""
-            if div and div.region_id:
-                try:
-                    region_name = div.region.name
-                except Exception:
-                    region_name = ""
-            applicant_role = p.requested_applicant_role or UserProfile.ApplicantRole.MEMBER
-            applicant_role_label = dict(UserProfile.ApplicantRole.choices).get(
-                applicant_role, "성도"
-            )
-            is_pastoral_applicant_row = applicant_role in (
-                UserProfile.ApplicantRole.PASTOR,
-                UserProfile.ApplicantRole.EVANGELIST,
-            )
-            detail_map[p.id] = {
-                "profile_id": p.id,
-                "label": label,
-                "real_name": real_name,
-                "display_name": (p.display_name or "").strip(),
-                "phone": _phone_for_display((p.phone or "").strip()),
-                "kakao_account": _kakao_account_display(
-                    getattr(p.user, "username", "") if p.user_id else ""
-                ),
-                "kakao_nickname": kakao_map.get(p.user_id, ""),
-                "linked_account": bool(p.user_id),
-                "region_id": div.region_id if div and div.region_id else None,
-                "region": region_name,
-                "division_id": div.id if div else None,
-                "division": div.name if div else "",
-                "team_id": p.requested_team_id,
-                "team": p.requested_team.name if p.requested_team_id else "",
-                "applicant_role": applicant_role,
-                "applicant_role_label": applicant_role_label,
-                "is_pastoral_applicant": is_pastoral_applicant_row,
-                "onboarding_status": p.onboarding_status,
-                "status": status_label.get(p.onboarding_status, p.onboarding_status),
-                "note": (p.onboarding_note or "").strip(),
-                "retreat_participation": bool(p.requested_retreat_participation),
-                "retreat_event_id": p.requested_retreat_event_id,
-                "retreat_group_id": p.requested_retreat_group_id,
-                "retreat_event": p.requested_retreat_event.name if p.requested_retreat_event_id else "",
-                "retreat_group": p.requested_retreat_group.name if p.requested_retreat_group_id else "",
-                "retreat_assign_note": (
-                    "목회자 — 조원 자동 배정 없음"
-                    if is_pastoral_applicant_row
-                    else "승인 시 조원으로 배정"
-                ),
-                "date_joined": _fmt_dt(getattr(p.user, "date_joined", None)),
-                "updated_at": _fmt_dt(p.updated_at),
-            }
-        ctx["user_detail_json"] = json.dumps(detail_map, ensure_ascii=False)
-        ctx["application_edit_json"] = ctx["user_detail_json"]
-        ctx["profile_label_map"] = profile_label_map
-        ctx["profile_real_name_map"] = profile_real_name_map
-        ctx["profile_kakao_map"] = profile_kakao_map
-        ctx["profile_account_map"] = profile_account_map
-
-        ctx["account_tab"] = "applications"
-        ctx["division_choices"] = list(
-            allowed_divisions.select_related("region").order_by(
-                "region__sort_order", "sort_order", "name"
-            )
-        )
-        from users.models import Region
-
-        ctx["region_choices"] = list(
-            Region.objects.filter(
-                pk__in=allowed_divisions.values_list("region_id", flat=True).distinct()
-            ).order_by("sort_order", "name")
-        )
-        team_map = {}
-        allowed_division_id_set = self._allowed_division_ids()
-        for t in Team.objects.filter(division_id__in=allowed_division_id_set).select_related(
-            "division"
-        ).order_by("division__sort_order", "sort_order", "name"):
-            team_map.setdefault(str(t.division_id), []).append({"id": t.id, "name": t.name})
-        ctx["teams_map_json"] = json.dumps(team_map, ensure_ascii=False)
-
-        divisions_map: dict[str, list] = {}
-        for d in allowed_divisions.select_related("region").order_by(
-            "region__sort_order", "sort_order", "name"
-        ):
-            divisions_map.setdefault(str(d.region_id), []).append({"id": d.id, "name": d.name})
-        ctx["divisions_map_json"] = json.dumps(divisions_map, ensure_ascii=False)
-
-        retreat_events = list(
-            RetreatEvent.objects.filter(is_active=True).order_by("-start_date", "-id")
-        )
-        ctx["retreat_events_json"] = json.dumps(
-            [{"id": e.id, "name": e.name} for e in retreat_events],
-            ensure_ascii=False,
-        )
-        retreat_groups = list(
-            RetreatGroup.objects.filter(
-                event__in=retreat_events, division_id__in=allowed_division_id_set
-            )
-            .select_related("event", "region", "division")
-            .order_by("event_id", "region__sort_order", "division__sort_order", "order", "id")
-        )
-        ctx["retreat_groups_json"] = json.dumps(
-            [
-                {
-                    "id": g.id,
-                    "event_id": g.event_id,
-                    "division_id": g.division_id,
-                    "label": g.name,
-                }
-                for g in retreat_groups
-            ],
-            ensure_ascii=False,
-        )
-        ctx["activity_log_url"] = reverse("user_onboarding_application_activity_log")
-        return ctx
-
-
-class OnboardingApplicationActivityLogView(LoginRequiredMixin, TemplateView):
-    """가입신청서 활동 로그(집계형) JSON."""
-
-    login_url = reverse_lazy("user_login")
-
-    def dispatch(self, request, *args, **kwargs):
-        if not can_access_onboarding_approvals(request.user):
-            raise PermissionDenied("가입신청서 페이지 권한이 없습니다.")
-        return super().dispatch(request, *args, **kwargs)
-
-    def get(self, request, *args, **kwargs):
-        profile_id_raw = (request.GET.get("profile_id") or "").strip()
-        if not profile_id_raw.isdigit():
-            return JsonResponse({"error": "profile_id가 올바르지 않습니다."}, status=400)
-
-        allowed_ids = set(
-            onboarding_approval_divisions_for(request.user).values_list("pk", flat=True)
-        )
-        profile = UserProfile.objects.filter(pk=int(profile_id_raw)).first()
-        if profile is None:
-            return JsonResponse({"error": "대상을 찾을 수 없습니다."}, status=404)
-        if not profile.requested_division_id or profile.requested_division_id not in allowed_ids:
-            return JsonResponse({"error": "권한이 없습니다."}, status=403)
-
-        items = build_onboarding_application_activity_log(profile)
-        if not items:
-            items = [
-                _activity_item(
-                    at_dt=None,
-                    actor="-",
-                    summary="표시할 활동 기록이 없습니다.",
-                    actor_kind="system",
-                    category="기타 변경",
-                    tone="other",
-                )
-            ]
-        return JsonResponse({"items": items})
 
 
 class DivisionAccountActivityLogView(LoginRequiredMixin, TemplateView):
@@ -1415,9 +748,6 @@ class DivisionAccountActivityLogView(LoginRequiredMixin, TemplateView):
             f"{reverse('user_division_account_roles')}?{urlencode(return_params)}"
         )
 
-
-# 이전 URL·import 호환
-OnboardingApprovalListView = OnboardingApplicationsListView
 
 
 class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
@@ -1506,8 +836,6 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         manage_notices = request.POST.get("can_manage_notices") == "on"
         real_name = (request.POST.get("real_name") or "").strip()
         phone = (request.POST.get("phone") or "").strip()
-        retreat_group_id = (request.POST.get("retreat_group_id") or "").strip()
-        retreat_role = (request.POST.get("retreat_role") or "").strip()
         role_level_id_raw = (request.POST.get("role_level_id") or "").strip()
 
         if not user_id.isdigit():
@@ -1640,63 +968,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         profile.requested_team = selected_team
         prof_updates.extend(["requested_division", "requested_team"])
 
-        from retreat.models import RetreatEvent
-
-        active_retreat = (
-            RetreatEvent.objects.filter(is_active=True)
-            .order_by("-start_date", "-id")
-            .first()
-        )
-        if active_retreat:
-            if retreat_group_id.isdigit():
-                group = RetreatGroup.objects.filter(
-                    pk=int(retreat_group_id),
-                    division=target_division,
-                    event=active_retreat,
-                ).first()
-                if group is None:
-                    messages.error(request, "선택한 수련회 조를 찾을 수 없습니다.")
-                    return HttpResponseRedirect(redirect_url)
-                profile.requested_retreat_participation = True
-                profile.requested_retreat_event = active_retreat
-                profile.requested_retreat_group = group
-                prof_updates.extend(
-                    [
-                        "requested_retreat_participation",
-                        "requested_retreat_event",
-                        "requested_retreat_group",
-                    ]
-                )
-            else:
-                profile.requested_retreat_participation = False
-                profile.requested_retreat_event = None
-                profile.requested_retreat_group = None
-                prof_updates.extend(
-                    [
-                        "requested_retreat_participation",
-                        "requested_retreat_event",
-                        "requested_retreat_group",
-                    ]
-                )
-            if retreat_role in ("leader", "vice_leader", "participant", ""):
-                profile.requested_retreat_role = retreat_role
-                prof_updates.append("requested_retreat_role")
-
         if prof_updates:
             prof_updates.append("updated_at")
             profile.save(update_fields=list(dict.fromkeys(prof_updates)))
-
-        if active_retreat and profile.requested_retreat_participation:
-            from retreat.services.onboarding import apply_retreat_membership_on_approval
-
-            apply_retreat_membership_on_approval(
-                user=target_user,
-                profile=profile,
-                retreat_group_id=str(profile.requested_retreat_group_id or ""),
-                retreat_role=profile.requested_retreat_role,
-                changed_by=request.user,
-                appoint_leadership=True,
-            )
 
         if target_division.id != active_division.id:
             old_department = self._division_functional_department(active_division)
@@ -1741,38 +1015,6 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             or getattr(self.request.user, "can_manage_accounts", False)
             or allowed_divisions.count() > 1
         )
-
-        from retreat.models import RetreatEvent, RetreatGroupMembership
-
-        active_retreat = (
-            RetreatEvent.objects.filter(is_active=True)
-            .order_by("-start_date", "-id")
-            .first()
-        )
-        retreat_groups_json = "[]"
-        if active_retreat:
-            retreat_groups = list(
-                RetreatGroup.objects.filter(event=active_retreat)
-                .select_related("region", "division")
-                .order_by(
-                    "region__sort_order",
-                    "division__sort_order",
-                    "order",
-                    "id",
-                )
-            )
-            retreat_groups_json = json.dumps(
-                [
-                    {
-                        "id": g.id,
-                        "division_id": g.division_id,
-                        "region_id": g.region_id,
-                        "label": f"{g.region.name} {g.division.name} {g.name}",
-                    }
-                    for g in retreat_groups
-                ],
-                ensure_ascii=False,
-            )
 
         division_choices = list(
             allowed_divisions.select_related("region").order_by(
@@ -1832,18 +1074,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                     "profile",
                     "profile__requested_division__region",
                     "profile__requested_team",
-                    "profile__requested_retreat_event",
-                    "profile__requested_retreat_group",
                 )
                 .order_by("username")
             )
-
-            retreat_membership_map: dict[int, tuple[int | None, str]] = {}
-            if active_retreat:
-                for mem in RetreatGroupMembership.objects.filter(
-                    user_id__in=user_ids, group__event=active_retreat
-                ).select_related("group"):
-                    retreat_membership_map[mem.user_id] = (mem.group_id, mem.role)
 
             # 대표 부서별 기능부서(FunctionalDepartment) → 직책(Role) 매핑.
             rep_division_ids = set(rep_division_by_user.values())
@@ -1897,18 +1130,6 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                 division_name = rep_division.name if rep_division else ""
                 team_id = rep_team_by_user.get(u.id)
                 team_name = team_name_by_id.get(team_id, "") if team_id else ""
-                retreat_group_id = None
-                retreat_role = ""
-                if active_retreat and prof:
-                    if (
-                        prof.requested_retreat_group_id
-                        and prof.requested_retreat_event_id == active_retreat.id
-                    ):
-                        retreat_group_id = prof.requested_retreat_group_id
-                        retreat_role = prof.requested_retreat_role or "participant"
-                    elif u.id in retreat_membership_map:
-                        retreat_group_id, retreat_role = retreat_membership_map[u.id]
-                        retreat_role = retreat_role or "participant"
 
                 users_payload.append(
                     {
@@ -1946,7 +1167,6 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                     last_updated_label = _activity_date_label(prof.updated_at)
                 elif u.date_joined:
                     last_updated_label = _activity_date_label(u.date_joined)
-                from users.services.onboarding_approval import signup_application_detail
 
                 account_details[u.id] = {
                     "username": u.username,
@@ -1970,8 +1190,6 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                     "division_name": division_name,
                     "team_id": team_id,
                     "team_name": team_name,
-                    "retreat_group_id": retreat_group_id,
-                    "retreat_role": retreat_role,
                     "can_manage_attendance": bool(
                         getattr(u, "can_manage_attendance", False)
                     ),
@@ -1990,8 +1208,6 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                     "updated_at": updated_at,
                     "updated_at_label": last_updated_label,
                     "avatar_url": user_profile_avatar_url(u),
-                    "event_name": active_retreat.name if active_retreat else "",
-                    "signup_application": signup_application_detail(prof),
                 }
 
         region_qs = Region.objects.all().order_by("sort_order", "name")
@@ -2022,13 +1238,6 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             ensure_ascii=False,
         )
         ctx["teams_map_json"] = json.dumps(team_map, ensure_ascii=False)
-        ctx["active_retreat_event"] = active_retreat
-        ctx["retreat_groups_json"] = retreat_groups_json
-        ctx["retreat_role_choices"] = [
-            ("participant", "참가자"),
-            ("leader", "조장"),
-            ("vice_leader", "부조장"),
-        ]
         ctx["role_level_choices"] = list(
             RoleLevel.objects.order_by("-level", "sort_order")
         )

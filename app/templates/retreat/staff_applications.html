@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>참가 신청 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260703m" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260706d" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -41,7 +41,7 @@
                   <tr>
                     <th>이름</th>
                     <th>지역·부서</th>
-                    <th>조·역할</th>
+                    <th>신청 유형</th>
                     <th>제출일</th>
                     <th></th>
                   </tr>
@@ -74,11 +74,36 @@
           <div class="jcc-retreat-staffAppModalInfoGrid" id="staffAppModalInfoGrid"></div>
           <div class="jcc-retreat-staffAppModalReadonly" id="staffAppModalReadonly" hidden></div>
           <div class="jcc-retreat-staffAppModalReviewFields" id="staffAppModalReviewFields">
-            <div class="field jcc-retreat-staffAppCouncilRoleField" id="staffAppCouncilRoleField" hidden>
-              <label for="staffAppCouncilRole">승인 시 집회 운영 역할</label>
-              <select id="staffAppCouncilRole" name="council_role" class="jcc-retreat-staffAppModalSelect">
-                <option value="">역할을 선택해주세요</option>
-              </select>
+            <div class="field" id="staffAppTrackField">
+              <span class="jcc-retreat-staffApplyLabel">신청 유형</span>
+              <div class="jcc-retreat-staffApplyFixed" aria-readonly="true">
+                <span class="jcc-retreat-staffApplyFixedValue" id="staffAppTrackDisplay"></span>
+              </div>
+            </div>
+            <div id="staffAppCouncilFields" hidden>
+              <div class="field">
+                <label for="staffAppCouncilRole">운영 역할</label>
+                <select id="staffAppCouncilRole" name="council_role" data-cselect>
+                  <option value="">역할을 선택해주세요</option>
+                </select>
+              </div>
+            </div>
+            <div id="staffAppGroupFields" hidden>
+              <div class="jcc-retreat-staffApplyRow jcc-retreat-staffAppGroupRow">
+                <div class="field">
+                  <label for="staffAppGroup">조</label>
+                  <select id="staffAppGroup" name="group_id" data-cselect>
+                    <option value="">조를 선택해주세요</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="staffAppGroupRole">직책</label>
+                  <select id="staffAppGroupRole" name="group_role" data-cselect>
+                    <option value="">직책을 선택해주세요</option>
+                  </select>
+                </div>
+              </div>
+              <p class="jcc-retreat-staffAppModalHint muted">신청 조가 기본 선택됩니다. 같은 소속 부서 담당 조 중 다른 조로 변경할 수 있습니다.</p>
             </div>
             <div class="field" id="staffAppRejectReasonField">
               <label for="staffAppRejectReason">
@@ -112,9 +137,11 @@
         apiListUrl: "{% url 'api_retreat_event_staff_applications' event.id %}",
         apiReviewUrlTemplate: "{% url 'api_retreat_staff_application_review' event.id 0 %}",
         councilRoles: {{ council_role_choices_json|safe }},
+        groupRoles: {{ group_role_choices_json|safe }},
         csrfToken: "{{ csrf_token }}"
       };
     </script>
-    <script src="{% static 'retreat/staff_applications.js' %}?v=20260703m"></script>
+    <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
+    <script src="{% static 'retreat/staff_applications.js' %}?v=20260706d" defer></script>
   </body>
 </html>

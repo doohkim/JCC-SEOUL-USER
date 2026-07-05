@@ -18,8 +18,12 @@
   const reviewFields = document.getElementById("staffAppModalReviewFields");
   const footReview = document.getElementById("staffAppModalFootReview");
   const footReadonly = document.getElementById("staffAppModalFootReadonly");
-  const councilRoleField = document.getElementById("staffAppCouncilRoleField");
+  const trackDisplay = document.getElementById("staffAppTrackDisplay");
+  const councilFields = document.getElementById("staffAppCouncilFields");
   const councilRoleSelect = document.getElementById("staffAppCouncilRole");
+  const groupFields = document.getElementById("staffAppGroupFields");
+  const groupSelect = document.getElementById("staffAppGroup");
+  const groupRoleSelect = document.getElementById("staffAppGroupRole");
   const rejectInput = document.getElementById("staffAppRejectReason");
   const btnApprove = document.getElementById("btnStaffAppApprove");
   const btnReject = document.getElementById("btnStaffAppReject");
@@ -53,6 +57,15 @@
     return String(ctx.apiReviewUrlTemplate || "").replace("/0/", `/${id}/`);
   }
 
+  function refreshModalSelects() {
+    if (!window.JccCustomSelect) return;
+    const root = reviewFields || modal;
+    root?.querySelectorAll("select[data-cselect]").forEach((el) => {
+      const wrap = el.closest(".jcc-cselect");
+      window.JccCustomSelect.refresh(wrap || el);
+    });
+  }
+
   function getCouncilRoleChoices() {
     let roles = ctx.councilRoles;
     if (typeof roles === "string") {
@@ -65,18 +78,76 @@
     return Array.isArray(roles) ? roles : [];
   }
 
+  function getGroupRoleChoices() {
+    let roles = ctx.groupRoles;
+    if (typeof roles === "string") {
+      try {
+        roles = JSON.parse(roles);
+      } catch (_err) {
+        roles = [];
+      }
+    }
+    return Array.isArray(roles) ? roles : [];
+  }
+
+  function groupOptionLabel(g) {
+    const region = g.region_name || "";
+    const division = g.division_name || "";
+    const suffix = region && division ? ` (${region} · ${division})` : "";
+    return `${g.name || ""}${suffix}`;
+  }
+
+  function populateGroupRoles(selected) {
+    if (!groupRoleSelect) return;
+    groupRoleSelect.querySelectorAll('option:not([value=""])').forEach((opt) => opt.remove());
+    getGroupRoleChoices().forEach(([value, label]) => {
+      const opt = document.createElement("option");
+      opt.value = value;
+      opt.textContent = label;
+      if (selected && value === selected) opt.selected = true;
+      groupRoleSelect.appendChild(opt);
+    });
+    if (!selected) groupRoleSelect.value = "";
+  }
+
+  function populateEligibleGroups(app) {
+    if (!groupSelect) return;
+    groupSelect.innerHTML = '<option value="">조를 선택해주세요</option>';
+    const groups = Array.isArray(app.eligible_groups) ? app.eligible_groups : [];
+    groups.forEach((g) => {
+      const opt = document.createElement("option");
+      opt.value = String(g.id);
+      opt.textContent = groupOptionLabel(g);
+      if (app.group && Number(app.group) === Number(g.id)) {
+        opt.selected = true;
+      }
+      groupSelect.appendChild(opt);
+    });
+    if (app.group && !groupSelect.value) {
+      groupSelect.value = String(app.group);
+    }
+  }
+
   function statusBadgeClass(status) {
     if (status === "approved") return "jcc-retreat-staffAppStatusBadge--approved";
     if (status === "rejected") return "jcc-retreat-staffAppStatusBadge--rejected";
     return "jcc-retreat-staffAppStatusBadge--pending";
   }
 
+  function applicationTrackLabel(app) {
+    if (app.is_pastoral) return "집회 운영진";
+    return app.application_track_display || "—";
+  }
+
   function applicationInfoText(app) {
-    if (app.group_name) {
-      return `${app.group_name} · ${app.group_role_display || ""}`.trim();
+    if (app.is_pastoral) return "목회자 · 집회 운영진";
+    if (app.is_council_track) {
+      return app.application_track_display || "집회 운영진";
     }
-    if (app.is_pastoral) return "목회자";
-    return "—";
+    if (app.group_name) {
+      return `${app.application_track_display || "조 운영진"} · ${app.group_name} · ${app.group_role_display || ""}`.trim();
+    }
+    return app.application_track_display || "—";
   }
 
   function avatarInitial(name) {
@@ -95,10 +166,6 @@
         <div class="jcc-retreat-staffAppModalInfoLabel">소속</div>
         <div class="jcc-retreat-staffAppModalInfoValue">${escapeHtml(app.region_name)} · ${escapeHtml(app.division_name)}</div>
       </div>
-      <div class="jcc-retreat-staffAppModalInfoItem">
-        <div class="jcc-retreat-staffAppModalInfoLabel">신청 정보</div>
-        <div class="jcc-retreat-staffAppModalInfoValue">${escapeHtml(applicationInfoText(app))}</div>
-      </div>
     `;
   }
 
@@ -113,22 +180,22 @@
         <span>${escapeHtml(formatDateTime(app.reviewed_at))}</span>
       </div>`,
     ];
-    if (app.is_pastoral && app.approved_council_role_display) {
+    if ((app.is_pastoral || app.is_council_track) && app.approved_council_role_display) {
       rows.push(`<div class="jcc-retreat-staffAppModalReadonlyRow">
-        <span class="jcc-retreat-staffAppModalReadonlyLabel">승인 역할</span>
+        <span class="jcc-retreat-staffAppModalReadonlyLabel">운영 역할</span>
         <span>${escapeHtml(app.approved_council_role_display)}</span>
+      </div>`);
+    } else if (!app.is_pastoral && !app.is_council_track && app.group_name) {
+      const assignment = `${app.group_name}${app.group_role_display ? ` · ${app.group_role_display}` : ""}`;
+      rows.push(`<div class="jcc-retreat-staffAppModalReadonlyRow">
+        <span class="jcc-retreat-staffAppModalReadonlyLabel">승인 배정</span>
+        <span>${escapeHtml(assignment)}</span>
       </div>`);
     }
     if (app.status === "rejected" && app.rejection_reason) {
       rows.push(`<div class="jcc-retreat-staffAppModalReadonlyRow jcc-retreat-staffAppModalReadonlyRow--stack">
         <span class="jcc-retreat-staffAppModalReadonlyLabel">반려 사유</span>
         <p class="jcc-retreat-staffAppModalReadonlyText">${escapeHtml(app.rejection_reason)}</p>
-      </div>`);
-    }
-    if (app.note) {
-      rows.push(`<div class="jcc-retreat-staffAppModalReadonlyRow jcc-retreat-staffAppModalReadonlyRow--stack">
-        <span class="jcc-retreat-staffAppModalReadonlyLabel">신청 메모</span>
-        <p class="jcc-retreat-staffAppModalReadonlyText">${escapeHtml(app.note)}</p>
       </div>`);
     }
     return rows.join("");
@@ -145,6 +212,19 @@
       councilRoleSelect.appendChild(opt);
     });
     if (!selected) councilRoleSelect.value = "";
+  }
+
+  function showCouncilApprovalFields(app) {
+    if (groupFields) groupFields.hidden = true;
+    if (councilFields) councilFields.hidden = false;
+    populateCouncilRoles(app.suggested_council_role || app.approved_council_role || "");
+  }
+
+  function showGroupApprovalFields(app) {
+    if (councilFields) councilFields.hidden = true;
+    if (groupFields) groupFields.hidden = false;
+    populateEligibleGroups(app);
+    populateGroupRoles(app.group_role || "");
   }
 
   function renderActionCell(app) {
@@ -169,19 +249,20 @@
     if (modalName) modalName.textContent = app.user_display_name || "";
     if (modalUsername) modalUsername.textContent = app.user_username || "";
     if (modalInfoGrid) modalInfoGrid.innerHTML = renderInfoGrid(app);
+    if (trackDisplay) trackDisplay.textContent = applicationTrackLabel(app);
 
     if (isPending) {
       if (modalReadonly) modalReadonly.hidden = true;
       if (reviewFields) reviewFields.hidden = false;
       if (footReview) footReview.hidden = false;
       if (footReadonly) footReadonly.hidden = true;
-      if (app.is_pastoral) {
-        councilRoleField.hidden = false;
-        populateCouncilRoles(app.suggested_council_role || app.approved_council_role || "");
+      if (app.is_pastoral || app.is_council_track) {
+        showCouncilApprovalFields(app);
       } else {
-        councilRoleField.hidden = true;
+        showGroupApprovalFields(app);
       }
       if (rejectInput) rejectInput.value = "";
+      refreshModalSelects();
     } else {
       if (modalReadonly) {
         modalReadonly.hidden = false;
@@ -190,7 +271,8 @@
       if (reviewFields) reviewFields.hidden = true;
       if (footReview) footReview.hidden = true;
       if (footReadonly) footReadonly.hidden = false;
-      councilRoleField.hidden = true;
+      if (councilFields) councilFields.hidden = true;
+      if (groupFields) groupFields.hidden = true;
     }
 
     modal.showModal();
@@ -208,8 +290,22 @@
   async function submitReview(action) {
     if (!currentApp) return;
     const payload = { action };
-    if (action === "approve" && currentApp.is_pastoral && councilRoleSelect?.value) {
+    if (action === "approve" && (currentApp.is_pastoral || currentApp.is_council_track)) {
+      if (!councilRoleSelect?.value) {
+        setStatus("운영 역할을 선택해 주세요.", true);
+        return;
+      }
       payload.council_role = councilRoleSelect.value;
+    }
+    if (action === "approve" && !currentApp.is_pastoral && !currentApp.is_council_track) {
+      const gid = groupSelect?.value;
+      const role = groupRoleSelect?.value;
+      if (!gid || !role) {
+        setStatus("조와 직책을 선택해 주세요.", true);
+        return;
+      }
+      payload.group_id = Number(gid);
+      payload.group_role = role;
     }
     if (action === "reject") {
       payload.rejection_reason = rejectInput?.value.trim() || "";
@@ -304,5 +400,6 @@
   }
 
   populateCouncilRoles("");
+  populateGroupRoles("");
   loadApplications(activeStatus);
 })();

@@ -103,10 +103,14 @@ class RetreatPageAccessTests(_PageFixture):
         # LoginRequiredMixin → 302 to login
         self.assertEqual(r.status_code, 302)
 
-    def test_home_forbidden_for_stranger(self):
+    def test_home_redirects_stranger_to_staff_apply(self):
         self.client.force_login(self.stranger)
         r = self.client.get(reverse("retreat_home"))
-        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.status_code, 302)
+        self.assertIn(
+            reverse("retreat_staff_apply", args=[self.event.id]),
+            r.url,
+        )
 
     def test_home_redirects_leader_to_dashboard(self):
         self.client.force_login(self.leader)
@@ -504,3 +508,36 @@ class CanAccessRetreatTabFilterTests(_PageFixture):
 
     def test_superuser_shows_tab(self):
         self.assertEqual(self._render(self.superuser), "1")
+
+
+class CanAccessRetreatNavTabFilterTests(_PageFixture):
+    """좌측 '수련회' 메뉴 — 가입 완료 사용자."""
+
+    def _render(self, user):
+        t = Template(
+            "{% load permission_tags %}{{ u|can_access_retreat_nav_tab|yesno:'1,0' }}"
+        )
+        return t.render(Context({"u": user})).strip()
+
+    def test_approved_member_shows_nav_tab(self):
+        from users.mixins import ensure_user_profile
+        from users.models import UserProfile
+
+        approved = User.objects.create_user(username="nav_approved", password="x")
+        UserDivisionTeam.objects.create(
+            user=approved, division=self.div_youth, is_primary=True
+        )
+        profile = ensure_user_profile(approved)
+        profile.onboarding_status = UserProfile.OnboardingStatus.APPROVED
+        profile.save()
+        self.assertEqual(self._render(approved), "1")
+
+    def test_pending_member_does_not_show_nav_tab(self):
+        from users.mixins import ensure_user_profile
+        from users.models import UserProfile
+
+        pending = User.objects.create_user(username="nav_pending", password="x")
+        profile = ensure_user_profile(pending)
+        profile.onboarding_status = UserProfile.OnboardingStatus.PENDING
+        profile.save()
+        self.assertEqual(self._render(pending), "0")

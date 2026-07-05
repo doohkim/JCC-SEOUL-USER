@@ -10,7 +10,7 @@ from django.urls import reverse
 
 from retreat.models import RetreatEvent
 from users.mixins import ensure_user_profile
-from users.models import Division, Region, UserProfile
+from users.models import Division, Region, UserDivisionTeam, UserProfile
 
 User = get_user_model()
 
@@ -49,10 +49,16 @@ class OnboardingRetreatParticipationTests(TestCase):
         self.client.force_login(self.user)
         r = self.client.post(reverse("user_onboarding"), self._base_payload())
         self.assertEqual(r.status_code, 302)
+        self.assertIn("/notices/", r.url)
         profile = UserProfile.objects.get(user=self.user)
-        self.assertEqual(profile.onboarding_status, UserProfile.OnboardingStatus.PENDING)
+        self.assertEqual(profile.onboarding_status, UserProfile.OnboardingStatus.APPROVED)
         self.assertFalse(profile.requested_retreat_participation)
         self.assertIsNone(profile.requested_retreat_group_id)
+        self.assertTrue(
+            UserDivisionTeam.objects.filter(
+                user=self.user, division=self.division
+            ).exists()
+        )
 
     def test_signup_page_does_not_show_retreat_fields(self):
         self.client.force_login(self.user)

@@ -14,8 +14,6 @@
     h1 { margin:0; font-size:1.4rem; color:var(--text); }
     .desc { margin:.4rem 0 1rem; color:var(--muted); }
     .status { border:1px solid var(--border); border-radius:12px; padding:.75rem .9rem; margin-bottom:1rem; background:color-mix(in srgb,var(--surface-2) 40%,var(--card)); }
-    .status.pending { border-color:#fbbf24; background:#fffbeb; }
-    .status.approved { border-color:#86efac; background:#f0fdf4; }
     .status.rejected { border-color:#fca5a5; background:#fef2f2; }
     .field { margin-bottom:.85rem; }
     .fieldGrid { display:grid; grid-template-columns:1fr 1fr; gap:.65rem .75rem; }
@@ -37,14 +35,9 @@
     }
     .actions { margin-top:1.25rem; display:flex; justify-content:flex-end; }
     button { border:none; border-radius:10px; background:var(--accent); color:#fff; padding:.65rem 1.15rem; font-weight:600; cursor:pointer; font-size:.92rem; }
-    button:disabled { opacity:.55; cursor:not-allowed; }
-    button.secondary { background:transparent; border:1px solid var(--border); color:var(--text); }
     .msg { margin-top:.5rem; color:var(--muted); font-size:.88rem; }
     .footnote { margin:1rem 0 0; color:var(--muted); font-size:.85rem; text-align:center; line-height:1.45; }
-    .readonly-box { border:1px solid var(--border); border-radius:10px; background:var(--input-elev-1); padding:.65rem .75rem; color:var(--text); }
     ul.errorlist { margin:0 0 .5rem 1rem; color:#dc2626; }
-    .status.pending strong { color:#b45309; }
-    .status.approved strong { color:var(--ok); }
     .status.rejected strong { color:#dc2626; }
     .teamField[hidden] { display:none !important; }
     @media (max-width:640px) { .card { padding:16px; } .actions { justify-content:stretch; } button[type="submit"] { width:100%; } }
@@ -54,27 +47,15 @@
   <div class="wrap">
     <div class="card">
       <h1>가입 신청</h1>
-      <p class="desc">카카오 로그인 후 실명·연락처·소속 정보를 입력해 주세요. 관리자 승인 후 이용할 수 있습니다.</p>
+      <p class="desc">카카오 로그인 후 실명·연락처·소속 정보를 입력해 주세요. 제출하면 함께보기를 이용할 수 있습니다.</p>
 
-      <div class="status {{ onboarding_status }}">
-        {% if is_pending_locked %}
-          <strong>승인 대기</strong>
-          <div class="msg">가입 신청이 접수되었습니다. 관리자 승인 완료 전까지는 재신청할 수 없습니다.</div>
-          {% if requested_division_name %}
-            <div class="msg">신청 부서: {{ requested_division_name }}</div>
-          {% endif %}
-          {% if requested_team_name %}
-            <div class="msg">신청 팀: {{ requested_team_name }}</div>
-          {% endif %}
-        {% elif onboarding_status == "rejected" %}
-          <strong>반려됨</strong>
-          <div class="msg">요청이 반려되었습니다. 내용을 수정해 다시 신청해 주세요.</div>
-          {% if onboarding_note %}<div class="msg">사유: {{ onboarding_note }}</div>{% endif %}
-        {% else %}
-          <strong>확인 중</strong>
-          <div class="msg">아래 항목을 모두 입력해 제출해 주세요.</div>
-        {% endif %}
+      {% if onboarding_status == "rejected" %}
+      <div class="status rejected">
+        <strong>반려됨</strong>
+        <div class="msg">요청이 반려되었습니다. 내용을 수정해 다시 신청해 주세요.</div>
+        {% if onboarding_note %}<div class="msg">사유: {{ onboarding_note }}</div>{% endif %}
       </div>
+      {% endif %}
 
       <form method="post">
         {% csrf_token %}
@@ -83,72 +64,47 @@
             <div class="msg">{{ message }}</div>
           {% endfor %}
         {% endif %}
-        {% if is_pending_locked %}
-          <div class="field">
-            <label>신청 부서</label>
-            <div class="readonly-box">{{ requested_division_name|default:"-" }}</div>
-          </div>
-          <div class="field">
-            <label>신청 직급</label>
-            <div class="readonly-box">{{ requested_applicant_role_label|default:"성도" }}</div>
-          </div>
-          <div class="field">
-            <label>성별</label>
-            <div class="readonly-box">{{ requested_gender_label|default:"-" }}</div>
-          </div>
-          {% if not is_pastoral_applicant %}
-          <div class="field">
-            <label>신청 팀</label>
-            <div class="readonly-box">{{ requested_team_name|default:"미선택" }}</div>
-          </div>
-          {% endif %}
-        {% else %}
-          <div class="field">
-            <label for="{{ form.real_name.id_for_label }}">실명 *</label>
-            {{ form.real_name }}
-            {{ form.real_name.errors }}
-          </div>
-          <div class="field">
-            <label for="{{ form.phone.id_for_label }}">휴대폰 *</label>
-            {{ form.phone }}
-            {{ form.phone.errors }}
-          </div>
-          <div class="field">
-            <label for="{{ form.gender.id_for_label }}">성별 *</label>
-            {{ form.gender }}
-            {{ form.gender.errors }}
-          </div>
-          <div class="fieldGrid">
-            <div class="field">
-              <label for="{{ form.requested_region.id_for_label }}">지역 *</label>
-              {{ form.requested_region }}
-              {{ form.requested_region.errors }}
-            </div>
-            <div class="field">
-              <label for="{{ form.requested_division.id_for_label }}">부서 *</label>
-              {{ form.requested_division }}
-              {{ form.requested_division.errors }}
-            </div>
-          </div>
-          <div class="field">
-            <label for="{{ form.requested_applicant_role.id_for_label }}">직급 *</label>
-            {{ form.requested_applicant_role }}
-            {{ form.requested_applicant_role.errors }}
-          </div>
-          <div class="field teamField" id="teamField">
-            <label for="{{ form.requested_team.id_for_label }}">팀</label>
-            {{ form.requested_team }}
-            {{ form.requested_team.errors }}
-          </div>
-        {% endif %}
-        <div class="actions">
-          {% if is_pending_locked %}
-            <button type="button" disabled>승인 대기중</button>
-          {% else %}
-            <button type="submit">가입 신청</button>
-          {% endif %}
+        <div class="field">
+          <label for="{{ form.real_name.id_for_label }}">실명 *</label>
+          {{ form.real_name }}
+          {{ form.real_name.errors }}
         </div>
-        <p class="footnote">승인 시 관리자가 확인합니다. 직급 선택만으로 권한이 부여되지 않습니다.</p>
+        <div class="field">
+          <label for="{{ form.phone.id_for_label }}">휴대폰 *</label>
+          {{ form.phone }}
+          {{ form.phone.errors }}
+        </div>
+        <div class="field">
+          <label for="{{ form.gender.id_for_label }}">성별 *</label>
+          {{ form.gender }}
+          {{ form.gender.errors }}
+        </div>
+        <div class="fieldGrid">
+          <div class="field">
+            <label for="{{ form.requested_region.id_for_label }}">지역 *</label>
+            {{ form.requested_region }}
+            {{ form.requested_region.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ form.requested_division.id_for_label }}">부서 *</label>
+            {{ form.requested_division }}
+            {{ form.requested_division.errors }}
+          </div>
+        </div>
+        <div class="field">
+          <label for="{{ form.requested_applicant_role.id_for_label }}">직급 *</label>
+          {{ form.requested_applicant_role }}
+          {{ form.requested_applicant_role.errors }}
+        </div>
+        <div class="field teamField" id="teamField">
+          <label for="{{ form.requested_team.id_for_label }}">팀</label>
+          {{ form.requested_team }}
+          {{ form.requested_team.errors }}
+        </div>
+        <div class="actions">
+          <button type="submit">가입 신청</button>
+        </div>
+        <p class="footnote">제출 후 함께보기(공지·타임테이블)를 이용할 수 있습니다. 출석·수련회 등은 별도 권한이 필요합니다.</p>
       </form>
     </div>
   </div>
@@ -159,8 +115,6 @@
       const team = document.getElementById("id_requested_team");
       const divisionsMap = {{ divisions_map_json|safe }};
       const teamsMap = {{ teams_map_json|safe }};
-      const isLocked = {{ is_pending_locked|yesno:"true,false" }};
-      if (isLocked) return;
 
       const selectedDivision = division ? division.value : "";
       const selectedTeam = team ? team.value : "";

@@ -12,8 +12,9 @@ from rest_framework.views import APIView
 from retreat.models import RetreatChangeLog, RetreatEvent, RetreatTimetableEntry
 from retreat.serializers import RetreatTimetableEntrySerializer
 from retreat.services.audit import log_retreat_change
-from retreat.services.staff_capabilities import AccessLevel, effective_capabilities
+from retreat.services.staff_capabilities import effective_capabilities
 from users.permissions import (
+    can_access_retreat_admin,
     can_access_retreat_tab,
 )
 
@@ -37,8 +38,7 @@ def _assert_event_access(user) -> None:
 
 def _assert_can_view(user, event: RetreatEvent) -> None:
     _assert_event_access(user)
-    caps = effective_capabilities(user, event)
-    if not (user.is_superuser or caps.admin >= AccessLevel.VIEW):
+    if not can_access_retreat_admin(user, event):
         raise PermissionDenied("타임테이블 조회 권한이 없습니다.")
 
 

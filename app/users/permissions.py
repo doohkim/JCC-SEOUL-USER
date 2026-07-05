@@ -10,8 +10,13 @@
 | 출석 명단 입력 ``/attendance/roster/`` | ``can_access_attendance_roster_input`` | broad 출석 권한 (출석관리 플래그 포함) |
 | 교적부 ``/registry/…`` | ``can_access_member_registry`` | 슈퍼유저·목사/전도사 직급만 |
 | 계정관리 | ``can_manage_division_accounts`` | 슈퍼유저·``can_manage_accounts``·staff |
-| 함께하기(공지) | ``can_access_notices_tab`` | 로그인 사용자 |
-| 수련회 | ``can_access_retreat_tab`` | 회장단·목사/전도사·조장 등 (별도 체계) |
+| 함께하기(공지) | ``can_access_notices_tab`` | 가입 완료·목사/전도사 또는 공지 관리자 |
+| 수련회 nav | ``can_access_retreat_nav_tab`` | 가입 완료·목사/전도사 (허브·참가 신청) |
+| 수련회 운영 | ``can_access_retreat_tab`` | 조장·운영진 (별도 체계, URL 직접 접근) |
+
+역할별 사이드바 (플랫폼 관리자 superuser/is_staff 는 예외):
+- **성도**: 수련회·함께보기
+- **목사·전도사**: 수련회·함께보기·출석부·교적부 (출석 대시보드·계정관리 제외)
 
 - **운영 데이터(출석·부서 목록 등)**: ``UserDivisionTeam`` 소속 부서만.
 - **교적 부서 범위**: ``registry_divisions_for`` — 목회 담당 부서만.
@@ -81,6 +86,20 @@ def is_platform_admin(user: User) -> bool:
     if not user.is_authenticated or not user.is_active:
         return False
     return bool(user.is_superuser or user.is_staff)
+
+
+def _bypass_nav_tier_restriction(user: User) -> bool:
+    """슈퍼유저·플랫폼 관리자 — 역할별 메뉴 제한 예외."""
+    return is_platform_admin(user)
+
+
+def _is_general_member_nav_tier(user: User) -> bool:
+    """목사·전도사·플랫폼 관리자가 아닌 일반 성도(사이드바 tier)."""
+    if not user.is_authenticated or not user.is_active:
+        return False
+    if _bypass_nav_tier_restriction(user):
+        return False
+    return not _is_pastoral(user)
 
 
 def _is_pastoral(user: User) -> bool:
@@ -207,6 +226,8 @@ def can_access_team_roster_tab(user: User) -> bool:
 
     if not user.is_authenticated or not user.is_active:
         return False
+    if _is_general_member_nav_tier(user):
+        return False
     return is_team_roster_broad_access(user) or is_team_roster_leader_only(user)
 
 
@@ -220,18 +241,24 @@ def can_access_attendance_dashboard(user: User) -> bool:
     """출석 대시보드 ``/attendance/`` 페이지·탭."""
     if not user.is_authenticated or not user.is_active:
         return False
-    if user.is_superuser or _is_pastoral(user):
+    if is_platform_admin(user):
         return True
+    if _is_pastoral(user) or _is_general_member_nav_tier(user):
+        return False
     if is_attendance_manager(user):
         return True
     if can_access_team_roster_tab(user):
         return True
-    return bool(_primary_user_division_ids(user))
+    return False
 
 
 def can_access_attendance_roster_input(user: User) -> bool:
     """교적 연동 출석 명단 입력 ``/attendance/roster/`` (부서 전체 명단 편집)."""
     if not user.is_authenticated or not user.is_active:
+        return False
+    if is_platform_admin(user):
+        return is_team_roster_broad_access(user)
+    if _is_pastoral(user) or _is_general_member_nav_tier(user):
         return False
     return is_team_roster_broad_access(user)
 
@@ -363,6 +390,8 @@ def can_manage_division_accounts(user: User) -> bool:
         return False
     if is_platform_admin(user):
         return True
+    if _is_pastoral(user) or _is_general_member_nav_tier(user):
+        return False
     return bool(getattr(user, "can_manage_accounts", False))
 
 
@@ -384,14 +413,17 @@ def is_parking_manager(user: User) -> bool:
 
 
 def can_access_notices_tab(user: User) -> bool:
-    """공지 열람 — 공지관리자/스태프/슈퍼유저 또는 가입신청 제출(승인대기·승인완료) 계정."""
+    """공지 열람 — 가입 완료·목사/전도사 또는 공지 관리자."""
     if not user.is_authenticated or not user.is_active:
         return False
     if is_notice_manager(user):
         return True
-    from users.mixins import has_submitted_signup
+    from users.mixins import ensure_user_profile, is_onboarding_complete
 
-    return has_submitted_signup(user)
+    profile = getattr(user, "profile", None)
+    if profile is None:
+        profile = ensure_user_profile(user)
+    return is_onboarding_complete(user, profile)
 
 
 def is_notice_manager(user: User) -> bool:
@@ -642,6 +674,11 @@ def is_retreat_event_admin(user: User, event) -> bool:
     ).exists()
 
 
+def can_access_retreat_admin(user: User, event) -> bool:
+    """수련회 관리 탭·하위 페이지 — 슈퍼유저·집회 전체 관리자만."""
+    return is_retreat_event_admin(user, event)
+
+
 def is_retreat_group_leader(user: User, group) -> bool:
     """해당 그룹의 조장/부조장 멤버십이 있으면 True."""
     if not user or not getattr(user, "is_authenticated", False):
@@ -651,14 +688,27 @@ def is_retreat_group_leader(user: User, group) -> bool:
     return group.memberships.filter(user=user).exists()
 
 
-def can_access_retreat_tab(user: User) -> bool:
-    """좌측/모바일 '수련회' 메뉴 노출 여부.
+def can_access_retreat_staff_apply(user: User) -> bool:
+    """운영진 참가 신청서·수련회 허브 — 가입 완료·목사/전도사."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if _bypass_nav_tier_restriction(user):
+        return True
+    from users.mixins import ensure_user_profile, is_onboarding_complete
 
-    - 슈퍼유저
-    - 집회 운영진(어떤 집회든 1건 이상)
-    - 조장/부조장(어떤 그룹이든 멤버십 1개 이상)
-    - 가입 승인 완료 사용자 (허브·참가 신청)
-    """
+    profile = getattr(user, "profile", None)
+    if profile is None:
+        profile = ensure_user_profile(user)
+    return is_onboarding_complete(user, profile)
+
+
+def can_access_retreat_nav_tab(user: User) -> bool:
+    """좌측/모바일 '수련회' 메뉴 — 가입 완료 사용자(참가 신청·허브 진입)."""
+    return can_access_retreat_staff_apply(user)
+
+
+def can_access_retreat_tab(user: User) -> bool:
+    """수련회 운영 화면·API — 조장/부조장 또는 집회 운영진."""
 
     if not user or not getattr(user, "is_authenticated", False):
         return False
@@ -668,12 +718,6 @@ def can_access_retreat_tab(user: User) -> bool:
         return True
     if user.retreat_group_memberships.exists():
         return True
-    profile = getattr(user, "profile", None)
-    if profile is not None:
-        from users.models import UserProfile
-
-        if profile.onboarding_status == UserProfile.OnboardingStatus.APPROVED:
-            return True
     return False
 
 
@@ -741,10 +785,11 @@ def retreat_pickup_group_ids_for(user: User, event) -> set[int]:
 
 def retreat_pickup_visible_group_ids_for(user: User, event) -> list[int]:
     """픽업 목록 조회 범위."""
+    from retreat.services.staff_capabilities import has_event_wide_pickup_view
+
     if not user or not getattr(user, "is_authenticated", False) or event is None:
         return []
-    caps = effective_capabilities(user, event)
-    if caps.pickup_select_group and caps.scope.kind == "event":
+    if has_event_wide_pickup_view(user, event):
         from retreat.models import RetreatGroup
 
         return list(
@@ -785,8 +830,6 @@ def visible_retreat_sessions_for(user: User, event):
     caps = effective_capabilities(user, event)
     if user.is_superuser or caps.manage_timetable or is_retreat_event_admin(user, event):
         return base
-    if caps.view_changelog or caps.admin >= AccessLevel.VIEW:
-        return base
     return base.filter(status=RetreatSession.Status.ACTIVE)
 
 
@@ -800,12 +843,8 @@ def is_retreat_council_any(user: User) -> bool:
 
 
 def is_retreat_staff(user: User, event) -> bool:
-    """관리 탭·변경 이력 등 — admin 탭 VIEW 이상."""
-    if not user or not getattr(user, "is_authenticated", False) or event is None:
-        return False
-    if user.is_superuser:
-        return True
-    return effective_capabilities(user, event).admin >= AccessLevel.VIEW
+    """관리 탭·변경 이력 등 — 슈퍼유저·집회 전체 관리자만."""
+    return can_access_retreat_admin(user, event)
 
 
 def can_view_retreat_all(user: User, event) -> bool:

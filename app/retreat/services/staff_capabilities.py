@@ -211,12 +211,9 @@ def _event_observer_caps() -> RetreatCapabilities:
         groups=AccessLevel.VIEW,
         pickup=AccessLevel.VIEW,
         lodging=AccessLevel.VIEW,
-        admin=AccessLevel.VIEW,
         pickup_overview=AccessLevel.VIEW,
         pickup_arrival=AccessLevel.VIEW,
         pickup_departure=AccessLevel.VIEW,
-        view_staff=True,
-        view_changelog=True,
         scope=StaffScope.event_wide(),
     )
 
@@ -376,6 +373,34 @@ def get_staff_membership(user: User, event: RetreatEvent | None):
     )
 
 
+def is_pickup_observer_with_leader(user: User, event: RetreatEvent | None) -> bool:
+    """픽업 담당 관찰자 + 조장/부조장 겸직."""
+    from retreat.models import RetreatCouncilMembership as M
+
+    membership = get_staff_membership(user, event)
+    if membership is None or membership.role != M.Role.PICKUP_OBSERVER:
+        return False
+    if event is None:
+        return False
+    return user.retreat_group_memberships.filter(group__event=event).exists()
+
+
+def has_event_wide_pickup_view(user: User, event: RetreatEvent | None) -> bool:
+    """픽업 화면 — 집회 전체 조 조회 (pickup_observer·event_observer·event_admin 등)."""
+    staff = staff_capabilities(user, event)
+    if staff is None:
+        return False
+    return staff.pickup >= AccessLevel.VIEW and staff.scope.kind == "event"
+
+
+def _leader_group_ids(user: User, event: RetreatEvent) -> list[int]:
+    return list(
+        user.retreat_group_memberships.filter(group__event=event).values_list(
+            "group_id", flat=True
+        )
+    )
+
+
 def scope_filter_q(scope: StaffScope, *, prefix: str = "") -> Q:
     field = f"{prefix}__" if prefix else ""
     if scope.kind == "event":
@@ -392,37 +417,39 @@ def visible_groups_qs(user: User, event: RetreatEvent) -> QuerySet:
 
     caps = effective_capabilities(user, event)
     base = RetreatGroup.objects.filter(event=event)
+    if is_pickup_observer_with_leader(user, event):
+        leader_ids = _leader_group_ids(user, event)
+        if leader_ids:
+            return base.filter(pk__in=leader_ids)
+        return base.none()
     if caps.scope.kind == "event":
-        return base
+        if caps.groups >= AccessLevel.VIEW:
+            return base
+        return base.none()
     if caps.groups == AccessLevel.NONE and caps.scope.kind == "none":
-        leader_ids = list(
-            user.retreat_group_memberships.filter(group__event=event).values_list(
-                "group_id", flat=True
-            )
-        )
+        leader_ids = _leader_group_ids(user, event)
         if leader_ids:
             return base.filter(pk__in=leader_ids)
         return base.none()
     q = scope_filter_q(caps.scope)
     scoped = base.filter(q)
-    leader_ids = list(
-        user.retreat_group_memberships.filter(group__event=event).values_list(
-            "group_id", flat=True
-        )
-    )
+    leader_ids = _leader_group_ids(user, event)
     if leader_ids:
         return scoped | base.filter(pk__in=leader_ids)
     return scoped
 
 
 def can_access_retreat_page(user: User, event: RetreatEvent, page: str) -> bool:
+    if page == "admin":
+        from users.permissions import can_access_retreat_admin
+
+        return can_access_retreat_admin(user, event)
     caps = effective_capabilities(user, event)
     mapping = {
         "dashboard": caps.dashboard,
         "groups": caps.groups,
         "pickup": caps.pickup,
         "lodging": caps.lodging,
-        "admin": caps.admin,
     }
     level = mapping.get(page, AccessLevel.NONE)
     return level >= AccessLevel.VIEW

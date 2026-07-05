@@ -9,6 +9,11 @@ from .event import RetreatEvent
 from .group import RetreatGroup, RetreatGroupMembership
 
 
+class StaffApplicationTrack(models.TextChoices):
+    COUNCIL = "council", "집회 운영진"
+    GROUP_LEADERSHIP = "group_leadership", "조 운영진"
+
+
 class RetreatStaffApplication(models.Model):
     """집회 운영진 참가 신청 (회장단 승인 후 멤버십 반영)."""
 
@@ -40,6 +45,13 @@ class RetreatStaffApplication(models.Model):
         on_delete=models.PROTECT,
         related_name="retreat_staff_applications",
         verbose_name="부서",
+    )
+    application_track = models.CharField(
+        "신청 유형",
+        max_length=24,
+        choices=StaffApplicationTrack.choices,
+        blank=True,
+        default="",
     )
     group = models.ForeignKey(
         RetreatGroup,

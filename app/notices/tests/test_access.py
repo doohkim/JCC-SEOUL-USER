@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from users.models import Division, Region, UserProfile
+from users.models import Division, Region, UserDivisionTeam, UserProfile
 
 User = get_user_model()
 
@@ -45,6 +45,11 @@ class _NoticeAccessFixture(TestCase):
             onboarding_status=UserProfile.OnboardingStatus.APPROVED,
             requested_division=cls.div,
         )
+        UserDivisionTeam.objects.create(
+            user=cls.approved_user,
+            division=cls.div,
+            is_primary=True,
+        )
         cls.rejected_user = User.objects.create_user(
             username="notice_rejected", password="x"
         )
@@ -82,9 +87,11 @@ class NoticeAccessTests(_NoticeAccessFixture):
         self.client.force_login(self.staff_user)
         self.assertEqual(self.client.get(reverse("notice_list")).status_code, 200)
 
-    def test_pending_can_list(self):
+    def test_pending_redirected(self):
         self.client.force_login(self.pending_user)
-        self.assertEqual(self.client.get(reverse("notice_list")).status_code, 200)
+        r = self.client.get(reverse("notice_list"))
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/onboarding", r.url)
 
     def test_approved_can_list(self):
         self.client.force_login(self.approved_user)

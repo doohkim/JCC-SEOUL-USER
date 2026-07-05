@@ -1,4 +1,4 @@
-{% comment %}계정 관리 모바일 하단 탭 — account_tab('roles'|'applications') 로 활성 표시{% endcomment %}
+{% comment %}계정 관리 모바일 하단 탭 — account_tab('roles') 로 활성 표시{% endcomment %}
 {% load permission_tags %}
 <nav class="jcc-bottomTabs jcc-accountBottomTabs" id="jccAccountBottomTabs" aria-label="계정 관리 메뉴">
   {% if user|can_manage_division_accounts_tab %}
@@ -11,19 +11,6 @@
         <path d="M8.5 11a3 3 0 100-6 3 3 0 000 6zm7.5.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM3 19c0-2.76 2.46-5 5.5-5s5.5 2.24 5.5 5M15 19c0-1.78.62-3.34 1.6-4.27" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <span>계정</span>
-    </a>
-  {% endif %}
-  {% if user|can_access_onboarding_approvals_tab %}
-    <a
-      class="jcc-bottomTab{% if account_tab == 'applications' %} is-active{% endif %}"
-      href="{% url 'user_onboarding_applications' %}"
-      {% if account_tab == 'applications' %}aria-current="page"{% endif %}
-    >
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
-        <path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <span>가입신청서</span>
     </a>
   {% endif %}
 </nav>

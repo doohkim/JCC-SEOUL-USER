@@ -18,12 +18,15 @@ from retreat.models import (
 from retreat.serializers import RetreatCouncilMembershipSerializer
 from retreat.services.account_retired import assert_user_visible_to, visible_user_linked_for
 from retreat.services.audit import log_retreat_change
-from retreat.services.staff_roster import assert_can_assign_event_staff
-from users.models import Division, Region
+from retreat.services.staff_roster import (
+    CouncilScopeError,
+    assert_can_assign_event_staff,
+    resolve_council_staff_scope,
+)
 from users.permissions import (
+    can_access_retreat_admin,
     can_access_retreat_tab,
     can_manage_staff,
-    can_view_staff,
 )
 
 User = get_user_model()
@@ -36,7 +39,7 @@ def _assert_event_access(user) -> None:
 
 def _assert_can_view(user, event: RetreatEvent) -> None:
     _assert_event_access(user)
-    if not (user.is_superuser or can_view_staff(user, event)):
+    if not (user.is_superuser or can_access_retreat_admin(user, event)):
         raise PermissionDenied("집회 운영진 명단 조회 권한이 없습니다.")
 
 
@@ -52,30 +55,12 @@ def _validate_staff_scope(
     region_id: int | None,
     division_id: int | None,
 ) -> tuple[int | None, int | None]:
-    if role in RetreatCouncilMembership.EVENT_WIDE_ROLES:
-        if region_id or division_id:
-            raise ValidationError(
-                {"scope": "집회 전체·픽업 관찰 역할에는 담당 범위를 지정할 수 없습니다."}
-            )
-        return None, None
-    if role in RetreatCouncilMembership.REGION_SCOPED_ROLES:
-        if not region_id:
-            raise ValidationError({"region": "지역 역할에는 담당 지역이 필요합니다."})
-        if division_id:
-            raise ValidationError({"division": "지역 역할에는 부서를 지정할 수 없습니다."})
-        if not Region.objects.filter(pk=region_id).exists():
-            raise ValidationError({"region": "존재하지 않는 지역입니다."})
-        return region_id, None
-    if role in RetreatCouncilMembership.DIVISION_SCOPED_ROLES:
-        if not division_id:
-            raise ValidationError({"division": "부서 역할에는 담당 부서가 필요합니다."})
-        division = Division.objects.filter(pk=division_id).select_related("region").first()
-        if division is None:
-            raise ValidationError({"division": "존재하지 않는 부서입니다."})
-        if region_id and region_id != division.region_id:
-            raise ValidationError({"region": "담당 지역과 부서의 지역이 일치하지 않습니다."})
-        return division.region_id, division_id
-    raise ValidationError({"role": "올바르지 않은 역할입니다."})
+    try:
+        return resolve_council_staff_scope(
+            role, region_id=region_id, division_id=division_id
+        )
+    except CouncilScopeError as exc:
+        raise ValidationError({exc.field: str(exc)}) from exc
 
 
 class RetreatEventCouncilListCreateView(APIView):
@@ -220,8 +205,12 @@ class RetreatCouncilMembershipDetailView(APIView):
             "division_id": m.division_id,
         }
         event = m.event
+        user = m.user
         mid = m.id
         m.delete()
+        from retreat.services.staff_application import delete_staff_application_if_unassigned
+
+        delete_staff_application_if_unassigned(user, event, actor=request.user)
         log_retreat_change(
             user=request.user,
             event=event,

@@ -26,7 +26,6 @@ from .group_memberships import (
     RetreatGroupMembershipListCreateView,
 )
 from .user_search import RetreatUserSearchView
-from .staff_candidates import RetreatEventStaffCandidatesView
 from .staff_applications import (
     RetreatEventStaffApplicationListView,
     RetreatStaffApplicationDetailView,
@@ -73,7 +72,6 @@ __all__ = [
     "RetreatGroupMembershipListCreateView",
     "RetreatGroupMembershipDetailView",
     "RetreatUserSearchView",
-    "RetreatEventStaffCandidatesView",
     "RetreatEventStaffApplicationListView",
     "RetreatStaffApplicationDetailView",
     "RetreatSessionGroupSnapshotAttendeesView",
