@@ -131,7 +131,7 @@ class RetreatAttendee(models.Model):
         "계정 탈퇴 일시",
         null=True,
         blank=True,
-        help_text="연결 계정 탈퇴로 숨김 처리된 조원. 슈퍼유저만 조회 가능.",
+        help_text="연결 계정 탈퇴로 숨김 처리된 조원.",
     )
 
     class Meta:

@@ -13,7 +13,7 @@ ACCOUNT_RETIRED_DISPLAY = "탈퇴 계정"
 
 
 def can_view_retired_account_data(user) -> bool:
-    return bool(getattr(user, "is_superuser", False))
+    return False
 
 
 def is_retired_user(user) -> bool:

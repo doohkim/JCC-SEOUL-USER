@@ -23,8 +23,13 @@ from retreat.models import (
 from retreat.serializers import RetreatEventSerializer, RetreatGroupSerializer
 from retreat.services.account_retired import visible_user_linked_for
 from retreat.services.audit import log_retreat_change
+from retreat.services.event_picker import active_retreat_events
 from users.models import Division
-from users.permissions import visible_retreat_groups_for
+from users.permissions import (
+    can_access_retreat_staff_apply,
+    can_access_retreat_tab,
+    visible_retreat_groups_for,
+)
 
 User = get_user_model()
 
@@ -216,19 +221,25 @@ def _create_single_group(
 class RetreatEventListView(APIView):
     """현재 사용자에게 노출 가능한 활성 집회 목록.
 
-    - 활성 집회 중, 본인이 1개 이상 그룹을 볼 수 있거나 슈퍼유저인 집회만.
+    - 집회 드롭다운과 동일하게 활성 집회 전체를 반환한다.
+    - 운영진(조 보기 권한) 사용자도 picker 와 같이 전체 활성 집회를 본다.
+    - 참가 신청만 가능한 사용자도 활성 집회를 선택할 수 있어야 한다.
     """
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        events = RetreatEvent.objects.filter(is_active=True).prefetch_related("sessions")
-        if not request.user.is_superuser:
-            visible = []
-            for ev in events:
-                if visible_retreat_groups_for(request.user, ev).exists():
-                    visible.append(ev)
-            events = visible
+        user = request.user
+        if not (
+            user.is_superuser
+            or can_access_retreat_tab(user)
+            or can_access_retreat_staff_apply(user)
+        ):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied
+
+        events = active_retreat_events()
         return Response(
             RetreatEventSerializer(
                 events,

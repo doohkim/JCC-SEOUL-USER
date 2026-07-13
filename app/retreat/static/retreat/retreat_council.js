@@ -221,25 +221,16 @@
     window.JccCustomSelect?.refresh?.(modalOverlay);
   }
 
-  function isCombinedGroupEdit() {
-    return editingRow?.kind === "group";
-  }
-
-  function councilRowForUser(userId) {
-    return rosterRows.find((row) => row.kind === "council" && row.userId === userId) || null;
-  }
-
   function toggleModalPanels(mode) {
     modalMode = mode;
     const modalCard = modalOverlay?.querySelector(".jcc-retreat-modal--staff");
-    const combined = isCombinedGroupEdit();
     if (modalCard) {
-      modalCard.classList.toggle("jcc-retreat-modal--staffGroup", mode === "group" && !combined);
+      modalCard.classList.toggle("jcc-retreat-modal--staffGroup", mode === "group");
       modalCard.classList.toggle("jcc-retreat-modal--staffCouncil", mode === "council");
-      modalCard.classList.toggle("jcc-retreat-modal--staffCombined", combined);
+      modalCard.classList.remove("jcc-retreat-modal--staffCombined");
     }
     document.querySelectorAll('[data-staff-modal-panel="council"]').forEach((el) => {
-      el.hidden = mode !== "council" && !combined;
+      el.hidden = mode !== "council";
     });
     document.querySelectorAll('[data-staff-modal-panel="group"]').forEach((el) => {
       el.hidden = mode !== "group";
@@ -371,6 +362,7 @@
         if (ctx.eventId) {
           params.set("event_id", String(ctx.eventId));
           params.set("staff_pool", "1");
+          params.set("staff_pool_kind", modalMode === "group" ? "group" : "council");
         }
         const r = await fetch(`${searchUrl}?${params.toString()}`, {
           credentials: "same-origin",
@@ -495,9 +487,6 @@
     const groupSel = document.getElementById("staffModalGroup");
     const councilRole = document.getElementById("staffModalCouncilRole");
     const groupRole = document.getElementById("staffModalGroupRole");
-    const noteInput = document.getElementById("staffModalNote");
-    const regionSel = document.getElementById("staffModalRegion");
-    const divisionSel = document.getElementById("staffModalDivision");
 
     if (groupSel && editingRow?.kind === "group") {
       groupSel.innerHTML =
@@ -514,16 +503,11 @@
         editingRow.kind === "council" ? "집회 운영진 수정" : "조장·부조장 수정";
       document.getElementById("staffModalSubmit").textContent = "저장";
       modalSubtitle.textContent = editingRow.name || "";
-      const linkedCouncil =
-        editingRow.kind === "group" ? councilRowForUser(editingRow.userId) : null;
       if (editingRow.kind === "council") {
         if (councilRole) councilRole.value = editingRow.role;
-        if (noteInput) noteInput.value = editingRow.note || "";
       } else {
         if (groupSel) groupSel.value = String(editingRow.groupId || "");
         if (groupRole) groupRole.value = editingRow.role;
-        if (councilRole) councilRole.value = linkedCouncil?.role || "";
-        if (noteInput) noteInput.value = linkedCouncil?.note || "";
       }
       userPicker?.setSelected({
         id: editingRow.userId,
@@ -804,8 +788,8 @@
     renderRoster(btn.dataset.filter || "all");
   });
 
-  async function saveCouncilMembership({ userId, membershipId, role, note }) {
-    const body = { role, note: note || "" };
+  async function saveCouncilMembership({ userId, membershipId, role }) {
+    const body = { role, note: "" };
     const scope = scopeKind(role);
     if (scope === "region") {
       const region = Number(document.getElementById("staffModalRegion")?.value);
@@ -867,12 +851,10 @@
             showModalStatus("운영 역할을 선택하세요.", true);
             return;
           }
-          const note = document.getElementById("staffModalNote")?.value?.trim() || "";
           await saveCouncilMembership({
             userId: editingRow.userId,
             membershipId: editingRow.id,
             role,
-            note,
           });
         } else {
           const role = document.getElementById("staffModalGroupRole")?.value || "leader";
@@ -886,17 +868,6 @@
             const err = await r.json().catch(() => ({}));
             throw new Error(err.detail || "저장 실패");
           }
-          const councilRole = document.getElementById("staffModalCouncilRole")?.value || "";
-          if (councilRole) {
-            const linkedCouncil = councilRowForUser(editingRow.userId);
-            const note = document.getElementById("staffModalNote")?.value?.trim() || "";
-            await saveCouncilMembership({
-              userId: editingRow.userId,
-              membershipId: linkedCouncil?.id || null,
-              role: councilRole,
-              note,
-            });
-          }
         }
       } else if (kind === "council") {
         const role = document.getElementById("staffModalCouncilRole")?.value || "";
@@ -904,8 +875,7 @@
           showModalStatus("운영 역할을 선택하세요.", true);
           return;
         }
-        const note = document.getElementById("staffModalNote")?.value?.trim() || "";
-        await saveCouncilMembership({ userId, membershipId: null, role, note });
+        await saveCouncilMembership({ userId, membershipId: null, role });
       } else {
         const groupId = document.getElementById("staffModalGroup")?.value;
         if (!groupId) {

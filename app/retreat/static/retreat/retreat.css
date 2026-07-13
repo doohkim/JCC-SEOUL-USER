@@ -7132,6 +7132,9 @@ body.has-retreat-bottom-tabs .jcc-retreat-staffModalFields {
   flex-direction: column;
   gap: var(--jcc-staff-modal-gap);
 }
+body.has-retreat-bottom-tabs .jcc-retreat-staffModalFields[data-staff-modal-panel][hidden] {
+  display: none !important;
+}
 body.has-retreat-bottom-tabs .jcc-retreat-staffModalRow--split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -7713,6 +7716,22 @@ body.jcc-retreat-staffApplyPage header.app-header.jcc-pageHeader {
   font-size: 1.05rem;
   font-weight: 800;
   letter-spacing: -0.01em;
+}
+
+.jcc-retreat-staffAppModalAlert {
+  margin: 1rem 1.25rem 0;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid color-mix(in srgb, #dc2626 28%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, #dc2626 8%, white);
+  color: #991b1b;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.jcc-retreat-staffAppModalAlert[hidden] {
+  display: none;
 }
 
 .jcc-retreat-staffAppModalClose {

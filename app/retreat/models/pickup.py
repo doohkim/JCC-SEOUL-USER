@@ -78,7 +78,7 @@ class RetreatPickup(models.Model):
         "계정 탈퇴 일시",
         null=True,
         blank=True,
-        help_text="연결 조원 계정 탈퇴로 숨김 처리된 픽업. 슈퍼유저만 조회 가능.",
+        help_text="연결 조원 계정 탈퇴로 숨김 처리된 픽업.",
     )
 
     class Meta:

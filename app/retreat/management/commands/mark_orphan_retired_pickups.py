@@ -11,7 +11,7 @@ from retreat.models import RetreatAttendee, RetreatPickup
 class Command(BaseCommand):
     help = (
         "조원 명단에 없는 픽업을 탈퇴 잔존 데이터로 마킹합니다. "
-        "슈퍼유저만 조회 가능해집니다."
+        "일반 조회 목록에서 숨김 처리됩니다."
     )
 
     def add_arguments(self, parser):

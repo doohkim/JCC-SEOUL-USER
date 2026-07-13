@@ -1,5 +1,5 @@
 MIDDLEWARE = [
-    # "corsheaders.middleware.CorsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     # 내가 쓰던거

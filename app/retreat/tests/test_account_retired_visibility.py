@@ -1,4 +1,4 @@
-"""탈퇴 계정 조원·픽업 숨김 및 슈퍼유저 전용 노출 테스트."""
+"""탈퇴 계정 조원·픽업 숨김 테스트."""
 
 from __future__ import annotations
 
@@ -123,7 +123,7 @@ class AccountRetiredVisibilityFixture(TestCase):
         self.assertTrue(RetreatAttendee.objects.filter(pk=self.attendee.pk).exists())
         self.assertTrue(RetreatPickup.objects.filter(pk=self.pickup.pk).exists())
 
-    def test_superuser_sees_retired_attendee_and_pickup(self):
+    def test_superuser_cannot_see_retired_attendee_and_pickup(self):
         self._retire_target()
         self.api.force_authenticate(self.superuser)
         att_r = self.api.get(
@@ -131,9 +131,8 @@ class AccountRetiredVisibilityFixture(TestCase):
         )
         self.assertEqual(att_r.status_code, 200, att_r.content)
         names = {row["name"] for row in att_r.data}
-        self.assertIn("김탈퇴", names)
-        retired_row = next(row for row in att_r.data if row["name"] == "김탈퇴")
-        self.assertTrue(retired_row["account_retired"])
+        self.assertNotIn("김탈퇴", names)
+        self.assertIn("활성조원", names)
 
         pickup_r = self.api.get(
             reverse("api_retreat_event_pickups", args=[self.event.id]),
@@ -141,9 +140,7 @@ class AccountRetiredVisibilityFixture(TestCase):
         )
         self.assertEqual(pickup_r.status_code, 200, pickup_r.content)
         pickup_names = {row["name"] for row in pickup_r.data}
-        self.assertIn("김탈퇴", pickup_names)
-        retired_pickup = next(row for row in pickup_r.data if row["name"] == "김탈퇴")
-        self.assertTrue(retired_pickup["account_retired"])
+        self.assertNotIn("김탈퇴", pickup_names)
 
     def test_event_admin_cannot_see_retired_rows(self):
         self._retire_target()
@@ -180,7 +177,7 @@ class AccountRetiredVisibilityFixture(TestCase):
         )
         self.assertEqual(r.status_code, 404, r.content)
 
-    def test_superuser_pickup_page_shows_retired_badge(self):
+    def test_superuser_pickup_page_hides_retired_pickup(self):
         self._retire_target()
         self.web.force_login(self.superuser)
         r = self.web.get(
@@ -188,8 +185,8 @@ class AccountRetiredVisibilityFixture(TestCase):
             + "?tab=all&date="
         )
         self.assertEqual(r.status_code, 200, r.content)
-        self.assertContains(r, "탈퇴 계정")
-        self.assertContains(r, "김탈퇴")
+        self.assertNotContains(r, "탈퇴 계정")
+        self.assertNotContains(r, "김탈퇴")
 
     def test_event_admin_pickup_page_hides_retired_pickup(self):
         self._retire_target()
@@ -228,15 +225,14 @@ class AccountRetiredVisibilityFixture(TestCase):
         self.assertEqual(pickup_r.status_code, 200, pickup_r.content)
         self.assertNotIn("고아픽업", {row["name"] for row in pickup_r.data})
 
-    def test_superuser_sees_retired_staff_in_council_roster(self):
+    def test_superuser_cannot_see_retired_staff_in_council_roster(self):
         self._retire_target()
         self.api.force_authenticate(self.superuser)
         r = self.api.get(reverse("api_retreat_event_council", args=[self.event.id]))
         self.assertEqual(r.status_code, 200, r.content)
         user_ids = {row["user"] for row in r.data}
-        self.assertIn(self.target.id, user_ids)
-        retired_row = next(row for row in r.data if row["user"] == self.target.id)
-        self.assertTrue(retired_row["user_account_retired"])
+        self.assertNotIn(self.target.id, user_ids)
+        self.assertIn(self.active_staff.id, user_ids)
 
     def test_event_admin_cannot_see_retired_staff_in_council_roster(self):
         self._retire_target()
@@ -256,15 +252,11 @@ class AccountRetiredVisibilityFixture(TestCase):
         member_user_ids = {m["user"] for m in group["memberships"]}
         self.assertNotIn(self.target.id, member_user_ids)
 
-    def test_superuser_sees_retired_group_leader_in_groups_api(self):
+    def test_superuser_cannot_see_retired_group_leader_in_groups_api(self):
         self._retire_target()
         self.api.force_authenticate(self.superuser)
         r = self.api.get(reverse("api_retreat_event_groups", args=[self.event.id]))
         self.assertEqual(r.status_code, 200, r.content)
         group = next(item for item in r.data if item["id"] == self.group.id)
         member_user_ids = {m["user"] for m in group["memberships"]}
-        self.assertIn(self.target.id, member_user_ids)
-        retired_row = next(
-            m for m in group["memberships"] if m["user"] == self.target.id
-        )
-        self.assertTrue(retired_row["user_account_retired"])
+        self.assertNotIn(self.target.id, member_user_ids)

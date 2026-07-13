@@ -81,6 +81,9 @@ class RetreatUserSearchView(APIView):
             "true",
             "yes",
         )
+        staff_pool_kind = (request.query_params.get("staff_pool_kind") or "").strip()
+        if staff_pool_kind not in {"council", "group"}:
+            staff_pool_kind = "any"
         all_users = (request.query_params.get("all") or "").strip().lower() in (
             "1",
             "true",
@@ -101,7 +104,7 @@ class RetreatUserSearchView(APIView):
         if staff_pool and event_id:
             if not event_staff_eligible_division_ids(event_id):
                 return Response([])
-            qs = staff_pool_users_for_event(event_id)
+            qs = staff_pool_users_for_event(event_id, assign_kind=staff_pool_kind)
         elif event_id:
             event_user_ids = RetreatAttendee.objects.filter(
                 group__event_id=event_id,

@@ -8,7 +8,12 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
 
-from retreat.models import RetreatEvent, RetreatGroup, RetreatGroupMembership
+from retreat.models import (
+    RetreatCouncilMembership,
+    RetreatEvent,
+    RetreatGroup,
+    RetreatGroupMembership,
+)
 from users.mixins import ensure_user_profile
 from users.models import Division, Region, UserDivisionTeam
 
@@ -159,3 +164,49 @@ class UserSearchApiTests(APITestCase):
         )
         usernames_single = [u["username"] for u in r_single.json()]
         self.assertNotIn(user_extra.username, usernames_single)
+
+    def test_staff_pool_council_search_includes_group_staff(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.get(
+            reverse("api_retreat_user_search"),
+            {
+                "event_id": self.event.id,
+                "staff_pool": "1",
+                "staff_pool_kind": "council",
+                "q": "us_leader",
+            },
+        )
+        self.assertEqual(r.status_code, 200)
+        usernames = [u["username"] for u in r.json()]
+        self.assertIn(self.leader.username, usernames)
+
+    def test_staff_pool_council_search_excludes_existing_council(self):
+        RetreatCouncilMembership.objects.create(event=self.event, user=self.leader)
+        self.client.force_authenticate(self.leader)
+        r = self.client.get(
+            reverse("api_retreat_user_search"),
+            {
+                "event_id": self.event.id,
+                "staff_pool": "1",
+                "staff_pool_kind": "council",
+                "q": "us_leader",
+            },
+        )
+        self.assertEqual(r.status_code, 200)
+        usernames = [u["username"] for u in r.json()]
+        self.assertNotIn(self.leader.username, usernames)
+
+    def test_staff_pool_group_search_excludes_group_staff(self):
+        self.client.force_authenticate(self.leader)
+        r = self.client.get(
+            reverse("api_retreat_user_search"),
+            {
+                "event_id": self.event.id,
+                "staff_pool": "1",
+                "staff_pool_kind": "group",
+                "q": "us_leader",
+            },
+        )
+        self.assertEqual(r.status_code, 200)
+        usernames = [u["username"] for u in r.json()]
+        self.assertNotIn(self.leader.username, usernames)

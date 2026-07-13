@@ -38,6 +38,7 @@ from retreat.apis import (
     RetreatUserSearchView,
     RetreatEventStaffApplicationListView,
     RetreatStaffApplicationDetailView,
+    RetreatEventStaffApplyView,
 )
 from retreat.views import (
     RetreatAdminView,
@@ -262,6 +263,11 @@ urlpatterns = [
         "api/v1/retreat/group-memberships/<int:membership_id>/",
         RetreatGroupMembershipDetailView.as_view(),
         name="api_retreat_group_membership_detail",
+    ),
+    path(
+        "api/v1/retreat/events/<int:event_id>/staff-apply/",
+        RetreatEventStaffApplyView.as_view(),
+        name="api_retreat_event_staff_apply",
     ),
     path(
         "api/v1/retreat/events/<int:event_id>/staff-applications/",

@@ -30,6 +30,7 @@ from .staff_applications import (
     RetreatEventStaffApplicationListView,
     RetreatStaffApplicationDetailView,
 )
+from .staff_apply_api import RetreatEventStaffApplyView
 from .snapshot_attendees import (
     RetreatSessionGroupSnapshotAttendeesView,
     RetreatSnapshotAttendeeDetailView,
@@ -74,6 +75,7 @@ __all__ = [
     "RetreatUserSearchView",
     "RetreatEventStaffApplicationListView",
     "RetreatStaffApplicationDetailView",
+    "RetreatEventStaffApplyView",
     "RetreatSessionGroupSnapshotAttendeesView",
     "RetreatSnapshotAttendeeDetailView",
     "RetreatEventLodgingsView",

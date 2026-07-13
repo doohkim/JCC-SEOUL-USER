@@ -10,6 +10,7 @@
   const statusPills = document.getElementById("staffAppStatusPills");
   const modal = document.getElementById("staffApplicationReviewModal");
   const modalTitle = document.getElementById("staffApplicationReviewTitle");
+  const modalAlert = document.getElementById("staffApplicationReviewAlert");
   const modalAvatar = document.getElementById("staffAppModalAvatar");
   const modalName = document.getElementById("staffAppModalName");
   const modalUsername = document.getElementById("staffAppModalUsername");
@@ -51,6 +52,45 @@
     if (!statusEl) return;
     statusEl.textContent = msg || "";
     statusEl.className = isError ? "msg msg--error" : "msg";
+    if (isError && modal?.open) {
+      showModalAlert(msg);
+    } else if (!isError) {
+      clearModalAlert();
+    }
+  }
+
+  function showModalAlert(msg) {
+    if (!modalAlert) return;
+    modalAlert.textContent = msg || "오류가 발생했습니다.";
+    modalAlert.hidden = false;
+  }
+
+  function clearModalAlert() {
+    if (!modalAlert) return;
+    modalAlert.textContent = "";
+    modalAlert.hidden = true;
+  }
+
+  function flattenErrorMessages(value, fallback) {
+    if (value == null || value === "") return [];
+    if (typeof value === "string") return [value];
+    if (Array.isArray(value)) {
+      return value.flatMap((item) => flattenErrorMessages(item, fallback));
+    }
+    if (typeof value === "object") {
+      return Object.entries(value).flatMap(([key, item]) => {
+        const messages = flattenErrorMessages(item, fallback);
+        if (!messages.length) return [];
+        if (key === "detail" || key === "non_field_errors") return messages;
+        return messages.map((message) => `${key}: ${message}`);
+      });
+    }
+    return fallback ? [fallback] : [];
+  }
+
+  function responseErrorMessage(data, fallback) {
+    const messages = flattenErrorMessages(data, fallback);
+    return messages.join(" ") || fallback || "처리에 실패했습니다.";
   }
 
   function reviewUrl(id) {
@@ -242,6 +282,7 @@
 
     const isPending = app.status === "pending";
     if (modalTitle) modalTitle.textContent = isPending ? "신청 검토" : "신청 정보";
+    clearModalAlert();
     if (modalAvatar) modalAvatar.textContent = avatarInitial(app.user_display_name);
     if (modalName) modalName.textContent = app.user_display_name || "";
     if (modalUsername) modalUsername.textContent = app.user_username || "";
@@ -277,6 +318,7 @@
 
   function closeModal() {
     if (modal) modal.close();
+    clearModalAlert();
     currentApp = null;
   }
 
@@ -320,8 +362,7 @@
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
-        const detail = data.detail || data.non_field_errors;
-        throw new Error(Array.isArray(detail) ? detail.join(" ") : detail || "처리에 실패했습니다.");
+        throw new Error(responseErrorMessage(data, "처리에 실패했습니다."));
       }
       closeModal();
       setStatus(action === "approve" ? "승인되었습니다." : "반려되었습니다.");
