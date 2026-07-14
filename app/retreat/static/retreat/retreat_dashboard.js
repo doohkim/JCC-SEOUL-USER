@@ -71,16 +71,19 @@
   }
 
   function buildAttRow(row) {
-    const region = escapeHtml((row.region || "").trim());
-    const division = escapeHtml((row.division || "").trim());
-    const regionCell = division
-      ? `${region}<span class="jcc-retreat-divSub">${division}</span>`
-      : region;
+    const scopes = normalizeScopeLabels(row);
+    const regionCell = scopes
+      .map((scope) => {
+        const label = `${escapeHtml(scope.region)} · ${escapeHtml(scope.division)}`;
+        const klass = "jcc-retreat-pill";
+        return `<span class="${klass}">${label}</span>`;
+      })
+      .join(" ");
     const count = row.checked_in ?? 0;
     const tr = document.createElement("tr");
     tr.innerHTML =
       `<td>${escapeHtml(row.name)}</td>` +
-      `<td class="jcc-retreat-divRegionCell">${regionCell}</td>` +
+      `<td class="jcc-retreat-divRegionCell"><div class="jcc-retreat-scopeTags">${regionCell}</div></td>` +
       `<td>${count}</td>`;
     return tr;
   }
@@ -118,9 +121,7 @@
       const tr = document.createElement("tr");
       const region = escapeHtml((row.region || "").trim());
       const division = escapeHtml((row.division || "").trim());
-      const regionCell = division
-        ? `${region}<span class="jcc-retreat-divSub">${division}</span>`
-        : region;
+      const regionCell = division ? `${region} · ${division}` : region;
       tr.innerHTML = `
         <td class="jcc-retreat-divRegionCell">${regionCell}</td>
         <td>${escapeHtml(row.group_range)}</td>
@@ -422,6 +423,23 @@
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
+  }
+
+  function normalizeScopeLabels(row) {
+    if (Array.isArray(row.scope_labels) && row.scope_labels.length) {
+      return row.scope_labels.map((scope, idx) => ({
+        region: String(scope?.region || "").trim() || "(지역 미지정)",
+        division: String(scope?.division || "").trim() || "(부서 미지정)",
+        is_primary: Boolean(scope?.is_primary || idx === 0),
+      }));
+    }
+    return [
+      {
+        region: String(row.region || "").trim() || "(지역 미지정)",
+        division: String(row.division || "").trim() || "(부서 미지정)",
+        is_primary: true,
+      },
+    ];
   }
 
   if (btnRefresh) btnRefresh.addEventListener("click", refreshActive);

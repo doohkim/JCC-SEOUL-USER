@@ -406,9 +406,13 @@ def scope_filter_q(scope: StaffScope, *, prefix: str = "") -> Q:
     if scope.kind == "event":
         return Q()
     if scope.kind == "region" and scope.region_id:
-        return Q(**{f"{field}region_id": scope.region_id})
+        return Q(**{f"{field}region_id": scope.region_id}) | Q(
+            **{f"{field}extra_scopes__region_id": scope.region_id}
+        )
     if scope.kind == "division" and scope.division_id:
-        return Q(**{f"{field}division_id": scope.division_id})
+        return Q(**{f"{field}division_id": scope.division_id}) | Q(
+            **{f"{field}extra_scopes__division_id": scope.division_id}
+        )
     return Q(pk__in=[])
 
 
@@ -432,11 +436,10 @@ def visible_groups_qs(user: User, event: RetreatEvent) -> QuerySet:
             return base.filter(pk__in=leader_ids)
         return base.none()
     q = scope_filter_q(caps.scope)
-    scoped = base.filter(q)
     leader_ids = _leader_group_ids(user, event)
     if leader_ids:
-        return scoped | base.filter(pk__in=leader_ids)
-    return scoped
+        return base.filter(q | Q(pk__in=leader_ids)).distinct()
+    return base.filter(q).distinct()
 
 
 def can_access_retreat_page(user: User, event: RetreatEvent, page: str) -> bool:

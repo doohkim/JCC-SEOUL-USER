@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.urls import reverse
 
-from retreat.models import RetreatAttendee
+from retreat.models import RetreatAttendee, RetreatGroup, RetreatGroupScope
 from retreat.tests.fixtures.council_matrix_fixture import CouncilMatrixFixture
 
 
@@ -13,11 +13,26 @@ class DivisionAdminScopeTests(CouncilMatrixFixture):
         self.auth_as(self.division_admin)
 
     def test_dashboard_scoped_to_division(self):
+        shared_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.incheon,
+            division=self.div_incheon,
+            name="공유인천3조",
+        )
+        RetreatGroupScope.objects.create(
+            group=shared_group,
+            region=self.seoul,
+            division=self.div_seoul,
+        )
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])
         group_ids = {
             row["group_id"] for row in self.api.get(url).json()["by_group"]
         }
-        self.assertEqual(group_ids, {self.group_seoul.id})
+        self.assertEqual(group_ids, {self.group_seoul.id, shared_group.id})
+        rollup_division_ids = {
+            row["division_id"] for row in self.api.get(url).json()["by_division"]
+        }
+        self.assertEqual(rollup_division_ids, {self.div_seoul.id})
 
     def test_incheon_group_forbidden(self):
         url = reverse("api_retreat_group_attendees", args=[self.group_incheon.id])
@@ -85,10 +100,21 @@ class DivisionObserverTests(CouncilMatrixFixture):
         self.auth_as(self.division_observer)
 
     def test_scoped_group_list(self):
+        shared_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.incheon,
+            division=self.div_incheon,
+            name="공유인천4조",
+        )
+        RetreatGroupScope.objects.create(
+            group=shared_group,
+            region=self.seoul,
+            division=self.div_seoul,
+        )
         r = self.page.get(reverse("retreat_group_manage_list", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
         names = {g.name for g in r.context["groups"]}
-        self.assertEqual(names, {"서울1조"})
+        self.assertEqual(names, {"서울1조", shared_group.name})
         self.assertFalse(r.context["can_add_group"])
 
     def test_attendee_and_pickup_read_only(self):

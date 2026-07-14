@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>그룹 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260702j" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260714j" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -59,8 +59,10 @@
                   href="{% url 'retreat_group_manage' event.id g.id %}"
                 >
                   <div class="jcc-retreat-groupRegion">
-                    <span class="jcc-retreat-pill">{{ g.region.name }}</span>
-                    <span class="jcc-retreat-pill jcc-retreat-pill--alt">{{ g.division.name }}</span>
+                    <span class="jcc-retreat-pill jcc-retreat-pill--scopePair">{{ g.region.name }} · {{ g.division.name }}</span>
+                    {% for scope in g.extra_scopes.all %}
+                      <span class="jcc-retreat-pill jcc-retreat-pill--scopePair">{{ scope.region.name }} · {{ scope.division.name }}</span>
+                    {% endfor %}
                   </div>
                   <div class="jcc-retreat-groupName">{{ g.name }}</div>
                   <div

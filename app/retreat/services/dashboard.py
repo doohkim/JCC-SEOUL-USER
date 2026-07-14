@@ -26,6 +26,7 @@ from retreat.services.participation import (
 )
 from retreat.services.account_retired import visible_attendees_for, visible_pickups_for
 from users.permissions import (
+    get_retreat_capabilities,
     visible_retreat_groups_for,
     visible_retreat_sessions_for,
 )
@@ -35,6 +36,7 @@ def _group_queryset(event: RetreatEvent, user, *, restrict_to_user_groups: bool)
     qs = (
         visible_retreat_groups_for(user, event)
         .select_related("region", "division")
+        .prefetch_related("extra_scopes__region", "extra_scopes__division")
         .order_by("order", "id")
     )
     if restrict_to_user_groups and not _is_event_wide_for_user(user, event):
@@ -127,6 +129,11 @@ def build_session_dashboard(
 ) -> dict[str, Any]:
     restrict = not staff_view
     groups = list(_group_queryset(event, user, restrict_to_user_groups=restrict))
+    group_by_id = {g.id: g for g in groups}
+    caps = get_retreat_capabilities(user, event)
+    scope_kind = "event" if staff_view else caps.scope.kind
+    scope_region_id = None if staff_view else caps.scope.region_id
+    scope_division_id = None if staff_view else caps.scope.division_id
     att_by_group = _attendance_counts_by_group(session.id)
     total_by_group = _enrollment_totals_by_group(session.id)
 
@@ -142,6 +149,7 @@ def build_session_dashboard(
                 "region_id": g.region_id,
                 "division": g.division.name,
                 "division_id": g.division_id,
+                "scope_labels": _scope_labels_for_group(g),
                 "present": present,
                 "absent": counts.get(RetreatAttendance.Status.ABSENT, 0),
                 "total_attendees": total_by_group.get(g.id, 0),
@@ -149,7 +157,25 @@ def build_session_dashboard(
             }
         )
 
-    by_division = _rollup_by_region_division(by_group)
+    rollup_rows: list[dict[str, Any]] = []
+    for row in by_group:
+        group = group_by_id[row["group_id"]]
+        for scope_row in _visible_rollup_scope_rows_for_group(
+            group,
+            scope_kind=scope_kind,
+            scope_region_id=scope_region_id,
+            scope_division_id=scope_division_id,
+        ):
+            rollup_rows.append(
+                {
+                    **row,
+                    "region": scope_row["region"],
+                    "region_id": scope_row["region_id"],
+                    "division": scope_row["division"],
+                    "division_id": scope_row["division_id"],
+                }
+            )
+    by_division = _rollup_by_region_division(rollup_rows)
     grand_total = sum(row["present"] for row in by_group)
 
     return {
@@ -211,6 +237,66 @@ def _format_group_range(names: list[str]) -> str:
     return f"{first}~{last}"
 
 
+def _scope_rows_for_group(group: RetreatGroup) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = [
+        {
+            "region": group.region.name,
+            "region_id": group.region_id,
+            "division": group.division.name,
+            "division_id": group.division_id,
+        }
+    ]
+    seen = {(group.region_id, group.division_id)}
+    for scope in group.extra_scopes.all():
+        pair = (scope.region_id, scope.division_id)
+        if pair in seen:
+            continue
+        seen.add(pair)
+        rows.append(
+            {
+                "region": scope.region.name,
+                "region_id": scope.region_id,
+                "division": scope.division.name,
+                "division_id": scope.division_id,
+            }
+        )
+    return rows
+
+
+def _visible_rollup_scope_rows_for_group(
+    group: RetreatGroup,
+    *,
+    scope_kind: str,
+    scope_region_id: int | None,
+    scope_division_id: int | None,
+) -> list[dict[str, Any]]:
+    rows = _scope_rows_for_group(group)
+    if scope_kind == "event":
+        return rows
+    if scope_kind == "region" and scope_region_id:
+        filtered = [row for row in rows if row["region_id"] == scope_region_id]
+        if filtered:
+            return filtered
+    if scope_kind == "division" and scope_division_id:
+        filtered = [row for row in rows if row["division_id"] == scope_division_id]
+        if filtered:
+            return filtered
+    return [rows[0]]
+
+
+def _scope_labels_for_group(group: RetreatGroup) -> list[dict[str, Any]]:
+    labels: list[dict[str, Any]] = []
+    for idx, row in enumerate(_scope_rows_for_group(group)):
+        labels.append(
+            {
+                "region": row["region"],
+                "division": row["division"],
+                "is_primary": idx == 0,
+            }
+        )
+    return labels
+
+
 def _effective_check_in_status(check_in_at, check_out_at, now) -> str:
     """입실/퇴실 시각과 현재 시각으로 실시간 입·퇴실 상태를 계산한다.
 
@@ -248,6 +334,11 @@ def build_realtime_dashboard(
     now = now or timezone.now()
     restrict = not staff_view
     groups = list(_group_queryset(event, user, restrict_to_user_groups=restrict))
+    group_by_id = {g.id: g for g in groups}
+    caps = get_retreat_capabilities(user, event)
+    scope_kind = "event" if staff_view else caps.scope.kind
+    scope_region_id = None if staff_view else caps.scope.region_id
+    scope_division_id = None if staff_view else caps.scope.division_id
     group_ids = [g.id for g in groups]
 
     time_rows = participating_filter(
@@ -276,6 +367,7 @@ def build_realtime_dashboard(
                 "region_id": g.region_id,
                 "division": g.division.name,
                 "division_id": g.division_id,
+                "scope_labels": _scope_labels_for_group(g),
                 "pending": pending,
                 "checked_in": checked_in,
                 "checked_out": checked_out,
@@ -284,7 +376,25 @@ def build_realtime_dashboard(
             }
         )
 
-    by_division = _rollup_realtime_by_region_division(by_group)
+    rollup_rows: list[dict[str, Any]] = []
+    for row in by_group:
+        group = group_by_id[row["group_id"]]
+        for scope_row in _visible_rollup_scope_rows_for_group(
+            group,
+            scope_kind=scope_kind,
+            scope_region_id=scope_region_id,
+            scope_division_id=scope_division_id,
+        ):
+            rollup_rows.append(
+                {
+                    **row,
+                    "region": scope_row["region"],
+                    "region_id": scope_row["region_id"],
+                    "division": scope_row["division"],
+                    "division_id": scope_row["division_id"],
+                }
+            )
+    by_division = _rollup_realtime_by_region_division(rollup_rows)
     hourly = _hourly_check_in_out(group_ids, now, user=user)
 
     grand_pending = sum(r["pending"] for r in by_group)

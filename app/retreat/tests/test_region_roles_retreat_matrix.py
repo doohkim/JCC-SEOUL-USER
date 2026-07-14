@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from django.urls import reverse
 
-from retreat.models import RetreatAttendee
+from retreat.models import RetreatAttendee, RetreatGroup, RetreatGroupScope
 from retreat.tests.fixtures.council_matrix_fixture import CouncilMatrixFixture
 
 
@@ -13,10 +13,23 @@ class RegionAdminScopeTests(CouncilMatrixFixture):
         self.auth_as(self.region_admin)
 
     def test_dashboard_scoped_to_region(self):
+        shared_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.incheon,
+            division=self.div_incheon,
+            name="공유인천1조",
+        )
+        RetreatGroupScope.objects.create(
+            group=shared_group,
+            region=self.seoul,
+            division=self.div_seoul,
+        )
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])
         data = self.api.get(url).json()
         group_ids = {row["group_id"] for row in data["by_group"]}
-        self.assertEqual(group_ids, {self.group_seoul.id})
+        self.assertEqual(group_ids, {self.group_seoul.id, shared_group.id})
+        rollup_division_ids = {row["division_id"] for row in data["by_division"]}
+        self.assertEqual(rollup_division_ids, {self.div_seoul.id})
 
     def test_group_board_scoped(self):
         url = reverse("api_retreat_event_group_board", args=[self.event.id])
@@ -131,11 +144,22 @@ class RegionObserverTests(CouncilMatrixFixture):
         self.auth_as(self.region_observer)
 
     def test_scoped_dashboard(self):
+        shared_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.incheon,
+            division=self.div_incheon,
+            name="공유인천2조",
+        )
+        RetreatGroupScope.objects.create(
+            group=shared_group,
+            region=self.seoul,
+            division=self.div_seoul,
+        )
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])
         group_ids = {
             row["group_id"] for row in self.api.get(url).json()["by_group"]
         }
-        self.assertEqual(group_ids, {self.group_seoul.id})
+        self.assertEqual(group_ids, {self.group_seoul.id, shared_group.id})
 
     def test_group_list_no_add(self):
         r = self.page.get(reverse("retreat_group_manage_list", args=[self.event.id]))

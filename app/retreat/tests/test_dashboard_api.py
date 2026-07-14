@@ -16,6 +16,7 @@ from retreat.models import (
     RetreatEvent,
     RetreatGroup,
     RetreatGroupMembership,
+    RetreatGroupScope,
     RetreatPickup,
     RetreatSession,
     RetreatSessionAttendee,
@@ -777,3 +778,23 @@ class RetreatDashboardPastoralScopeTests(APITestCase):
         data = self.client.get(url).json()
         group_ids = {g["group_id"] for g in data["groups"]}
         self.assertEqual(group_ids, {self.group_youth.id})
+
+    def test_division_admin_dashboard_includes_extra_scope_group(self):
+        shared_group = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div_univ,
+            name="공유대학1조",
+        )
+        RetreatGroupScope.objects.create(
+            group=shared_group,
+            region=self.seoul,
+            division=self.div_youth,
+        )
+        self.client.force_authenticate(self.division_admin)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        group_ids = {row["group_id"] for row in data["by_group"]}
+        self.assertEqual(group_ids, {self.group_youth.id, shared_group.id})
+        division_ids = {row["division_id"] for row in data["by_division"]}
+        self.assertEqual(division_ids, {self.div_youth.id})
