@@ -1,4 +1,4 @@
-# onpremise(beelink) - onpremise(local)
+# EC2(AWS) - RDS(AWS)
 services:
   nginx:
     image: ${NGINX_IMAGE:-jonasal/nginx-certbot:latest}
@@ -18,21 +18,6 @@ services:
       default:
         ipv4_address: 172.19.0.2
 
-  ddns-route53:
-    image: crazymax/ddns-route53:latest
-    container_name: ddns-route53
-    restart: always
-    volumes:
-      - ./ddns-route53.yml:/ddns-route53.yml:ro
-    environment:
-      - TZ=Asia/Seoul
-      - SCHEDULE=*/15 * * * *
-      - LOG_LEVEL=info
-      - LOG_JSON=false
-    networks:
-      default:
-        ipv4_address: 172.19.0.3
-
   django:
     &django
     build:
@@ -41,7 +26,7 @@ services:
     container_name: django
     restart: unless-stopped
     env_file:
-      - ./.deploy/production/env
+      - ./.deploy/prod_ec2/env
     environment:
       - DOCKER=1
       - IS_LOCAL=${IS_LOCAL}
@@ -56,28 +41,6 @@ services:
     networks:
       default:
         ipv4_address: 172.19.0.4
-
-  postgres-django:
-    image: postgres:17
-    container_name: postgres-django
-    restart: always
-    environment:
-      POSTGRES_USER: "jccseoul"
-      POSTGRES_PASSWORD: "jccseoul1!"
-      POSTGRES_DB: "jccseoul"
-      TZ: Asia/Seoul
-    ports:
-      - ${POSTGRES_PORT:-5432}:5432
-    volumes:
-      - ./.postgres-django/data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jccseoul -d jccseoul"]
-      interval: 30s
-      timeout: 60s
-      retries: 20
-    networks:
-      default:
-        ipv4_address: 172.19.0.5
 
   celery:
     <<: *django

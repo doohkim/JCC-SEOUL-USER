@@ -1,13 +1,13 @@
 NGINX_IMAGE=jonasal/nginx-certbot:latest
-NGINX_CONF=./.deploy/production/nginx/conf.d
-NGINX_SECRET=./.deploy/production/nginx/secrets
+NGINX_CONF=./.deploy/prod_ec2/nginx/conf.d
+NGINX_SECRET=./.deploy/prod_ec2/nginx/secrets
 NGINX_CONF_TARGET=/etc/nginx/user_conf.d
 NGINX_HTTP_PORT=
 NGINX_HTTPS_PORT=
 DOCKERFILE=Dockerfile
 IS_LOCAL=0
-DJANGO_SETTINGS_MODULE=config.settings.production
-GUNICORN_CONF=/srv/.deploy/production/gunicorn.py
+DJANGO_SETTINGS_MODULE=config.settings.prod_ec2
+GUNICORN_CONF=/srv/.deploy/prod_ec2/gunicorn.py
 GUNICORN_WSGI=config.wsgi.production
 CELERY_FLOWER_BROKER_URL=amqp://jccseoul:jccseoul1!@rabbitmq:5672//
 KAKAO_REDIRECT_URI=https://shalom.jcc-seoul.com/auth/complete/kakao/

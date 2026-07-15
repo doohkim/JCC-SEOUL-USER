@@ -1,0 +1,14 @@
+NGINX_IMAGE=jonasal/nginx-certbot:latest
+NGINX_CONF=./.deploy/prod_onprem/nginx/conf.d
+NGINX_SECRET=./.deploy/prod_onprem/nginx/secrets
+NGINX_CONF_TARGET=/etc/nginx/user_conf.d
+NGINX_HTTP_PORT=
+NGINX_HTTPS_PORT=
+DOCKERFILE=Dockerfile
+IS_LOCAL=0
+DJANGO_SETTINGS_MODULE=config.settings.prod_onprem
+GUNICORN_CONF=/srv/.deploy/prod_onprem/gunicorn.py
+GUNICORN_WSGI=config.wsgi.production
+CELERY_FLOWER_BROKER_URL=amqp://jccseoul:jccseoul1!@rabbitmq:5672//
+KAKAO_REDIRECT_URI=https://shalom.jcc-seoul.com/auth/complete/kakao/
+DB_TARGET=rds

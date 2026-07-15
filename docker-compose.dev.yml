@@ -1,4 +1,4 @@
-# onpremise(beelink) - onpremise(local)
+# onpremise(odroid) - onpremise(local)
 services:
   nginx:
     image: ${NGINX_IMAGE:-jonasal/nginx-certbot:latest}
@@ -23,7 +23,7 @@ services:
     container_name: ddns-route53
     restart: always
     volumes:
-      - ./ddns-route53.yml:/ddns-route53.yml:ro
+      - ./ddns-route53.dev.yml:/ddns-route53.yml:ro
     environment:
       - TZ=Asia/Seoul
       - SCHEDULE=*/15 * * * *
@@ -41,7 +41,7 @@ services:
     container_name: django
     restart: unless-stopped
     env_file:
-      - ./.deploy/production/env
+      - ./.deploy/dev/env
     environment:
       - DOCKER=1
       - IS_LOCAL=${IS_LOCAL}

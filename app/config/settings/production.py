@@ -2,26 +2,15 @@ from ._base import *
 
 DEBUG = False
 
-AWS_STORAGE_BUCKET_NAME = (
-    os.environ.get("AWS_STORAGE_BUCKET_NAME_PRODUCTION")
-    or os.environ.get("AWS_STORAGE_BUCKET_NAME")
-    or ""
-).strip()
-AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "ap-northeast-2").strip()
-AWS_S3_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN", "").strip() or None
-AWS_LOCATION = (
-    os.environ.get("AWS_LOCATION_PRODUCTION")
-    or os.environ.get("AWS_LOCATION")
-    or "production"
-).strip("/")
+AWS_LOCATION = "production"
 
 STORAGES, _media_url = build_storage_settings(
     bucket_name=AWS_STORAGE_BUCKET_NAME,
     region_name=AWS_S3_REGION_NAME,
     location=AWS_LOCATION,
     custom_domain=AWS_S3_CUSTOM_DOMAIN,
-    access_key=os.environ.get("AWS_ACCESS_KEY_ID", ""),
-    secret_key=os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+    access_key=AWS_ACCESS_KEY_ID,
+    secret_key=AWS_SECRET_ACCESS_KEY,
 )
 if _media_url:
     MEDIA_URL = _media_url
@@ -33,16 +22,31 @@ WSGI_APPLICATION = "config.wsgi.production.application"
 # sentry_init(ENV)
 
 # Database
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "HOST": "jcc-seoul-user-prod.cbi5eibp69vv.ap-northeast-2.rds.amazonaws.com",
-        "PORT": 55432,
-        "NAME": "jccseoul",
-        "USER": "jccseoul",
-        "PASSWORD": "jccseoul1!",
-    },
-}
+DB_TARGET = os.environ.get("DB_TARGET")
+if DB_TARGET == "onprem":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "HOST": secrets.DB_HOST_PRODUCTION,
+            "PORT": secrets.DB_PORT_PRODUCTION,
+            "NAME": secrets.DB_NAME_PRODUCTION,
+            "USER": secrets.DB_USERNAME_PRODUCTION,
+            "PASSWORD": secrets.DB_PASSWORD_PRODUCTION,
+        },
+    }
+elif DB_TARGET == "rds":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "HOST": secrets.RDS_HOST_PRODUCTION,
+            "PORT": secrets.RDS_PORT_PRODUCTION,
+            "NAME": secrets.RDS_NAME_PRODUCTION,
+            "USER": secrets.RDS_USERNAME_PRODUCTION,
+            "PASSWORD": secrets.RDS_PASSWORD_PRODUCTION,
+        },
+    }
+else:
+    print("Invalid DB_TARGET")
 
 CSRF_COOKIE_DOMAIN = ".jcc-seoul.com"
 CSRF_TRUSTED_ORIGINS = [
@@ -55,6 +59,7 @@ CSRF_TRUSTED_ORIGINS = [
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = True
+
 # nginx가 전달한 X-Forwarded-Proto를 기준으로 HTTPS 요청을 인식한다.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_HSTS_SECONDS = 31536000

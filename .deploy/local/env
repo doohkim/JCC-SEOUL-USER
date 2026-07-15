@@ -1,4 +1,1 @@
-KAKAO_REST_API_KEY="9b447e91c11b028bda11f6f647d815b2"
-KAKAO_CLIENT_SECRET="MiJMzYQxHPh3FuqAt5KiCbkpnEPkDbSW"
 KAKAO_REDIRECT_URI="http://127.0.0.1:8000/auth/complete/kakao/"
-AWS_S3_CUSTOM_DOMAIN=shalom.cdn.jcc-seoul.com

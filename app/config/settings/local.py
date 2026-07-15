@@ -17,29 +17,15 @@ from ._base import *
 DEBUG = True
 WSGI_APPLICATION = "config.wsgi.local.application"
 
-AWS_STORAGE_BUCKET_NAME = (
-    os.environ.get("AWS_STORAGE_BUCKET_NAME_LOCAL")
-    or os.environ.get("AWS_STORAGE_BUCKET_NAME")
-    or getattr(secrets, "S3_STORAGE_BUCKET_NAME", "")
-    or ""
-).strip()
-AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "ap-northeast-2").strip()
-AWS_S3_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN", "").strip() or None
-AWS_LOCATION = (
-    os.environ.get("AWS_LOCATION_LOCAL")
-    or os.environ.get("AWS_LOCATION")
-    or "local"
-).strip("/")
+AWS_LOCATION = "local"
 
-_aws_access_key = os.environ.get("AWS_ACCESS_KEY_ID") or getattr(secrets, "S3_ACCESS_KEY_ID", "")
-_aws_secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY") or getattr(secrets, "S3_SECRET_ACCESS_KEY", "")
 STORAGES, _media_url = build_storage_settings(
     bucket_name=AWS_STORAGE_BUCKET_NAME,
     region_name=AWS_S3_REGION_NAME,
     location=AWS_LOCATION,
     custom_domain=AWS_S3_CUSTOM_DOMAIN,
-    access_key=_aws_access_key,
-    secret_key=_aws_secret_key,
+    access_key=AWS_ACCESS_KEY_ID,
+    secret_key=AWS_SECRET_ACCESS_KEY,
 )
 if _media_url:
     MEDIA_URL = _media_url

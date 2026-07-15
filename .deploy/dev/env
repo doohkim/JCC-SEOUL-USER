@@ -1,0 +1,13 @@
+NGINX_IMAGE=jonasal/nginx-certbot:latest
+NGINX_CONF=./.deploy/dev/nginx/conf.d
+NGINX_SECRET=./.deploy/dev/nginx/secrets
+NGINX_CONF_TARGET=/etc/nginx/user_conf.d
+NGINX_HTTP_PORT=
+NGINX_HTTPS_PORT=
+DOCKERFILE=Dockerfile
+IS_LOCAL=0
+DJANGO_SETTINGS_MODULE=config.settings.dev
+GUNICORN_CONF=/srv/.deploy/dev/gunicorn.py
+GUNICORN_WSGI=config.wsgi.dev
+CELERY_FLOWER_BROKER_URL=amqp://jccseoul:jccseoul1!@rabbitmq:5672//
+KAKAO_REDIRECT_URI=https://shalom.dev.jcc-seoul.com/auth/complete/kakao/
