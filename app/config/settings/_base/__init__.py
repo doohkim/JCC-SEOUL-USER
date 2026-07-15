@@ -15,6 +15,7 @@ from .middleware import *
 from .password import *
 from .phonenumber import *
 from .static import *
+from .storage import *
 from .logging import *
 from .subdomain import *
 from .attendance import *

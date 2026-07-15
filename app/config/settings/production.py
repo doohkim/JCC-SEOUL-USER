@@ -15,41 +15,16 @@ AWS_LOCATION = (
     or "production"
 ).strip("/")
 
-if AWS_STORAGE_BUCKET_NAME:
-    _s3_options = {
-        "bucket_name": AWS_STORAGE_BUCKET_NAME,
-        "region_name": AWS_S3_REGION_NAME,
-        "default_acl": None,
-        "querystring_auth": False,
-        "file_overwrite": False,
-        "location": AWS_LOCATION,
-    }
-    if os.environ.get("AWS_ACCESS_KEY_ID"):
-        _s3_options["access_key"] = os.environ["AWS_ACCESS_KEY_ID"]
-    if os.environ.get("AWS_SECRET_ACCESS_KEY"):
-        _s3_options["secret_key"] = os.environ["AWS_SECRET_ACCESS_KEY"]
-    if AWS_S3_CUSTOM_DOMAIN:
-        _s3_options["custom_domain"] = AWS_S3_CUSTOM_DOMAIN
-
-    STORAGES = {
-        "default": {
-            "BACKEND": "storages.backends.s3.S3Storage",
-            "OPTIONS": _s3_options,
-        },
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
-        },
-    }
-
-    _media_domain = AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com"
-    MEDIA_URL = f"https://{_media_domain}/{AWS_LOCATION}/"
-else:
-    STORAGES = {
-        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
-        },
-    }
+STORAGES, _media_url = build_storage_settings(
+    bucket_name=AWS_STORAGE_BUCKET_NAME,
+    region_name=AWS_S3_REGION_NAME,
+    location=AWS_LOCATION,
+    custom_domain=AWS_S3_CUSTOM_DOMAIN,
+    access_key=os.environ.get("AWS_ACCESS_KEY_ID", ""),
+    secret_key=os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+)
+if _media_url:
+    MEDIA_URL = _media_url
 
 # ENV settings
 WSGI_APPLICATION = "config.wsgi.production.application"
