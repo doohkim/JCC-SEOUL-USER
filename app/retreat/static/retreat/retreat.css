@@ -2831,7 +2831,7 @@ body.has-retreat-bottom-tabs .jcc-retreat-userLinkUnlink {
   gap: 0.24rem 0.32rem;
   flex-wrap: wrap;
   align-content: flex-start;
-  height: 2.6rem;
+  height: 3.2rem;
   overflow: hidden;
 }
 /* 수정 버튼이 있는 카드만 우측 공간 확보(긴 pill이 버튼에 닿기 전 줄바꿈) */
@@ -2862,9 +2862,6 @@ body.has-retreat-bottom-tabs .jcc-retreat-userLinkUnlink {
   text-overflow: ellipsis;
   background: var(--accent-tint, rgba(99, 102, 241, 0.18));
   color: var(--accent, #818cf8);
-}
-.jcc-retreat-groupRegion .jcc-retreat-pill--scopePair:nth-child(n + 5) {
-  display: none;
 }
 
 .jcc-retreat-groupName {
