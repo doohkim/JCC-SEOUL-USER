@@ -2,12 +2,54 @@ from ._base import *
 
 DEBUG = False
 
-STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
-    },
-}
+AWS_STORAGE_BUCKET_NAME = (
+    os.environ.get("AWS_STORAGE_BUCKET_NAME_DEV")
+    or os.environ.get("AWS_STORAGE_BUCKET_NAME")
+    or ""
+).strip()
+AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "ap-northeast-2").strip()
+AWS_S3_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN", "").strip() or None
+AWS_LOCATION = (
+    os.environ.get("AWS_LOCATION_DEV")
+    or os.environ.get("AWS_LOCATION")
+    or "dev"
+).strip("/")
+
+if AWS_STORAGE_BUCKET_NAME:
+    _s3_options = {
+        "bucket_name": AWS_STORAGE_BUCKET_NAME,
+        "region_name": AWS_S3_REGION_NAME,
+        "default_acl": None,
+        "querystring_auth": False,
+        "file_overwrite": False,
+        "location": AWS_LOCATION,
+    }
+    if os.environ.get("AWS_ACCESS_KEY_ID"):
+        _s3_options["access_key"] = os.environ["AWS_ACCESS_KEY_ID"]
+    if os.environ.get("AWS_SECRET_ACCESS_KEY"):
+        _s3_options["secret_key"] = os.environ["AWS_SECRET_ACCESS_KEY"]
+    if AWS_S3_CUSTOM_DOMAIN:
+        _s3_options["custom_domain"] = AWS_S3_CUSTOM_DOMAIN
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": _s3_options,
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+        },
+    }
+
+    _media_domain = AWS_S3_CUSTOM_DOMAIN or f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com"
+    MEDIA_URL = f"https://{_media_domain}/{AWS_LOCATION}/"
+else:
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+        },
+    }
 
 # ENV settings
 WSGI_APPLICATION = "config.wsgi.dev.application"

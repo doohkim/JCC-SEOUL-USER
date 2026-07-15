@@ -44,16 +44,38 @@
     }
   }
 
+  function syncExtraScopeTag(scopeRow) {
+    if (!scopeRow) return;
+    const editorEl = scopeRow.querySelector("[data-extra-scope-editor]");
+    if (editorEl) editorEl.hidden = false;
+  }
+
+  function syncScopeRowOrder(listEl) {
+    return listEl;
+  }
+
   function bindExtraScopeRow(scopeRow) {
     const regionInput = scopeRow.querySelector("[data-extra-region]");
+    const divisionInput = scopeRow.querySelector("[data-extra-division]");
     const btnRemove = scopeRow.querySelector("[data-remove-extra-scope]");
     if (regionInput) {
       regionInput.addEventListener("change", () => {
-        fillDivisionSelect(scopeRow.querySelector("[data-extra-division]"), regionInput.value);
+        fillDivisionSelect(
+          scopeRow.querySelector("[data-extra-division]"),
+          regionInput.value
+        );
+        syncExtraScopeTag(scopeRow);
       });
     }
+    if (divisionInput) {
+      divisionInput.addEventListener("change", () => syncExtraScopeTag(scopeRow));
+    }
     if (btnRemove) {
-      btnRemove.addEventListener("click", () => scopeRow.remove());
+      btnRemove.addEventListener("click", () => {
+        const listEl = scopeRow.parentElement;
+        scopeRow.remove();
+        syncScopeRowOrder(listEl);
+      });
     }
   }
 
@@ -75,10 +97,12 @@
       }
       fillDivisionSelect(scopeRow.querySelector("[data-extra-division]"), regionId, divisionId);
     }
+    syncExtraScopeTag(scopeRow);
+    syncScopeRowOrder(listEl);
     return scopeRow;
   }
 
-  /** 대표 부서 + 추가 지역·부서 행에서 division id 목록(중복 제거). */
+  /** 지역·부서 목록에서 division id 목록(중복 제거). */
   function collectDivisionIdsFromForm(divisionEl, extraScopesListEl) {
     const ids = [];
     const push = (raw) => {
@@ -103,7 +127,7 @@
       const division = scopeRow.querySelector("[data-extra-division]")?.value;
       if (!region && !division) continue;
       if (!region || !division) {
-        return { error: `${label}: 추가 지역·부서 ${j + 1}행에 지역과 부서를 모두 선택하세요.` };
+        return { error: `${label}: 지역·부서 목록 ${j + 2}행에 지역과 부서를 모두 선택하세요.` };
       }
       scopes.push({ region: Number(region), division: Number(division) });
     }
@@ -301,6 +325,7 @@
   const editLeaderRole = document.getElementById("groupEditLeaderRole");
   const btnEditAddScope = document.getElementById("btnEditAddScope");
   const btnEditCancel = document.getElementById("groupEditModalCancel");
+  const btnEditClose = document.getElementById("groupEditModalClose");
   const btnEditSubmit = document.getElementById("groupEditModalSubmit");
   const editModalStatus = document.getElementById("groupEditModalStatus");
 
@@ -437,7 +462,7 @@
     const division = editDivision?.value;
     const order = Number(editOrder?.value || 0) || 0;
     if (!name || !region || !division) {
-      return { error: "조 이름·대표 지역·부서를 모두 입력하세요." };
+      return { error: "조 이름과 최소 1개 지역·부서를 입력하세요." };
     }
     const extra = collectExtraScopesFromList(editExtraList, "조");
     if (extra.error) return { error: extra.error };
@@ -580,6 +605,7 @@
     btnEditAddScope.addEventListener("click", () => appendExtraScopeRow(editExtraList));
   }
   if (btnEditCancel) btnEditCancel.addEventListener("click", closeEditModal);
+  if (btnEditClose) btnEditClose.addEventListener("click", closeEditModal);
   if (editForm) editForm.addEventListener("submit", onEditSubmit);
   if (editOverlay) {
     editOverlay.addEventListener("click", (e) => {

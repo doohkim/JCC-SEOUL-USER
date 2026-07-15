@@ -246,7 +246,7 @@
       const order = Number(rowEl.querySelector("[data-row-order]")?.value || 0) || 0;
       if (!name && !region && !division) continue;
       if (!name || !region || !division) {
-        return { error: `${i + 1}번째 조: 대표 지역·부서·조 이름을 모두 입력하세요.` };
+        return { error: `${i + 1}번째 조: 조 이름과 최소 1개 지역·부서를 입력하세요.` };
       }
       const extra = collectExtraScopesFromList(
         rowEl.querySelector("[data-extra-scopes-list]"),

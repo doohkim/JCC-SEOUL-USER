@@ -75,7 +75,7 @@
     const regionCell = scopes
       .map((scope) => {
         const label = `${escapeHtml(scope.region)} · ${escapeHtml(scope.division)}`;
-        const klass = "jcc-retreat-pill";
+        const klass = "jcc-retreat-pill jcc-retreat-pill--scopeReadonly";
         return `<span class="${klass}">${label}</span>`;
       })
       .join(" ");

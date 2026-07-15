@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>그룹 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260714j" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260715h" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -134,32 +134,33 @@
                       </div>
                     </div>
                     <section class="jcc-retreat-groupScopeSection">
-                      <h3 class="jcc-retreat-groupScopeTitle">대표 지역·부서 *</h3>
-                      <div class="jcc-retreat-modalGrid">
-                        <div class="field">
-                          <label data-label-region>지역</label>
-                          <select data-row-region required data-cselect>
-                            <option value="">선택</option>
-                            {% for r in region_choices %}
-                              <option value="{{ r.id }}">{{ r.name }}</option>
-                            {% endfor %}
-                          </select>
-                        </div>
-                        <div class="field">
-                          <label data-label-division>부서</label>
-                          <select data-row-division required data-cselect>
-                            <option value="">선택</option>
-                          </select>
-                        </div>
-                      </div>
-                    </section>
-                    <section class="jcc-retreat-groupScopeSection">
                       <div class="jcc-retreat-groupScopeHead">
-                        <h3 class="jcc-retreat-groupScopeTitle">추가 지역·부서 <span class="muted">(선택)</span></h3>
+                        <h3 class="jcc-retreat-groupScopeTitle">지역·부서 목록 *</h3>
                         <button type="button" class="secondary jcc-retreat-scopeAddBtn" data-add-extra-scope>+ 지역·부서</button>
                       </div>
+                      <div class="jcc-retreat-extraScopesList">
+                        <div class="jcc-retreat-extraScopeRow jcc-retreat-extraScopeRow--primary">
+                          <div class="jcc-retreat-modalGrid jcc-retreat-extraScopeGrid">
+                            <div class="field">
+                              <label data-label-region>지역</label>
+                              <select data-row-region required data-cselect>
+                                <option value="">선택</option>
+                                {% for r in region_choices %}
+                                  <option value="{{ r.id }}">{{ r.name }}</option>
+                                {% endfor %}
+                              </select>
+                            </div>
+                            <div class="field">
+                              <label data-label-division>부서</label>
+                              <select data-row-division required data-cselect>
+                                <option value="">선택</option>
+                              </select>
+                            </div>
+                          </div>
+                          <span class="jcc-retreat-extraScopeActionSpacer" aria-hidden="true"></span>
+                        </div>
+                      </div>
                       <div data-extra-scopes-list class="jcc-retreat-extraScopesList"></div>
-                      <small class="muted">예: 20조에 대구·대전·전주 청년부를 함께 묶을 때 추가합니다.</small>
                     </section>
                     <section class="jcc-retreat-leadersDraft jcc-retreat-leadersDraft--compact">
                       <h3 class="jcc-retreat-leadersDraftTitle">조 운영진 <span class="muted">(선택)</span></h3>
@@ -219,8 +220,8 @@
     <script src="{% static 'retreat/manage_groups_filter.js' %}?v=20260615a" defer></script>
     {% if can_add_group %}
       <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-      <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260618b" defer></script>
-      <script src="{% static 'retreat/manage_groups.js' %}?v=20260618b" defer></script>
+      <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260715b" defer></script>
+      <script src="{% static 'retreat/manage_groups.js' %}?v=20260714a" defer></script>
     {% endif %}
   </body>
 </html>

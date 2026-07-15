@@ -982,8 +982,14 @@ a.jcc-retreat-summaryCard--link:active {
   line-height: 1.3;
   border: 1px solid transparent;
 }
-.jcc-retreat-scopeTags .jcc-retreat-pill--scopeAlt {
-  border-color: color-mix(in srgb, var(--border) 72%, transparent);
+.jcc-retreat-scopeTags .jcc-retreat-pill--scopeReadonly {
+  background: #e4e9f3;
+  color: #1f2937;
+  border-color: #d2d9e7;
+  font-weight: 600;
+  letter-spacing: 0;
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
 }
 .jcc-retreat-divSub {
   display: block;
@@ -5059,9 +5065,23 @@ dialog.jcc-retreat-modal::backdrop {
   align-items: flex-end;
   gap: 0.5rem;
 }
+.jcc-retreat-extraScopeRow--primary {
+  display: block;
+}
 .jcc-retreat-extraScopeGrid {
   flex: 1 1 auto;
   min-width: 0;
+}
+.jcc-retreat-extraScopeTag {
+  display: flex;
+  align-items: center;
+  min-height: 2.4rem;
+  padding: 0.12rem 0;
+}
+.jcc-retreat-extraScopeTag .jcc-retreat-pill {
+  padding: 0.28rem 0.82rem;
+  border-radius: 999px;
+  font-size: 0.79rem;
 }
 .jcc-retreat-pill--scope {
   opacity: 0.92;
@@ -5999,53 +6019,329 @@ body.has-retreat-bottom-tabs main {
   font-size: 0.95rem;
 }
 
-/* 조 정보 수정 모달: Toss 팝업 톤 (화면 중앙 + 둥근 카드 + 입력 통일) */
+/* 조 정보 수정 모달: 조 추가 팝업과 크기/밀도 통일 */
 #groupEditModalOverlay {
   align-items: center;
   padding: 1rem;
 }
 #groupEditModalOverlay .jcc-retreat-modal--wide {
-  border-radius: 22px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.12);
+  width: min(480px, calc(100vw - 2rem));
+  max-width: 480px;
+  max-height: min(90dvh, 90vh);
+  border-radius: 16px;
+  background: #fff;
+  color: #111827;
+  box-shadow: 0 22px 56px rgba(15, 23, 42, 0.22), 0 8px 22px rgba(15, 23, 42, 0.1);
+}
+#groupEditModalOverlay .jcc-retreat-editModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem 0.9rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
 }
 #groupEditModalOverlay .jcc-retreat-modalTitle {
-  font-size: 1.2rem;
-  font-weight: 800;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  font-size: 1.05rem;
+  line-height: 1.3;
+  font-weight: 700;
   letter-spacing: -0.01em;
-  padding-top: 1.3rem;
+  color: #111827;
+}
+#groupEditModalOverlay .jcc-retreat-editModalSubtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+#groupEditModalOverlay .jcc-retreat-editModalClose {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #4b5563;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+#groupEditModalOverlay .jcc-retreat-editModalClose:hover,
+#groupEditModalOverlay .jcc-retreat-editModalClose:focus-visible {
+  background: #f3f4f6;
+  outline: none;
 }
 #groupEditModalOverlay .jcc-retreat-modalBody {
-  padding-left: 1.3rem;
-  padding-right: 1.3rem;
+  display: grid;
+  gap: 0;
+  padding: 0 1.1rem;
+  background: #fff;
 }
-#groupEditModalOverlay .jcc-retreat-groupScopeTitle,
-#groupEditModalOverlay .jcc-retreat-leadersDraftTitle {
-  font-size: 0.82rem;
+#groupEditModalOverlay .jcc-retreat-editSection {
+  margin: 0;
+  padding: 0.9rem 0;
+  border: 0;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+#groupEditModalOverlay .jcc-retreat-editSection:first-child {
+  border-top: 0;
+}
+#groupEditModalOverlay .jcc-retreat-editSectionTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.8rem;
+  font-size: 0.9rem;
+  line-height: 1.2;
   font-weight: 700;
-  color: var(--muted);
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #111827;
+}
+#groupEditModalOverlay .jcc-retreat-editSectionIcon {
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #1967d2;
+  box-shadow: inset 0 0 0 1.5px #2f80ed;
+}
+#groupEditModalOverlay .jcc-retreat-editSectionHead {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+#groupEditModalOverlay .jcc-retreat-editSectionMeta {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #9ca3af;
+}
+#groupEditModalOverlay .jcc-retreat-editScopePanel {
+  padding: 0.65rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+#groupEditModalOverlay .jcc-retreat-groupScopeTitle {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #5b6472;
+}
+#groupEditModalOverlay .jcc-retreat-groupScopeHead {
+  margin: 0 0 0.6rem;
 }
 #groupEditModalOverlay .jcc-retreat-modalGrid .field label {
   font-size: 0.78rem;
-  margin-bottom: 0.1rem;
+  font-weight: 600;
+  color: #5b6472;
 }
 #groupEditModalOverlay .jcc-retreat-modalGrid .field input,
-#groupEditModalOverlay .jcc-retreat-userPickerInput {
+#groupEditModalOverlay .jcc-retreat-modalGrid .field select,
+#groupEditModalOverlay .jcc-retreat-userPickerInput,
+#groupEditModalOverlay .jcc-cselect-btn {
+  border-radius: 10px;
+  min-height: 2.45rem;
+  padding: 0.45rem 0.72rem;
+  border: 1px solid #dde3ee;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: #fff;
+  color: #111827;
+  box-shadow: none;
+}
+#groupEditModalOverlay .jcc-cselect-btn {
+  justify-content: space-between;
+}
+#groupEditModalOverlay .jcc-retreat-modalGrid {
+  gap: 0.7rem 0.85rem;
+}
+#groupEditModalOverlay .jcc-retreat-extraScopesList {
+  gap: 0.38rem;
+}
+#groupEditModalOverlay .jcc-retreat-extraScopeRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.46rem;
+  padding: 0.58rem;
   border-radius: 12px;
-  padding: 0.65rem 0.85rem;
+  border: 1px solid #d8e2ef;
+  background: #fff;
+}
+#groupEditModalOverlay .jcc-retreat-extraScopeRow--primary {
+  border-color: #cfdcf0;
+  background: #f8fbff;
+}
+#groupEditModalOverlay .jcc-retreat-extraScopeGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.44rem 0.5rem;
+}
+#groupEditModalOverlay .jcc-retreat-extraScopeRow [data-extra-scope-editor] {
+  grid-column: auto;
+}
+#groupEditModalOverlay .jcc-retreat-extraScopeGrid .field label {
+  display: none;
+}
+#groupEditModalOverlay .jcc-retreat-extraScopeGrid .jcc-cselect-btn {
+  min-height: 2.3rem;
+  padding: 0.4rem 0.65rem;
+}
+#groupEditModalOverlay .jcc-retreat-extraScopeRow [data-remove-extra-scope] {
+  margin-left: auto;
+  width: auto;
+  min-width: 2.7rem;
+  min-height: 1.7rem;
+  padding: 0.16rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid #f8b4b4;
+  background: #fff5f5;
+  color: #dc2626;
+  font-size: 0.72rem;
+  line-height: 1;
+  font-weight: 700;
+}
+#groupEditModalOverlay .jcc-retreat-extraScopeActionSpacer {
+  display: block;
+  width: 2.7rem;
+  min-width: 2.7rem;
+  min-height: 1.7rem;
+}
+#groupEditModalOverlay .jcc-retreat-extraScopeRow [data-remove-extra-scope]::before {
+  content: none;
+}
+#groupEditModalOverlay .jcc-retreat-rowDel {
+  width: 1.8rem;
+  min-width: 1.8rem;
+  min-height: 1.8rem;
+  padding: 0;
+  border-radius: 999px;
+  align-self: center;
+  background: #fff;
+  border: 1px solid #f8b4b4;
+  color: #dc2626;
+  font-size: 0;
+  line-height: 1;
+  font-weight: 800;
+}
+#groupEditModalOverlay .jcc-retreat-rowDel::before {
+  content: "×";
   font-size: 0.95rem;
+  line-height: 1;
 }
 #groupEditModalOverlay .jcc-retreat-scopeAddBtn {
   border-radius: 10px;
+  min-height: 2.1rem;
+  padding-inline: 0.72rem;
+  border-style: solid;
+  border-color: #d1d5db;
+  background: #fff;
+  color: #5b6472;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+#groupEditModalOverlay .jcc-retreat-leadersDraftList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 0.75rem;
+}
+#groupEditModalOverlay .jcc-retreat-leaderDraftRow {
+  min-height: 3.7rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 12px;
+  background: #f3f4f6;
+}
+#groupEditModalOverlay .jcc-retreat-leadersDraftAdd {
+  gap: 0.7rem 0.85rem;
 }
 #groupEditModalOverlay .jcc-retreat-modalFooter {
-  padding: 0.9rem 1.3rem;
+  justify-content: flex-end;
+  padding: 0.85rem 1.1rem;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
 }
 #groupEditModalOverlay .jcc-retreat-modalFooter button {
   border-radius: 12px;
-  padding: 0.72rem 1.25rem;
+  min-height: 2.4rem;
+  padding: 0.5rem 1rem;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+}
+#groupEditModalOverlay .jcc-retreat-btnCancel {
+  background: transparent;
+  color: #5b6472;
+}
+#groupEditModalOverlay .jcc-retreat-btnPrimary {
+  min-width: 8.9rem;
+  background: #0969da;
+  color: #fff;
+}
+@media (max-width: 720px) {
+  #groupEditModalOverlay {
+    align-items: center;
+    padding: 0.5rem;
+  }
+  #groupEditModalOverlay .jcc-retreat-modal--wide {
+    width: min(480px, calc(100vw - 1rem));
+    max-height: calc(100dvh - 1rem);
+    border-radius: 14px;
+  }
+  #groupEditModalOverlay .jcc-retreat-editModalHeader,
+  #groupEditModalOverlay .jcc-retreat-modalFooter {
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+  }
+  #groupEditModalOverlay .jcc-retreat-modalBody {
+    padding: 0 0.85rem;
+  }
+  #groupEditModalOverlay .jcc-retreat-modalGrid,
+  #groupEditModalOverlay .jcc-retreat-leadersDraftList {
+    grid-template-columns: 1fr;
+  }
+  #groupEditModalOverlay .jcc-retreat-extraScopeGrid,
+  #groupEditModalOverlay .jcc-retreat-leadersDraftAdd {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  #groupEditModalOverlay .jcc-retreat-leadersDraftAdd {
+    grid-template-columns: 1fr;
+  }
+  #groupEditModalOverlay .jcc-retreat-extraScopeRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    padding: 0.52rem;
+    border-radius: 12px;
+  }
+  #groupEditModalOverlay .jcc-retreat-extraScopeRow [data-extra-scope-editor],
+  #groupEditModalOverlay .jcc-retreat-extraScopeRow [data-remove-extra-scope] {
+    grid-column: auto;
+  }
+  #groupEditModalOverlay .jcc-retreat-extraScopeRow [data-remove-extra-scope] {
+    position: static;
+    justify-self: auto;
+    margin-top: 0;
+    min-width: 2.55rem;
+    min-height: 1.7rem;
+    font-size: 0.72rem;
+  }
+  #groupEditModalOverlay .jcc-retreat-extraScopeActionSpacer {
+    width: 2.55rem;
+    min-width: 2.55rem;
+  }
 }
 
 /* 조원 추가·수정 모달: Toss 팝업 톤 (화면 중앙 + 둥근 카드 + 입력 통일) */
@@ -6170,6 +6466,9 @@ body.has-retreat-bottom-tabs main {
   padding: 1rem;
 }
 #groupModalOverlay .jcc-retreat-modal--wide {
+  width: min(560px, calc(100vw - 2rem));
+  max-width: 560px;
+  max-height: min(86dvh, 86vh);
   border-radius: 22px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.12);
 }
@@ -6180,8 +6479,8 @@ body.has-retreat-bottom-tabs main {
   padding-top: 1.3rem;
 }
 #groupModalOverlay .jcc-retreat-modalBody {
-  padding-left: 1.3rem;
-  padding-right: 1.3rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 #groupModalOverlay .jcc-retreat-groupScopeTitle,
 #groupModalOverlay .jcc-retreat-leadersDraftTitle {
@@ -6204,13 +6503,23 @@ body.has-retreat-bottom-tabs main {
   border-radius: 10px;
 }
 #groupModalOverlay .jcc-retreat-modalFooter {
-  padding: 0.9rem 1.3rem;
+  padding: 0.8rem 1rem;
 }
 #groupModalOverlay .jcc-retreat-modalFooter button {
   border-radius: 12px;
   padding: 0.72rem 1.25rem;
   font-weight: 700;
   font-size: 0.95rem;
+}
+#groupModalOverlay .jcc-retreat-extraScopeTag {
+  min-height: 2.4rem;
+  padding: 0.1rem 0;
+}
+#groupModalOverlay .jcc-retreat-extraScopeTag .jcc-retreat-pill {
+  background: #e5ebf5;
+  border-color: #d4ddea;
+  color: #1f2937;
+  font-weight: 700;
 }
 /* 조 행 카드: Toss 톤 (둥근 모서리) */
 #groupModalOverlay .jcc-retreat-groupRow {
