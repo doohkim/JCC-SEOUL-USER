@@ -117,7 +117,8 @@
   function renderDivisions(rows, grand) {
     if (!divBody) return;
     divBody.innerHTML = "";
-    rows.forEach((row) => {
+    const sortedRows = sortDivisionRowsByGroupRange(rows);
+    sortedRows.forEach((row) => {
       const tr = document.createElement("tr");
       const region = escapeHtml((row.region || "").trim());
       const division = escapeHtml((row.division || "").trim());
@@ -140,6 +141,27 @@
     setTotal(totalEls.in, grand.checked_in ?? 0);
     setTotal(totalEls.out, grand.checked_out ?? 0);
     setTotal(totalEls.attended, grand.attended ?? 0);
+  }
+
+  function groupRangeStartNumber(groupRange) {
+    const text = String(groupRange == null ? "" : groupRange);
+    const match = text.match(/\d+/);
+    if (!match) return Number.MAX_SAFE_INTEGER;
+    return parseInt(match[0], 10);
+  }
+
+  function sortDivisionRowsByGroupRange(rows) {
+    return (rows || []).slice().sort((a, b) => {
+      const startA = groupRangeStartNumber(a?.group_range);
+      const startB = groupRangeStartNumber(b?.group_range);
+      if (startA !== startB) return startA - startB;
+      const regionCmp = String(a?.region || "").localeCompare(
+        String(b?.region || ""),
+        "ko"
+      );
+      if (regionCmp !== 0) return regionCmp;
+      return String(a?.division || "").localeCompare(String(b?.division || ""), "ko");
+    });
   }
 
   async function loadBoard() {
