@@ -84,8 +84,6 @@ services:
     image: redis:7-alpine
     container_name: redis
     restart: unless-stopped
-    depends_on:
-      - postgres-django
     networks:
       default:
         ipv4_address: 172.19.0.8
@@ -104,8 +102,6 @@ services:
       - ./.deploy/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
       - rabbitmq-data:/var/lib/rabbitmq/
       - rabbitmq-log:/var/log/rabbitmq/
-    depends_on:
-      - postgres-django
     networks:
       default:
         ipv4_address: 172.19.0.9

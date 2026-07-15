@@ -62,6 +62,8 @@ DATABASES = {
         "NAME": BASE_DIR / "db.sqlite3",
     }
 }
+SOCIAL_AUTH_KAKAO_REDIRECT_URI="http://127.0.0.1:8000/auth/complete/kakao/"
+
 
 
 CSRF_TRUSTED_ORIGINS = [

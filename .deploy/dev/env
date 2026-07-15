@@ -10,4 +10,3 @@ DJANGO_SETTINGS_MODULE=config.settings.dev
 GUNICORN_CONF=/srv/.deploy/dev/gunicorn.py
 GUNICORN_WSGI=config.wsgi.dev
 CELERY_FLOWER_BROKER_URL=amqp://jccseoul:jccseoul1!@rabbitmq:5672//
-KAKAO_REDIRECT_URI=https://shalom.dev.jcc-seoul.com/auth/complete/kakao/

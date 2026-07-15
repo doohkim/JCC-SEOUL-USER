@@ -32,6 +32,7 @@ DATABASES = {
         "PASSWORD": secrets.DB_PASSWORD_DEV,
     },
 }
+SOCIAL_AUTH_KAKAO_REDIRECT_URI = "https://shalom.dev.jcc-seoul.com/auth/complete/kakao/"
 
 CSRF_COOKIE_DOMAIN = ".jcc-seoul.com"
 CSRF_TRUSTED_ORIGINS = [
