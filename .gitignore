@@ -55,6 +55,8 @@ poetry.lock.bak
 
 # --- DB ---
 .postgres-django/
+backups/
+*.dump
 
 # --- IDE / OS ---
 .idea/

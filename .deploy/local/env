@@ -1,1 +1,1 @@
-KAKAO_REDIRECT_URI="http://127.0.0.1:8000/auth/complete/kakao/"
+KAKAO_REDIRECT_URI="http://localhost:8001/auth/complete/kakao/"
