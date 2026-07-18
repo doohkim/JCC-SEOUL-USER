@@ -10,3 +10,4 @@ DJANGO_SETTINGS_MODULE=config.settings.production
 GUNICORN_CONF=/srv/.deploy/production/gunicorn.py
 GUNICORN_WSGI=config.wsgi.production
 CELERY_FLOWER_BROKER_URL=amqp://jccseoul:jccseoul1!@rabbitmq:5672//
+DB_TARGET=rds
