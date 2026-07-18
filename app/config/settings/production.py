@@ -48,6 +48,8 @@ elif DB_TARGET == "rds":
 else:
     print("Invalid DB_TARGET")
 
+SOCIAL_AUTH_KAKAO_REDIRECT_URI = 'https://shalom.jcc-seoul.com/auth/complete/kakao/'
+
 CSRF_COOKIE_DOMAIN = ".jcc-seoul.com"
 CSRF_TRUSTED_ORIGINS = [
     f"https://*.jcc-seoul.com",
