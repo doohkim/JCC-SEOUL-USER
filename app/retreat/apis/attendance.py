@@ -268,7 +268,9 @@ class RetreatEventAttendanceNamesView(APIView):
         return Response(
             {
                 "event_id": event.id,
+                "event_name": event.name,
                 "session_id": session.id,
+                "session_name": session.name,
                 "attendees": [
                     {
                         "group_name": row["enrollment__group_name"],
