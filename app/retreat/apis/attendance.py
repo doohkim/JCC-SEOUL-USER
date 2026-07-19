@@ -31,15 +31,6 @@ from retreat.serializers import (
 from users.permissions import visible_retreat_groups_for, visible_retreat_sessions_for
 
 
-def _retreat_api_token() -> str:
-    """외부 공개 출석 API 토큰을 안전하게 조회한다."""
-    direct = str(getattr(settings, "RETREAT", "") or "").strip()
-    if direct:
-        return direct
-    secrets_obj = getattr(settings, "secrets", None)
-    return str(getattr(secrets_obj, "RETREAT", "") or "").strip()
-
-
 class RetreatAttendanceBulkUpsertView(APIView):
     """세션 단위 일괄 출석 upsert.
 
@@ -244,37 +235,29 @@ class RetreatEventAttendanceNamesView(APIView):
 
     def get(self, request, event_id: int):
         token = (request.headers.get("X-Retreat-Token") or "").strip()
-        expected = _retreat_api_token()
+        expected = settings.RETREAT
         if not token or not expected or not hmac.compare_digest(token, expected):
             return Response(
                 {"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED
             )
 
         event = get_object_or_404(RetreatEvent, pk=event_id)
-        session = RetreatSession.objects.filter(event=event).first()
-        if session is None:
-            return Response(
-                {"detail": "No RetreatSession matches the given query."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
         rows = (
-            RetreatAttendance.objects.filter(
-                enrollment__session=session,
-                status=RetreatAttendance.Status.PRESENT,
+            RetreatAttendee.objects.filter(
+                group__event=event,
+                check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
             )
-            .select_related("enrollment")
-            .values("enrollment__group_name", "enrollment__name")
+            .select_related("group")
+            .values("group__name", "name")
         )
         return Response(
             {
                 "event_id": event.id,
                 "event_name": event.name,
-                "session_id": session.id,
-                "session_name": session.name,
                 "attendees": [
                     {
-                        "group_name": row["enrollment__group_name"],
-                        "name": row["enrollment__name"],
+                        "group_name": row["group__name"],
+                        "name": row["name"],
                     }
                     for row in rows
                 ],

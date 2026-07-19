@@ -1,4 +1,4 @@
-"""집회 최신 출석부 참석자(조+이름) 공개 API 테스트."""
+"""집회 입실 인원(조+이름) 공개 API 테스트."""
 
 from __future__ import annotations
 
@@ -10,14 +10,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from retreat.models import (
-    RetreatAttendance,
-    RetreatAttendee,
-    RetreatEvent,
-    RetreatGroup,
-    RetreatSession,
-    RetreatSessionAttendee,
-)
+from retreat.models import RetreatAttendee, RetreatEvent, RetreatGroup, RetreatSession
 from users.models import Division, Region
 
 
@@ -37,14 +30,10 @@ class AttendanceNamesApiTests(TestCase):
             end_date=date(2026, 7, 3),
         )
         cls.session = RetreatSession.objects.create(
-            event=cls.event,
-            name="저녁 집회",
-            sequence=1,
+            event=cls.event, name="저녁 집회", sequence=1
         )
         cls.other_session = RetreatSession.objects.create(
-            event=cls.event,
-            name="새벽 집회",
-            sequence=2,
+            event=cls.event, name="새벽 집회", sequence=2
         )
         cls.group = RetreatGroup.objects.create(
             event=cls.event,
@@ -68,43 +57,21 @@ class AttendanceNamesApiTests(TestCase):
             name="다른세션참석자",
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
         )
-
-        cls.enrollment_present = cls._enroll(cls.session, cls.attendee_present)
-        cls.enrollment_absent = cls._enroll(cls.session, cls.attendee_absent)
-        cls.enrollment_other_session = cls._enroll(
-            cls.other_session, cls.attendee_other_session
+        cls.attendee_pending = RetreatAttendee.objects.create(
+            group=cls.group,
+            name="입실전",
+            check_in_status=RetreatAttendee.CheckInStatus.PENDING,
         )
-
-        RetreatAttendance.objects.create(
-            enrollment=cls.enrollment_present,
-            status=RetreatAttendance.Status.PRESENT,
+        cls.attendee_checked_out = RetreatAttendee.objects.create(
+            group=cls.group,
+            name="퇴실자",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
         )
-        RetreatAttendance.objects.create(
-            enrollment=cls.enrollment_absent,
-            status=RetreatAttendance.Status.ABSENT,
-        )
-        RetreatAttendance.objects.create(
-            enrollment=cls.enrollment_other_session,
-            status=RetreatAttendance.Status.PRESENT,
-        )
-
-    @classmethod
-    def _enroll(cls, session: RetreatSession, attendee: RetreatAttendee):
-        group = attendee.group
-        return RetreatSessionAttendee.objects.create(
-            session=session,
-            source_attendee=attendee,
-            source_group=group,
-            name=attendee.name,
-            phone=attendee.phone,
-            gender=attendee.gender,
-            memo=attendee.memo,
-            check_in_status=attendee.check_in_status,
-            group_name=group.name,
-            region_id_snapshot=group.region_id,
-            region_name=group.region.name,
-            division_id_snapshot=group.division_id,
-            division_name=group.division.name,
+        cls.attendee_not_participating = RetreatAttendee.objects.create(
+            group=cls.group,
+            name="불참자",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            participation_status=RetreatAttendee.ParticipationStatus.ABSENT,
         )
 
     def setUp(self):
@@ -124,7 +91,7 @@ class AttendanceNamesApiTests(TestCase):
 
         self.assertEqual(response.status_code, 401)
 
-    def test_valid_token_returns_present_names_only_from_latest_session(self):
+    def test_valid_token_returns_checked_in_names_only(self):
         response = self.client.get(
             self.url,
             HTTP_X_RETREAT_TOKEN=settings.RETREAT,
@@ -134,14 +101,28 @@ class AttendanceNamesApiTests(TestCase):
         data = response.json()
         self.assertIn("attendees", data)
         self.assertEqual(data.get("event_id"), self.event.id)
-        self.assertEqual(data.get("session_id"), self.other_session.id)
+        self.assertEqual(data.get("event_name"), self.event.name)
+        self.assertNotIn("session_id", data)
+        self.assertNotIn("session_name", data)
         self.assertEqual(
             data["attendees"],
             [
                 {
                     "group_name": "1조",
+                    "name": "결석자",
+                },
+                {
+                    "group_name": "1조",
                     "name": "다른세션참석자",
-                }
+                },
+                {
+                    "group_name": "1조",
+                    "name": "불참자",
+                },
+                {
+                    "group_name": "1조",
+                    "name": "참석자",
+                },
             ],
         )
 
@@ -154,7 +135,7 @@ class AttendanceNamesApiTests(TestCase):
                 )
         self.assertEqual(response.status_code, 401)
 
-    def test_event_without_session_returns_404(self):
+    def test_event_without_session_still_returns_200_with_empty_attendees(self):
         empty_event = RetreatEvent.objects.create(
             name="세션 없는 집회",
             start_date=date(2026, 8, 1),
@@ -168,4 +149,12 @@ class AttendanceNamesApiTests(TestCase):
             url,
             HTTP_X_RETREAT_TOKEN=settings.RETREAT,
         )
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "event_id": empty_event.id,
+                "event_name": empty_event.name,
+                "attendees": [],
+            },
+        )
