@@ -217,7 +217,9 @@ class RetreatEventPickupListCreateView(APIView):
         else:
             contact_norm = normalize_phone(contact)
             if contact_norm is None:
-                errors["contact"] = "올바른 휴대폰 번호 형식이 아닙니다. (예: 010-1234-5678)"
+                errors["contact"] = (
+                    "올바른 휴대폰 번호 형식이 아닙니다. (예: 010-1234-5678)"
+                )
 
         can_select = can_select_pickup_group(request.user, event)
 

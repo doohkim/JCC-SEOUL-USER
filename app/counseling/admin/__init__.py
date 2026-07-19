@@ -10,7 +10,13 @@ from counseling.models import (
 
 @admin.register(PastorScheduleSettings)
 class PastorScheduleSettingsAdmin(admin.ModelAdmin):
-    list_display = ("user_id", "default_start_hour", "default_end_hour", "slot_duration_minutes", "updated_at")
+    list_display = (
+        "user_id",
+        "default_start_hour",
+        "default_end_hour",
+        "slot_duration_minutes",
+        "updated_at",
+    )
     raw_id_fields = ("user",)
 
 
@@ -22,7 +28,14 @@ class PastorDayOverrideAdmin(admin.ModelAdmin):
 
 @admin.register(CounselingSlot)
 class CounselingSlotAdmin(admin.ModelAdmin):
-    list_display = ("pastor_id", "date", "start_time", "end_time", "state", "updated_at")
+    list_display = (
+        "pastor_id",
+        "date",
+        "start_time",
+        "end_time",
+        "state",
+        "updated_at",
+    )
     list_filter = ("state", "date")
     raw_id_fields = ("pastor",)
 

@@ -38,9 +38,7 @@ class SettingsBackend:
             return None
 
         defaults = {
-            key: value
-            for key, value in user_dict.items()
-            if key not in _NON_FIELD_KEYS
+            key: value for key, value in user_dict.items() if key not in _NON_FIELD_KEYS
         }
 
         user, created = User.objects.get_or_create(

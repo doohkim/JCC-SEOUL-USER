@@ -25,7 +25,9 @@ from .tinymce import *
 IS_RUNSERVER = len(sys.argv) > 1 and sys.argv[1] == "runserver"
 IS_LOCAL = IS_RUNSERVER or os.environ.get("IS_LOCAL") == "1"
 IS_DOCKER = bool(os.environ.get("DOCKER"))
-ENV = os.environ.get("DJANGO_SETTINGS_MODULE", "config.settings.local").rsplit(".", 1)[-1]
+ENV = os.environ.get("DJANGO_SETTINGS_MODULE", "config.settings.local").rsplit(".", 1)[
+    -1
+]
 ENV_IS_PRODUCTION = ENV in ["production", "celery.py", "staff"]
 DEBUG = IS_LOCAL or False  # static url활성화를 위해 로컬이면 DEBUG = True
 
@@ -64,7 +66,9 @@ INTEGRATION_API_ENABLED = os.environ.get("INTEGRATION_API_ENABLED", "1") not in 
     "False",
 )
 INTEGRATION_KEY_PEPPER = os.environ.get("INTEGRATION_KEY_PEPPER", "") or SECRET_KEY
-ALLOW_INTEGRATION_DEBUG_TOKEN = os.environ.get("ALLOW_INTEGRATION_DEBUG_TOKEN", "0") in (
+ALLOW_INTEGRATION_DEBUG_TOKEN = os.environ.get(
+    "ALLOW_INTEGRATION_DEBUG_TOKEN", "0"
+) in (
     "1",
     "true",
     "True",

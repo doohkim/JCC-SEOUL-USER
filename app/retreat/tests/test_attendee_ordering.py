@@ -34,7 +34,9 @@ class PickGroupCardLeaderNameTests(TestCase):
             name="1조",
             order=1,
         )
-        self.linked_user = User.objects.create_user(username="linked_leader", password="x")
+        self.linked_user = User.objects.create_user(
+            username="linked_leader", password="x"
+        )
 
     def _leader(self, **kwargs):
         defaults = {
@@ -46,7 +48,9 @@ class PickGroupCardLeaderNameTests(TestCase):
         return RetreatAttendee.objects.create(**defaults)
 
     def test_prefers_checked_in_over_pending(self):
-        self._leader(name="입실전조장", check_in_status=RetreatAttendee.CheckInStatus.PENDING)
+        self._leader(
+            name="입실전조장", check_in_status=RetreatAttendee.CheckInStatus.PENDING
+        )
         checked_in = self._leader(
             name="입실조장",
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
@@ -141,7 +145,9 @@ class AttendeeMemberListOrderTests(TestCase):
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
         )
         ordered = list(
-            order_attendees_for_member_list(RetreatAttendee.objects.filter(group=self.group))
+            order_attendees_for_member_list(
+                RetreatAttendee.objects.filter(group=self.group)
+            )
         )
         self.assertEqual(
             [a.id for a in ordered],
@@ -167,7 +173,9 @@ class AttendeeMemberListOrderTests(TestCase):
             checked_in_at=timezone.now() + timedelta(minutes=10),
         )
         ordered = list(
-            order_attendees_for_member_list(RetreatAttendee.objects.filter(group=self.group))
+            order_attendees_for_member_list(
+                RetreatAttendee.objects.filter(group=self.group)
+            )
         )
         self.assertEqual([a.id for a in ordered], [leader.id, vice.id, member.id])
 
@@ -183,7 +191,9 @@ class AttendeeMemberListOrderTests(TestCase):
             checked_in_at=timezone.now() + timedelta(hours=1),
         )
         ordered = list(
-            order_attendees_for_member_list(RetreatAttendee.objects.filter(group=self.group))
+            order_attendees_for_member_list(
+                RetreatAttendee.objects.filter(group=self.group)
+            )
         )
         self.assertEqual([a.id for a in ordered], [earlier.id, later.id])
 
@@ -212,7 +222,9 @@ class ManageGroupsCardLeaderDisplayTests(TestCase):
             name="1조",
             order=1,
         )
-        cls.council_user = User.objects.create_user(username="council_card", password="x")
+        cls.council_user = User.objects.create_user(
+            username="council_card", password="x"
+        )
         president, _ = RoleLevel.objects.get_or_create(
             code="president",
             defaults={"name": "회장", "level": 80, "sort_order": 20},

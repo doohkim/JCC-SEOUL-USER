@@ -60,7 +60,7 @@ def team_deleted_compact_member_division_team_rows(sender, instance: Team, **kwa
             # keep 행이 primary가 아니면 primary를 keep로 이동
             if not keep.is_primary:
                 for r in rows:
-                    r.is_primary = (r.pk == keep.pk)
+                    r.is_primary = r.pk == keep.pk
                     r.save(update_fields=["is_primary"])
 
             # 나머지 중복 행 삭제

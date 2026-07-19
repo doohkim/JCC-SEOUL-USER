@@ -202,9 +202,12 @@ def parse_sunday_attendance_sheet(
         row = rows[i]
         if not row:
             continue
-        first_txt = next((str(x).strip() for x in row if isinstance(x, str) and str(x).strip()), "")
+        first_txt = next(
+            (str(x).strip() for x in row if isinstance(x, str) and str(x).strip()), ""
+        )
         if first_txt and any(
-            k in first_txt for k in ("합계", "참석자 명단 전체", "작성", "※", "주일예배")
+            k in first_txt
+            for k in ("합계", "참석자 명단 전체", "작성", "※", "주일예배")
         ):
             continue
 

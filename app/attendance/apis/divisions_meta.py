@@ -24,9 +24,7 @@ class AttendanceRegionListView(APIView):
 
     def get(self, request):
         qs = visible_regions_for(request.user)
-        return Response(
-            [{"code": r.code, "name": r.name} for r in qs]
-        )
+        return Response([{"code": r.code, "name": r.name} for r in qs])
 
 
 class AttendanceDivisionListView(APIView):

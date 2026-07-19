@@ -38,9 +38,7 @@ class RetreatEventDashboardView(APIView):
             raise PermissionDenied
         staff = _staff_view(request.user, event)
         apply_due_auto_transitions(event_id=event.id)
-        return Response(
-            build_realtime_dashboard(event, request.user, staff_view=staff)
-        )
+        return Response(build_realtime_dashboard(event, request.user, staff_view=staff))
 
 
 class RetreatEventGroupBoardView(APIView):
@@ -75,9 +73,7 @@ class RetreatEventResultsView(APIView):
             )
         staff = _staff_view(request.user, event)
         return Response(
-            build_event_results(
-                event, request.user, session=session, staff_view=staff
-            )
+            build_event_results(event, request.user, session=session, staff_view=staff)
         )
 
 
@@ -89,9 +85,7 @@ class RetreatEventResultsAnalyticsView(APIView):
         if not can_access_retreat_tab(request.user):
             raise PermissionDenied
         staff = _staff_view(request.user, event)
-        return Response(
-            build_results_analytics(event, request.user, staff_view=staff)
-        )
+        return Response(build_results_analytics(event, request.user, staff_view=staff))
 
 
 class RetreatEventChangelogView(APIView):

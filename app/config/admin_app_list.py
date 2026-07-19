@@ -22,9 +22,13 @@ def ensure_admin_app_list_grouping() -> None:
             if label == "users":
                 app["jcc_model_groups"] = group_users_models_for_template(app["models"])
             elif label == "registry":
-                app["jcc_model_groups"] = group_registry_models_for_template(app["models"])
+                app["jcc_model_groups"] = group_registry_models_for_template(
+                    app["models"]
+                )
             elif label == "attendance":
-                app["jcc_model_groups"] = group_attendance_models_for_template(app["models"])
+                app["jcc_model_groups"] = group_attendance_models_for_template(
+                    app["models"]
+                )
         return app_list
 
     AdminSite.get_app_list = get_app_list  # type: ignore[method-assign]

@@ -74,7 +74,12 @@ def _extract_kakao_profile_image_urls(details: dict, kwargs: dict) -> list[str]:
 
     props = response.get("properties") or {}
     if isinstance(props, dict):
-        for k in ("profile_image", "profile_image_url", "thumbnail_image_url", "picture"):
+        for k in (
+            "profile_image",
+            "profile_image_url",
+            "thumbnail_image_url",
+            "picture",
+        ):
             push(props.get(k))
 
     account = response.get("kakao_account") or {}
@@ -168,7 +173,9 @@ def create_or_update_kakao_user(
             content_for_history = ContentFile(
                 data, name=f"user_{user.id}_avatar_{content_hash[:10]}{ext}"
             )
-            history.image.save(content_for_history.name, content_for_history, save=False)
+            history.image.save(
+                content_for_history.name, content_for_history, save=False
+            )
             history.save()
             new_avatar_content_hash = content_hash
             saved_hashes.append(content_hash)
@@ -244,7 +251,9 @@ def create_or_update_kakao_user(
             content_for_history = ContentFile(
                 data, name=f"user_{existing.id}_avatar_{content_hash[:10]}{ext}"
             )
-            history.image.save(content_for_history.name, content_for_history, save=False)
+            history.image.save(
+                content_for_history.name, content_for_history, save=False
+            )
             history.save()
             new_avatar_content_hash = content_hash
             saved_hashes.append(content_hash)

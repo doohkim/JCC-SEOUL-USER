@@ -163,7 +163,9 @@ class CouncilRosterApiFieldTests(APITestCase, _CouncilFixture):
         r = self.client.get(reverse("api_retreat_event_groups", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
         group = next(item for item in r.json() if item["id"] == self.group.id)
-        membership = next(m for m in group["memberships"] if m["user"] == self.leader.id)
+        membership = next(
+            m for m in group["memberships"] if m["user"] == self.leader.id
+        )
         self.assertEqual(membership["user_phone"], "01011112222")
         self.assertTrue(membership["created_at"])
 

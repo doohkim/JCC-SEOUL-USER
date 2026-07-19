@@ -9,7 +9,9 @@ from users.mixins import OnboardingRequiredMixin
 from users.permissions import can_access_member_registry
 
 
-class RegistryMemberListPageView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
+class RegistryMemberListPageView(
+    OnboardingRequiredMixin, LoginRequiredMixin, TemplateView
+):
     template_name = "registry/member_list.html"
     login_url = reverse_lazy("user_login")
 
@@ -19,7 +21,9 @@ class RegistryMemberListPageView(OnboardingRequiredMixin, LoginRequiredMixin, Te
         return super().dispatch(request, *args, **kwargs)
 
 
-class RegistryMemberDetailPageView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
+class RegistryMemberDetailPageView(
+    OnboardingRequiredMixin, LoginRequiredMixin, TemplateView
+):
     template_name = "registry/member_detail.html"
     login_url = reverse_lazy("user_login")
 
@@ -34,7 +38,9 @@ class RegistryMemberDetailPageView(OnboardingRequiredMixin, LoginRequiredMixin, 
         return ctx
 
 
-class RegistryMemberCreatePageView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
+class RegistryMemberCreatePageView(
+    OnboardingRequiredMixin, LoginRequiredMixin, TemplateView
+):
     template_name = "registry/member_form.html"
     login_url = reverse_lazy("user_login")
 
@@ -50,7 +56,9 @@ class RegistryMemberCreatePageView(OnboardingRequiredMixin, LoginRequiredMixin, 
         return ctx
 
 
-class RegistryMemberEditPageView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
+class RegistryMemberEditPageView(
+    OnboardingRequiredMixin, LoginRequiredMixin, TemplateView
+):
     template_name = "registry/member_form.html"
     login_url = reverse_lazy("user_login")
 
@@ -66,7 +74,9 @@ class RegistryMemberEditPageView(OnboardingRequiredMixin, LoginRequiredMixin, Te
         return ctx
 
 
-class RegistryMemberFamilyPageView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
+class RegistryMemberFamilyPageView(
+    OnboardingRequiredMixin, LoginRequiredMixin, TemplateView
+):
     """멤버 가족(행) 전용 화면."""
 
     template_name = "registry/member_family.html"

@@ -56,9 +56,9 @@ def parking_windows_display(division_id: int | None) -> list[dict[str, str]]:
     from attendance.models import ParkingPermitWindow
 
     out: list[dict[str, str]] = []
-    for w in ParkingPermitWindow.objects.filter(division_id=division_id, is_active=True).order_by(
-        "weekday", "start_time"
-    ):
+    for w in ParkingPermitWindow.objects.filter(
+        division_id=division_id, is_active=True
+    ).order_by("weekday", "start_time"):
         out.append(
             {
                 "weekday_label": w.get_weekday_display(),

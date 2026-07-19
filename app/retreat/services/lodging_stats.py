@@ -36,9 +36,7 @@ class LodgingPageSummary:
 def _lodging_eligible_qs(event: RetreatEvent) -> QuerySet[RetreatAttendee]:
     """숙박 관리 대상: lodging_stay_status active|unassigned."""
     return lodging_stay_eligible_filter(
-        participating_filter(
-            RetreatAttendee.objects.filter(group__event=event)
-        )
+        participating_filter(RetreatAttendee.objects.filter(group__event=event))
     )
 
 

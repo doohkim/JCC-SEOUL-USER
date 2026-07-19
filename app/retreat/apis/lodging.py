@@ -57,9 +57,7 @@ class RetreatEventLodgingsView(APIView):
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
         lodging = ser.save(event=event)
-        return Response(
-            LodgingSerializer(lodging).data, status=status.HTTP_201_CREATED
-        )
+        return Response(LodgingSerializer(lodging).data, status=status.HTTP_201_CREATED)
 
 
 class RetreatLodgingDetailView(APIView):

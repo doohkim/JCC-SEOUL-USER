@@ -107,9 +107,7 @@ class StaffApplicationServiceTests(StaffApplicationFixture):
             user=self.applicant, group=self.group
         )
         self.assertEqual(membership.role, RetreatGroupMembership.Role.LEADER)
-        attendee = RetreatAttendee.objects.get(
-            user=self.applicant, group=self.group
-        )
+        attendee = RetreatAttendee.objects.get(user=self.applicant, group=self.group)
         self.assertEqual(attendee.member_role, RetreatGroupMembership.Role.LEADER)
         self.assertEqual(event_staff_status(self.applicant, self.event), "assigned")
 
@@ -154,12 +152,8 @@ class StaffApplicationServiceTests(StaffApplicationFixture):
             user=self.applicant, group=self.group
         )
         self.assertEqual(membership.role, RetreatGroupMembership.Role.VICE_LEADER)
-        attendee = RetreatAttendee.objects.get(
-            user=self.applicant, group=self.group
-        )
-        self.assertEqual(
-            attendee.member_role, RetreatGroupMembership.Role.VICE_LEADER
-        )
+        attendee = RetreatAttendee.objects.get(user=self.applicant, group=self.group)
+        self.assertEqual(attendee.member_role, RetreatGroupMembership.Role.VICE_LEADER)
 
     def test_member_council_track_approval_creates_council_membership(self):
         application = RetreatStaffApplication.objects.create(
@@ -193,7 +187,9 @@ class StaffApplicationServiceTests(StaffApplicationFixture):
             group_role=RetreatGroupMembership.Role.VICE_LEADER,
             status=RetreatStaffApplication.Status.PENDING,
         )
-        reject_staff_application(application, reviewer=self.admin, reason="조 정원 초과")
+        reject_staff_application(
+            application, reviewer=self.admin, reason="조 정원 초과"
+        )
         self.assertEqual(event_staff_status(self.applicant, self.event), "open")
 
     def test_duplicate_pending_prevented(self):
@@ -589,7 +585,9 @@ class StaffApplicationApiTests(StaffApplicationFixture):
         )
         self.assertEqual(r.status_code, 200)
         self.application.refresh_from_db()
-        self.assertEqual(self.application.status, RetreatStaffApplication.Status.APPROVED)
+        self.assertEqual(
+            self.application.status, RetreatStaffApplication.Status.APPROVED
+        )
         membership = RetreatGroupMembership.objects.get(
             user=self.applicant, group=self.group
         )
@@ -632,7 +630,9 @@ class StaffApplicationApprovalOverrideTests(StaffApplicationFixture):
         )
         application.refresh_from_db()
         self.assertEqual(application.group_id, self.alt_group.id)
-        self.assertEqual(application.group_role, RetreatGroupMembership.Role.VICE_LEADER)
+        self.assertEqual(
+            application.group_role, RetreatGroupMembership.Role.VICE_LEADER
+        )
         membership = RetreatGroupMembership.objects.get(
             user=self.applicant, group=self.alt_group
         )

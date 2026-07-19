@@ -88,10 +88,14 @@ class IntegrationUserDetailView(IntegrationBaseView):
         try:
             user = User.objects.select_related("role_level", "profile").get(pk=user_id)
         except User.DoesNotExist:
-            return Response({"detail": "user not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "user not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
         if not user.is_active:
-            return Response({"detail": "user inactive"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "user inactive"}, status=status.HTTP_404_NOT_FOUND
+            )
 
         return Response({"user": build_integration_user_body(user)})
 
@@ -125,19 +129,27 @@ class IntegrationPermissionCheckView(IntegrationBaseView):
     def post(self, request, *args, **kwargs):
         uid = request.data.get("user_id")
         if uid is None:
-            return Response({"detail": "user_id required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "user_id required"}, status=status.HTTP_400_BAD_REQUEST
+            )
         try:
             uid = int(uid)
         except (TypeError, ValueError):
-            return Response({"detail": "user_id invalid"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "user_id invalid"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             user = User.objects.select_related("role_level", "profile").get(pk=uid)
         except User.DoesNotExist:
-            return Response({"detail": "user not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "user not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
         if not user.is_active:
-            return Response({"detail": "user inactive"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "user inactive"}, status=status.HTTP_404_NOT_FOUND
+            )
 
         snap = user_permission_snapshot(user)
         access = snap.get("access") or {}
@@ -146,12 +158,18 @@ class IntegrationPermissionCheckView(IntegrationBaseView):
             return Response({"user_id": uid, "access": access})
 
         if not isinstance(checks_in, (list, tuple)):
-            return Response({"detail": "checks must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "checks must be a list"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         unknown = [c for c in checks_in if c not in self._KNOWN]
         if unknown:
             return Response(
-                {"detail": "unknown checks", "unknown": unknown, "allowed": sorted(self._KNOWN)},
+                {
+                    "detail": "unknown checks",
+                    "unknown": unknown,
+                    "allowed": sorted(self._KNOWN),
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -182,7 +200,9 @@ class IntegrationIssueTokenDebugView(IntegrationBaseView):
     """
 
     def post(self, request, *args, **kwargs):
-        allow = settings.DEBUG or getattr(settings, "ALLOW_INTEGRATION_DEBUG_TOKEN", False)
+        allow = settings.DEBUG or getattr(
+            settings, "ALLOW_INTEGRATION_DEBUG_TOKEN", False
+        )
         if not allow:
             return Response({"detail": "disabled"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -190,11 +210,15 @@ class IntegrationIssueTokenDebugView(IntegrationBaseView):
         try:
             uid = int(uid)
         except (TypeError, ValueError):
-            return Response({"detail": "user_id required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "user_id required"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         user = User.objects.filter(pk=uid, is_active=True).first()
         if not user:
-            return Response({"detail": "user not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "user not found"}, status=status.HTTP_404_NOT_FOUND
+            )
 
         from rest_framework.authtoken.models import Token
 

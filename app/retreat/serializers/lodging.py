@@ -59,11 +59,15 @@ class LodgingRoomSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         """region 과 division 은 같은 region 아래에 있어야 한다 (소속 검증)."""
-        region = attrs.get("region") if "region" in attrs else getattr(
-            self.instance, "region", None
+        region = (
+            attrs.get("region")
+            if "region" in attrs
+            else getattr(self.instance, "region", None)
         )
-        division = attrs.get("division") if "division" in attrs else getattr(
-            self.instance, "division", None
+        division = (
+            attrs.get("division")
+            if "division" in attrs
+            else getattr(self.instance, "division", None)
         )
         if region and division and division.region_id != region.id:
             raise serializers.ValidationError(

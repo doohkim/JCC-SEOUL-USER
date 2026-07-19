@@ -101,12 +101,14 @@ class NoticeImageUploadTests(TestCase):
 class NoticeThumbnailCompressTests(TestCase):
     def test_large_thumbnail_is_resized_and_reencoded(self):
         original = _large_png_bytes()
-        upload = SimpleUploadedFile(
-            "banner.png", original, content_type="image/png"
-        )
+        upload = SimpleUploadedFile("banner.png", original, content_type="image/png")
         form = NoticeForm(
-            data={"title": "썸네일", "body": "<p>본문</p>", "scope": "all",
-                  "is_pinned": False},
+            data={
+                "title": "썸네일",
+                "body": "<p>본문</p>",
+                "scope": "all",
+                "is_pinned": False,
+            },
             files={"thumbnail": upload},
         )
         self.assertTrue(form.is_valid(), form.errors)

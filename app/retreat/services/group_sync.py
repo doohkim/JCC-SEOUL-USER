@@ -69,7 +69,9 @@ def apply_attendee_profile_defaults(
     return validated_data
 
 
-def duplicate_event_attendees_for_user(user, *, event_id: int, exclude_pk: int | None = None):
+def duplicate_event_attendees_for_user(
+    user, *, event_id: int, exclude_pk: int | None = None
+):
     """같은 집회에서 user 가 연결된 다른 조원 행."""
     qs = RetreatAttendee.objects.filter(
         user_id=user.pk,
@@ -245,7 +247,11 @@ def sync_attendee_from_membership(
     log_retreat_change(
         user=changed_by,
         event=group.event,
-        action=RetreatChangeLog.Action.CREATE if created else RetreatChangeLog.Action.UPDATE,
+        action=(
+            RetreatChangeLog.Action.CREATE
+            if created
+            else RetreatChangeLog.Action.UPDATE
+        ),
         target_type=RetreatChangeLog.TargetType.ATTENDEE,
         target_id=attendee.id,
         payload_after={
@@ -298,9 +304,11 @@ def sync_membership_from_attendee(
         log_retreat_change(
             user=changed_by,
             event=group.event,
-            action=RetreatChangeLog.Action.CREATE
-            if created
-            else RetreatChangeLog.Action.UPDATE,
+            action=(
+                RetreatChangeLog.Action.CREATE
+                if created
+                else RetreatChangeLog.Action.UPDATE
+            ),
             target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
             target_id=membership.id,
             payload_after={
@@ -311,9 +319,7 @@ def sync_membership_from_attendee(
             },
         )
     else:
-        existing = RetreatGroupMembership.objects.filter(
-            group=group, user=user
-        ).first()
+        existing = RetreatGroupMembership.objects.filter(group=group, user=user).first()
         if existing:
             mid = existing.id
             existing.delete()
@@ -368,9 +374,9 @@ def delete_attendees_for_membership(
         return 0
     removed = 0
     for attendee in list(
-        RetreatAttendee.objects.filter(group_id=group_id, user_id=user_id).select_related(
-            "group", "group__event"
-        )
+        RetreatAttendee.objects.filter(
+            group_id=group_id, user_id=user_id
+        ).select_related("group", "group__event")
     ):
         attendee_id = attendee.id
         event_id = attendee.group.event_id

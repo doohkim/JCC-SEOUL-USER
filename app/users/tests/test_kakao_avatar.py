@@ -13,7 +13,10 @@ from django.templatetags.static import static
 from users.mixins import ensure_user_profile
 from users.models import UserProfile
 from users.services.kakao_auth import create_or_update_kakao_user
-from users.services.user_avatar import user_profile_avatar_api_value, user_profile_avatar_url
+from users.services.user_avatar import (
+    user_profile_avatar_api_value,
+    user_profile_avatar_url,
+)
 
 User = get_user_model()
 
@@ -59,13 +62,17 @@ class KakaoAvatarDisplayTests(TestCase):
         profile = UserProfile.objects.get(user=self.user)
         profile.avatar.save(
             "kakao_legacy.jpg",
-            SimpleUploadedFile("kakao_legacy.jpg", self._fake_image_bytes(), "image/jpeg"),
+            SimpleUploadedFile(
+                "kakao_legacy.jpg", self._fake_image_bytes(), "image/jpeg"
+            ),
             save=False,
         )
         profile.avatar_user_uploaded = False
         profile.save(update_fields=["avatar", "avatar_user_uploaded", "updated_at"])
 
-        self.assertEqual(user_profile_avatar_url(self.user), static("attendance/default-avatar.svg"))
+        self.assertEqual(
+            user_profile_avatar_url(self.user), static("attendance/default-avatar.svg")
+        )
         self.assertEqual(user_profile_avatar_api_value(self.user), "")
 
     def test_user_uploaded_avatar_shown(self):
@@ -105,7 +112,9 @@ class KakaoAvatarDisplayTests(TestCase):
                 "avatar": self._valid_jpeg_upload(),
             },
         )
-        self.assertEqual(r.status_code, 302, getattr(r, "context", None) and r.context["form"].errors)
+        self.assertEqual(
+            r.status_code, 302, getattr(r, "context", None) and r.context["form"].errors
+        )
         profile = UserProfile.objects.get(user=self.user)
         self.assertTrue(profile.avatar_user_uploaded)
         self.assertTrue(bool(profile.avatar.name))

@@ -58,9 +58,7 @@ def _is_event_wide_for_user(user, event: RetreatEvent) -> bool:
 
 
 def _event_group_ids(event: RetreatEvent) -> list[int]:
-    return list(
-        RetreatGroup.objects.filter(event=event).values_list("id", flat=True)
-    )
+    return list(RetreatGroup.objects.filter(event=event).values_list("id", flat=True))
 
 
 def _leader_group_ids_for_event(user, event: RetreatEvent) -> list[int]:
@@ -533,18 +531,22 @@ def build_group_attendance_board(
     status_order = {S.CHECKED_IN: 0, S.CHECKED_OUT: 1, S.PENDING: 2}
 
     members_by_group: dict[int, list[dict]] = defaultdict(list)
-    attendee_rows = participating_filter(
-        visible_attendees_for(
-            user, RetreatAttendee.objects.filter(group_id__in=group_ids)
+    attendee_rows = (
+        participating_filter(
+            visible_attendees_for(
+                user, RetreatAttendee.objects.filter(group_id__in=group_ids)
+            )
         )
-    ).values(
-        "group_id",
-        "name",
-        "member_role",
-        "gender",
-        "expected_check_in_at",
-        "expected_check_out_at",
-    ).order_by("name", "id")
+        .values(
+            "group_id",
+            "name",
+            "member_role",
+            "gender",
+            "expected_check_in_at",
+            "expected_check_out_at",
+        )
+        .order_by("name", "id")
+    )
     for row in attendee_rows:
         eff = _effective_check_in_status(
             row["expected_check_in_at"], row["expected_check_out_at"], now

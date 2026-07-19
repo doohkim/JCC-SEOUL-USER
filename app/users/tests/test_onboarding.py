@@ -51,7 +51,9 @@ class OnboardingRetreatParticipationTests(TestCase):
         self.assertEqual(r.status_code, 302)
         self.assertIn("/notices/", r.url)
         profile = UserProfile.objects.get(user=self.user)
-        self.assertEqual(profile.onboarding_status, UserProfile.OnboardingStatus.APPROVED)
+        self.assertEqual(
+            profile.onboarding_status, UserProfile.OnboardingStatus.APPROVED
+        )
         self.assertFalse(profile.requested_retreat_participation)
         self.assertIsNone(profile.requested_retreat_group_id)
         self.assertTrue(
@@ -93,7 +95,9 @@ class OnboardingRetreatParticipationTests(TestCase):
         self.assertEqual(r.status_code, 302)
 
         profile = UserProfile.objects.get(user=self.user)
-        self.assertEqual(profile.requested_applicant_role, UserProfile.ApplicantRole.PASTOR)
+        self.assertEqual(
+            profile.requested_applicant_role, UserProfile.ApplicantRole.PASTOR
+        )
         self.assertFalse(profile.requested_retreat_participation)
         self.assertIsNone(profile.requested_retreat_group_id)
         self.assertIsNone(profile.requested_team_id)
@@ -105,4 +109,6 @@ class OnboardingRetreatParticipationTests(TestCase):
         r = self.client.post(reverse("user_onboarding"), payload)
         self.assertEqual(r.status_code, 302)
         profile = UserProfile.objects.get(user=self.user)
-        self.assertEqual(profile.requested_applicant_role, UserProfile.ApplicantRole.MEMBER)
+        self.assertEqual(
+            profile.requested_applicant_role, UserProfile.ApplicantRole.MEMBER
+        )

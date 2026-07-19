@@ -103,7 +103,13 @@ class MemberVisitLogAdmin(PastoralRegistryModelAdminMixin, admin.ModelAdmin):
     class Media:
         css = {"all": ("admin/css/jcc_fieldsets.css",)}
 
-    list_display = ["member", "visit_date", "contact_method", "recorded_by", "created_at"]
+    list_display = [
+        "member",
+        "visit_date",
+        "contact_method",
+        "recorded_by",
+        "created_at",
+    ]
     list_filter = ["contact_method", "visit_date"]
     search_fields = ["content", "member__name"]
     autocomplete_fields = ["member", "recorded_by"]

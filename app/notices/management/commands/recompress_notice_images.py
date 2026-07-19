@@ -86,9 +86,7 @@ class Command(BaseCommand):
 
             with notice.thumbnail.open("rb") as fh:
                 original = fh.read()
-            compressed = compress_image_bytes(
-                original, max_width=THUMBNAIL_MAX_WIDTH
-            )
+            compressed = compress_image_bytes(original, max_width=THUMBNAIL_MAX_WIDTH)
             if not compressed or len(compressed) >= old_size:
                 continue
 

@@ -5,7 +5,12 @@ from __future__ import annotations
 from django.db.models import QuerySet
 from django.utils import timezone
 
-from retreat.models import RetreatAttendee, RetreatChangeLog, RetreatGroup, RetreatPickup
+from retreat.models import (
+    RetreatAttendee,
+    RetreatChangeLog,
+    RetreatGroup,
+    RetreatPickup,
+)
 from retreat.services.audit import log_retreat_change
 from retreat.services.participation import participating_filter
 

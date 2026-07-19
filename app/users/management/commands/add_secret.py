@@ -59,7 +59,9 @@ class Command(BaseCommand):
         parser.add_argument("section", type=str, help="")
         parser.add_argument("key", type=str)
         parser.add_argument("value", type=str)
-        parser.add_argument("--print", action="store_true", help="추가 결과를 콘솔에 프린트")
+        parser.add_argument(
+            "--print", action="store_true", help="추가 결과를 콘솔에 프린트"
+        )
 
     def handle(self, *args, **options):
         section = options["section"]
@@ -94,7 +96,7 @@ class Command(BaseCommand):
             section_text = f"# {secret_section}\n"
             for secret_key, _secret_value in section_dict.items():
                 section_text += (
-                    f'{secret_key} = decode_encrypted_secret('
+                    f"{secret_key} = decode_encrypted_secret("
                     f'ENCRYPTED_SECRETS["{secret_section}"]["{secret_key}"])\n'
                 )
             section_text += "\n"
@@ -104,4 +106,6 @@ class Command(BaseCommand):
         secrets_text = CODE_START + dict_text + attributes_text + CODE_END
         if options["print"]:
             print(secrets_text)
-        open(settings.BASE_DIR / "config/settings/_base/_secrets.py", "wt").write(secrets_text)
+        open(settings.BASE_DIR / "config/settings/_base/_secrets.py", "wt").write(
+            secrets_text
+        )

@@ -62,7 +62,9 @@ def forwards(apps, schema_editor):
             updates.append("role_level")
         # legacy role code -> 기능권한 플래그 이관
         role_codes = set(
-            UserFunctionalDeptRole.objects.filter(user_id=u.id).values_list("role__code", flat=True)
+            UserFunctionalDeptRole.objects.filter(user_id=u.id).values_list(
+                "role__code", flat=True
+            )
         )
         attendance = "attendance_admin" in role_codes
         parking = "parking_admin" in role_codes

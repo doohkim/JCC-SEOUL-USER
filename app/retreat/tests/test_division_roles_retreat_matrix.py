@@ -25,9 +25,7 @@ class DivisionAdminScopeTests(CouncilMatrixFixture):
             division=self.div_seoul,
         )
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])
-        group_ids = {
-            row["group_id"] for row in self.api.get(url).json()["by_group"]
-        }
+        group_ids = {row["group_id"] for row in self.api.get(url).json()["by_group"]}
         self.assertEqual(group_ids, {self.group_seoul.id, shared_group.id})
         rollup_division_ids = {
             row["division_id"] for row in self.api.get(url).json()["by_division"]
@@ -66,7 +64,9 @@ class DivisionAdminAttendeePickupTests(CouncilMatrixFixture):
     def test_cannot_link_user(self):
         detail = reverse("api_retreat_attendee_detail", args=[self.pending.id])
         self.assertEqual(
-            self.api.patch(detail, {"user": self.link_user.id}, format="json").status_code,
+            self.api.patch(
+                detail, {"user": self.link_user.id}, format="json"
+            ).status_code,
             403,
         )
 
@@ -130,9 +130,7 @@ class DivisionObserverTests(CouncilMatrixFixture):
         self.assertEqual(
             self.api.post(
                 list_url,
-                self.pickup_post_payload(
-                    direction="departure", name="입실중"
-                ),
+                self.pickup_post_payload(direction="departure", name="입실중"),
                 format="json",
             ).status_code,
             403,

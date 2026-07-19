@@ -49,14 +49,24 @@ def parse_blocks(md: str) -> list[dict]:
             i += 1
             continue
         if line.startswith("## "):
-            blocks.append({"type": "section", "title": strip_md(line[3:].strip()), "items": []})
+            blocks.append(
+                {"type": "section", "title": strip_md(line[3:].strip()), "items": []}
+            )
             i += 1
             continue
         if line.startswith("### "):
             if not blocks or blocks[-1]["type"] != "section":
-                blocks.append({"type": "section", "title": strip_md(line[4:].strip()), "items": []})
+                blocks.append(
+                    {
+                        "type": "section",
+                        "title": strip_md(line[4:].strip()),
+                        "items": [],
+                    }
+                )
             else:
-                blocks[-1]["items"].append({"kind": "subheading", "text": strip_md(line[4:].strip())})
+                blocks[-1]["items"].append(
+                    {"kind": "subheading", "text": strip_md(line[4:].strip())}
+                )
             i += 1
             continue
         if line.strip() == "---":
@@ -70,7 +80,9 @@ def parse_blocks(md: str) -> list[dict]:
         bullet = re.match(r"^[-*] (.+)$", line.strip())
         if bullet:
             if blocks and blocks[-1]["type"] == "section":
-                blocks[-1]["items"].append({"kind": "bullet", "text": strip_md(bullet.group(1))})
+                blocks[-1]["items"].append(
+                    {"kind": "bullet", "text": strip_md(bullet.group(1))}
+                )
             i += 1
             continue
         numbered = re.match(r"^(\d+)\. (.+)$", line.strip())
@@ -87,7 +99,9 @@ def parse_blocks(md: str) -> list[dict]:
             continue
         if line.strip():
             if blocks and blocks[-1]["type"] == "section":
-                blocks[-1]["items"].append({"kind": "para", "text": strip_md(line.strip())})
+                blocks[-1]["items"].append(
+                    {"kind": "para", "text": strip_md(line.strip())}
+                )
         i += 1
 
     return [{"type": "title", "title": title, "subtitle": subtitle}, *blocks]
@@ -115,7 +129,9 @@ def add_text_slide(prs: Presentation, title: str, lines: list[str]) -> None:
     title_box.text_frame.text = title
     set_title_style(title_box, size=28)
 
-    body = slide.shapes.add_textbox(MARGIN, Inches(1.25), CONTENT_W, SLIDE_H - Inches(1.55))
+    body = slide.shapes.add_textbox(
+        MARGIN, Inches(1.25), CONTENT_W, SLIDE_H - Inches(1.55)
+    )
     tf = body.text_frame
     tf.word_wrap = True
     for idx, line in enumerate(lines):

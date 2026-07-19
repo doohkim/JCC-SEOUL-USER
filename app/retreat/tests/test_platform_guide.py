@@ -32,13 +32,17 @@ class _PlatformGuideFixture(TestCase):
             division=cls.div,
             name="1조",
         )
-        cls.leader = User.objects.create_user(username="platform_guide_leader", password="x")
+        cls.leader = User.objects.create_user(
+            username="platform_guide_leader", password="x"
+        )
         RetreatGroupMembership.objects.create(
             user=cls.leader,
             group=cls.group,
             role=RetreatGroupMembership.Role.LEADER,
         )
-        cls.council = User.objects.create_user(username="platform_guide_council", password="x")
+        cls.council = User.objects.create_user(
+            username="platform_guide_council", password="x"
+        )
         rl, _ = RoleLevel.objects.get_or_create(
             code="president",
             defaults={"name": "회장", "level": 80, "sort_order": 20},
@@ -52,7 +56,9 @@ class _PlatformGuideFixture(TestCase):
             user=cls.council,
             role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
-        cls.stranger = User.objects.create_user(username="platform_guide_stranger", password="x")
+        cls.stranger = User.objects.create_user(
+            username="platform_guide_stranger", password="x"
+        )
         UserDivisionTeam.objects.create(
             user=cls.stranger, division=cls.div, is_primary=True
         )
@@ -87,9 +93,7 @@ class RetreatPlatformGuidePageTests(_PlatformGuideFixture):
 
     def test_manage_groups_hides_leader_guide_link(self):
         self.client.force_login(self.leader)
-        r = self.client.get(
-            reverse("retreat_group_manage_list", args=[self.event.id])
-        )
+        r = self.client.get(reverse("retreat_group_manage_list", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
         self.assertNotContains(r, "사용 가이드")
         self.assertContains(r, "플랫폼 가이드")

@@ -20,7 +20,10 @@ from retreat.apis._common import assert_can_manage_group_leaders, get_group_or_4
 from retreat.models import RetreatChangeLog, RetreatGroupMembership
 from retreat.serializers import RetreatGroupMembershipSerializer
 from retreat.services.audit import log_retreat_change
-from retreat.services.account_retired import assert_user_visible_to, visible_user_linked_for
+from retreat.services.account_retired import (
+    assert_user_visible_to,
+    visible_user_linked_for,
+)
 from retreat.services.group_sync import (
     clear_leader_role_on_membership_removed,
     sync_attendee_from_membership,
@@ -86,9 +89,11 @@ class RetreatGroupMembershipListCreateView(APIView):
         log_retreat_change(
             user=request.user,
             event=group.event,
-            action=RetreatChangeLog.Action.CREATE
-            if created
-            else RetreatChangeLog.Action.UPDATE,
+            action=(
+                RetreatChangeLog.Action.CREATE
+                if created
+                else RetreatChangeLog.Action.UPDATE
+            ),
             target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
             target_id=membership.id,
             payload_after={
@@ -112,7 +117,9 @@ class RetreatGroupMembershipDetailView(APIView):
 
     def _get(self, membership_id: int) -> RetreatGroupMembership:
         return get_object_or_404(
-            RetreatGroupMembership.objects.select_related("user", "group", "group__event"),
+            RetreatGroupMembership.objects.select_related(
+                "user", "group", "group__event"
+            ),
             pk=membership_id,
         )
 
@@ -120,9 +127,7 @@ class RetreatGroupMembershipDetailView(APIView):
         membership = self._get(membership_id)
         assert_user_visible_to(request.user, membership.user)
         assert_can_manage_group_leaders(request.user, membership.group)
-        role = _validate_role(
-            (request.data.get("role") or membership.role).strip()
-        )
+        role = _validate_role((request.data.get("role") or membership.role).strip())
         before = {
             "group_id": membership.group_id,
             "user_id": membership.user_id,
@@ -159,11 +164,11 @@ class RetreatGroupMembershipDetailView(APIView):
         }
         event = membership.group.event
         mid = membership.id
-        clear_leader_role_on_membership_removed(
-            membership, changed_by=request.user
-        )
+        clear_leader_role_on_membership_removed(membership, changed_by=request.user)
         membership.delete()
-        from retreat.services.staff_application import delete_staff_application_if_unassigned
+        from retreat.services.staff_application import (
+            delete_staff_application_if_unassigned,
+        )
 
         delete_staff_application_if_unassigned(
             membership.user, event, actor=request.user

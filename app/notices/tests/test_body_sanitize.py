@@ -65,7 +65,7 @@ class NoticeCreateSanitizeTests(TestCase):
         self.client.force_login(self.superuser)
 
     def test_create_post_strips_script_from_body(self):
-        body = '<p>저장</p><script>alert(1)</script><strong>강조</strong>'
+        body = "<p>저장</p><script>alert(1)</script><strong>강조</strong>"
         r = self.client.post(
             reverse("notice_create"),
             {

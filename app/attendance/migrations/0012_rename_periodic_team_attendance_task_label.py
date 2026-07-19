@@ -44,4 +44,3 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(rename_periodic_task_label, revert_periodic_task_label),
     ]
-

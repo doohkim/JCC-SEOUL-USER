@@ -61,7 +61,9 @@ def get_or_create_schedule_settings(pastor_id: int) -> PastorScheduleSettings:
     return obj
 
 
-def _hours_for_weekday(settings_obj: PastorScheduleSettings, weekday: int) -> tuple[int, int]:
+def _hours_for_weekday(
+    settings_obj: PastorScheduleSettings, weekday: int
+) -> tuple[int, int]:
     raw = settings_obj.weekday_hours_json
     if isinstance(raw, dict) and str(weekday) in raw:
         block = raw[str(weekday)]
@@ -93,7 +95,10 @@ def _parse_custom_slots(data, duration_minutes: int) -> list[tuple[dt.time, dt.t
         out: list[tuple[dt.time, dt.time]] = []
         for h in sorted({int(x) for x in data}):
             st = dt.time(h, 0)
-            et = (dt.datetime.combine(dt.date.min, st) + dt.timedelta(minutes=duration_minutes)).time()
+            et = (
+                dt.datetime.combine(dt.date.min, st)
+                + dt.timedelta(minutes=duration_minutes)
+            ).time()
             out.append((st, et))
         return out
 
@@ -113,7 +118,9 @@ def _parse_custom_slots(data, duration_minutes: int) -> list[tuple[dt.time, dt.t
     return []
 
 
-def _ranges_from_hours(start_h: int, end_h: int, duration_minutes: int) -> list[tuple[dt.time, dt.time]]:
+def _ranges_from_hours(
+    start_h: int, end_h: int, duration_minutes: int
+) -> list[tuple[dt.time, dt.time]]:
     """end_h: 마지막 슬롯 종료 시각(시). 예: 23이면 22:00~23:00 슬롯까지."""
     out: list[tuple[dt.time, dt.time]] = []
     start_min = start_h * 60
@@ -121,7 +128,10 @@ def _ranges_from_hours(start_h: int, end_h: int, duration_minutes: int) -> list[
     cur = start_min
     while cur + duration_minutes <= end_boundary:
         st = dt.time(cur // 60, cur % 60)
-        et = (dt.datetime.combine(dt.date.min, st) + dt.timedelta(minutes=duration_minutes)).time()
+        et = (
+            dt.datetime.combine(dt.date.min, st)
+            + dt.timedelta(minutes=duration_minutes)
+        ).time()
         out.append((st, et))
         cur += duration_minutes
     return out
@@ -156,7 +166,9 @@ def ensure_slots_for_horizon(pastor_id: int) -> None:
             )
 
 
-def create_counseling_request(*, applicant_id: int, slot_id: int, message: str) -> CounselingRequest:
+def create_counseling_request(
+    *, applicant_id: int, slot_id: int, message: str
+) -> CounselingRequest:
     with transaction.atomic():
         slot = CounselingSlot.objects.select_for_update().get(pk=slot_id)
         if slot.pastor_id == applicant_id:
@@ -176,11 +188,17 @@ def create_counseling_request(*, applicant_id: int, slot_id: int, message: str) 
         return req
 
 
-def accept_counseling_request(*, user_id: int, req: CounselingRequest) -> CounselingRequest:
+def accept_counseling_request(
+    *, user_id: int, req: CounselingRequest
+) -> CounselingRequest:
     if req.pastor_id != user_id:
         raise PermissionError
     with transaction.atomic():
-        locked = CounselingRequest.objects.select_for_update().select_related("slot").get(pk=req.pk)
+        locked = (
+            CounselingRequest.objects.select_for_update()
+            .select_related("slot")
+            .get(pk=req.pk)
+        )
         if locked.status != CounselingRequest.Status.PENDING:
             raise ValueError("처리할 수 없는 상태입니다.")
         locked.status = CounselingRequest.Status.ACCEPTED
@@ -190,11 +208,17 @@ def accept_counseling_request(*, user_id: int, req: CounselingRequest) -> Counse
         return locked
 
 
-def reject_counseling_request(*, user_id: int, req: CounselingRequest) -> CounselingRequest:
+def reject_counseling_request(
+    *, user_id: int, req: CounselingRequest
+) -> CounselingRequest:
     if req.pastor_id != user_id:
         raise PermissionError
     with transaction.atomic():
-        locked = CounselingRequest.objects.select_for_update().select_related("slot").get(pk=req.pk)
+        locked = (
+            CounselingRequest.objects.select_for_update()
+            .select_related("slot")
+            .get(pk=req.pk)
+        )
         if locked.status != CounselingRequest.Status.PENDING:
             raise ValueError("처리할 수 없는 상태입니다.")
         locked.status = CounselingRequest.Status.REJECTED
@@ -204,11 +228,17 @@ def reject_counseling_request(*, user_id: int, req: CounselingRequest) -> Counse
         return locked
 
 
-def cancel_counseling_request(*, user_id: int, req: CounselingRequest) -> CounselingRequest:
+def cancel_counseling_request(
+    *, user_id: int, req: CounselingRequest
+) -> CounselingRequest:
     if req.applicant_id != user_id:
         raise PermissionError
     with transaction.atomic():
-        locked = CounselingRequest.objects.select_for_update().select_related("slot").get(pk=req.pk)
+        locked = (
+            CounselingRequest.objects.select_for_update()
+            .select_related("slot")
+            .get(pk=req.pk)
+        )
         if locked.status != CounselingRequest.Status.PENDING:
             raise ValueError("취소할 수 없는 상태입니다.")
         locked.status = CounselingRequest.Status.CANCELLED

@@ -24,7 +24,9 @@ from attendance.management.commands.import_sunday_attendance_xlsx import (
 
 class SundayAttendanceXlsxParseTests(SimpleTestCase):
     def test_sunday_header_includes_president_group_as_team_block(self):
-        from attendance.importers.sunday_attendance_xlsx import _team_starts_from_header_row
+        from attendance.importers.sunday_attendance_xlsx import (
+            _team_starts_from_header_row,
+        )
 
         header = ("부서 회장단", "", "", "현혜팀", "", "", "미영팀")
         starts = _team_starts_from_header_row(header)
@@ -33,7 +35,9 @@ class SundayAttendanceXlsxParseTests(SimpleTestCase):
         self.assertEqual(starts[2], (6, "미영팀"))
 
     def test_sunday_header_two_column_format_keeps_all_teams(self):
-        from attendance.importers.sunday_attendance_xlsx import _team_starts_from_header_row
+        from attendance.importers.sunday_attendance_xlsx import (
+            _team_starts_from_header_row,
+        )
 
         header = (
             "",
@@ -208,7 +212,9 @@ class MidweekAttendanceParseTests(SimpleTestCase):
     def test_dedupe_midweek_prefers_present_over_absent(self):
         rows = [
             ParsedMidweekAttendanceRow("홍길동", "A팀", MidweekAttendanceStatus.ABSENT),
-            ParsedMidweekAttendanceRow("홍길동", "B팀", MidweekAttendanceStatus.PRESENT),
+            ParsedMidweekAttendanceRow(
+                "홍길동", "B팀", MidweekAttendanceStatus.PRESENT
+            ),
         ]
         out, dropped = dedupe_midweek_by_member(rows)
         self.assertEqual(dropped, 1)

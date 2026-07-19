@@ -41,9 +41,7 @@ class RegionModelTests(TestCase):
 
     def test_division_str_prefixes_region(self):
         region = Region.objects.create(code="busan", name="부산", sort_order=30)
-        div = Division.objects.create(
-            region=region, code="busan_youth", name="청년부"
-        )
+        div = Division.objects.create(region=region, code="busan_youth", name="청년부")
         self.assertEqual(str(div), "부산 · 청년부")
 
 

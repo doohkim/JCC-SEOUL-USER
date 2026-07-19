@@ -107,10 +107,16 @@ class CounselingRequestUpdateSerializer(serializers.ModelSerializer):
             return attrs
         if "applicant_message" in attrs:
             if req.applicant_id != user.pk:
-                raise serializers.ValidationError({"applicant_message": "수정할 수 없습니다."})
+                raise serializers.ValidationError(
+                    {"applicant_message": "수정할 수 없습니다."}
+                )
             if req.status != CounselingRequest.Status.PENDING:
-                raise serializers.ValidationError({"applicant_message": "대기 중만 수정할 수 있습니다."})
+                raise serializers.ValidationError(
+                    {"applicant_message": "대기 중만 수정할 수 있습니다."}
+                )
         if "pastor_notes_json" in attrs:
             if req.pastor_id != user.pk:
-                raise serializers.ValidationError({"pastor_notes_json": "목회자만 수정할 수 있습니다."})
+                raise serializers.ValidationError(
+                    {"pastor_notes_json": "목회자만 수정할 수 있습니다."}
+                )
         return attrs

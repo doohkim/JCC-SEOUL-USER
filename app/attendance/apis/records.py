@@ -9,7 +9,10 @@ from rest_framework.views import APIView
 
 from attendance.apis.common import StandardPagination, division_for_attendance_request
 from attendance.choices import MidweekAttendanceStatus, MidweekServiceType, WorshipVenue
-from attendance.serializers import MidweekRecordRowSerializer, SundayAttendanceLineRowSerializer
+from attendance.serializers import (
+    MidweekRecordRowSerializer,
+    SundayAttendanceLineRowSerializer,
+)
 from attendance.services.week_rollup import (
     midweek_records_for_week,
     parse_week_rollup_key,
@@ -56,9 +59,7 @@ class AttendanceSundayLineListView(APIView):
         if team_id:
             team = Team.objects.filter(pk=team_id, division=division).first()
             if team:
-                qs = qs.filter(
-                    Q(team_name_snapshot=team.name) | Q(team_id=team.id)
-                )
+                qs = qs.filter(Q(team_name_snapshot=team.name) | Q(team_id=team.id))
             else:
                 qs = qs.none()
 
@@ -73,7 +74,9 @@ class AttendanceSundayLineListView(APIView):
         ser = SundayAttendanceLineRowSerializer(page, many=True)
         resp = paginator.get_paginated_response(ser.data)
         resp.data["stats"] = {
-            "on_site": qs.filter(venue__in=[WorshipVenue.SEOUL, WorshipVenue.INCHEON]).count(),
+            "on_site": qs.filter(
+                venue__in=[WorshipVenue.SEOUL, WorshipVenue.INCHEON]
+            ).count(),
             "online": qs.filter(venue=WorshipVenue.ONLINE).count(),
             "branch": qs.filter(venue=WorshipVenue.BRANCH).count(),
             "absent": 0,
@@ -117,9 +120,7 @@ class AttendanceMidweekRecordListView(APIView):
         if team_id:
             team = Team.objects.filter(pk=team_id, division=division).first()
             if team:
-                qs = qs.filter(
-                    Q(team_name_snapshot=team.name) | Q(team_id=team.id)
-                )
+                qs = qs.filter(Q(team_name_snapshot=team.name) | Q(team_id=team.id))
             else:
                 qs = qs.none()
 

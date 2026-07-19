@@ -124,8 +124,7 @@ class Notice(models.Model):
             )
         if region_id:
             return qs.filter(
-                models.Q(scope=cls.Scope.ALL)
-                | models.Q(division__region_id=region_id)
+                models.Q(scope=cls.Scope.ALL) | models.Q(division__region_id=region_id)
             )
         return qs
 

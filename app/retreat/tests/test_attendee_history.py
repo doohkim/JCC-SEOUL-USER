@@ -88,9 +88,7 @@ class RetreatAttendeeHistoryTests(APITestCase):
         UserDivisionTeam.objects.create(
             user=other_leader, division=self.div, is_primary=True
         )
-        RetreatGroupMembership.objects.create(
-            user=other_leader, group=self.other_group
-        )
+        RetreatGroupMembership.objects.create(user=other_leader, group=self.other_group)
         self.client.force_authenticate(other_leader)
         r = self.client.get(self._url(self.attendee.id))
         self.assertEqual(r.status_code, 403)

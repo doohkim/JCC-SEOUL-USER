@@ -104,7 +104,9 @@ class TeamAttendanceSessionAdmin(AuditLoggingModelAdminMixin, JccModelAdmin):
         allowed = {c[0] for c in chips}
 
         from_team = session.roster_members()
-        from_slots = Member.objects.filter(team_slot_attendances__session=session).distinct()
+        from_slots = Member.objects.filter(
+            team_slot_attendances__session=session
+        ).distinct()
         members = (from_team | from_slots).distinct().order_by("name")
 
         if request.method == "POST":
@@ -137,7 +139,9 @@ class TeamAttendanceSessionAdmin(AuditLoggingModelAdminMixin, JccModelAdmin):
                             slot_index=si,
                         ).delete()
             messages.success(request, "교시별 출석을 저장했습니다.")
-            return redirect("admin:attendance_teamattendancesession_slot_board", object_id=pk)
+            return redirect(
+                "admin:attendance_teamattendancesession_slot_board", object_id=pk
+            )
 
         grid = {}
         for row in TeamMemberSlotAttendance.objects.filter(session=session):
@@ -171,7 +175,13 @@ class TeamMemberSlotAttendanceAdmin(AuditLoggingModelAdminMixin, JccModelAdmin):
     autocomplete_fields = ["session", "member"]
     readonly_fields = ["created_by", "updated_by"]
     fieldsets = (
-        ("필수", {"classes": ("jcc-required",), "fields": ("session", "member", "slot_index")}),
+        (
+            "필수",
+            {
+                "classes": ("jcc-required",),
+                "fields": ("session", "member", "slot_index"),
+            },
+        ),
         (
             "선택",
             {

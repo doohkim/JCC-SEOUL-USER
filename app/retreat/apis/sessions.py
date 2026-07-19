@@ -57,9 +57,11 @@ class RetreatEventSessionListCreateView(APIView):
     def get(self, request, event_id: int):
         event = get_object_or_404(RetreatEvent, pk=event_id)
         _assert_event_access(request.user, event)
-        sessions = visible_retreat_sessions_for(request.user, event).select_related(
-            "created_by", "closed_by"
-        ).order_by("-created_at", "-id")
+        sessions = (
+            visible_retreat_sessions_for(request.user, event)
+            .select_related("created_by", "closed_by")
+            .order_by("-created_at", "-id")
+        )
         return Response(RetreatSessionSerializer(sessions, many=True).data)
 
     def post(self, request, event_id: int):

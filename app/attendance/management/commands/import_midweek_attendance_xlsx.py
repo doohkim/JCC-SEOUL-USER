@@ -117,7 +117,9 @@ class Command(BaseCommand):
             )
 
         if title_date is None:
-            raise CommandError("날짜(제목 YYYY.MM.DD 또는 시트명 YY.MM.DD)가 필요합니다.")
+            raise CommandError(
+                "날짜(제목 YYYY.MM.DD 또는 시트명 YY.MM.DD)가 필요합니다."
+            )
 
         self.stdout.write(
             f"예배일: {title_date} · 서비스: {st} · 인원(유니크): {len(parsed)}"
@@ -139,7 +141,9 @@ class Command(BaseCommand):
             skipped_validation = 0
             create_missing = options["create_missing_members"]
             used_ik: set[str] = set(
-                Member.objects.exclude(import_key="").values_list("import_key", flat=True)
+                Member.objects.exclude(import_key="").values_list(
+                    "import_key", flat=True
+                )
             )
 
             for row in parsed:

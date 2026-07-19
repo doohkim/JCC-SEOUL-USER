@@ -148,14 +148,16 @@ def _build_attendance_history(attendee: RetreatAttendee) -> list[dict]:
 
     enrollments_by_id = {
         e.id: e
-        for e in RetreatSessionAttendee.objects.filter(id__in=enrollment_ids)
-        .select_related("session")
+        for e in RetreatSessionAttendee.objects.filter(
+            id__in=enrollment_ids
+        ).select_related("session")
     }
 
     attendances_by_id = {
         a.id: a
-        for a in RetreatAttendance.objects.filter(id__in=attendance_ids)
-        .select_related("enrollment", "enrollment__session")
+        for a in RetreatAttendance.objects.filter(id__in=attendance_ids).select_related(
+            "enrollment", "enrollment__session"
+        )
     }
 
     session_buckets: dict[int, dict] = {}
@@ -181,7 +183,9 @@ def _build_attendance_history(attendee: RetreatAttendee) -> list[dict]:
         is_auto = _is_auto_absent(after)
         if log.action == RetreatChangeLog.Action.CREATE:
             suffix = " · 자동 결석" if is_auto else ""
-            summary = f"{STATUS_LABELS.get(next_status, next_status or '-')} 기록{suffix}"
+            summary = (
+                f"{STATUS_LABELS.get(next_status, next_status or '-')} 기록{suffix}"
+            )
         else:
             summary = (
                 f"{STATUS_LABELS.get(prev_status, prev_status or '-')} → "
@@ -215,11 +219,7 @@ def _build_attendance_history(attendee: RetreatAttendee) -> list[dict]:
     sessions_out: list[dict] = []
     for session in sessions_qs:
         enrollment = next(
-            (
-                e
-                for e in enrollments_by_id.values()
-                if e.session_id == session.id
-            ),
+            (e for e in enrollments_by_id.values() if e.session_id == session.id),
             None,
         )
         current = current_by_session.get(session.id)
@@ -264,9 +264,7 @@ class RetreatAttendeeHistoryView(APIView):
                         attendee.check_in_status, attendee.check_in_status
                     ),
                     "expected_check_in_at": _format_dt(attendee.expected_check_in_at),
-                    "expected_check_out_at": _format_dt(
-                        attendee.expected_check_out_at
-                    ),
+                    "expected_check_out_at": _format_dt(attendee.expected_check_out_at),
                     "checked_in_at": _format_dt(attendee.checked_in_at),
                     "checked_out_at": _format_dt(attendee.checked_out_at),
                     "group_id": attendee.group_id,

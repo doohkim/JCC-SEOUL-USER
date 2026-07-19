@@ -147,9 +147,7 @@ def build_lodging_roster_context(
 
     s = RetreatAttendee.CheckInStatus
     p = RetreatAttendee.ParticipationStatus
-    count_absent = sum(
-        1 for a in attendees if a.participation_status == p.ABSENT
-    )
+    count_absent = sum(1 for a in attendees if a.participation_status == p.ABSENT)
     participating = [a for a in attendees if is_participating(a)]
     count_pending = sum(1 for a in participating if a.check_in_status == s.PENDING)
     count_checked_in = sum(

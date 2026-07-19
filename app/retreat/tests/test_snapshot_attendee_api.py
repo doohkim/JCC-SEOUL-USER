@@ -208,7 +208,9 @@ class SnapshotAttendeeApiTests(TestCase):
 
         response = self.client.delete(self._detail_url(enrollment_id))
         self.assertEqual(response.status_code, 204)
-        self.assertFalse(RetreatSessionAttendee.objects.filter(pk=enrollment_id).exists())
+        self.assertFalse(
+            RetreatSessionAttendee.objects.filter(pk=enrollment_id).exists()
+        )
         self.assertFalse(
             RetreatAttendance.objects.filter(enrollment_id=enrollment_id).exists()
         )

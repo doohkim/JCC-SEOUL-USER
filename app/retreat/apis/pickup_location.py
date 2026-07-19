@@ -117,13 +117,16 @@ class RetreatPickupLocationDetailView(APIView):
             raise ValidationError(errors)
 
         if update_fields:
-            if "name" in update_fields and RetreatPickupLocation.objects.filter(
-                event=loc.event,
-                name=loc.name,
-            ).exclude(pk=loc.pk).exists():
-                raise ValidationError(
-                    {"name": "동일한 탑승장소가 이미 있습니다."}
+            if (
+                "name" in update_fields
+                and RetreatPickupLocation.objects.filter(
+                    event=loc.event,
+                    name=loc.name,
                 )
+                .exclude(pk=loc.pk)
+                .exists()
+            ):
+                raise ValidationError({"name": "동일한 탑승장소가 이미 있습니다."})
             update_fields.append("updated_at")
             loc.save(update_fields=sorted(set(update_fields)))
 

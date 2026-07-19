@@ -247,7 +247,9 @@ class AttendanceSundayRosterView(APIView):
             .select_related("member")
         )
         # 탭 출석부와 동일: 멤버당 다중 슬롯 집계
-        selections_by_member: dict[int, set[str]] = {mid: set() for mid in member_ids_in_chosen}
+        selections_by_member: dict[int, set[str]] = {
+            mid: set() for mid in member_ids_in_chosen
+        }
         has_any_line: dict[int, bool] = {mid: False for mid in member_ids_in_chosen}
         for line in lines_qs:
             has_any_line[line.member_id] = True
@@ -273,7 +275,9 @@ class AttendanceSundayRosterView(APIView):
                 teams[team_id] = {
                     "team_id": team_id,
                     "team_name": mdt.team.name if mdt.team_id else "",
-                    "sort_order": int(mdt.team.sort_order) if mdt.team_id and mdt.team else 0,
+                    "sort_order": (
+                        int(mdt.team.sort_order) if mdt.team_id and mdt.team else 0
+                    ),
                     "members": [],
                 }
             if not has_any_line.get(mid, False):
@@ -313,9 +317,8 @@ class AttendanceSundayRosterView(APIView):
 
         # board members from 교적부: all members that have at least one Team in this division
         member_ids = list(
-            MemberDivisionTeam.objects.filter(division=division, team__isnull=False).values_list(
-                "member_id", flat=True
-            )
+            MemberDivisionTeam.objects.filter(division=division, team__isnull=False)
+            .values_list("member_id", flat=True)
             .distinct()
         )
 
@@ -361,7 +364,11 @@ class AttendanceSundayRosterView(APIView):
             member_id = u.get("member_id")
             selection = u.get("selection")
             team_id = u.get("team_id")
-            if member_id is None or selection not in allowed_keys or member_id not in board_member_ids:
+            if (
+                member_id is None
+                or selection not in allowed_keys
+                or member_id not in board_member_ids
+            ):
                 continue
 
             team = None
@@ -393,4 +400,3 @@ class AttendanceSundayRosterView(APIView):
             changed += 1
 
         return Response({"ok": True, "changed": changed})
-

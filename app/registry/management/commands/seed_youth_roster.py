@@ -70,9 +70,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         raw_path = (options["xlsx_path"] or "").strip()
         path = (
-            Path(raw_path).expanduser().resolve()
-            if raw_path
-            else _default_xlsx_path()
+            Path(raw_path).expanduser().resolve() if raw_path else _default_xlsx_path()
         )
         sheet_name = options["sheet"]
         division_code = (options["division_code"] or "youth").strip() or "youth"
@@ -99,7 +97,9 @@ class Command(BaseCommand):
             raise CommandError(str(e)) from e
 
         self.stdout.write(f"파일: {path}")
-        self.stdout.write(f"시트: {sheet_name}, 부서 코드: {division_code}, 팀 열 {len(team_cols)}개")
+        self.stdout.write(
+            f"시트: {sheet_name}, 부서 코드: {division_code}, 팀 열 {len(team_cols)}개"
+        )
         for tn, names in sorted(team_members.items()):
             self.stdout.write(f"  {tn}: {len(names)}명")
 
@@ -139,7 +139,9 @@ class Command(BaseCommand):
                 team_objs[raw_name] = t
 
             used_ik: set[str] = set(
-                Member.objects.exclude(import_key="").values_list("import_key", flat=True)
+                Member.objects.exclude(import_key="").values_list(
+                    "import_key", flat=True
+                )
             )
             by_name: dict[str, Member] = {}
             for m in Member.objects.all():

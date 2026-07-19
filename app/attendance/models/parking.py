@@ -73,9 +73,15 @@ class ParkingPermitApplication(models.Model):
             raise ValidationError({"vehicle_number": "차량번호를 입력해 주세요."})
         compact = "".join(raw.split())
         if len(compact) < 6 or len(compact) > 12:
-            raise ValidationError({"vehicle_number": "차량번호 형식이 올바르지 않습니다."})
+            raise ValidationError(
+                {"vehicle_number": "차량번호 형식이 올바르지 않습니다."}
+            )
         self.vehicle_number = compact.upper()
-        if self.team_id and self.division_id and self.team.division_id != self.division_id:
+        if (
+            self.team_id
+            and self.division_id
+            and self.team.division_id != self.division_id
+        ):
             raise ValidationError({"team": "팀은 같은 부서에 속해야 합니다."})
 
         if self._state.adding and self.permit_date is None:

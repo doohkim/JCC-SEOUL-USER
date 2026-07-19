@@ -20,7 +20,9 @@ class PastorScheduleSettings(models.Model):
         related_name="pastor_schedule_settings",
         verbose_name="목회자",
     )
-    slot_duration_minutes = models.PositiveSmallIntegerField("슬롯 길이(분)", default=60)
+    slot_duration_minutes = models.PositiveSmallIntegerField(
+        "슬롯 길이(분)", default=60
+    )
     default_start_hour = models.PositiveSmallIntegerField("기본 시작 시", default=10)
     default_end_hour = models.PositiveSmallIntegerField(
         "기본 종료 시(마지막 슬롯이 이 시각에 끝남)",
@@ -66,7 +68,9 @@ class PastorDayOverride(models.Model):
         verbose_name = "목회자 일별 예약 오버라이드"
         verbose_name_plural = "목회자 일별 예약 오버라이드"
         constraints = [
-            models.UniqueConstraint(fields=["pastor", "date"], name="unique_pastor_day_override"),
+            models.UniqueConstraint(
+                fields=["pastor", "date"], name="unique_pastor_day_override"
+            ),
         ]
 
     def __str__(self):
@@ -109,7 +113,9 @@ class CounselingSlot(models.Model):
             ),
         ]
         indexes = [
-            models.Index(fields=["pastor", "date", "state"], name="counseling__pastor_211739_idx"),
+            models.Index(
+                fields=["pastor", "date", "state"], name="counseling__pastor_211739_idx"
+            ),
         ]
 
     def __str__(self):
@@ -123,7 +129,9 @@ class CounselingRequest(models.Model):
         REJECTED = "rejected", "거절"
         CANCELLED = "cancelled", "취소"
 
-    public_id = models.UUIDField("공개 ID", default=uuid.uuid4, unique=True, editable=False)
+    public_id = models.UUIDField(
+        "공개 ID", default=uuid.uuid4, unique=True, editable=False
+    )
     applicant = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -163,7 +171,9 @@ class CounselingRequest(models.Model):
         verbose_name_plural = "상담 신청"
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["pastor", "status"], name="counseling__pastor_21aad3_idx"),
+            models.Index(
+                fields=["pastor", "status"], name="counseling__pastor_21aad3_idx"
+            ),
             models.Index(fields=["applicant", "status"]),
         ]
 

@@ -57,7 +57,9 @@ def _get_view_team_ids_for_division(request, division) -> list[int]:
         raise PermissionDenied("출석부를 이용할 권한이 없습니다.")
     if is_team_roster_broad_access(request.user):
         return list(Team.objects.filter(division=division).values_list("id", flat=True))
-    qs = request.user.division_teams.filter(division=division, team__isnull=False).order_by(
+    qs = request.user.division_teams.filter(
+        division=division, team__isnull=False
+    ).order_by(
         "-is_primary",
         "sort_order",
         "team_id",
@@ -75,7 +77,9 @@ def _get_edit_team_ids_for_division(request, division) -> list[int]:
     return _get_view_team_ids_for_division(request, division)
 
 
-def _build_member_board(*, division, allowed_team_ids: list[int]) -> list[MemberBoardRow]:
+def _build_member_board(
+    *, division, allowed_team_ids: list[int]
+) -> list[MemberBoardRow]:
     """
     멤버가 여러 팀 소속일 수 있으므로, (is_primary 우선)으로 멤버당 대표 1팀을 선택합니다.
     """
@@ -357,7 +361,9 @@ class AttendanceTeamMidweekRosterView(APIView):
             .order_by("member_id", "-id")
         )
 
-        rec_by_member: dict[int, MidweekAttendanceRecord] = {r.member_id: r for r in rec_qs}
+        rec_by_member: dict[int, MidweekAttendanceRecord] = {
+            r.member_id: r for r in rec_qs
+        }
 
         teams = _group_rows_by_team(rows)
         for t in teams:
@@ -369,7 +375,10 @@ class AttendanceTeamMidweekRosterView(APIView):
                     m["record_id"] = None
                 else:
                     # 요구사항: 참석/불참만 보여줌. online은 참석으로 취급.
-                    if rec.status in {MidweekAttendanceStatus.PRESENT, MidweekAttendanceStatus.ONLINE}:
+                    if rec.status in {
+                        MidweekAttendanceStatus.PRESENT,
+                        MidweekAttendanceStatus.ONLINE,
+                    }:
                         m["entry_state"] = "present"
                         m["status"] = "present"
                     else:
@@ -380,7 +389,9 @@ class AttendanceTeamMidweekRosterView(APIView):
 
     def get(self, request, week_sunday: str):
         service_type = request.query_params.get("service_type") or ""
-        division, service_date, teams = self._get_board(request, week_sunday, service_type)
+        division, service_date, teams = self._get_board(
+            request, week_sunday, service_type
+        )
         can_edit = bool(_get_edit_team_ids_for_division(request, division))
         return Response(
             {
@@ -425,7 +436,9 @@ class AttendanceTeamMidweekRosterView(APIView):
                 update_member_ids.append(mid)
             except Exception:
                 pass
-        update_member_ids = [mid for mid in update_member_ids if mid in member_ids_allowed]
+        update_member_ids = [
+            mid for mid in update_member_ids if mid in member_ids_allowed
+        ]
 
         rec_qs = MidweekAttendanceRecord.objects.filter(
             division=division,
@@ -450,7 +463,9 @@ class AttendanceTeamMidweekRosterView(APIView):
             rec = rec_by_member.get(member_id)
             team_id = team_by_member.get(member_id)
             team = (
-                Team.objects.filter(pk=team_id, division=division).first() if team_id else None
+                Team.objects.filter(pk=team_id, division=division).first()
+                if team_id
+                else None
             )
 
             if status_key == "unset":
@@ -493,7 +508,9 @@ class AttendanceTeamMidweekRosterView(APIView):
                     service_type=service_type,
                     member_id=member_id,
                     team=team,
-                    team_name_snapshot=(team.name if team else "")[:100] if team else "",
+                    team_name_snapshot=(
+                        (team.name if team else "")[:100] if team else ""
+                    ),
                     status=desired,
                 )
                 obj.full_clean()
@@ -501,4 +518,3 @@ class AttendanceTeamMidweekRosterView(APIView):
                 changed += 1
 
         return Response({"ok": True, "changed": changed})
-

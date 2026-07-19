@@ -44,7 +44,9 @@ class MemberListCreateView(APIView):
     def get(self, request, *args, **kwargs):
         q = (request.query_params.get("q") or "").strip()
         region_code = (request.query_params.get("region_code") or "").strip() or None
-        division_code = (request.query_params.get("division_code") or "").strip() or None
+        division_code = (
+            request.query_params.get("division_code") or ""
+        ).strip() or None
         team_id_raw = (request.query_params.get("team_id") or "").strip() or None
         team_id = None
         if team_id_raw:
@@ -64,9 +66,13 @@ class MemberListCreateView(APIView):
             except Division.DoesNotExist:
                 division = None
 
-        qs = members_visible_to(request.user, division=division).select_related("pastoral_profile")
+        qs = members_visible_to(request.user, division=division).select_related(
+            "pastoral_profile"
+        )
         if region_code and division is None:
-            qs = qs.filter(division_teams__division__region__code=region_code).distinct()
+            qs = qs.filter(
+                division_teams__division__region__code=region_code
+            ).distinct()
         if team_id is not None:
             qs = qs.filter(division_teams__team_id=team_id)
         if q:
@@ -98,11 +104,15 @@ class MemberListCreateView(APIView):
                     "is_active": m.is_active,
                     "phone": phone,
                     "division_id": mdt.division_id if mdt else None,
-                    "division_code": mdt.division.code if mdt and mdt.division_id else "",
+                    "division_code": (
+                        mdt.division.code if mdt and mdt.division_id else ""
+                    ),
                     "team_id": mdt.team_id if mdt else None,
                     "team_name": mdt.team.name if mdt and mdt.team_id else "",
                     "membership_id": mdt.id if mdt else None,
-                    "division_name": mdt.division.name if mdt and mdt.division_id else "",
+                    "division_name": (
+                        mdt.division.name if mdt and mdt.division_id else ""
+                    ),
                     "is_primary": bool(mdt.is_primary) if mdt else False,
                 }
             )
@@ -120,13 +130,17 @@ class MemberListCreateView(APIView):
         m = member_ser.save()
 
         profile = Member.objects.get(pk=m.pk).pastoral_profile  # ensured by signal
-        profile_ser = MemberProfileSerializer(instance=profile, data=request.data, partial=True)
+        profile_ser = MemberProfileSerializer(
+            instance=profile, data=request.data, partial=True
+        )
         if not profile_ser.is_valid():
             return Response(profile_ser.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
             profile_ser.save()
         except DjangoValidationError as e:
-            return Response({"detail": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         return Response({"ok": True, "member_id": m.id}, status=status.HTTP_201_CREATED)
 
@@ -158,9 +172,15 @@ class MemberRegistryTeamsAccordionView(APIView):
     def get(self, request, *args, **kwargs):
         q = (request.query_params.get("q") or "").strip()
         region_code = (request.query_params.get("region_code") or "").strip() or None
-        division_code = (request.query_params.get("division_code") or "").strip() or None
+        division_code = (
+            request.query_params.get("division_code") or ""
+        ).strip() or None
         team_id_raw = (request.query_params.get("team_id") or "").strip() or None
-        meta_only = (request.query_params.get("meta_only") or "").strip() in {"1", "true", "True"}
+        meta_only = (request.query_params.get("meta_only") or "").strip() in {
+            "1",
+            "true",
+            "True",
+        }
 
         team_id = None
         if team_id_raw:
@@ -169,14 +189,17 @@ class MemberRegistryTeamsAccordionView(APIView):
             except ValueError:
                 team_id = None
 
-        divisions_qs = registry_divisions_for(request.user, region=region_code).order_by(
-            "region__sort_order", "sort_order", "name"
-        )
+        divisions_qs = registry_divisions_for(
+            request.user, region=region_code
+        ).order_by("region__sort_order", "sort_order", "name")
         scope_notice = registry_scope_notice(request.user)
         if division_code:
             div = divisions_qs.filter(code=division_code).first()
             if not div:
-                return Response({"detail": "division_code not allowed"}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"detail": "division_code not allowed"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             divisions_qs = divisions_qs.filter(pk=div.pk)
 
         # meta_only=1: 멤버 그룹/검색 로직은 필요 없고,
@@ -216,17 +239,14 @@ class MemberRegistryTeamsAccordionView(APIView):
                 }
             )
 
-        members_qs = (
-            MemberDivisionTeam.objects.filter(
-                member__is_active=True,
-                division__in=divisions_qs,
-            )
-            .select_related(
-                "member",
-                "member__pastoral_profile",
-                "team",
-                "division",
-            )
+        members_qs = MemberDivisionTeam.objects.filter(
+            member__is_active=True,
+            division__in=divisions_qs,
+        ).select_related(
+            "member",
+            "member__pastoral_profile",
+            "team",
+            "division",
         )
 
         if q:
@@ -300,12 +320,18 @@ class MemberRegistryTeamsAccordionView(APIView):
             div = row.division
             if div and div.id not in seen_division_ids:
                 seen_division_ids.add(div.id)
-                division_options.append({"code": div.code, "id": div.id, "name": div.name})
+                division_options.append(
+                    {"code": div.code, "id": div.id, "name": div.name}
+                )
 
             t_id = row.team_id
             if t_id is not None and t_id not in seen_team_ids:
                 seen_team_ids.add(t_id)
-                team_label = _normalize_hoejangdan_label(row.team.name) if row.team_id else "팀 미지정"
+                team_label = (
+                    _normalize_hoejangdan_label(row.team.name)
+                    if row.team_id
+                    else "팀 미지정"
+                )
                 team_options.append(
                     {
                         "id": t_id,
@@ -321,7 +347,11 @@ class MemberRegistryTeamsAccordionView(APIView):
                     "division_code": div.code if div else "",
                     "division_name": div.name if div else "",
                     "team_id": t_id,
-                    "team_name": _normalize_hoejangdan_label(row.team.name) if row.team_id else "팀 미지정",
+                    "team_name": (
+                        _normalize_hoejangdan_label(row.team.name)
+                        if row.team_id
+                        else "팀 미지정"
+                    ),
                     "members": [],
                 }
 
@@ -359,13 +389,24 @@ class MemberRegistryTeamsAccordionView(APIView):
 
         # sort teams by name
         group_list = list(groups.values())
-        group_list.sort(key=lambda g: (g["team_name"] or "", g["members"][0]["name"] if g["members"] else ""))
+        group_list.sort(
+            key=lambda g: (
+                g["team_name"] or "",
+                g["members"][0]["name"] if g["members"] else "",
+            )
+        )
 
         return Response(
             {
-                "division_options": [{"code": d["code"], "name": d["name"]} for d in division_options],
+                "division_options": [
+                    {"code": d["code"], "name": d["name"]} for d in division_options
+                ],
                 "team_options": [
-                    {"id": t["id"], "division_code": t["division_code"], "name": t["name"]}
+                    {
+                        "id": t["id"],
+                        "division_code": t["division_code"],
+                        "name": t["name"],
+                    }
                     for t in team_options
                 ],
                 "groups": group_list,
@@ -464,17 +505,35 @@ class MemberDetailUpdateView(APIView):
                 "name_alias": member.name_alias,
                 "is_active": member.is_active,
                 "linked_user_id": member.linked_user_id,
-                "linked_user_username": member.linked_user.username
-                if member.linked_user_id
-                else "",
+                "linked_user_username": (
+                    member.linked_user.username if member.linked_user_id else ""
+                ),
             },
             "profile": MemberProfileSerializer(profile).data if profile else None,
             "primary_membership": {
-                "division_id": primary_mdt.division_id if primary_mdt and primary_mdt.division_id else None,
-                "division_code": primary_mdt.division.code if primary_mdt and primary_mdt.division_id else "",
-                "division_name": primary_mdt.division.name if primary_mdt and primary_mdt.division_id else "",
-                "team_id": primary_mdt.team_id if primary_mdt and primary_mdt.team_id else None,
-                "team_name": primary_mdt.team.name if primary_mdt and primary_mdt.team_id else "팀 미지정",
+                "division_id": (
+                    primary_mdt.division_id
+                    if primary_mdt and primary_mdt.division_id
+                    else None
+                ),
+                "division_code": (
+                    primary_mdt.division.code
+                    if primary_mdt and primary_mdt.division_id
+                    else ""
+                ),
+                "division_name": (
+                    primary_mdt.division.name
+                    if primary_mdt and primary_mdt.division_id
+                    else ""
+                ),
+                "team_id": (
+                    primary_mdt.team_id if primary_mdt and primary_mdt.team_id else None
+                ),
+                "team_name": (
+                    primary_mdt.team.name
+                    if primary_mdt and primary_mdt.team_id
+                    else "팀 미지정"
+                ),
                 "membership_id": primary_mdt.id if primary_mdt else None,
                 "is_primary": bool(primary_mdt.is_primary) if primary_mdt else False,
             },
@@ -504,15 +563,20 @@ class MemberDetailUpdateView(APIView):
         member_ser.save()
 
         profile = m.pastoral_profile
-        profile_ser = MemberProfileSerializer(instance=profile, data=request.data, partial=True)
+        profile_ser = MemberProfileSerializer(
+            instance=profile, data=request.data, partial=True
+        )
         if not profile_ser.is_valid():
             return Response(profile_ser.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
             profile_ser.save()
         except DjangoValidationError as e:
-            return Response({"detail": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         return Response({"ok": True})
+
 
 class MemberLinkUserChoicesView(APIView):
     """
@@ -550,9 +614,11 @@ class MemberLinkUserChoicesView(APIView):
                 {
                     "id": u.id,
                     "username": u.username,
-                    "display_name": getattr(u, "profile", None).display_name
-                    if getattr(u, "profile", None)
-                    else "",
+                    "display_name": (
+                        getattr(u, "profile", None).display_name
+                        if getattr(u, "profile", None)
+                        else ""
+                    ),
                     "phone": getattr(getattr(u, "profile", None), "phone", "") or "",
                     "avatar": user_profile_avatar_api_value(u),
                 }
@@ -593,7 +659,10 @@ class MemberLinkUserSetView(APIView):
         try:
             linked_user_id_int = int(linked_user_id)
         except (TypeError, ValueError):
-            return Response({"detail": "linked_user_id must be an integer or null"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "linked_user_id must be an integer or null"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         u = (
             User.objects.filter(
@@ -605,7 +674,10 @@ class MemberLinkUserSetView(APIView):
             .first()
         )
         if not u:
-            return Response({"detail": "선택된 계정은 허용 범위가 아닙니다."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "선택된 계정은 허용 범위가 아닙니다."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         # linked_user는 OneToOne이라 Unique constraint 충돌이 날 수 있음
         try:
@@ -614,7 +686,10 @@ class MemberLinkUserSetView(APIView):
         except IntegrityError:
             # OneToOne 충돌/DB 예외는 메시지만 친절하게 반환
             return Response(
-                {"ok": False, "detail": "이 계정은 이미 다른 교적부에 연결되어 있습니다."},
+                {
+                    "ok": False,
+                    "detail": "이 계정은 이미 다른 교적부에 연결되어 있습니다.",
+                },
                 status=status.HTTP_409_CONFLICT,
             )
 
@@ -651,18 +726,26 @@ class MemberFamilyListCreateView(APIView):
         try:
             obj = ser.save(member=m)
         except DjangoValidationError as e:
-            return Response({"detail": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(MemberFamilyMemberSerializer(obj).data, status=status.HTTP_201_CREATED)
+            return Response(
+                {"detail": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(
+            MemberFamilyMemberSerializer(obj).data, status=status.HTTP_201_CREATED
+        )
 
 
 class MemberFamilyDetailView(APIView):
     permission_classes = [IsPastoralRegistryStaff]
 
-    def _get_family_in_visible_member(self, request, family_id: int) -> MemberFamilyMember:
+    def _get_family_in_visible_member(
+        self, request, family_id: int
+    ) -> MemberFamilyMember:
         qs = members_visible_to(request.user)
-        obj = MemberFamilyMember.objects.select_related("member").filter(
-            id=family_id, member__in=qs
-        ).first()
+        obj = (
+            MemberFamilyMember.objects.select_related("member")
+            .filter(id=family_id, member__in=qs)
+            .first()
+        )
         if not obj:
             raise Http404("family not found")
         return obj
@@ -675,13 +758,17 @@ class MemberFamilyDetailView(APIView):
     @transaction.atomic
     def patch(self, request, family_id: int, *args, **kwargs):
         obj = self._get_family_in_visible_member(request, family_id)
-        ser = MemberFamilyMemberSerializer(instance=obj, data=request.data, partial=True)
+        ser = MemberFamilyMemberSerializer(
+            instance=obj, data=request.data, partial=True
+        )
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
             ser.save()
         except DjangoValidationError as e:
-            return Response({"detail": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(MemberFamilyMemberSerializer(obj).data)
 
     def delete(self, request, family_id: int, *args, **kwargs):
@@ -720,20 +807,24 @@ class MemberVisitLogListCreateView(APIView):
         try:
             obj = ser.save(member=m, recorded_by=request.user)
         except DjangoValidationError as e:
-            return Response({"detail": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
-        return Response(MemberVisitLogSerializer(obj).data, status=status.HTTP_201_CREATED)
+            return Response(
+                {"detail": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(
+            MemberVisitLogSerializer(obj).data, status=status.HTTP_201_CREATED
+        )
 
 
 class MemberVisitLogDetailView(APIView):
     permission_classes = [IsPastoralRegistryStaff]
 
-    def _get_visit_in_visible_member(
-        self, request, visit_id: int
-    ) -> MemberVisitLog:
+    def _get_visit_in_visible_member(self, request, visit_id: int) -> MemberVisitLog:
         qs = members_visible_to(request.user)
-        obj = MemberVisitLog.objects.select_related("member").filter(
-            id=visit_id, member__in=qs
-        ).first()
+        obj = (
+            MemberVisitLog.objects.select_related("member")
+            .filter(id=visit_id, member__in=qs)
+            .first()
+        )
         if not obj:
             raise Http404("visit not found")
         return obj
@@ -751,7 +842,9 @@ class MemberVisitLogDetailView(APIView):
         try:
             ser.save()
         except DjangoValidationError as e:
-            return Response({"detail": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": list(e.messages)}, status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(MemberVisitLogSerializer(obj).data)
 
     def delete(self, request, visit_id: int, *args, **kwargs):
@@ -768,11 +861,5 @@ class MemberRoleOptionsView(APIView):
     def get(self, request, *args, **kwargs):
         roles = Role.objects.all().order_by("sort_order", "name")
         return Response(
-            {
-                "roles": [
-                    {"id": r.id, "code": r.code, "name": r.name}
-                    for r in roles
-                ]
-            }
+            {"roles": [{"id": r.id, "code": r.code, "name": r.name} for r in roles]}
         )
-

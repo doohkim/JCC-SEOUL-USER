@@ -9,7 +9,9 @@ def backfill_signup_source(apps, schema_editor):
     UserSocialAuth = apps.get_model("social_django", "UserSocialAuth")
 
     kakao_user_ids = set(
-        UserSocialAuth.objects.filter(provider="kakao").values_list("user_id", flat=True)
+        UserSocialAuth.objects.filter(provider="kakao").values_list(
+            "user_id", flat=True
+        )
     )
     seed_usernames = set(getattr(settings, "DEFAULT_USERS", {}).keys())
 

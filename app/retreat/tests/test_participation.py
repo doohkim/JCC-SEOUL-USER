@@ -93,9 +93,7 @@ class ParticipationTests(TestCase):
         self.assertEqual(attendee_lodging_cell_label(self.absentee), "불참")
 
     def test_auto_check_in_skips_absent(self):
-        result = apply_due_auto_transitions(
-            now=self.now, event_id=self.event.id
-        )
+        result = apply_due_auto_transitions(now=self.now, event_id=self.event.id)
         self.assertEqual(result["checked_in"], 1)
         self.participant.refresh_from_db()
         self.absentee.refresh_from_db()
@@ -109,9 +107,7 @@ class ParticipationTests(TestCase):
         )
 
     def test_dashboard_excludes_absent_from_totals(self):
-        data = build_realtime_dashboard(
-            self.event, self.leader, staff_view=False
-        )
+        data = build_realtime_dashboard(self.event, self.leader, staff_view=False)
         self.assertEqual(data["grand_total"]["total"], 1)
         self.assertEqual(data["grand_total"]["absent"], 1)
 

@@ -45,9 +45,7 @@ class NoticeCardFeatureTests(TestCase):
         self.client.force_login(self.user)
 
     def test_category_api_returns_active_categories(self):
-        NoticeCategory.objects.create(
-            name="비활성", slug="inactive", is_active=False
-        )
+        NoticeCategory.objects.create(name="비활성", slug="inactive", is_active=False)
         r = self.client.get(reverse("notice_category_list_api"))
         self.assertEqual(r.status_code, 200)
         slugs = [item["slug"] for item in r.json()]

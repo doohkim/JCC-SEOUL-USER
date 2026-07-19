@@ -23,7 +23,11 @@ urlpatterns = [
         CounselingRequestDetailView.as_view(),
         name="counseling_request_detail",
     ),
-    path("api/v1/counseling/pastors/", PastorListApiView.as_view(), name="api_counseling_pastors"),
+    path(
+        "api/v1/counseling/pastors/",
+        PastorListApiView.as_view(),
+        name="api_counseling_pastors",
+    ),
     path(
         "api/v1/counseling/pastors/<int:pk>/slots/",
         PastorSlotsApiView.as_view(),

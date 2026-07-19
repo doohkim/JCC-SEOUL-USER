@@ -34,7 +34,9 @@ def forwards(apps, schema_editor):
                     "phone": attendee.phone,
                     "gender": attendee.gender,
                     "memo": attendee.memo,
-                    "check_in_status": getattr(attendee, "check_in_status", "checked_in"),
+                    "check_in_status": getattr(
+                        attendee, "check_in_status", "checked_in"
+                    ),
                     "group_name": group.name,
                     "region_id_snapshot": group.region_id,
                     "region_name": getattr(group.region, "name", "") or "",

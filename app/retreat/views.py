@@ -257,9 +257,7 @@ class RetreatStaffApplyView(_RetreatHubEventMixin, FormView):
     form_class = RetreatStaffApplicationForm
 
     def get(self, request, *args, **kwargs):
-        event = get_object_or_404(
-            RetreatEvent, pk=kwargs["event_id"], is_active=True
-        )
+        event = get_object_or_404(RetreatEvent, pk=kwargs["event_id"], is_active=True)
         if event_staff_status(request.user, event) == "closed":
             return self.render_to_response(self.get_context_data())
         return super().get(request, *args, **kwargs)
@@ -336,13 +334,17 @@ class RetreatStaffApplyView(_RetreatHubEventMixin, FormView):
 
         ctx["staff_status"] = status
         ctx["read_only"] = status in ("pending", "approved")
-        ctx["is_pastoral"] = form.is_pastoral if form else tier in ("pastor", "evangelist")
+        ctx["is_pastoral"] = (
+            form.is_pastoral if form else tier in ("pastor", "evangelist")
+        )
         ctx["applicant_tier"] = tier
         ctx["applicant_tier_label"] = staff_applicant_tier_label(tier)
         ctx["fixed_region_name"] = region.name if region else ""
         ctx["fixed_division_name"] = division.name if division else ""
         ctx["eligible_groups"] = eligible_groups
-        ctx["can_submit_application"] = can_apply and status == "open" and not ctx["read_only"]
+        ctx["can_submit_application"] = (
+            can_apply and status == "open" and not ctx["read_only"]
+        )
         ctx["apply_block_message"] = apply_block_message
         ctx["show_ineligible_card"] = (
             status in ("open", "rejected")
@@ -360,9 +362,7 @@ class RetreatStaffApplyView(_RetreatHubEventMixin, FormView):
             .order_by("-reviewed_at", "-id")
             .first()
         )
-        ctx["rejection_reason"] = (
-            rejected.rejection_reason if rejected else ""
-        )
+        ctx["rejection_reason"] = rejected.rejection_reason if rejected else ""
         return ctx
 
     def form_valid(self, form):
@@ -405,9 +405,7 @@ class RetreatStaffApplicationsView(_RetreatEventMixin, TemplateView):
         from retreat.models import RetreatCouncilMembership
 
         ctx["admin_subtab"] = "staff_applications"
-        ctx["council_role_choices"] = list(
-            RetreatCouncilMembership.Role.choices
-        )
+        ctx["council_role_choices"] = list(RetreatCouncilMembership.Role.choices)
         ctx["council_role_choices_json"] = json.dumps(
             list(RetreatCouncilMembership.Role.choices)
         )
@@ -441,9 +439,9 @@ class RetreatDashboardView(_RetreatEventMixin, TemplateView):
                 {
                     "id": s.id,
                     "name": s.name,
-                "occurs_at": s.occurs_at.isoformat() if s.occurs_at else None,
-                "status": s.status,
-                "status_display": s.get_status_display(),
+                    "occurs_at": s.occurs_at.isoformat() if s.occurs_at else None,
+                    "status": s.status,
+                    "status_display": s.get_status_display(),
                 }
                 for s in sessions
             ],
@@ -493,9 +491,7 @@ def _retreat_session_summary(user, event):
         visible_retreat_sessions_for(user, event).values_list("id", flat=True)
     )
     total = len(session_ids)
-    possible = RetreatSessionAttendee.objects.filter(
-        session_id__in=session_ids
-    ).count()
+    possible = RetreatSessionAttendee.objects.filter(session_id__in=session_ids).count()
     present = RetreatAttendance.objects.filter(
         enrollment__session_id__in=session_ids,
         status=RetreatAttendance.Status.PRESENT,
@@ -523,7 +519,11 @@ class RetreatCouncilView(_RetreatEventMixin, TemplateView):
         event = ctx["event"]
         from users.models import Division, Region
 
-        from retreat.models import RetreatCouncilMembership, RetreatGroup, RetreatGroupMembership
+        from retreat.models import (
+            RetreatCouncilMembership,
+            RetreatGroup,
+            RetreatGroupMembership,
+        )
 
         event_division_ids = list(
             RetreatGroup.objects.filter(event=event)
@@ -667,9 +667,7 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         for p in pickups:
             att = attendee_map.get((p.group_id, p.name))
             p.check_in_status = att.check_in_status if att else ""
-            p.check_in_status_display = (
-                att.get_check_in_status_display() if att else ""
-            )
+            p.check_in_status_display = att.get_check_in_status_display() if att else ""
             p.account_retired = is_retired_account_row(p)
             p.account_retired_display = (
                 ACCOUNT_RETIRED_DISPLAY if p.account_retired else ""
@@ -788,8 +786,9 @@ class RetreatRosterCheckView(_RetreatEventMixin, TemplateView):
         user = self.request.user
         event = ctx["event"]
         session = get_object_or_404(
-            visible_retreat_sessions_for(user, event)
-            .select_related("created_by", "closed_by"),
+            visible_retreat_sessions_for(user, event).select_related(
+                "created_by", "closed_by"
+            ),
             pk=kwargs["session_id"],
         )
         group = get_object_or_404(RetreatGroup, pk=kwargs["group_id"], event=event)
@@ -820,9 +819,13 @@ class RetreatRosterCheckView(_RetreatEventMixin, TemplateView):
             output_field=IntegerField(),
         )
         check_in_order = Case(
-            When(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN, then=Value(0)),
+            When(
+                check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN, then=Value(0)
+            ),
             When(check_in_status=RetreatAttendee.CheckInStatus.PENDING, then=Value(1)),
-            When(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT, then=Value(2)),
+            When(
+                check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT, then=Value(2)
+            ),
             default=Value(3),
             output_field=IntegerField(),
         )
@@ -832,9 +835,7 @@ class RetreatRosterCheckView(_RetreatEventMixin, TemplateView):
             .order_by(role_order, check_in_order, "sort_order", "name", "id")
         )
         att_ids = [a.id for a in attendees]
-        records_qs = RetreatAttendance.objects.filter(
-            enrollment_id__in=att_ids
-        )
+        records_qs = RetreatAttendance.objects.filter(enrollment_id__in=att_ids)
         records_by_enrollment_id: dict[int, str] = {}
         for rec in records_qs:
             records_by_enrollment_id[rec.enrollment_id] = rec.status
@@ -865,8 +866,9 @@ class RetreatResultsView(_RetreatEventMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         event = ctx["event"]
         sessions = list(
-            visible_retreat_sessions_for(self.request.user, event)
-            .order_by("-created_at", "-id")
+            visible_retreat_sessions_for(self.request.user, event).order_by(
+                "-created_at", "-id"
+            )
         )
         ctx["sessions"] = sessions
         return ctx
@@ -910,7 +912,11 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
             .annotate(
                 attendee_count=Count(
                     "attendees",
-                    filter=retired_attendee_q if not can_view_retired_account_data(user) else Q(),
+                    filter=(
+                        retired_attendee_q
+                        if not can_view_retired_account_data(user)
+                        else Q()
+                    ),
                     distinct=True,
                 ),
                 participating_count=Count(
@@ -1044,7 +1050,10 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         if group.id not in visible_ids:
             raise PermissionDenied("이 조에 접근할 권한이 없습니다.")
 
-        from users.permissions import can_manage_retreat_group_leaders, can_add_retreat_group
+        from users.permissions import (
+            can_manage_retreat_group_leaders,
+            can_add_retreat_group,
+        )
         from users.models import Division, Region
 
         from retreat.models import RetreatGroupMembership
@@ -1103,7 +1112,9 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
             attendee.account_retired_display = (
                 ACCOUNT_RETIRED_DISPLAY if attendee.account_retired else ""
             )
-            attendee.expected_timestamps_locked = is_expected_timestamps_locked(attendee)
+            attendee.expected_timestamps_locked = is_expected_timestamps_locked(
+                attendee
+            )
             attendee.profile_locked = is_attendee_profile_locked(attendee)
             attendee.expected_check_in_locked = is_expected_check_in_locked(
                 attendee, user, group
@@ -1111,7 +1122,9 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
             attendee.expected_check_out_locked = is_expected_check_out_locked(
                 attendee, user, group
             )
-            attendee.can_delete = user_can_delete_attendee(user, group, attendee=attendee)
+            attendee.can_delete = user_can_delete_attendee(
+                user, group, attendee=attendee
+            )
             attendee.lodging_stay_display = lodging_stay_display(attendee)
         ctx["attendees"] = attendees
         ctx["can_view_retired_account_data"] = can_view_retired_account_data(user)
@@ -1141,17 +1154,21 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         ctx["participation_choices"] = RetreatAttendee.ParticipationStatus.choices
         caps = effective_capabilities(user, event)
         ctx["can_edit_attendee"] = user_can_edit_attendee_details(user, group)
-        ctx["can_add_attendee"] = caps.add_attendee or is_retreat_group_leader(user, group)
+        ctx["can_add_attendee"] = caps.add_attendee or is_retreat_group_leader(
+            user, group
+        )
         ctx["can_change_status"] = caps.change_check_in
         ctx["can_link_attendee_user"] = caps.link_attendee_user
         ctx["can_delete_attendee"] = user_can_delete_attendee(user, group)
         ctx["back_url"] = reverse("retreat_group_manage_list", args=[event.id])
         ctx["back_label"] = "조 목록"
-        from retreat.services.lodging import room_assignment_option, rooms_for_group_with_counts
+        from retreat.services.lodging import (
+            room_assignment_option,
+            rooms_for_group_with_counts,
+        )
 
         event_rooms = [
-            room_assignment_option(room)
-            for room in rooms_for_group_with_counts(group)
+            room_assignment_option(room) for room in rooms_for_group_with_counts(group)
         ]
         ctx["event_rooms"] = event_rooms
         ctx["event_rooms_json"] = json.dumps(event_rooms)
@@ -1243,7 +1260,10 @@ class RetreatLodgingRosterView(_RetreatEventMixin, TemplateView):
         apply_due_auto_transitions(event_id=event.id)
         ctx.update(build_lodging_roster_context(event, user))
         from retreat.apis._common import user_can_edit_attendee_details
-        from retreat.services.lodging import room_assignment_option, rooms_for_group_with_counts
+        from retreat.services.lodging import (
+            room_assignment_option,
+            rooms_for_group_with_counts,
+        )
 
         attendees = ctx["roster_attendees"]
         group_rooms: dict[int, list[dict]] = {}
@@ -1289,7 +1309,9 @@ class RetreatApplyView(_RetreatEventMixin, FormView):
         return kw
 
     def get_success_url(self):
-        return reverse("retreat_dashboard", kwargs={"event_id": self.kwargs["event_id"]})
+        return reverse(
+            "retreat_dashboard", kwargs={"event_id": self.kwargs["event_id"]}
+        )
 
     def form_valid(self, form):
         profile = getattr(self.request.user, "profile", None)
@@ -1337,7 +1359,7 @@ class RetreatGroupDetailView(_RetreatAccessMixin, TemplateView):
     # ------------------------------------------------------------------
     # [LEGACY · 비활성화] 아래 원본 로직은 참고용으로 주석(문자열) 처리한다.
     # ------------------------------------------------------------------
-    _LEGACY_GET_CONTEXT_DATA = '''
+    _LEGACY_GET_CONTEXT_DATA = """
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
@@ -1503,7 +1525,7 @@ class RetreatGroupDetailView(_RetreatAccessMixin, TemplateView):
         elif sessions:
             ctx["selected_session_id"] = sessions[0].id
         return ctx
-    '''
+    """
 
 
 class RetreatAdminView(_RetreatEventMixin, TemplateView):
@@ -1629,9 +1651,7 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
                 creatable = base
             else:
                 creatable = base.filter(council_memberships__user=user).distinct()
-            ctx["creatable_events"] = list(
-                creatable.order_by("-start_date", "-id")
-            )
+            ctx["creatable_events"] = list(creatable.order_by("-start_date", "-id"))
         return ctx
 
 

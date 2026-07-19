@@ -65,9 +65,7 @@ class NoticeForm(forms.ModelForm):
             ),
             "body": TinyMCE(attrs={"id": "id_body"}),
             "category": forms.Select(),
-            "thumbnail": forms.ClearableFileInput(
-                attrs={"accept": "image/*"}
-            ),
+            "thumbnail": forms.ClearableFileInput(attrs={"accept": "image/*"}),
             "tags": forms.TextInput(
                 attrs={
                     "placeholder": "태그를 쉼표로 구분 (예: 수련회, 청년부)",

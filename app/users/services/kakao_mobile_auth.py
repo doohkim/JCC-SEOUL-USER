@@ -52,26 +52,32 @@ def _fetch_kakao_profile(access_token: str) -> dict:
             body = exc.read().decode("utf-8", errors="replace")
         except Exception:
             pass
-        logger.warning("kakao_mobile_auth: http_error status=%s body=%s", exc.code, body[:300])
+        logger.warning(
+            "kakao_mobile_auth: http_error status=%s body=%s", exc.code, body[:300]
+        )
         if exc.code in (401, 403):
-            raise KakaoMobileAuthError("invalid_kakao_token", "카카오 토큰이 유효하지 않습니다.") from exc
-        raise KakaoMobileAuthError("kakao_api_error", "카카오 사용자 정보를 가져오지 못했습니다.") from exc
+            raise KakaoMobileAuthError(
+                "invalid_kakao_token", "카카오 토큰이 유효하지 않습니다."
+            ) from exc
+        raise KakaoMobileAuthError(
+            "kakao_api_error", "카카오 사용자 정보를 가져오지 못했습니다."
+        ) from exc
     except URLError as exc:
         logger.warning("kakao_mobile_auth: network_error %s", exc)
-        raise KakaoMobileAuthError("kakao_network_error", "카카오 서버에 연결하지 못했습니다.") from exc
+        raise KakaoMobileAuthError(
+            "kakao_network_error", "카카오 서버에 연결하지 못했습니다."
+        ) from exc
     except json.JSONDecodeError as exc:
-        raise KakaoMobileAuthError("kakao_invalid_response", "카카오 응답을 해석하지 못했습니다.") from exc
+        raise KakaoMobileAuthError(
+            "kakao_invalid_response", "카카오 응답을 해석하지 못했습니다."
+        ) from exc
 
 
 def _details_from_kakao_response(payload: dict) -> dict:
     account = payload.get("kakao_account") or {}
     profile = account.get("profile") or {}
     props = payload.get("properties") or {}
-    nickname = (
-        profile.get("nickname")
-        or props.get("nickname")
-        or ""
-    )
+    nickname = profile.get("nickname") or props.get("nickname") or ""
     return {
         "nickname": nickname,
         "email": account.get("email") or "",

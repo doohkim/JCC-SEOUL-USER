@@ -27,7 +27,9 @@ from users.permissions import can_manage_retreat_sessions
 
 def _assert_can_manage_snapshot(user, event) -> None:
     if not can_manage_retreat_sessions(user, event):
-        raise PermissionDenied("마감 출석부 조원 관리는 회장단(또는 슈퍼유저)만 가능합니다.")
+        raise PermissionDenied(
+            "마감 출석부 조원 관리는 회장단(또는 슈퍼유저)만 가능합니다."
+        )
 
 
 def _assert_snapshot_only(enrollment: RetreatSessionAttendee) -> None:
@@ -52,7 +54,9 @@ class RetreatSessionGroupSnapshotAttendeesView(APIView):
             pk=group_id,
         )
         if session.event_id != group.event_id:
-            raise ValidationError({"detail": "출석부와 조가 같은 집회에 속해야 합니다."})
+            raise ValidationError(
+                {"detail": "출석부와 조가 같은 집회에 속해야 합니다."}
+            )
         get_group_or_403(request.user, group_id)
         _assert_can_manage_snapshot(request.user, session.event)
         if session.status != RetreatSession.Status.CLOSED:

@@ -266,19 +266,26 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
                     membership.save(update_fields=["is_primary"])
             profile.onboarding_status = UserProfile.OnboardingStatus.APPROVED
             profile.onboarding_note = ""
-            profile.save(update_fields=["onboarding_status", "onboarding_note", "updated_at"])
+            profile.save(
+                update_fields=["onboarding_status", "onboarding_note", "updated_at"]
+            )
             from users.services.onboarding_approval import apply_pastoral_account_setup
 
             apply_pastoral_account_setup(user_obj, profile)
             if not was_already_approved:
-                from retreat.services.onboarding import sync_retreat_attendee_from_onboarding_profile
+                from retreat.services.onboarding import (
+                    sync_retreat_attendee_from_onboarding_profile,
+                )
 
                 sync_retreat_attendee_from_onboarding_profile(
                     user=user_obj,
                     profile=profile,
                     changed_by=request.user,
                 )
-            elif profile.requested_retreat_participation and profile.requested_retreat_group_id:
+            elif (
+                profile.requested_retreat_participation
+                and profile.requested_retreat_group_id
+            ):
                 from retreat.services.onboarding import (
                     retreat_attendee_exists_for_profile,
                     sync_retreat_attendee_from_onboarding_profile,
@@ -312,7 +319,9 @@ class UserAdmin(AuditLoggingModelAdminMixin, BaseUserAdmin):
             profile.onboarding_status = UserProfile.OnboardingStatus.REJECTED
             if not profile.onboarding_note:
                 profile.onboarding_note = "소속 정보 확인 후 다시 신청해 주세요."
-            profile.save(update_fields=["onboarding_status", "onboarding_note", "updated_at"])
+            profile.save(
+                update_fields=["onboarding_status", "onboarding_note", "updated_at"]
+            )
             updated += 1
         self.message_user(
             request,

@@ -66,9 +66,13 @@ class RetreatChangelogTests(APITestCase):
         cls.staff = User.objects.create_user(username="log_staff", password="x")
         cls.staff.role_level = cls.rl_president
         cls.staff.save()
-        UserDivisionTeam.objects.create(user=cls.staff, division=cls.div, is_primary=True)
+        UserDivisionTeam.objects.create(
+            user=cls.staff, division=cls.div, is_primary=True
+        )
         cls.leader = User.objects.create_user(username="log_leader", password="x")
-        UserDivisionTeam.objects.create(user=cls.leader, division=cls.div, is_primary=True)
+        UserDivisionTeam.objects.create(
+            user=cls.leader, division=cls.div, is_primary=True
+        )
         RetreatGroupMembership.objects.create(user=cls.leader, group=cls.group)
 
     def setUp(self):

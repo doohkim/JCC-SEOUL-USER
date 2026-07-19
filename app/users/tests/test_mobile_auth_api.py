@@ -25,7 +25,9 @@ class KakaoMobileLoginAPITests(TestCase):
 
     @patch("users.apis.mobile_auth.login_with_kakao_access_token")
     def test_missing_access_token_returns_400(self, mock_login):
-        r = self.client.post("/api/v1/auth/kakao/", data={}, content_type="application/json")
+        r = self.client.post(
+            "/api/v1/auth/kakao/", data={}, content_type="application/json"
+        )
         self.assertEqual(r.status_code, 400)
         mock_login.assert_not_called()
 

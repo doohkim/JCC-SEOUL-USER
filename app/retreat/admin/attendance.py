@@ -37,7 +37,11 @@ class RetreatAttendanceAdmin(admin.ModelAdmin):
         "checked_at",
     ]
     list_filter = ["enrollment__session__event", "enrollment__session", "status"]
-    search_fields = ["enrollment__name", "enrollment__group_name", "enrollment__session__name"]
+    search_fields = [
+        "enrollment__name",
+        "enrollment__group_name",
+        "enrollment__session__name",
+    ]
     autocomplete_fields = ["enrollment", "checked_by"]
     readonly_fields = ["checked_at"]
 

@@ -9,4 +9,3 @@ import os
 TEAM_ATTENDANCE_SESSION_ROLLING_DAYS = int(
     os.environ.get("TEAM_ATTENDANCE_SESSION_ROLLING_DAYS", "3")
 )
-

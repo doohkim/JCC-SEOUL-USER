@@ -102,7 +102,9 @@ def load_workbook_rows(path: Path, sheet_name: str) -> list[tuple]:
     return rows
 
 
-def iter_parseable_sheets(path: Path) -> dict[str, tuple[list[tuple[int, str]], dict[str, set[str]]]]:
+def iter_parseable_sheets(
+    path: Path,
+) -> dict[str, tuple[list[tuple[int, str]], dict[str, set[str]]]]:
     """워크북의 모든 시트를 열어 파싱 가능한 시트만 반환."""
     import openpyxl
 

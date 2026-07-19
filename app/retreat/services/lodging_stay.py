@@ -10,10 +10,7 @@ from retreat.models import RetreatAttendee
 def resolve_lodging_stay_status(attendee: RetreatAttendee) -> str:
     """참석·입퇴실·방 배정으로 숙박 상태 코드를 계산한다."""
     S = RetreatAttendee.LodgingStayStatus
-    if (
-        attendee.participation_status
-        == RetreatAttendee.ParticipationStatus.ABSENT
-    ):
+    if attendee.participation_status == RetreatAttendee.ParticipationStatus.ABSENT:
         return S.ABSENT
     if attendee.check_in_status == RetreatAttendee.CheckInStatus.CHECKED_OUT:
         return S.ENDED
@@ -96,12 +93,16 @@ def lodging_stay_eligible_filter(qs: QuerySet) -> QuerySet:
     P = RetreatAttendee.ParticipationStatus
     C = RetreatAttendee.CheckInStatus
     synced = Q(lodging_stay_status__in=(S.ACTIVE, S.UNASSIGNED))
-    computed = Q(
-        lodging_stay_status__isnull=True,
-        participation_status=P.PARTICIPATING,
-    ) & ~Q(check_in_status=C.CHECKED_OUT) & (
-        Q(lodging_room__isnull=False)
-        | Q(expected_check_in_at__isnull=False, lodging_room__isnull=True)
+    computed = (
+        Q(
+            lodging_stay_status__isnull=True,
+            participation_status=P.PARTICIPATING,
+        )
+        & ~Q(check_in_status=C.CHECKED_OUT)
+        & (
+            Q(lodging_room__isnull=False)
+            | Q(expected_check_in_at__isnull=False, lodging_room__isnull=True)
+        )
     )
     return qs.filter(synced | computed)
 

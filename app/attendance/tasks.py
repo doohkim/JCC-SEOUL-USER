@@ -10,6 +10,7 @@ from attendance.services.team_attendance_sessions import (
 )
 from attendance.services.parking import korea_today
 
+
 @shared_task(name="attendance.tasks.ensure_team_attendance_sessions_next_week")
 def ensure_team_attendance_sessions_next_week(anchor_date: str | None = None) -> dict:
     """

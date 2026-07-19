@@ -106,15 +106,11 @@ class Command(BaseCommand):
                     )
                 done += 1
             except CommandError as e:
-                self.stdout.write(
-                    self.style.ERROR(f"실패 {sheet!r}: {e}")
-                )
+                self.stdout.write(self.style.ERROR(f"실패 {sheet!r}: {e}"))
                 err += 1
 
         self.stdout.write(
-            self.style.SUCCESS(
-                f"끝: 처리 {done}개, 건너뜀 {skip}개, 실패 {err}개"
-            )
+            self.style.SUCCESS(f"끝: 처리 {done}개, 건너뜀 {skip}개, 실패 {err}개")
         )
         if options["dry_run"]:
             self.stdout.write(

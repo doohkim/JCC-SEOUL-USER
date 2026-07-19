@@ -108,9 +108,7 @@ class RetreatSessionApiTests(APITestCase):
         self.assertEqual(r.status_code, 201)
         session = RetreatSession.objects.get(name="마감 시각 명시")
         self.assertEqual(session.status, RetreatSession.Status.CLOSED)
-        self.assertEqual(
-            session.closed_at.replace(microsecond=0), explicit
-        )
+        self.assertEqual(session.closed_at.replace(microsecond=0), explicit)
         self.assertEqual(session.closed_by_id, self.staff.id)
 
     def test_active_status_clears_closed_at_payload(self):

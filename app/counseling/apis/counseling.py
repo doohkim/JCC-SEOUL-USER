@@ -29,7 +29,10 @@ from counseling.services import (
     reject_counseling_request,
 )
 from counseling.services.notifications import notify_new_counseling_request
-from counseling.services.slots import counseling_request_detail_for_user, date_range_horizon
+from counseling.services.slots import (
+    counseling_request_detail_for_user,
+    date_range_horizon,
+)
 from users.permissions import (
     IsCounselingPastor,
     IsCounselingParticipant,
@@ -90,7 +93,9 @@ class PastorManageSlotsApiView(APIView):
 
     def get(self, request):
         if not can_access_counseling_manage_tab(request.user):
-            return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN
+            )
         ensure_slots_for_horizon(request.user.pk)
         start_d, end_d = date_range_horizon()
         from_q = _parse_date(request.query_params.get("from")) or start_d
@@ -108,13 +113,17 @@ class PastorSettingsApiView(APIView):
 
     def get(self, request):
         if not can_access_counseling_manage_tab(request.user):
-            return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN
+            )
         obj = get_or_create_schedule_settings(request.user.pk)
         return Response(PastorScheduleSettingsSerializer(obj).data)
 
     def patch(self, request):
         if not can_access_counseling_manage_tab(request.user):
-            return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN
+            )
         obj = get_or_create_schedule_settings(request.user.pk)
         ser = PastorScheduleSettingsSerializer(obj, data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
@@ -128,7 +137,9 @@ class PastorDayOverrideListApiView(APIView):
 
     def get(self, request):
         if not can_access_counseling_manage_tab(request.user):
-            return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN
+            )
         start_d, end_d = date_range_horizon()
         qs = PastorDayOverride.objects.filter(
             pastor_id=request.user.pk,
@@ -139,7 +150,9 @@ class PastorDayOverrideListApiView(APIView):
 
     def post(self, request):
         if not can_access_counseling_manage_tab(request.user):
-            return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN
+            )
         ser = PastorDayOverrideSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         obj = PastorDayOverride.objects.update_or_create(
@@ -162,11 +175,15 @@ class PastorDayOverrideDetailApiView(APIView):
 
     def patch(self, request, date_str: str):
         if not can_access_counseling_manage_tab(request.user):
-            return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN
+            )
         try:
             day = dt.date.fromisoformat(date_str)
         except ValueError:
-            return Response({"detail": "날짜 형식은 YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "날짜 형식은 YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST
+            )
         obj = PastorDayOverride.objects.filter(
             pastor_id=request.user.pk,
             date=day,
@@ -181,11 +198,15 @@ class PastorDayOverrideDetailApiView(APIView):
 
     def delete(self, request, date_str: str):
         if not can_access_counseling_manage_tab(request.user):
-            return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN
+            )
         try:
             day = dt.date.fromisoformat(date_str)
         except ValueError:
-            return Response({"detail": "날짜 형식은 YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "날짜 형식은 YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST
+            )
         deleted, _ = PastorDayOverride.objects.filter(
             pastor_id=request.user.pk,
             date=day,
@@ -203,14 +224,16 @@ class CounselingRequestListCreateApiView(APIView):
         box = request.query_params.get("box", "outgoing")
         if box == "incoming":
             if not can_access_counseling_manage_tab(request.user):
-                return Response({"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
-            qs = CounselingRequest.objects.filter(pastor_id=request.user.pk).select_related(
-                "slot", "applicant", "pastor"
-            )
+                return Response(
+                    {"detail": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN
+                )
+            qs = CounselingRequest.objects.filter(
+                pastor_id=request.user.pk
+            ).select_related("slot", "applicant", "pastor")
         else:
-            qs = CounselingRequest.objects.filter(applicant_id=request.user.pk).select_related(
-                "slot", "applicant", "pastor"
-            )
+            qs = CounselingRequest.objects.filter(
+                applicant_id=request.user.pk
+            ).select_related("slot", "applicant", "pastor")
         qs = qs.order_by("-created_at")
         ser = CounselingRequestSerializer(qs, many=True, context={"request": request})
         return Response(ser.data)
@@ -221,9 +244,18 @@ class CounselingRequestListCreateApiView(APIView):
         slot_id = ser.validated_data["slot_id"]
         slot = CounselingSlot.objects.filter(pk=slot_id).first()
         if not slot:
-            return Response({"detail": "슬롯을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
-        if not pastors_queryset_for_applicant(request.user).filter(pk=slot.pastor_id).exists():
-            return Response({"detail": "해당 목회자에게 신청할 수 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "슬롯을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND
+            )
+        if (
+            not pastors_queryset_for_applicant(request.user)
+            .filter(pk=slot.pastor_id)
+            .exists()
+        ):
+            return Response(
+                {"detail": "해당 목회자에게 신청할 수 없습니다."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         try:
             req = create_counseling_request(
                 applicant_id=request.user.pk,
@@ -232,8 +264,12 @@ class CounselingRequestListCreateApiView(APIView):
             )
         except ValueError as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        req = CounselingRequest.objects.select_related("slot", "applicant", "pastor").get(pk=req.pk)
-        detail_path = reverse("counseling_request_detail", kwargs={"public_id": str(req.public_id)})
+        req = CounselingRequest.objects.select_related(
+            "slot", "applicant", "pastor"
+        ).get(pk=req.pk)
+        detail_path = reverse(
+            "counseling_request_detail", kwargs={"public_id": str(req.public_id)}
+        )
         notify_new_counseling_request(
             req,
             absolute_detail_url=request.build_absolute_uri(detail_path),
@@ -249,13 +285,17 @@ class CounselingRequestDetailApiView(APIView):
 
     def get_object(self):
         public_id = self.kwargs["public_id"]
-        req = counseling_request_detail_for_user(user=self.request.user, public_id=public_id)
+        req = counseling_request_detail_for_user(
+            user=self.request.user, public_id=public_id
+        )
         self.check_object_permissions(self.request, req)
         return req
 
     def get(self, request, public_id):
         req = self.get_object()
-        return Response(CounselingRequestSerializer(req, context={"request": request}).data)
+        return Response(
+            CounselingRequestSerializer(req, context={"request": request}).data
+        )
 
     def patch(self, request, public_id):
         req = self.get_object()
@@ -268,12 +308,17 @@ class CounselingRequestDetailApiView(APIView):
         ser.is_valid(raise_exception=True)
         ser.save()
         req.refresh_from_db()
-        return Response(CounselingRequestSerializer(req, context={"request": request}).data)
+        return Response(
+            CounselingRequestSerializer(req, context={"request": request}).data
+        )
 
     def delete(self, request, public_id):
         req = self.get_object()
         if req.applicant_id != request.user.pk:
-            return Response({"detail": "신청자만 취소할 수 있습니다."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "신청자만 취소할 수 있습니다."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         try:
             cancel_counseling_request(user_id=request.user.pk, req=req)
         except (PermissionError, ValueError) as e:
@@ -292,7 +337,9 @@ class CounselingRequestAcceptApiView(APIView):
         except (PermissionError, ValueError) as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         req.refresh_from_db()
-        return Response(CounselingRequestSerializer(req, context={"request": request}).data)
+        return Response(
+            CounselingRequestSerializer(req, context={"request": request}).data
+        )
 
 
 class CounselingRequestRejectApiView(APIView):
@@ -306,4 +353,6 @@ class CounselingRequestRejectApiView(APIView):
         except (PermissionError, ValueError) as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         req.refresh_from_db()
-        return Response(CounselingRequestSerializer(req, context={"request": request}).data)
+        return Response(
+            CounselingRequestSerializer(req, context={"request": request}).data
+        )

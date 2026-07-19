@@ -81,9 +81,7 @@ class StaffScope:
             return other
         if other.kind == self.kind == "event":
             return self
-        if other.kind == self.kind == "region" and (
-            self.region_id == other.region_id
-        ):
+        if other.kind == self.kind == "region" and (self.region_id == other.region_id):
             return self
         if other.kind == self.kind == "division" and (
             self.division_id == other.division_id
@@ -147,8 +145,7 @@ class RetreatCapabilities:
             change_check_in=self.change_check_in or other.change_check_in,
             delete_attendee=self.delete_attendee or other.delete_attendee,
             delete_checked_out_attendee=(
-                self.delete_checked_out_attendee
-                or other.delete_checked_out_attendee
+                self.delete_checked_out_attendee or other.delete_checked_out_attendee
             ),
             pickup_overview=AccessLevel.max_of(
                 self.pickup_overview, other.pickup_overview
@@ -161,7 +158,8 @@ class RetreatCapabilities:
             ),
             pickup_select_group=self.pickup_select_group or other.pickup_select_group,
             delete_pickup=self.delete_pickup or other.delete_pickup,
-            manage_lodging_rooms=self.manage_lodging_rooms or other.manage_lodging_rooms,
+            manage_lodging_rooms=self.manage_lodging_rooms
+            or other.manage_lodging_rooms,
             edit_lodging_roster=self.edit_lodging_roster or other.edit_lodging_roster,
             manage_staff=self.manage_staff or other.manage_staff,
             view_staff=self.view_staff or other.view_staff,
@@ -255,7 +253,9 @@ def _region_observer_caps(region_id: int) -> RetreatCapabilities:
     )
 
 
-def _division_admin_caps(division_id: int, *, region_id: int | None) -> RetreatCapabilities:
+def _division_admin_caps(
+    division_id: int, *, region_id: int | None
+) -> RetreatCapabilities:
     return RetreatCapabilities(
         dashboard=AccessLevel.VIEW,
         groups=AccessLevel.VIEW,
@@ -332,7 +332,9 @@ def _caps_for_membership(membership: RetreatCouncilMembership) -> RetreatCapabil
     return NONE_CAPS
 
 
-def staff_capabilities(user: User, event: RetreatEvent | None) -> RetreatCapabilities | None:
+def staff_capabilities(
+    user: User, event: RetreatEvent | None
+) -> RetreatCapabilities | None:
     if not user or not getattr(user, "is_authenticated", False) or event is None:
         return None
     if user.is_superuser:
@@ -355,7 +357,9 @@ def leader_capabilities(user: User, event: RetreatEvent | None) -> RetreatCapabi
     return NONE_CAPS
 
 
-def effective_capabilities(user: User, event: RetreatEvent | None) -> RetreatCapabilities:
+def effective_capabilities(
+    user: User, event: RetreatEvent | None
+) -> RetreatCapabilities:
     staff = staff_capabilities(user, event)
     leader = leader_capabilities(user, event)
     if staff is None:
@@ -458,9 +462,7 @@ def can_access_retreat_page(user: User, event: RetreatEvent, page: str) -> bool:
     return level >= AccessLevel.VIEW
 
 
-def pickup_tab_access_level(
-    caps: RetreatCapabilities, tab: str
-) -> AccessLevel:
+def pickup_tab_access_level(caps: RetreatCapabilities, tab: str) -> AccessLevel:
     if tab == "overview":
         return caps.pickup_overview
     if tab in ("arrival", "입회"):

@@ -46,7 +46,9 @@ class ClosedSessionVisibilityTests(TestCase):
         cls.closed = RetreatSession.objects.create(event=cls.event, name="마감")
 
         cls.leader = User.objects.create_user(username="closed_leader", password="x")
-        UserDivisionTeam.objects.create(user=cls.leader, division=cls.division, is_primary=True)
+        UserDivisionTeam.objects.create(
+            user=cls.leader, division=cls.division, is_primary=True
+        )
         RetreatGroupMembership.objects.create(user=cls.leader, group=cls.group)
 
         cls.council = User.objects.create_user(username="closed_council", password="x")

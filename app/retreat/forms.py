@@ -5,7 +5,13 @@ from __future__ import annotations
 from django import forms
 from django.core.exceptions import ValidationError
 
-from retreat.models import RetreatEvent, RetreatGroup, RetreatGroupMembership, RetreatStaffApplication, StaffApplicationTrack
+from retreat.models import (
+    RetreatEvent,
+    RetreatGroup,
+    RetreatGroupMembership,
+    RetreatStaffApplication,
+    StaffApplicationTrack,
+)
 from retreat.services.staff_application import (
     eligible_groups_for_member,
     is_pastoral_staff_applicant,
@@ -184,7 +190,9 @@ class RetreatStaffApplicationForm(forms.Form):
         region = self.cleaned_data["region"]
         division = self.cleaned_data["division"]
         group = self.cleaned_data.get("group")
-        track = self.cleaned_data.get("application_track") or StaffApplicationTrack.COUNCIL
+        track = (
+            self.cleaned_data.get("application_track") or StaffApplicationTrack.COUNCIL
+        )
         return RetreatStaffApplication.objects.create(
             event=self.event,
             user=self.user,

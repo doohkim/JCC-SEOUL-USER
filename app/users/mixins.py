@@ -42,10 +42,16 @@ def is_onboarding_complete(user, profile: UserProfile | None = None) -> bool:
         has_membership = user.division_teams.exists()
 
     # 기존 계정(이미 소속 있음)은 승인 완료로 자동 보정.
-    if has_membership and profile.onboarding_status != UserProfile.OnboardingStatus.APPROVED:
+    if (
+        has_membership
+        and profile.onboarding_status != UserProfile.OnboardingStatus.APPROVED
+    ):
         profile.onboarding_status = UserProfile.OnboardingStatus.APPROVED
         profile.save(update_fields=["onboarding_status", "updated_at"])
-    return has_membership and profile.onboarding_status == UserProfile.OnboardingStatus.APPROVED
+    return (
+        has_membership
+        and profile.onboarding_status == UserProfile.OnboardingStatus.APPROVED
+    )
 
 
 def has_submitted_signup(user, profile: UserProfile | None = None) -> bool:
@@ -82,7 +88,9 @@ class SuperuserRequiredMixin(UserPassesTestMixin):
     """superuser 전용."""
 
     def test_func(self):
-        return bool(self.request.user.is_authenticated and self.request.user.is_superuser)
+        return bool(
+            self.request.user.is_authenticated and self.request.user.is_superuser
+        )
 
 
 class StaffRequiredMixin(UserPassesTestMixin):

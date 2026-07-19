@@ -57,9 +57,7 @@ class NoticeFormContextMixin:
         ctx["notices_tab"] = "create"
         instance = getattr(self, "object", None)
         ctx["selected_region_id"] = (
-            instance.division.region_id
-            if instance and instance.division_id
-            else ""
+            instance.division.region_id if instance and instance.division_id else ""
         )
         return ctx
 
@@ -202,9 +200,7 @@ class TimetableView(LoginRequiredMixin, NoticeReadAccessRequiredMixin, TemplateV
         ctx = super().get_context_data(**kwargs)
 
         events = list(
-            RetreatEvent.objects.filter(is_active=True).order_by(
-                "-start_date", "-id"
-            )
+            RetreatEvent.objects.filter(is_active=True).order_by("-start_date", "-id")
         )
         if not events:
             events = list(RetreatEvent.objects.order_by("-start_date", "-id"))

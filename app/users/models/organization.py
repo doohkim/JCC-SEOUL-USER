@@ -179,7 +179,13 @@ class PastoralDivisionAssignment(models.Model):
     class Meta:
         verbose_name = "목회 담당 부서"
         verbose_name_plural = "목회 담당 부서"
-        ordering = ["user", "-is_primary", "sort_order", "division__sort_order", "division__name"]
+        ordering = [
+            "user",
+            "-is_primary",
+            "sort_order",
+            "division__sort_order",
+            "division__name",
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["user", "division"],

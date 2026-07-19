@@ -28,14 +28,11 @@ class RetreatGroupAdmin(admin.ModelAdmin):
             to_clean = [
                 f.instance
                 for f in formset.forms
-                if getattr(f.instance, "pk", None)
-                and f.cleaned_data.get("DELETE")
+                if getattr(f.instance, "pk", None) and f.cleaned_data.get("DELETE")
             ]
             super().save_formset(request, form, formset, change)
             for membership in to_clean:
-                delete_attendees_for_membership(
-                    membership, changed_by=request.user
-                )
+                delete_attendees_for_membership(membership, changed_by=request.user)
         else:
             super().save_formset(request, form, formset, change)
 

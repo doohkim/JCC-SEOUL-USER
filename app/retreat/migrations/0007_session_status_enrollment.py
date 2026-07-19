@@ -119,7 +119,12 @@ class Migration(migrations.Migration):
                         default=0, verbose_name="정렬 순서"
                     ),
                 ),
-                ("enrolled_at", models.DateTimeField(auto_now_add=True, verbose_name="스냅샷 생성 일시")),
+                (
+                    "enrolled_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="스냅샷 생성 일시"
+                    ),
+                ),
                 (
                     "session",
                     models.ForeignKey(

@@ -89,9 +89,7 @@ class Command(BaseCommand):
                 f"데모 가입신청 {created}건 생성 완료 (username 접두사: {FAKE_USERNAME_PREFIX})"
             )
         )
-        self.stdout.write(
-            "삭제: python manage.py seed_fake_onboarding --purge"
-        )
+        self.stdout.write("삭제: python manage.py seed_fake_onboarding --purge")
 
     @transaction.atomic
     def _purge(self) -> None:
@@ -114,10 +112,14 @@ class Command(BaseCommand):
             )
         )
         if not divisions:
-            raise CommandError("부서(Division)가 없습니다. seed_org_chart 등을 먼저 실행하세요.")
+            raise CommandError(
+                "부서(Division)가 없습니다. seed_org_chart 등을 먼저 실행하세요."
+            )
 
         teams_by_div: dict[int, list[Team]] = {}
-        for team in Team.objects.select_related("division").order_by("sort_order", "name"):
+        for team in Team.objects.select_related("division").order_by(
+            "sort_order", "name"
+        ):
             teams_by_div.setdefault(team.division_id, []).append(team)
 
         retreat_event = None
@@ -126,13 +128,17 @@ class Command(BaseCommand):
             from retreat.models import RetreatEvent, RetreatGroup
 
             retreat_event = (
-                RetreatEvent.objects.filter(is_active=True).order_by("-start_date").first()
+                RetreatEvent.objects.filter(is_active=True)
+                .order_by("-start_date")
+                .first()
             )
             if retreat_event:
                 for group in RetreatGroup.objects.filter(event=retreat_event).order_by(
                     "name"
                 ):
-                    retreat_groups_by_div.setdefault(group.division_id, []).append(group)
+                    retreat_groups_by_div.setdefault(group.division_id, []).append(
+                        group
+                    )
         except Exception:
             retreat_event = None
 
@@ -175,7 +181,9 @@ class Command(BaseCommand):
             )
             profile.onboarding_status = statuses[(i - 1) % len(statuses)]
             profile.onboarding_note = (
-                "데모 반려 사유" if profile.onboarding_status == UserProfile.OnboardingStatus.REJECTED else ""
+                "데모 반려 사유"
+                if profile.onboarding_status == UserProfile.OnboardingStatus.REJECTED
+                else ""
             )
             profile.requested_division = division
             profile.requested_team = team

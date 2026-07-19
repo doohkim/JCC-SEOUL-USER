@@ -16,8 +16,14 @@ class StandardPagination(PageNumberPagination):
     max_page_size = 200
 
 
-def division_for_attendance_request(request, *, code_param: str | None = None) -> Division:
-    code = code_param if code_param is not None else (request.query_params.get("division_code") or "youth")
+def division_for_attendance_request(
+    request, *, code_param: str | None = None
+) -> Division:
+    code = (
+        code_param
+        if code_param is not None
+        else (request.query_params.get("division_code") or "youth")
+    )
     division = get_object_or_404(Division, code=code)
     if not visible_divisions_for(request.user).filter(pk=division.pk).exists():
         raise PermissionDenied("소속하지 않은 부서의 출석 데이터입니다.")

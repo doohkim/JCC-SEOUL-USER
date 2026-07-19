@@ -103,8 +103,10 @@ def rooms_for_group(group: RetreatGroup) -> QuerySet[LodgingRoom]:
     scope_q = Q()
     for region_id, division_id in pairs:
         scope_q |= Q(region_id=region_id, division_id=division_id)
-    return _base_rooms_qs(group.event).filter(scope_q).order_by(
-        "lodging__sort_order", "lodging__name", "sort_order", "number", "id"
+    return (
+        _base_rooms_qs(group.event)
+        .filter(scope_q)
+        .order_by("lodging__sort_order", "lodging__name", "sort_order", "number", "id")
     )
 
 
@@ -169,10 +171,10 @@ def rooms_for_event_region_division(
 
     if region_id is None or division_id is None:
         return LodgingRoom.objects.none()
-    return _base_rooms_qs(event).filter(
-        region_id=region_id, division_id=division_id
-    ).order_by(
-        "lodging__sort_order", "lodging__name", "sort_order", "number", "id"
+    return (
+        _base_rooms_qs(event)
+        .filter(region_id=region_id, division_id=division_id)
+        .order_by("lodging__sort_order", "lodging__name", "sort_order", "number", "id")
     )
 
 
@@ -185,11 +187,17 @@ def rooms_for_event_and_region(
     """
 
     if region_id is None:
-        return _base_rooms_qs(event).filter(region__isnull=True).order_by(
-            "lodging__sort_order", "lodging__name", "sort_order", "number", "id"
+        return (
+            _base_rooms_qs(event)
+            .filter(region__isnull=True)
+            .order_by(
+                "lodging__sort_order", "lodging__name", "sort_order", "number", "id"
+            )
         )
-    return _base_rooms_qs(event).filter(region_id=region_id).order_by(
-        "lodging__sort_order", "lodging__name", "sort_order", "number", "id"
+    return (
+        _base_rooms_qs(event)
+        .filter(region_id=region_id)
+        .order_by("lodging__sort_order", "lodging__name", "sort_order", "number", "id")
     )
 
 

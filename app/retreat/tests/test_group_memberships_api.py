@@ -71,9 +71,7 @@ class _Fixture:
         profile.real_name = "신규성도"
         profile.gender = profile.Gender.FEMALE
         profile.phone = "010-9999-8888"
-        profile.save(
-            update_fields=["real_name", "gender", "phone", "updated_at"]
-        )
+        profile.save(update_fields=["real_name", "gender", "phone", "updated_at"])
 
 
 class GroupMembershipApiTests(APITestCase, _Fixture):
@@ -88,9 +86,7 @@ class GroupMembershipApiTests(APITestCase, _Fixture):
         return reverse("api_retreat_group_memberships", args=[self.group.id])
 
     def _detail_url(self, membership_id):
-        return reverse(
-            "api_retreat_group_membership_detail", args=[membership_id]
-        )
+        return reverse("api_retreat_group_membership_detail", args=[membership_id])
 
     def test_council_can_add_leader(self):
         self.client.force_authenticate(self.council)
@@ -153,9 +149,7 @@ class GroupMembershipApiTests(APITestCase, _Fixture):
 
     def test_patch_role(self):
         self.client.force_authenticate(self.council)
-        m = RetreatGroupMembership.objects.get(
-            group=self.group, user=self.leader
-        )
+        m = RetreatGroupMembership.objects.get(group=self.group, user=self.leader)
         r = self.client.patch(
             self._detail_url(m.id),
             {"role": "vice_leader"},
@@ -167,14 +161,10 @@ class GroupMembershipApiTests(APITestCase, _Fixture):
 
     def test_delete(self):
         self.client.force_authenticate(self.council)
-        m = RetreatGroupMembership.objects.get(
-            group=self.group, user=self.leader
-        )
+        m = RetreatGroupMembership.objects.get(group=self.group, user=self.leader)
         r = self.client.delete(self._detail_url(m.id))
         self.assertEqual(r.status_code, 204)
-        self.assertFalse(
-            RetreatGroupMembership.objects.filter(pk=m.id).exists()
-        )
+        self.assertFalse(RetreatGroupMembership.objects.filter(pk=m.id).exists())
 
     def test_add_leader_syncs_attendee_gender_from_profile(self):
         self.client.force_authenticate(self.council)
@@ -191,8 +181,6 @@ class GroupMembershipApiTests(APITestCase, _Fixture):
 
     def test_outsider_cannot_delete(self):
         self.client.force_authenticate(self.outsider)
-        m = RetreatGroupMembership.objects.get(
-            group=self.group, user=self.leader
-        )
+        m = RetreatGroupMembership.objects.get(group=self.group, user=self.leader)
         r = self.client.delete(self._detail_url(m.id))
         self.assertIn(r.status_code, (403, 404))

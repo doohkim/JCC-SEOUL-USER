@@ -5,9 +5,7 @@ from django.db import migrations, models
 
 def backfill_mixed_to_unknown(apps, schema_editor):
     LodgingRoom = apps.get_model("retreat", "LodgingRoom")
-    LodgingRoom.objects.filter(recommended_gender="mixed").update(
-        recommended_gender=""
-    )
+    LodgingRoom.objects.filter(recommended_gender="mixed").update(recommended_gender="")
 
 
 class Migration(migrations.Migration):
@@ -17,9 +15,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(
-            backfill_mixed_to_unknown, migrations.RunPython.noop
-        ),
+        migrations.RunPython(backfill_mixed_to_unknown, migrations.RunPython.noop),
         migrations.AlterField(
             model_name="lodgingroom",
             name="recommended_gender",

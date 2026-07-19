@@ -36,7 +36,9 @@ PASTORAL_APPLICANT_ROLES = frozenset(
 
 
 def is_pastoral_applicant(profile) -> bool:
-    role = getattr(profile, "requested_applicant_role", UserProfile.ApplicantRole.MEMBER)
+    role = getattr(
+        profile, "requested_applicant_role", UserProfile.ApplicantRole.MEMBER
+    )
     return role in PASTORAL_APPLICANT_ROLES
 
 
@@ -164,9 +166,11 @@ def _ensure_attendee_for_group(
     log_retreat_change(
         user=changed_by,
         event=group.event,
-        action=RetreatChangeLog.Action.CREATE
-        if created
-        else RetreatChangeLog.Action.UPDATE,
+        action=(
+            RetreatChangeLog.Action.CREATE
+            if created
+            else RetreatChangeLog.Action.UPDATE
+        ),
         target_type=RetreatChangeLog.TargetType.ATTENDEE,
         target_id=attendee.id,
         payload_after={
@@ -266,9 +270,11 @@ def apply_retreat_membership_on_approval(
             log_retreat_change(
                 user=changed_by,
                 event=group.event,
-                action=RetreatChangeLog.Action.CREATE
-                if created
-                else RetreatChangeLog.Action.UPDATE,
+                action=(
+                    RetreatChangeLog.Action.CREATE
+                    if created
+                    else RetreatChangeLog.Action.UPDATE
+                ),
                 target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
                 target_id=membership.id,
                 payload_before=None if created else {"role": role},

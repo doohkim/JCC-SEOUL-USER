@@ -136,4 +136,6 @@ class MemberFunctionalDeptRole(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.member.name} - {self.role.name} @ {self.functional_department.name}"
+        return (
+            f"{self.member.name} - {self.role.name} @ {self.functional_department.name}"
+        )

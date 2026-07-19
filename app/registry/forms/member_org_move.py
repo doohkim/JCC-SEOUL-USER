@@ -49,7 +49,9 @@ class MemberOrgDivisionTransferForm(forms.Form):
         required=False,
         label="이전 부서",
     )
-    to_division = forms.ModelChoiceField(queryset=Division.objects.all(), label="목적 부서")
+    to_division = forms.ModelChoiceField(
+        queryset=Division.objects.all(), label="목적 부서"
+    )
     team = forms.ModelChoiceField(
         queryset=Team.objects.select_related("division"),
         required=False,

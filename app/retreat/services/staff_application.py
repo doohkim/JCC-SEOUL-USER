@@ -39,7 +39,9 @@ def user_assigned_to_event(user: User, event: RetreatEvent) -> bool:
     return user.retreat_group_memberships.filter(group__event=event).exists()
 
 
-def _latest_application(user: User, event: RetreatEvent) -> RetreatStaffApplication | None:
+def _latest_application(
+    user: User, event: RetreatEvent
+) -> RetreatStaffApplication | None:
     return (
         RetreatStaffApplication.objects.filter(event=event, user=user)
         .order_by("-created_at", "-id")
@@ -220,9 +222,11 @@ def _provision_group_leadership_from_staff_application(
     log_retreat_change(
         user=reviewer,
         event=application.event,
-        action=RetreatChangeLog.Action.CREATE
-        if created
-        else RetreatChangeLog.Action.UPDATE,
+        action=(
+            RetreatChangeLog.Action.CREATE
+            if created
+            else RetreatChangeLog.Action.UPDATE
+        ),
         target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
         target_id=membership.id,
         payload_after={
@@ -257,9 +261,7 @@ def _provision_council_from_staff_application(
     except CouncilScopeError as exc:
         raise ValueError(str(exc)) from exc
 
-    assert_can_assign_event_staff(
-        application.user, application.event, kind="council"
-    )
+    assert_can_assign_event_staff(application.user, application.event, kind="council")
     membership, created = RetreatCouncilMembership.objects.update_or_create(
         event=application.event,
         user=application.user,
@@ -276,9 +278,11 @@ def _provision_council_from_staff_application(
     log_retreat_change(
         user=reviewer,
         event=application.event,
-        action=RetreatChangeLog.Action.CREATE
-        if created
-        else RetreatChangeLog.Action.UPDATE,
+        action=(
+            RetreatChangeLog.Action.CREATE
+            if created
+            else RetreatChangeLog.Action.UPDATE
+        ),
         target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
         target_id=membership.id,
         payload_after={
@@ -314,7 +318,9 @@ def _resolve_approval_group_and_role(
     group_role: str | None,
 ) -> tuple[RetreatGroup, str]:
     """승인 시 최종 조·역할 (관리자 override 또는 신청값)."""
-    role = (group_role if group_role is not None else application.group_role or "").strip()
+    role = (
+        group_role if group_role is not None else application.group_role or ""
+    ).strip()
     if role not in (
         RetreatGroupMembership.Role.LEADER,
         RetreatGroupMembership.Role.VICE_LEADER,
@@ -509,7 +515,9 @@ def reject_staff_application(
     return application
 
 
-def groups_for_staff_apply(event: RetreatEvent, *, division_id: int) -> list[RetreatGroup]:
+def groups_for_staff_apply(
+    event: RetreatEvent, *, division_id: int
+) -> list[RetreatGroup]:
     return list(
         RetreatGroup.objects.filter(event=event, division_id=division_id).order_by(
             "order", "id"
@@ -528,7 +536,10 @@ def member_can_apply_to_event(
         return True, ""
     region, division = primary_affiliation_for(user)
     if division is None:
-        return False, "소속 지역·부서가 등록되어 있지 않습니다. 계정 관리자에게 문의해 주세요."
+        return (
+            False,
+            "소속 지역·부서가 등록되어 있지 않습니다. 계정 관리자에게 문의해 주세요.",
+        )
     groups = (
         eligible_groups
         if eligible_groups is not None
@@ -538,7 +549,7 @@ def member_can_apply_to_event(
         affiliation = f"{region.name} {division.name}" if region else division.name
         return (
             False,
-            f'귀하의 소속 부서({affiliation}) 운영진 조가 없습니다. '
+            f"귀하의 소속 부서({affiliation}) 운영진 조가 없습니다. "
             f'"{event.name}" 집회 운영진에게 문의해 주세요.',
         )
     return True, ""

@@ -126,9 +126,7 @@ class _BaseFixture(TestCase):
         cls.rl_president, _ = RoleLevel.objects.get_or_create(
             code="president", defaults={"name": "회장", "level": 80, "sort_order": 20}
         )
-        cls.staff_seoul = User.objects.create_user(
-            username="staff_seoul", password="x"
-        )
+        cls.staff_seoul = User.objects.create_user(username="staff_seoul", password="x")
         cls.staff_seoul.role_level = cls.rl_president
         cls.staff_seoul.save()
         UserDivisionTeam.objects.create(
@@ -358,9 +356,7 @@ class RetreatGroupAttendeesApiTests(_BaseFixture):
 
     def test_stranger_cannot_read_groups(self):
         self.client.force_authenticate(self.stranger)
-        r = self.client.get(
-            f"/api/v1/retreat/events/{self.event.id}/groups/"
-        )
+        r = self.client.get(f"/api/v1/retreat/events/{self.event.id}/groups/")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.json(), [])
 

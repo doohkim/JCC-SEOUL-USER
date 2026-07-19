@@ -117,7 +117,9 @@ class LodgingStayStatusTests(TestCase):
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
         )
         self.assertTrue(sync_lodging_stay_status(a))
-        self.assertEqual(a.lodging_stay_status, RetreatAttendee.LodgingStayStatus.ACTIVE)
+        self.assertEqual(
+            a.lodging_stay_status, RetreatAttendee.LodgingStayStatus.ACTIVE
+        )
 
     def test_display_active_shows_room(self):
         a = self._attendee(

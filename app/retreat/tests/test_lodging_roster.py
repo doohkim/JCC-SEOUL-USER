@@ -198,7 +198,9 @@ class LodgingRosterSummaryTests(_LodgingRosterFixture):
         self.assertEqual(by_name["당일참석"].lodging_eligible_key, "ineligible")
         self.assertEqual(by_name["당일참석"].lodging_assignment_key, "")
         self.assertEqual(by_name["퇴실자"].lodging_eligible_key, "ineligible")
-        self.assertEqual(attendee_lodging_cell_label(by_name["당일참석"]), "입실 예정 없음")
+        self.assertEqual(
+            attendee_lodging_cell_label(by_name["당일참석"]), "입실 예정 없음"
+        )
         self.assertEqual(attendee_lodging_cell_label(by_name["퇴실자"]), "숙박 종료")
         self.assertIsNone(attendee_lodging_cell_label(by_name["배정자"]))
 

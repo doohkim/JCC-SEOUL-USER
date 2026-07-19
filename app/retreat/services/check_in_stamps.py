@@ -98,8 +98,8 @@ def stamp_check_in_status(
 ) -> None:
     """check_in_status 변경 또는 관리자 수동 시각 입력을 반영한다.
 
-  - manual_* 가 주어지면 해당 필드만 설정(시간 수정).
-  - 상태가 바뀌면 now() 로 해당 시각 필드를 갱신한다.
+    - manual_* 가 주어지면 해당 필드만 설정(시간 수정).
+    - 상태가 바뀌면 now() 로 해당 시각 필드를 갱신한다.
     """
     if manual_checked_in_at is not None:
         attendee.checked_in_at = manual_checked_in_at

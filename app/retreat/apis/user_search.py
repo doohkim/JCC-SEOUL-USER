@@ -47,6 +47,7 @@ def _primary_affiliation_for_user(user):
         division.name or "",
     )
 
+
 _DEFAULT_LIMIT = 10
 _MAX_LIMIT = 30
 _ALL_MAX_LIMIT = 1000

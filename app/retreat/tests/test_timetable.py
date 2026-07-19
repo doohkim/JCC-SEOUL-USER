@@ -99,7 +99,9 @@ class RetreatTimetableTests(TestCase):
         r = self.client.get(self.list_url)
         self.assertEqual(r.status_code, 403)
 
-        r2 = self.client.post(self.list_url, self._payload(title="몰래추가"), format="json")
+        r2 = self.client.post(
+            self.list_url, self._payload(title="몰래추가"), format="json"
+        )
         self.assertEqual(r2.status_code, 403)
 
     def test_end_before_start_rejected(self):

@@ -35,7 +35,9 @@ class PickupObserverLeaderMatrixTests(CouncilMatrixFixture):
 
     def test_dashboard_and_groups_show_own_group_only(self):
         visible_ids = set(
-            visible_retreat_groups_for(self.user, self.event).values_list("id", flat=True)
+            visible_retreat_groups_for(self.user, self.event).values_list(
+                "id", flat=True
+            )
         )
         self.assertEqual(visible_ids, {self.group_seoul.id})
 
@@ -70,15 +72,11 @@ class PickupObserverLeaderMatrixTests(CouncilMatrixFixture):
         incheon_detail = reverse(
             "api_retreat_pickup_detail", args=[self.incheon_arrival_pickup.id]
         )
-        r = self.api.patch(
-            incheon_detail, {"boarding_place": "변경"}, format="json"
-        )
+        r = self.api.patch(incheon_detail, {"boarding_place": "변경"}, format="json")
         self.assertEqual(r.status_code, 403, r.content)
 
         seoul_detail = reverse(
             "api_retreat_pickup_detail", args=[self.arrival_pickup.id]
         )
-        r2 = self.api.patch(
-            seoul_detail, {"boarding_place": "변경"}, format="json"
-        )
+        r2 = self.api.patch(seoul_detail, {"boarding_place": "변경"}, format="json")
         self.assertEqual(r2.status_code, 200, r2.content)

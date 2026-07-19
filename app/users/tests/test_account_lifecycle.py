@@ -44,7 +44,9 @@ class AccountRetireFixture(TestCase):
         )
 
         cls.target = User.objects.create_user(
-            username="kakao_9990001", password="x", signup_source=User.SignupSource.KAKAO
+            username="kakao_9990001",
+            password="x",
+            signup_source=User.SignupSource.KAKAO,
         )
         cls.profile = ensure_user_profile(cls.target)
         cls.profile.real_name = "김테스트"
@@ -113,9 +115,7 @@ class RetireUserTests(AccountRetireFixture):
         self.assertEqual(attendee.user_id, self.target.pk)
 
     def test_retire_preserves_group_membership_for_superuser(self):
-        membership_id = RetreatGroupMembership.objects.get(
-            user_id=self.target.pk
-        ).id
+        membership_id = RetreatGroupMembership.objects.get(user_id=self.target.pk).id
         retire_user(self.target)
         self.assertTrue(
             RetreatGroupMembership.objects.filter(pk=membership_id).exists()

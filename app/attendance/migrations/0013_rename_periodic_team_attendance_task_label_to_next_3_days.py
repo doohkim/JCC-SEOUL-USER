@@ -63,4 +63,3 @@ class Migration(migrations.Migration):
             revert_periodic_task_label,
         ),
     ]
-

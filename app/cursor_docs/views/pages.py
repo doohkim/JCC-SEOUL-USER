@@ -53,7 +53,10 @@ class CursorDocListView(CursorDocsAccessMixin, ListView):
             docs = list_docs(category)
             if len(docs) == 1:
                 return redirect(
-                    reverse(CATEGORY_DETAIL_URL_NAMES[category], kwargs={"slug": docs[0].slug})
+                    reverse(
+                        CATEGORY_DETAIL_URL_NAMES[category],
+                        kwargs={"slug": docs[0].slug},
+                    )
                 )
         return super().get(request, *args, **kwargs)
 

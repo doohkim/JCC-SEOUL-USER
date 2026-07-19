@@ -65,7 +65,9 @@ class RetreatGroup(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.event.name} · {self.region.name} {self.division.name} · {self.name}"
+        return (
+            f"{self.event.name} · {self.region.name} {self.division.name} · {self.name}"
+        )
 
     def save(self, *args, **kwargs):
         if not self.order:

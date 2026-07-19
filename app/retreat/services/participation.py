@@ -8,16 +8,11 @@ from retreat.models import RetreatAttendance, RetreatAttendee, RetreatSessionAtt
 
 
 def is_participating(attendee: RetreatAttendee) -> bool:
-    return (
-        attendee.participation_status
-        != RetreatAttendee.ParticipationStatus.ABSENT
-    )
+    return attendee.participation_status != RetreatAttendee.ParticipationStatus.ABSENT
 
 
 def participating_filter(qs: QuerySet) -> QuerySet:
-    return qs.exclude(
-        participation_status=RetreatAttendee.ParticipationStatus.ABSENT
-    )
+    return qs.exclude(participation_status=RetreatAttendee.ParticipationStatus.ABSENT)
 
 
 def absent_attendee_keys(group_ids: list[int]) -> set[tuple[int, str]]:
@@ -88,9 +83,9 @@ def _sync_sessions_absent(attendee: RetreatAttendee, *, actor) -> None:
             enrollment=enrollment,
             defaults={
                 "status": RetreatAttendance.Status.ABSENT,
-                "checked_by": actor
-                if getattr(actor, "is_authenticated", False)
-                else None,
+                "checked_by": (
+                    actor if getattr(actor, "is_authenticated", False) else None
+                ),
             },
         )
         if created or (
@@ -99,9 +94,11 @@ def _sync_sessions_absent(attendee: RetreatAttendee, *, actor) -> None:
             log_retreat_change(
                 user=actor,
                 event=enrollment.session.event,
-                action=RetreatChangeLog.Action.CREATE
-                if created
-                else RetreatChangeLog.Action.UPDATE,
+                action=(
+                    RetreatChangeLog.Action.CREATE
+                    if created
+                    else RetreatChangeLog.Action.UPDATE
+                ),
                 target_type=RetreatChangeLog.TargetType.ATTENDANCE,
                 target_id=attendance.id,
                 payload_before=before_payload,

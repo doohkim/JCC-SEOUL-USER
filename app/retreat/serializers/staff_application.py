@@ -3,7 +3,11 @@ from __future__ import annotations
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from retreat.models import RetreatCouncilMembership, RetreatGroupMembership, RetreatStaffApplication
+from retreat.models import (
+    RetreatCouncilMembership,
+    RetreatGroupMembership,
+    RetreatStaffApplication,
+)
 from users.services.user_display import user_display_name
 
 User = get_user_model()
@@ -14,9 +18,7 @@ class RetreatStaffApplicationSerializer(serializers.ModelSerializer):
     user_display_name = serializers.SerializerMethodField()
     region_name = serializers.CharField(source="region.name", read_only=True)
     division_name = serializers.CharField(source="division.name", read_only=True)
-    group_name = serializers.CharField(
-        source="group.name", read_only=True, default=""
-    )
+    group_name = serializers.CharField(source="group.name", read_only=True, default="")
     group_role_display = serializers.SerializerMethodField()
     application_track_display = serializers.SerializerMethodField()
     is_council_track = serializers.SerializerMethodField()

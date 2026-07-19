@@ -26,7 +26,11 @@ api_urlpatterns = [
     ),
     re_path(LEGACY_USERS_ADMIN_PATTERN, redirect_legacy_users_admin),
     re_path(LEGACY_USERS_ADMIN_PATTERN, redirect_legacy_users_admin),
-    path("docs/", TemplateView.as_view(template_name="docs/index.html"), name="docs_index"),
+    path(
+        "docs/",
+        TemplateView.as_view(template_name="docs/index.html"),
+        name="docs_index",
+    ),
     path("auth/", include("social_django.urls", namespace="social")),
     path("", include("attendance.urls")),
     path("", include("registry.urls")),
@@ -36,7 +40,6 @@ api_urlpatterns = [
     path("", include("notices.urls")),
     path("", include("cursor_docs.urls")),
     path("tinymce/", include("tinymce.urls")),
-
 ]
 urlpatterns = base_urlpatterns + api_urlpatterns
 

@@ -44,7 +44,10 @@ class WorshipRosterScopeAdmin(AuditLoggingModelAdminMixin, JccModelAdmin):
     autocomplete_fields = ["division"]
     inlines = [WorshipRosterEntryInline]
     fieldsets = (
-        ("필수", {"classes": ("jcc-required",), "fields": ("division", "venue", "year")}),
+        (
+            "필수",
+            {"classes": ("jcc-required",), "fields": ("division", "venue", "year")},
+        ),
         (
             "선택",
             {

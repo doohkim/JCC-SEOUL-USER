@@ -33,9 +33,21 @@ urlpatterns = [
         AttendanceDashboardView.as_view(),
         name="attendance_dashboard",
     ),
-    path("attendance/parking/", ParkingPermitApplyView.as_view(), name="parking_permit_apply"),
-    path("attendance/parking/admin/", ParkingPermitAdminView.as_view(), name="parking_permit_admin"),
-    path("attendance/roster/", AttendanceRosterListView.as_view(), name="attendance_roster_list"),
+    path(
+        "attendance/parking/",
+        ParkingPermitApplyView.as_view(),
+        name="parking_permit_apply",
+    ),
+    path(
+        "attendance/parking/admin/",
+        ParkingPermitAdminView.as_view(),
+        name="parking_permit_admin",
+    ),
+    path(
+        "attendance/roster/",
+        AttendanceRosterListView.as_view(),
+        name="attendance_roster_list",
+    ),
     path(
         "attendance/roster/edit/",
         AttendanceRosterEditView.as_view(),

@@ -6,7 +6,10 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from counseling.models import CounselingRequest, CounselingSlot
-from counseling.services import ensure_slots_for_horizon, get_or_create_schedule_settings
+from counseling.services import (
+    ensure_slots_for_horizon,
+    get_or_create_schedule_settings,
+)
 from users.models import Division, Region, RoleLevel, UserDivisionTeam
 
 User = get_user_model()
@@ -31,22 +34,30 @@ class CounselingApiTests(TestCase):
         self.pastor = User.objects.create_user(username="pastor_a", password="x")
         self.pastor.role_level = self.rl_pastor
         self.pastor.save()
-        UserDivisionTeam.objects.create(user=self.pastor, division=self.div_a, is_primary=True)
+        UserDivisionTeam.objects.create(
+            user=self.pastor, division=self.div_a, is_primary=True
+        )
 
         self.pastor_b = User.objects.create_user(username="pastor_b", password="x")
         self.pastor_b.role_level = self.rl_pastor
         self.pastor_b.save()
-        UserDivisionTeam.objects.create(user=self.pastor_b, division=self.div_b, is_primary=True)
+        UserDivisionTeam.objects.create(
+            user=self.pastor_b, division=self.div_b, is_primary=True
+        )
 
         self.applicant = User.objects.create_user(username="member_a", password="x")
         self.applicant.role_level = self.rl_member
         self.applicant.save()
-        UserDivisionTeam.objects.create(user=self.applicant, division=self.div_a, is_primary=True)
+        UserDivisionTeam.objects.create(
+            user=self.applicant, division=self.div_a, is_primary=True
+        )
 
         self.stranger = User.objects.create_user(username="stranger", password="x")
         self.stranger.role_level = self.rl_member
         self.stranger.save()
-        UserDivisionTeam.objects.create(user=self.stranger, division=self.div_b, is_primary=True)
+        UserDivisionTeam.objects.create(
+            user=self.stranger, division=self.div_b, is_primary=True
+        )
 
         get_or_create_schedule_settings(self.pastor.pk)
         ensure_slots_for_horizon(self.pastor.pk)

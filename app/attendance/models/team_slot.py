@@ -80,7 +80,9 @@ class TeamAttendanceSession(AdminAuditFields):
 
     def clean(self):
         super().clean()
-        if self.period_count is not None and (self.period_count < 1 or self.period_count > 20):
+        if self.period_count is not None and (
+            self.period_count < 1 or self.period_count > 20
+        ):
             raise ValidationError({"period_count": "1~20 사이여야 합니다."})
 
 
@@ -143,9 +145,9 @@ class TeamMemberSlotAttendance(AdminAuditFields):
                 n = sess.period_count
             else:
                 n = (
-                    TeamAttendanceSession.objects.filter(pk=self.session_id).values_list(
-                        "period_count", flat=True
-                    ).first()
+                    TeamAttendanceSession.objects.filter(pk=self.session_id)
+                    .values_list("period_count", flat=True)
+                    .first()
                     or 3
                 )
             if self.slot_index < 1 or self.slot_index > n:

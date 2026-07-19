@@ -62,7 +62,9 @@ class AccountRetiredVisibilityFixture(TestCase):
             role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
-        cls.target = User.objects.create_user(username="retired_vis_target", password="x")
+        cls.target = User.objects.create_user(
+            username="retired_vis_target", password="x"
+        )
         cls.attendee = RetreatAttendee.objects.create(
             group=cls.group,
             user=cls.target,
@@ -164,7 +166,9 @@ class AccountRetiredVisibilityFixture(TestCase):
     def test_event_admin_gets_404_for_retired_attendee_detail(self):
         self._retire_target()
         self.api.force_authenticate(self.event_admin)
-        r = self.api.get(reverse("api_retreat_attendee_detail", args=[self.attendee.id]))
+        r = self.api.get(
+            reverse("api_retreat_attendee_detail", args=[self.attendee.id])
+        )
         self.assertEqual(r.status_code, 404, r.content)
 
     def test_event_admin_gets_404_for_retired_pickup_patch(self):
@@ -181,8 +185,7 @@ class AccountRetiredVisibilityFixture(TestCase):
         self._retire_target()
         self.web.force_login(self.superuser)
         r = self.web.get(
-            reverse("retreat_pickup", args=[self.event.id])
-            + "?tab=all&date="
+            reverse("retreat_pickup", args=[self.event.id]) + "?tab=all&date="
         )
         self.assertEqual(r.status_code, 200, r.content)
         self.assertNotContains(r, "탈퇴 계정")
@@ -192,8 +195,7 @@ class AccountRetiredVisibilityFixture(TestCase):
         self._retire_target()
         self.web.force_login(self.event_admin)
         r = self.web.get(
-            reverse("retreat_pickup", args=[self.event.id])
-            + "?tab=all&date="
+            reverse("retreat_pickup", args=[self.event.id]) + "?tab=all&date="
         )
         self.assertEqual(r.status_code, 200, r.content)
         self.assertNotContains(r, "김탈퇴")

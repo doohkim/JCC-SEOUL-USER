@@ -27,10 +27,14 @@ def is_retired_user(user) -> bool:
 def exclude_retired_users_q(*, prefix: str = "user") -> Q:
     if prefix and not prefix.endswith("__"):
         prefix = f"{prefix}__"
-    return Q(**{f"{prefix}retired_at__isnull": True}) & Q(**{f"{prefix}is_active": True})
+    return Q(**{f"{prefix}retired_at__isnull": True}) & Q(
+        **{f"{prefix}is_active": True}
+    )
 
 
-def visible_user_linked_for(viewer, qs: QuerySet, *, user_prefix: str = "user") -> QuerySet:
+def visible_user_linked_for(
+    viewer, qs: QuerySet, *, user_prefix: str = "user"
+) -> QuerySet:
     if can_view_retired_account_data(viewer):
         return qs
     return qs.filter(exclude_retired_users_q(prefix=user_prefix))

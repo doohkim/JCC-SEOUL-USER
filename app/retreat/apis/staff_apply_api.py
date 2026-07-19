@@ -11,7 +11,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from retreat.forms import RetreatStaffApplicationForm
-from retreat.models import RetreatEvent, RetreatGroupMembership, RetreatStaffApplication, StaffApplicationTrack
+from retreat.models import (
+    RetreatEvent,
+    RetreatGroupMembership,
+    RetreatStaffApplication,
+    StaffApplicationTrack,
+)
 from retreat.services.staff_application import (
     eligible_groups_for_member,
     eligible_groups_payload_for_member,
@@ -86,7 +91,9 @@ def _build_staff_apply_payload(user, event: RetreatEvent) -> dict:
         "region_id": region.id if region else None,
         "division_id": division.id if division else None,
         "eligible_groups": eligible_groups_payload_for_member(user, event),
-        "can_submit_application": can_apply and status_value == "open" and not read_only,
+        "can_submit_application": can_apply
+        and status_value == "open"
+        and not read_only,
         "apply_block_message": apply_block_message,
         "show_ineligible_card": (
             status_value in ("open", "rejected")
@@ -127,7 +134,9 @@ class RetreatEventStaffApplyView(APIView):
 
         user = request.user
         region, division = primary_affiliation_for(user)
-        data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+        data = (
+            request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+        )
         if region:
             data.setdefault("region", region.id)
         if division:

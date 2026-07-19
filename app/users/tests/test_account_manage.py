@@ -193,9 +193,7 @@ class AccountManagePostTests(AccountManageFixture):
         self.client.force_login(self.manager)
         r = self._post_row(self.manager, {"team_id": str(self.team_a2.id)})
         self.assertEqual(r.status_code, 302)
-        membership = UserDivisionTeam.objects.get(
-            user=self.member, division=self.div_a
-        )
+        membership = UserDivisionTeam.objects.get(user=self.member, division=self.div_a)
         self.assertEqual(membership.team_id, self.team_a2.id)
 
     def test_manager_phone_digits_normalized_on_save(self):
@@ -239,9 +237,7 @@ class AccountManagePostTests(AccountManageFixture):
                 user=self.member, division=self.div_a
             ).exists()
         )
-        membership = UserDivisionTeam.objects.get(
-            user=self.member, division=self.div_b
-        )
+        membership = UserDivisionTeam.objects.get(user=self.member, division=self.div_b)
         self.assertEqual(membership.team_id, self.team_b.id)
 
     def test_staff_can_move_division(self):
@@ -259,9 +255,7 @@ class AccountManagePostTests(AccountManageFixture):
                 user=self.member, division=self.div_a
             ).exists()
         )
-        membership = UserDivisionTeam.objects.get(
-            user=self.member, division=self.div_b
-        )
+        membership = UserDivisionTeam.objects.get(user=self.member, division=self.div_b)
         self.assertEqual(membership.team_id, self.team_b.id)
 
 

@@ -24,7 +24,9 @@ class IntegrationAPITests(TestCase):
             key_prefix=prefix,
             key_hash=key_hash,
         )
-        cls.user = User.objects.create_user(username="int_api_user", password="unused-here")
+        cls.user = User.objects.create_user(
+            username="int_api_user", password="unused-here"
+        )
         cls.token = Token.objects.create(user=cls.user)
 
     def setUp(self):

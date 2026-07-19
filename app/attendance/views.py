@@ -2,7 +2,10 @@
 
 from django import forms
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import PermissionDenied, ValidationError as DjangoValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError as DjangoValidationError,
+)
 import json
 from django.contrib import messages
 from django.db import IntegrityError
@@ -20,7 +23,10 @@ from attendance.services.parking import (
 )
 from users.mixins import OnboardingRequiredMixin
 from users.models import Team, User
-from users.services.user_display import kakao_nickname_map_for_user_ids, user_display_name
+from users.services.user_display import (
+    kakao_nickname_map_for_user_ids,
+    user_display_name,
+)
 from users.permissions import (
     can_access_attendance_dashboard,
     can_access_attendance_roster_input,
@@ -65,12 +71,13 @@ def _parking_apply_redirect_url(*, tab: str, list_date: date | None) -> str:
 
 
 PARKING_TIME_CHOICES = [("", "선택")] + [
-    (f"{h:02d}:00", f"{h:02d}:00")
-    for h in range(24)
+    (f"{h:02d}:00", f"{h:02d}:00") for h in range(24)
 ]
 
 
-class AttendanceDashboardView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
+class AttendanceDashboardView(
+    OnboardingRequiredMixin, LoginRequiredMixin, TemplateView
+):
     """출석 조회 UI (정적 ``attendance/app.css`` · ``app.js``)."""
 
     template_name = "attendance/app.html"
@@ -86,12 +93,18 @@ class AttendanceDashboardView(OnboardingRequiredMixin, LoginRequiredMixin, Templ
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         ctx["show_welcome"] = self.request.GET.get("welcome") == "1"
-        ctx["welcome_name"] = user_display_name(self.request.user) or self.request.user.get_full_name()
-        ctx["can_change_division_json"] = "true" if can_change_dashboard_division(self.request.user) else "false"
+        ctx["welcome_name"] = (
+            user_display_name(self.request.user) or self.request.user.get_full_name()
+        )
+        ctx["can_change_division_json"] = (
+            "true" if can_change_dashboard_division(self.request.user) else "false"
+        )
         return ctx
 
 
-class AttendanceRosterListView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
+class AttendanceRosterListView(
+    OnboardingRequiredMixin, LoginRequiredMixin, TemplateView
+):
     template_name = "attendance/roster_list.html"
     login_url = reverse_lazy("user_login")
 
@@ -103,7 +116,9 @@ class AttendanceRosterListView(OnboardingRequiredMixin, LoginRequiredMixin, Temp
         return super().dispatch(request, *args, **kwargs)
 
 
-class AttendanceRosterEditView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
+class AttendanceRosterEditView(
+    OnboardingRequiredMixin, LoginRequiredMixin, TemplateView
+):
     template_name = "attendance/roster_edit.html"
     login_url = reverse_lazy("user_login")
 
@@ -115,14 +130,18 @@ class AttendanceRosterEditView(OnboardingRequiredMixin, LoginRequiredMixin, Temp
         return super().dispatch(request, *args, **kwargs)
 
 
-class AttendanceTeamRosterCheckView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
+class AttendanceTeamRosterCheckView(
+    OnboardingRequiredMixin, LoginRequiredMixin, TemplateView
+):
     """탭 출석부(주일 다중선택 / 수·토 예/불). 팀장·지정 직급·관리자만."""
 
     template_name = "attendance/team_roster_check.html"
     login_url = reverse_lazy("user_login")
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated and not can_access_team_roster_tab(request.user):
+        if request.user.is_authenticated and not can_access_team_roster_tab(
+            request.user
+        ):
             raise PermissionDenied("출석부를 이용할 권한이 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -135,7 +154,9 @@ class AttendanceTeamRosterCheckView(OnboardingRequiredMixin, LoginRequiredMixin,
             ctx["team_leader_is_superuser"] = True
             ctx["team_leader_is_superuser_json"] = "true"
         else:
-            division_codes = list(visible_divisions_for(u).values_list("code", flat=True))
+            division_codes = list(
+                visible_divisions_for(u).values_list("code", flat=True)
+            )
             ctx["team_leader_allowed_division_codes_json"] = json.dumps(division_codes)
             ctx["team_leader_is_superuser"] = False
             ctx["team_leader_is_superuser_json"] = "false"
@@ -144,12 +165,16 @@ class AttendanceTeamRosterCheckView(OnboardingRequiredMixin, LoginRequiredMixin,
         return ctx
 
 
-class AttendanceTeamRosterMyPageView(OnboardingRequiredMixin, LoginRequiredMixin, TemplateView):
+class AttendanceTeamRosterMyPageView(
+    OnboardingRequiredMixin, LoginRequiredMixin, TemplateView
+):
     template_name = "attendance/team_roster_mypage.html"
     login_url = reverse_lazy("user_login")
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated and not can_access_team_roster_tab(request.user):
+        if request.user.is_authenticated and not can_access_team_roster_tab(
+            request.user
+        ):
             raise PermissionDenied("출석부를 이용할 권한이 없습니다.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -159,9 +184,8 @@ class AttendanceTeamRosterMyPageView(OnboardingRequiredMixin, LoginRequiredMixin
         if not u.is_authenticated:
             raise PermissionDenied()
 
-        memberships = (
-            u.division_teams.select_related("division", "team")
-            .order_by("-is_primary", "division__sort_order", "sort_order", "team_id")
+        memberships = u.division_teams.select_related("division", "team").order_by(
+            "-is_primary", "division__sort_order", "sort_order", "team_id"
         )
         # 템플릿에 넘길 간단한 형태만
         ctx["memberships"] = [
@@ -202,8 +226,12 @@ class ParkingPermitWindowForm(forms.ModelForm):
         widgets = {
             "division": forms.Select(attrs={"class": "jcc-parking-input"}),
             "weekday": forms.Select(attrs={"class": "jcc-parking-input"}),
-            "start_time": forms.Select(choices=PARKING_TIME_CHOICES, attrs={"class": "jcc-parking-input"}),
-            "end_time": forms.Select(choices=PARKING_TIME_CHOICES, attrs={"class": "jcc-parking-input"}),
+            "start_time": forms.Select(
+                choices=PARKING_TIME_CHOICES, attrs={"class": "jcc-parking-input"}
+            ),
+            "end_time": forms.Select(
+                choices=PARKING_TIME_CHOICES, attrs={"class": "jcc-parking-input"}
+            ),
             "is_active": forms.CheckboxInput(attrs={"class": "jcc-parking-checkbox"}),
         }
 
@@ -222,9 +250,9 @@ class ParkingPermitApplyView(OnboardingRequiredMixin, LoginRequiredMixin, FormVi
         )
 
     def _user_applications(self):
-        return ParkingPermitApplication.objects.filter(user=self.request.user).select_related(
-            "division", "team"
-        )
+        return ParkingPermitApplication.objects.filter(
+            user=self.request.user
+        ).select_related("division", "team")
 
     def _apply_list_date(self) -> tuple[date, str]:
         raw = (self.request.GET.get("date") or "").strip()
@@ -244,8 +272,10 @@ class ParkingPermitApplyView(OnboardingRequiredMixin, LoginRequiredMixin, FormVi
     def _manager_scoped_teams(self, divisions_qs):
         user = self.request.user
         if not divisions_qs.exists():
-            return Team.objects.all().select_related("division").order_by(
-                "division__sort_order", "sort_order", "name"
+            return (
+                Team.objects.all()
+                .select_related("division")
+                .order_by("division__sort_order", "sort_order", "name")
             )
         team_qs = Team.objects.none()
         for div in divisions_qs:
@@ -290,7 +320,9 @@ class ParkingPermitApplyView(OnboardingRequiredMixin, LoginRequiredMixin, FormVi
         list_date_post = (request.POST.get("list_date") or "").strip()
         try:
             redirect_list_date = (
-                datetime.strptime(list_date_post, "%Y-%m-%d").date() if list_date_post else None
+                datetime.strptime(list_date_post, "%Y-%m-%d").date()
+                if list_date_post
+                else None
             )
         except ValueError:
             redirect_list_date = None
@@ -304,40 +336,66 @@ class ParkingPermitApplyView(OnboardingRequiredMixin, LoginRequiredMixin, FormVi
                 wform = ParkingPermitWindowForm(request.POST)
                 if not wform.is_valid():
                     messages.error(request, _parking_messages_from_form(wform))
-                    return HttpResponseRedirect(_parking_apply_redirect_url(tab="window", list_date=None))
+                    return HttpResponseRedirect(
+                        _parking_apply_redirect_url(tab="window", list_date=None)
+                    )
                 obj = wform.save(commit=False)
                 if obj.division_id not in scoped_ids:
-                    messages.error(request, "소속 부서의 신청 가능 시간만 설정할 수 있습니다.")
-                    return HttpResponseRedirect(_parking_apply_redirect_url(tab="window", list_date=None))
+                    messages.error(
+                        request, "소속 부서의 신청 가능 시간만 설정할 수 있습니다."
+                    )
+                    return HttpResponseRedirect(
+                        _parking_apply_redirect_url(tab="window", list_date=None)
+                    )
                 try:
                     obj.full_clean()
                     obj.save()
                 except DjangoValidationError as exc:
-                    messages.error(request, _parking_messages_from_validation_error(exc))
-                    return HttpResponseRedirect(_parking_apply_redirect_url(tab="window", list_date=None))
+                    messages.error(
+                        request, _parking_messages_from_validation_error(exc)
+                    )
+                    return HttpResponseRedirect(
+                        _parking_apply_redirect_url(tab="window", list_date=None)
+                    )
                 messages.success(request, "신청 가능 시간을 추가했습니다.")
-                return HttpResponseRedirect(_parking_apply_redirect_url(tab="window", list_date=None))
+                return HttpResponseRedirect(
+                    _parking_apply_redirect_url(tab="window", list_date=None)
+                )
             window_id = (request.POST.get("window_id") or "").strip()
             if not window_id.isdigit():
                 messages.error(request, "요청 데이터를 찾을 수 없습니다.")
-                return HttpResponseRedirect(_parking_apply_redirect_url(tab="window", list_date=None))
-            win = ParkingPermitWindow.objects.filter(pk=int(window_id), division_id__in=scoped_ids).first()
+                return HttpResponseRedirect(
+                    _parking_apply_redirect_url(tab="window", list_date=None)
+                )
+            win = ParkingPermitWindow.objects.filter(
+                pk=int(window_id), division_id__in=scoped_ids
+            ).first()
             if not win:
-                messages.error(request, "소속 부서의 신청 가능 시간만 삭제할 수 있습니다.")
-                return HttpResponseRedirect(_parking_apply_redirect_url(tab="window", list_date=None))
+                messages.error(
+                    request, "소속 부서의 신청 가능 시간만 삭제할 수 있습니다."
+                )
+                return HttpResponseRedirect(
+                    _parking_apply_redirect_url(tab="window", list_date=None)
+                )
             win.delete()
             messages.success(request, "신청 가능 시간을 삭제했습니다.")
-            return HttpResponseRedirect(_parking_apply_redirect_url(tab="window", list_date=None))
+            return HttpResponseRedirect(
+                _parking_apply_redirect_url(tab="window", list_date=None)
+            )
 
         if action in {"delete", "edit"} and app_id.isdigit():
             app = self._user_applications().filter(pk=int(app_id)).first()
             if app is None:
                 messages.error(request, "요청 데이터를 찾을 수 없습니다.")
-                return HttpResponseRedirect(_parking_apply_redirect_url(tab=tab, list_date=redirect_list_date))
+                return HttpResponseRedirect(
+                    _parking_apply_redirect_url(tab=tab, list_date=redirect_list_date)
+                )
             if action == "delete":
                 app.delete()
                 messages.success(request, "주차권 신청을 삭제했습니다.")
-                return HttpResponseRedirect(_parking_apply_redirect_url(tab=tab, list_date=redirect_list_date))
+                return HttpResponseRedirect(
+                    _parking_apply_redirect_url(tab=tab, list_date=redirect_list_date)
+                )
             vehicle_number = (request.POST.get("vehicle_number") or "").strip()
             app.vehicle_number = vehicle_number
             membership = self._primary_membership()
@@ -350,15 +408,21 @@ class ParkingPermitApplyView(OnboardingRequiredMixin, LoginRequiredMixin, FormVi
                 app.save()
             except DjangoValidationError as exc:
                 messages.error(request, _parking_messages_from_validation_error(exc))
-                return HttpResponseRedirect(_parking_apply_redirect_url(tab=tab, list_date=redirect_list_date))
+                return HttpResponseRedirect(
+                    _parking_apply_redirect_url(tab=tab, list_date=redirect_list_date)
+                )
             except IntegrityError:
                 messages.error(
                     request,
                     "이미 해당 날짜에 같은 차량번호로 신청되어 있습니다. 하루에 한 번만 신청할 수 있습니다.",
                 )
-                return HttpResponseRedirect(_parking_apply_redirect_url(tab=tab, list_date=redirect_list_date))
+                return HttpResponseRedirect(
+                    _parking_apply_redirect_url(tab=tab, list_date=redirect_list_date)
+                )
             messages.success(request, "차량번호를 수정했습니다.")
-            return HttpResponseRedirect(_parking_apply_redirect_url(tab=tab, list_date=redirect_list_date))
+            return HttpResponseRedirect(
+                _parking_apply_redirect_url(tab=tab, list_date=redirect_list_date)
+            )
         return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):
@@ -366,7 +430,9 @@ class ParkingPermitApplyView(OnboardingRequiredMixin, LoginRequiredMixin, FormVi
         list_date_post = (self.request.POST.get("list_date") or "").strip()
         try:
             redirect_list_date = (
-                datetime.strptime(list_date_post, "%Y-%m-%d").date() if list_date_post else None
+                datetime.strptime(list_date_post, "%Y-%m-%d").date()
+                if list_date_post
+                else None
             )
         except ValueError:
             redirect_list_date = None
@@ -382,15 +448,21 @@ class ParkingPermitApplyView(OnboardingRequiredMixin, LoginRequiredMixin, FormVi
             obj.save()
         except DjangoValidationError as exc:
             messages.error(self.request, _parking_messages_from_validation_error(exc))
-            return HttpResponseRedirect(_parking_apply_redirect_url(tab="apply", list_date=redirect_list_date))
+            return HttpResponseRedirect(
+                _parking_apply_redirect_url(tab="apply", list_date=redirect_list_date)
+            )
         except IntegrityError:
             messages.error(
                 self.request,
                 "이미 해당 날짜에 같은 차량번호로 신청되어 있습니다. 하루에 한 번만 신청할 수 있습니다.",
             )
-            return HttpResponseRedirect(_parking_apply_redirect_url(tab="apply", list_date=redirect_list_date))
+            return HttpResponseRedirect(
+                _parking_apply_redirect_url(tab="apply", list_date=redirect_list_date)
+            )
         messages.success(self.request, "주차권 신청이 접수되었습니다.")
-        return HttpResponseRedirect(_parking_apply_redirect_url(tab="apply", list_date=redirect_list_date))
+        return HttpResponseRedirect(
+            _parking_apply_redirect_url(tab="apply", list_date=redirect_list_date)
+        )
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -404,7 +476,9 @@ class ParkingPermitApplyView(OnboardingRequiredMixin, LoginRequiredMixin, FormVi
             tab = "apply"
 
         ctx["my_division_name"] = membership.division.name if membership else "-"
-        ctx["my_team_name"] = membership.team.name if membership and membership.team_id else "-"
+        ctx["my_team_name"] = (
+            membership.team.name if membership and membership.team_id else "-"
+        )
         list_date_obj, list_date_iso = self._apply_list_date()
         ctx["list_date"] = list_date_iso
         ctx["list_date_display"] = list_date_obj.strftime("%Y/%m/%d")
@@ -459,7 +533,9 @@ class ParkingPermitApplyView(OnboardingRequiredMixin, LoginRequiredMixin, FormVi
             start_date, resolved_date_from, resolved_date_to, end_date_exclusive = (
                 self._resolve_datetime_range(date_from, date_to)
             )
-            qs = qs.filter(permit_date__gte=start_date, permit_date__lt=end_date_exclusive)
+            qs = qs.filter(
+                permit_date__gte=start_date, permit_date__lt=end_date_exclusive
+            )
             manager_qs = qs.order_by("-created_at")
             ctx["manager_applications"] = manager_qs
             uid_set = set(manager_qs.values_list("user_id", flat=True))
@@ -483,9 +559,13 @@ class ParkingPermitApplyView(OnboardingRequiredMixin, LoginRequiredMixin, FormVi
             ctx["date_to"] = resolved_date_to
             ctx["window_form"] = ParkingPermitWindowForm()
             ctx["window_form"].fields["division"].queryset = scoped_divisions
-            ctx["window_rows"] = ParkingPermitWindow.objects.filter(
-                division_id__in=division_ids
-            ).select_related("division").order_by("division__sort_order", "division__name", "weekday", "start_time")
+            ctx["window_rows"] = (
+                ParkingPermitWindow.objects.filter(division_id__in=division_ids)
+                .select_related("division")
+                .order_by(
+                    "division__sort_order", "division__name", "weekday", "start_time"
+                )
+            )
         return ctx
 
 
@@ -498,4 +578,6 @@ class ParkingPermitAdminView(OnboardingRequiredMixin, LoginRequiredMixin, Templa
             raise PermissionDenied("주차권 관리 페이지 권한이 없습니다.")
         q = self.request.META.get("QUERY_STRING", "")
         suffix = f"&{q}" if q else ""
-        return HttpResponseRedirect(f"{reverse_lazy('parking_permit_apply')}?tab=manage{suffix}")
+        return HttpResponseRedirect(
+            f"{reverse_lazy('parking_permit_apply')}?tab=manage{suffix}"
+        )

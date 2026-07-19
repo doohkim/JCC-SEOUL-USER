@@ -71,7 +71,11 @@ class RetreatAttendanceBulkUpsertView(APIView):
             pk=session_id,
         )
         event = session.event
-        if not visible_retreat_sessions_for(request.user, event).filter(pk=session.id).exists():
+        if (
+            not visible_retreat_sessions_for(request.user, event)
+            .filter(pk=session.id)
+            .exists()
+        ):
             raise PermissionDenied("이 출석부를 볼 권한이 없습니다.")
         assert_session_mutable(session)
 
@@ -198,18 +202,19 @@ class RetreatAttendanceBulkUpsertView(APIView):
                     "attendee_id": enrollment.source_attendee_id,
                     "session_id": session.id,
                 }
-                if was_created or (
-                    before_payload
-                    and before_payload.get("status") != obj.status
-                ) or (
-                    before_payload and before_payload.get("note") != obj.note
+                if (
+                    was_created
+                    or (before_payload and before_payload.get("status") != obj.status)
+                    or (before_payload and before_payload.get("note") != obj.note)
                 ):
                     log_retreat_change(
                         user=request.user,
                         event=event,
-                        action=RetreatChangeLog.Action.CREATE
-                        if was_created
-                        else RetreatChangeLog.Action.UPDATE,
+                        action=(
+                            RetreatChangeLog.Action.CREATE
+                            if was_created
+                            else RetreatChangeLog.Action.UPDATE
+                        ),
                         target_type=RetreatChangeLog.TargetType.ATTENDANCE,
                         target_id=obj.id,
                         payload_before=before_payload,
@@ -231,6 +236,7 @@ class RetreatAttendanceBulkUpsertView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
 class RetreatSessionAttendanceNamesView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -239,7 +245,9 @@ class RetreatSessionAttendanceNamesView(APIView):
         token = (request.headers.get("X-Retreat-Token") or "").strip()
         expected = _retreat_api_token()
         if not token or not expected or not hmac.compare_digest(token, expected):
-            return Response({"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED
+            )
 
         session = get_object_or_404(
             RetreatSession.objects.select_related("event"),
@@ -253,11 +261,14 @@ class RetreatSessionAttendanceNamesView(APIView):
             .select_related("enrollment")
             .values("enrollment__group_name", "enrollment__name")
         )
-        return Response({
-            "attendees": [
-                {
-                    "group_name": row["enrollment__group_name"],
-                    "name": row["enrollment__name"],
-                } for row in rows
-            ]
-        })
+        return Response(
+            {
+                "attendees": [
+                    {
+                        "group_name": row["enrollment__group_name"],
+                        "name": row["enrollment__name"],
+                    }
+                    for row in rows
+                ]
+            }
+        )

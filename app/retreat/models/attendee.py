@@ -85,9 +85,7 @@ class RetreatAttendee(models.Model):
         default=CheckInStatus.PENDING,
         help_text="입실전·퇴실 상태인 조원은 출석부에서 결석이 기본으로 선택됩니다.",
     )
-    expected_check_in_at = models.DateTimeField(
-        "예상 입실 시각", null=True, blank=True
-    )
+    expected_check_in_at = models.DateTimeField("예상 입실 시각", null=True, blank=True)
     expected_check_out_at = models.DateTimeField(
         "예상 퇴실 시각", null=True, blank=True
     )

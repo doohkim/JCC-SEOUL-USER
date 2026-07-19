@@ -57,7 +57,9 @@ def allocate_import_key(display_name: str, used_ik: set[str]) -> str:
 def resolve_team(team_header: str, division: Division) -> Team | None:
     t = team_header.replace(" ", "").strip()
     if "회장단" in t and "팀" not in t:
-        existing = Team.objects.filter(division=division, name__icontains="회장단").first()
+        existing = Team.objects.filter(
+            division=division, name__icontains="회장단"
+        ).first()
         if existing:
             return existing
         team, _ = Team.objects.get_or_create(

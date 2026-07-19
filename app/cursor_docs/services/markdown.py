@@ -223,7 +223,7 @@ def _render_blockquote(block: str) -> str:
         lines.append(_BLOCKQUOTE_RE.sub("", line).strip())
     inner = _paragraph_html("\n".join(lines))
     inner = inner.removeprefix("<p>").removesuffix("</p>")
-    return f"<blockquote class=\"jcc-cursorDocs-blockquote\"><p>{inner}</p></blockquote>"
+    return f'<blockquote class="jcc-cursorDocs-blockquote"><p>{inner}</p></blockquote>'
 
 
 def _render_block(block: str) -> str:
@@ -256,9 +256,7 @@ def render_markdown(text: str) -> str:
     def _code_repl(match: re.Match[str]) -> str:
         key = f"@@CODE{len(placeholders)}@@"
         code = _escape(match.group(1).rstrip("\n"))
-        placeholders[key] = (
-            f'<pre class="jcc-cursorDocs-pre"><code>{code}</code></pre>'
-        )
+        placeholders[key] = f'<pre class="jcc-cursorDocs-pre"><code>{code}</code></pre>'
         return f"\n\n{key}\n\n"
 
     body = _FENCE_RE.sub(_code_repl, body)

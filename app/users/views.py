@@ -37,7 +37,10 @@ from retreat.models import (
     RetreatChangeLog,
     RetreatGroupMembership,
 )
-from users.services.user_display import kakao_nickname_map_for_user_ids, user_display_name
+from users.services.user_display import (
+    kakao_nickname_map_for_user_ids,
+    user_display_name,
+)
 from users.services.user_avatar import user_profile_avatar_url
 
 
@@ -116,7 +119,9 @@ def _activity_category_from_summary(summary: str) -> tuple[str, str]:
     s = summary or ""
     if "승인 상태" in s or "승인" in s or "반려" in s:
         return "승인 상태 변경", "status"
-    if any(k in s for k in ("전화", "연락", "휴대", "실명", "이름", "메모", "최종 수정")):
+    if any(
+        k in s for k in ("전화", "연락", "휴대", "실명", "이름", "메모", "최종 수정")
+    ):
         return "개인 정보 수정", "profile"
     if any(k in s for k in ("조원", "조 ", "운영진", "수련회", "배정")):
         return "조 배정 변경", "group"
@@ -179,7 +184,9 @@ def _activity_item(
 def build_onboarding_application_activity_log(profile: UserProfile) -> list[dict]:
     """가입신청서·계정 관리 활동 로그(집계형): 스냅샷 + 수련회 변경 이력."""
     status_labels = _onboarding_status_labels()
-    entries: list[tuple[timezone.datetime, str, str, str | None, str | None, str | None]] = []
+    entries: list[
+        tuple[timezone.datetime, str, str, str | None, str | None, str | None]
+    ] = []
     user = profile.user if profile.user_id else None
 
     if user and user.date_joined:
@@ -197,7 +204,9 @@ def build_onboarding_application_activity_log(profile: UserProfile) -> list[dict
 
     if profile.updated_at:
         at = timezone.localtime(profile.updated_at)
-        status_text = status_labels.get(profile.onboarding_status, profile.onboarding_status)
+        status_text = status_labels.get(
+            profile.onboarding_status, profile.onboarding_status
+        )
         entries.append(
             (
                 at,
@@ -223,7 +232,9 @@ def build_onboarding_application_activity_log(profile: UserProfile) -> list[dict
 
     if profile.user_id:
         attendee_ids = list(
-            RetreatAttendee.objects.filter(user_id=profile.user_id).values_list("id", flat=True)
+            RetreatAttendee.objects.filter(user_id=profile.user_id).values_list(
+                "id", flat=True
+            )
         )
         membership_ids = list(
             RetreatGroupMembership.objects.filter(user_id=profile.user_id).values_list(
@@ -252,7 +263,9 @@ def build_onboarding_application_activity_log(profile: UserProfile) -> list[dict
             for item in humanize_change_logs(logs):
                 at = timezone.localtime(item.log.changed_at)
                 category, tone = _activity_category_from_summary(item.summary)
-                entries.append((at, item.actor or "-", item.summary, None, category, tone))
+                entries.append(
+                    (at, item.actor or "-", item.summary, None, category, tone)
+                )
 
     if not entries:
         return []
@@ -312,7 +325,9 @@ class KakaoAuthEntryView(TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         query = {"next": self.request.GET.get("next", "/onboarding/")}
-        ctx["kakao_begin_url"] = f"{reverse_lazy('social:begin', args=['kakao'])}?{urlencode(query)}"
+        ctx["kakao_begin_url"] = (
+            f"{reverse_lazy('social:begin', args=['kakao'])}?{urlencode(query)}"
+        )
         error = self.request.GET.get("error", "")
         error_reason = self.request.GET.get("error_reason", "")
         error_description = self.request.GET.get("error_description", "")
@@ -324,7 +339,9 @@ class KakaoAuthEntryView(TemplateView):
             elif error in {"invalid_request", "invalid_client", "server_error"}:
                 error_message = "카카오 인증 요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."
             elif error == "1":
-                error_message = "카카오 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요."
+                error_message = (
+                    "카카오 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요."
+                )
             else:
                 error_message = "카카오 로그인에 실패했습니다. 다시 시도해 주세요."
 
@@ -376,9 +393,9 @@ class OnboardingRequestForm(forms.Form):
         empty_label="부서를 선택해 주세요",
     )
     requested_team = forms.ModelChoiceField(
-        queryset=Team.objects.select_related("division").all().order_by(
-            "division__sort_order", "sort_order", "name"
-        ),
+        queryset=Team.objects.select_related("division")
+        .all()
+        .order_by("division__sort_order", "sort_order", "name"),
         label="희망 팀",
         required=False,
         empty_label="팀을 선택해 주세요",
@@ -418,7 +435,9 @@ class OnboardingRequestForm(forms.Form):
         )
 
         if division and region and division.region_id != region.id:
-            self.add_error("requested_division", "선택한 부서는 해당 지역에 속해야 합니다.")
+            self.add_error(
+                "requested_division", "선택한 부서는 해당 지역에 속해야 합니다."
+            )
         if team and division and team.division_id != division.id:
             self.add_error("requested_team", "선택한 팀은 해당 부서에 속하지 않습니다.")
 
@@ -478,11 +497,15 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
             )
         else:
             ctx["requested_division_name"] = ""
-        ctx["requested_team_name"] = profile.requested_team.name if profile.requested_team_id else ""
-        ctx["requested_applicant_role"] = profile.requested_applicant_role or UserProfile.ApplicantRole.MEMBER
-        ctx["requested_applicant_role_label"] = dict(UserProfile.ApplicantRole.choices).get(
-            ctx["requested_applicant_role"], "성도"
+        ctx["requested_team_name"] = (
+            profile.requested_team.name if profile.requested_team_id else ""
         )
+        ctx["requested_applicant_role"] = (
+            profile.requested_applicant_role or UserProfile.ApplicantRole.MEMBER
+        )
+        ctx["requested_applicant_role_label"] = dict(
+            UserProfile.ApplicantRole.choices
+        ).get(ctx["requested_applicant_role"], "성도")
         ctx["requested_gender_label"] = dict(UserProfile.Gender.choices).get(
             profile.gender, ""
         )
@@ -502,7 +525,9 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
         for t in Team.objects.select_related("division").order_by(
             "division__sort_order", "sort_order", "name"
         ):
-            teams_map.setdefault(str(t.division_id), []).append({"id": t.id, "name": t.name})
+            teams_map.setdefault(str(t.division_id), []).append(
+                {"id": t.id, "name": t.name}
+            )
         ctx["divisions_map_json"] = json.dumps(divisions_map, ensure_ascii=False)
         ctx["teams_map_json"] = json.dumps(teams_map, ensure_ascii=False)
         return ctx
@@ -523,7 +548,9 @@ class UserOnboardingView(LoginRequiredMixin, FormView):
             UserProfile.ApplicantRole.PASTOR,
             UserProfile.ApplicantRole.EVANGELIST,
         )
-        profile.requested_team = None if is_pastoral else form.cleaned_data.get("requested_team")
+        profile.requested_team = (
+            None if is_pastoral else form.cleaned_data.get("requested_team")
+        )
         profile.requested_applicant_role = form.cleaned_data.get(
             "requested_applicant_role", UserProfile.ApplicantRole.MEMBER
         )
@@ -614,7 +641,9 @@ class UserProfileForm(forms.Form):
     )
 
     def clean_interest_topics(self):
-        return _normalize_interest_topics(self.cleaned_data.get("interest_topics") or "")
+        return _normalize_interest_topics(
+            self.cleaned_data.get("interest_topics") or ""
+        )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -653,8 +682,11 @@ class UserProfileView(LoginRequiredMixin, FormView):
         ctx["profile"] = profile
         ctx["display_label"] = user_display_name(user)
         ctx["memberships"] = list(
-            user.division_teams.select_related("division", "division__region", "team")
-            .order_by("-is_primary", "sort_order", "division__sort_order", "division__name")
+            user.division_teams.select_related(
+                "division", "division__region", "team"
+            ).order_by(
+                "-is_primary", "sort_order", "division__sort_order", "division__name"
+            )
         )
         ctx["onboarding_complete"] = is_onboarding_complete(user, profile)
         ctx["onboarding_status_label"] = profile.get_onboarding_status_display()
@@ -681,8 +713,6 @@ class UserProfileView(LoginRequiredMixin, FormView):
         return super().form_valid(form)
 
 
-
-
 class DivisionAccountActivityLogView(LoginRequiredMixin, TemplateView):
     """계정 관리 활동 로그 페이지."""
 
@@ -697,7 +727,9 @@ class DivisionAccountActivityLogView(LoginRequiredMixin, TemplateView):
     def _resolve_target_user(self):
         user_id_raw = (self.request.GET.get("user_id") or "").strip()
         if not user_id_raw.isdigit():
-            return None, JsonResponse({"error": "user_id가 올바르지 않습니다."}, status=400)
+            return None, JsonResponse(
+                {"error": "user_id가 올바르지 않습니다."}, status=400
+            )
 
         manageable = self._manageable_divisions()
         target_user = (
@@ -719,9 +751,8 @@ class DivisionAccountActivityLogView(LoginRequiredMixin, TemplateView):
     def get(self, request, *args, **kwargs):
         target_user, error_response = self._resolve_target_user()
         if error_response is not None:
-            wants_json = (
-                request.GET.get("format") == "json"
-                or "application/json" in (request.headers.get("Accept") or "")
+            wants_json = request.GET.get("format") == "json" or "application/json" in (
+                request.headers.get("Accept") or ""
             )
             if wants_json:
                 return error_response
@@ -741,9 +772,8 @@ class DivisionAccountActivityLogView(LoginRequiredMixin, TemplateView):
                 )
             ]
 
-        wants_json = (
-            request.GET.get("format") == "json"
-            or "application/json" in (request.headers.get("Accept") or "")
+        wants_json = request.GET.get("format") == "json" or "application/json" in (
+            request.headers.get("Accept") or ""
         )
         if wants_json:
             return JsonResponse({"items": items})
@@ -755,7 +785,6 @@ class DivisionAccountActivityLogView(LoginRequiredMixin, TemplateView):
         return HttpResponseRedirect(
             f"{reverse('user_division_account_roles')}?{urlencode(return_params)}"
         )
-
 
 
 class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
@@ -794,7 +823,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         # "전체" 선택 시 담당 부서 전체를 한 번에 조회한다(active_division=None).
         if can_all and requested_code == self.ALL_DIVISIONS_CODE:
             return None, divisions
-        active = divisions.filter(code=requested_code).first() if requested_code else None
+        active = (
+            divisions.filter(code=requested_code).first() if requested_code else None
+        )
         if active is None:
             active = prefer_own_division(self.request.user, divisions)
         return active, divisions
@@ -802,7 +833,11 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
     def _division_functional_department(self, division: Division):
         return FunctionalDepartment.objects.get_or_create(
             code=f"division_{division.code}",
-            defaults={"name": f"{division.name} 운영", "division": division, "sort_order": 0},
+            defaults={
+                "name": f"{division.name} 운영",
+                "division": division,
+                "sort_order": 0,
+            },
         )[0]
 
     def _roles_redirect(self, division: Division | None) -> str:
@@ -837,7 +872,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         team_id = (request.POST.get("team_id") or "").strip()
         division_id_raw = (request.POST.get("division_id") or "").strip()
         valid_role_codes = set(Role.objects.values_list("code", flat=True))
-        selected_role_codes = [c for c in request.POST.getlist("role_codes") if c in valid_role_codes]
+        selected_role_codes = [
+            c for c in request.POST.getlist("role_codes") if c in valid_role_codes
+        ]
         manage_attendance = request.POST.get("can_manage_attendance") == "on"
         manage_parking = request.POST.get("can_manage_parking") == "on"
         manage_accounts = request.POST.get("can_manage_accounts") == "on"
@@ -987,7 +1024,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             ).delete()
 
         department = self._division_functional_department(target_division)
-        role_by_code = {r.code: r for r in Role.objects.filter(code__in=selected_role_codes)}
+        role_by_code = {
+            r.code: r for r in Role.objects.filter(code__in=selected_role_codes)
+        }
 
         UserFunctionalDeptRole.objects.filter(
             user=target_user, functional_department=department
@@ -1104,10 +1143,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                         d.id for d in dept_by_division.values()
                     ],
                 ).select_related("role"):
-                    if (
-                        dept_division_by_dept_id.get(link.functional_department_id)
-                        == rep_division_by_user.get(link.user_id)
-                    ):
+                    if dept_division_by_dept_id.get(
+                        link.functional_department_id
+                    ) == rep_division_by_user.get(link.user_id):
                         role_map.setdefault(link.user_id, set()).add(link.role.code)
 
             kakao_nickname_by_user = kakao_nickname_map_for_user_ids(user_ids)
@@ -1145,18 +1183,20 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                         "username": u.username,
                         "real_name": (getattr(prof, "real_name", "") or "").strip(),
                         "phone": _phone_for_display(getattr(prof, "phone", "") or ""),
-                        "kakao_uid": u.username[6:]
-                        if u.username.startswith("kakao_")
-                        else "",
+                        "kakao_uid": (
+                            u.username[6:] if u.username.startswith("kakao_") else ""
+                        ),
                         "region_id": region_id,
                         "region_name": region_name,
                         "division_id": division_id,
                         "division_name": division_name,
                         "team_id": team_id,
                         "team_name": team_name,
-                        "date_joined": timezone.localtime(u.date_joined).strftime("%Y-%m-%d")
-                        if u.date_joined
-                        else "",
+                        "date_joined": (
+                            timezone.localtime(u.date_joined).strftime("%Y-%m-%d")
+                            if u.date_joined
+                            else ""
+                        ),
                     }
                 )
                 assigned_codes = sorted(list(role_map.get(u.id, set())))
@@ -1178,9 +1218,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
 
                 account_details[u.id] = {
                     "username": u.username,
-                    "kakao_uid": u.username[6:]
-                    if u.username.startswith("kakao_")
-                    else "",
+                    "kakao_uid": (
+                        u.username[6:] if u.username.startswith("kakao_") else ""
+                    ),
                     "first_name": u.first_name or "",
                     "last_name": u.last_name or "",
                     "email": u.email or "",
@@ -1201,15 +1241,11 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                     "can_manage_attendance": bool(
                         getattr(u, "can_manage_attendance", False)
                     ),
-                    "can_manage_parking": bool(
-                        getattr(u, "can_manage_parking", False)
-                    ),
+                    "can_manage_parking": bool(getattr(u, "can_manage_parking", False)),
                     "can_manage_accounts": bool(
                         getattr(u, "can_manage_accounts", False)
                     ),
-                    "can_manage_notices": bool(
-                        getattr(u, "can_manage_notices", False)
-                    ),
+                    "can_manage_notices": bool(getattr(u, "can_manage_notices", False)),
                     "assigned_role_codes": assigned_codes,
                     "memberships": memberships_detail.get(u.id, []),
                     "created_at": created_at,
@@ -1219,7 +1255,11 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                 }
 
         region_qs = Region.objects.all().order_by("sort_order", "name")
-        if not is_platform_admin(self.request.user) and active_division and active_division.region_id:
+        if (
+            not is_platform_admin(self.request.user)
+            and active_division
+            and active_division.region_id
+        ):
             region_qs = Region.objects.filter(pk=active_division.region_id)
 
         ctx["allowed_divisions"] = division_choices
@@ -1274,6 +1314,8 @@ class AssignableRoleOptionsApiView(LoginRequiredMixin, TemplateView):
         if not can_manage_division_accounts(request.user):
             raise PermissionDenied("직책 목록 조회 권한이 없습니다.")
         for code, name_ko, order in self._bootstrap_role_codes:
-            Role.objects.get_or_create(code=code, defaults={"name": name_ko, "sort_order": order})
+            Role.objects.get_or_create(
+                code=code, defaults={"name": name_ko, "sort_order": order}
+            )
         roles = list(Role.objects.order_by("sort_order", "name").values("code", "name"))
         return JsonResponse({"results": roles})

@@ -54,7 +54,9 @@ def resolve_council_staff_scope(
     if role in RetreatCouncilMembership.DIVISION_SCOPED_ROLES:
         if not division_id:
             raise CouncilScopeError("division", "부서 역할에는 담당 부서가 필요합니다.")
-        division = Division.objects.filter(pk=division_id).select_related("region").first()
+        division = (
+            Division.objects.filter(pk=division_id).select_related("region").first()
+        )
         if division is None:
             raise CouncilScopeError("division", "존재하지 않는 부서입니다.")
         if region_id and region_id != division.region_id:
@@ -108,9 +110,8 @@ def assert_can_assign_event_staff(
 
     if kind == "council":
         existing = summary.council_membership
-        if (
-            existing is not None
-            and (exclude_council_id is None or existing.id != exclude_council_id)
+        if existing is not None and (
+            exclude_council_id is None or existing.id != exclude_council_id
         ):
             raise ValueError("이 집회에 이미 집회 운영진 역할이 배정된 사용자입니다.")
         return

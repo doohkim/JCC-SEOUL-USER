@@ -21,7 +21,9 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
     user_account_retired_display = serializers.SerializerMethodField()
     role_display = serializers.CharField(source="get_role_display", read_only=True)
     scope_label = serializers.CharField(read_only=True)
-    region_name = serializers.CharField(source="region.name", read_only=True, default="")
+    region_name = serializers.CharField(
+        source="region.name", read_only=True, default=""
+    )
     division_name = serializers.CharField(
         source="division.name", read_only=True, default=""
     )

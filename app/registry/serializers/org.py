@@ -5,7 +5,10 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from registry.models import Member, MemberDivisionTeam
-from registry.services.member_org import change_team_within_division, transfer_to_division
+from registry.services.member_org import (
+    change_team_within_division,
+    transfer_to_division,
+)
 from users.models import Division, Team
 
 
@@ -28,7 +31,9 @@ class OrgChangeTeamSerializer(serializers.Serializer):
         team = None
         new_team_id = attrs.get("new_team_id")
         if new_team_id is not None:
-            team = Team.objects.filter(pk=new_team_id).select_related("division").first()
+            team = (
+                Team.objects.filter(pk=new_team_id).select_related("division").first()
+            )
             if not team:
                 raise serializers.ValidationError({"new_team_id": "팀이 없습니다."})
             if team.division_id != division.id:
@@ -38,9 +43,13 @@ class OrgChangeTeamSerializer(serializers.Serializer):
         membership = None
         mid = attrs.get("membership_id")
         if mid is not None:
-            membership = MemberDivisionTeam.objects.filter(pk=mid, member=member).first()
+            membership = MemberDivisionTeam.objects.filter(
+                pk=mid, member=member
+            ).first()
             if not membership:
-                raise serializers.ValidationError({"membership_id": "소속 행이 없습니다."})
+                raise serializers.ValidationError(
+                    {"membership_id": "소속 행이 없습니다."}
+                )
         attrs["_member"] = member
         attrs["_division"] = division
         attrs["_team"] = team
@@ -74,13 +83,17 @@ class OrgTransferDivisionSerializer(serializers.Serializer):
             raise serializers.ValidationError({"member_id": "멤버가 없습니다."})
         to_div = Division.objects.filter(pk=attrs["to_division_id"]).first()
         if not to_div:
-            raise serializers.ValidationError({"to_division_id": "목적 부서가 없습니다."})
+            raise serializers.ValidationError(
+                {"to_division_id": "목적 부서가 없습니다."}
+            )
         from_div = None
         fid = attrs.get("from_division_id")
         if fid is not None:
             from_div = Division.objects.filter(pk=fid).first()
             if not from_div:
-                raise serializers.ValidationError({"from_division_id": "이전 부서가 없습니다."})
+                raise serializers.ValidationError(
+                    {"from_division_id": "이전 부서가 없습니다."}
+                )
         team = None
         tid = attrs.get("team_id")
         if tid is not None:

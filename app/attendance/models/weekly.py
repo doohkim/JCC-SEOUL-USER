@@ -213,9 +213,7 @@ class SundayAttendanceLine(AdminAuditFields):
             return
         if self.team_id:
             if self.team.division_id != self.division_id:
-                raise ValidationError(
-                    {"team": "팀이 이 출석의 부서와 맞지 않습니다."}
-                )
+                raise ValidationError({"team": "팀이 이 출석의 부서와 맞지 않습니다."})
 
         others = SundayAttendanceLine.objects.filter(
             division_id=self.division_id,

@@ -77,7 +77,9 @@ class _SuperuserMatrixFixture(TestCase):
         cls.superuser = User.objects.create_superuser(
             username="su_matrix", password="x"
         )
-        cls.link_user = User.objects.create_user(username="su_link_target", password="x")
+        cls.link_user = User.objects.create_user(
+            username="su_link_target", password="x"
+        )
         link_profile = ensure_user_profile(cls.link_user)
         link_profile.real_name = "연동실명"
         link_profile.phone = "010-1111-2222"
@@ -207,7 +209,7 @@ class SuperuserTabPageTests(_SuperuserMatrixFixture):
         self.assertTrue(r.context["can_link_attendee_user"])
         self.assertTrue(r.context["can_change_status"])
         self.assertContains(r, 'id="retreatAttCheckIn"')
-        self.assertContains(r, 'data-user-link-unlink')
+        self.assertContains(r, "data-user-link-unlink")
 
 
 class SuperuserDashboardApiTests(_SuperuserMatrixFixture):
@@ -217,9 +219,7 @@ class SuperuserDashboardApiTests(_SuperuserMatrixFixture):
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])
         data = self.api.get(url).json()
         group_ids = {row["group_id"] for row in data["by_group"]}
-        self.assertEqual(
-            group_ids, {self.group_seoul.id, self.group_incheon.id}
-        )
+        self.assertEqual(group_ids, {self.group_seoul.id, self.group_incheon.id})
 
     def test_group_board_includes_all_groups(self):
         url = reverse("api_retreat_event_group_board", args=[self.event.id])
@@ -258,9 +258,7 @@ class SuperuserGroupApiPageTests(_SuperuserMatrixFixture):
         self.assertEqual(self.group_seoul.name, "서울1조-수정")
 
     def test_manage_list_shows_add_group(self):
-        r = self.page.get(
-            reverse("retreat_group_manage_list", args=[self.event.id])
-        )
+        r = self.page.get(reverse("retreat_group_manage_list", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.context["can_add_group"])
         self.assertContains(r, "조 추가")
@@ -339,9 +337,7 @@ class SuperuserAttendeeApiPageTests(_SuperuserMatrixFixture):
             group=self.group_seoul, name="숙소배정대상"
         )
         detail2 = reverse("api_retreat_attendee_detail", args=[participating.id])
-        r3 = self.api.patch(
-            detail2, {"lodging_room": self.room.id}, format="json"
-        )
+        r3 = self.api.patch(detail2, {"lodging_room": self.room.id}, format="json")
         self.assertEqual(r3.status_code, 200, r3.content)
 
     def test_unlink_attendee_user(self):
@@ -412,9 +408,7 @@ class SuperuserAttendeeApiPageTests(_SuperuserMatrixFixture):
         other_profile.real_name = "김실업"
         other_profile.gender = other_profile.Gender.FEMALE
         other_profile.phone = "01099998888"
-        other_profile.save(
-            update_fields=["real_name", "gender", "phone", "updated_at"]
-        )
+        other_profile.save(update_fields=["real_name", "gender", "phone", "updated_at"])
         profile = ensure_user_profile(self.link_user)
         profile.real_name = "김샬롬"
         profile.save(update_fields=["real_name", "updated_at"])
@@ -574,9 +568,7 @@ class SuperuserPickupApiPageTests(_SuperuserMatrixFixture):
         self.assertEqual(r2.status_code, 201, r2.content)
 
     def test_pickup_crud_and_page(self):
-        detail = reverse(
-            "api_retreat_pickup_detail", args=[self.arrival_pickup.id]
-        )
+        detail = reverse("api_retreat_pickup_detail", args=[self.arrival_pickup.id])
         r = self.api.patch(
             detail, {"boarding_place": "수정역", "note": "비고"}, format="json"
         )
@@ -627,16 +619,12 @@ class SuperuserLodgingApiPageTests(_SuperuserMatrixFixture):
         r = self.page.get(reverse("retreat_lodging", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
 
-        r2 = self.page.get(
-            reverse("retreat_lodging_roster", args=[self.event.id])
-        )
+        r2 = self.page.get(reverse("retreat_lodging_roster", args=[self.event.id]))
         self.assertEqual(r2.status_code, 200)
         self.assertTrue(r2.context["roster_any_can_edit"])
 
         detail = reverse("api_retreat_attendee_detail", args=[self.pending.id])
-        r3 = self.api.patch(
-            detail, {"lodging_room": self.room.id}, format="json"
-        )
+        r3 = self.api.patch(detail, {"lodging_room": self.room.id}, format="json")
         self.assertEqual(r3.status_code, 200, r3.content)
 
 
@@ -686,7 +674,9 @@ class SuperuserAdminApiPageTests(_SuperuserMatrixFixture):
             args=[self.event.id, entry_id],
         )
         self.assertEqual(
-            self.api.patch(detail, {"title": "집회예배-수정"}, format="json").status_code,
+            self.api.patch(
+                detail, {"title": "집회예배-수정"}, format="json"
+            ).status_code,
             200,
         )
         self.assertEqual(self.api.delete(detail).status_code, 204)

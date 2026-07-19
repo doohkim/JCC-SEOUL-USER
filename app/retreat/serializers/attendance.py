@@ -8,8 +8,12 @@ from retreat.models import RetreatAttendance
 class RetreatAttendanceSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     enrollment_id = serializers.IntegerField(source="enrollment.id", read_only=True)
-    attendee_id = serializers.IntegerField(source="enrollment.source_attendee_id", read_only=True)
-    session_id = serializers.IntegerField(source="enrollment.session_id", read_only=True)
+    attendee_id = serializers.IntegerField(
+        source="enrollment.source_attendee_id", read_only=True
+    )
+    session_id = serializers.IntegerField(
+        source="enrollment.session_id", read_only=True
+    )
 
     class Meta:
         model = RetreatAttendance
@@ -36,7 +40,9 @@ class _BulkRowSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if not attrs.get("enrollment_id") and not attrs.get("attendee_id"):
-            raise serializers.ValidationError("enrollment_id 또는 attendee_id 가 필요합니다.")
+            raise serializers.ValidationError(
+                "enrollment_id 또는 attendee_id 가 필요합니다."
+            )
         return attrs
 
 

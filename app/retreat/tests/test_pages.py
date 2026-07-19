@@ -355,9 +355,7 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertIn(inaccessible_event.id, available_ids)
         self.assertNotIn(hidden_event.id, available_ids)
         self.assertContains(r, 'id="retreatEventPicker"')
-        self.assertContains(
-            r, reverse("retreat_dashboard", args=[other_event.id])
-        )
+        self.assertContains(r, reverse("retreat_dashboard", args=[other_event.id]))
         self.assertContains(
             r, reverse("retreat_staff_apply", args=[inaccessible_event.id])
         )
@@ -379,12 +377,8 @@ class RetreatPageAccessTests(_PageFixture):
         r = self.client.get(reverse("retreat_results", args=[self.event.id]))
 
         self.assertEqual(r.status_code, 200)
-        self.assertContains(
-            r, reverse("retreat_results", args=[other_event.id])
-        )
-        self.assertNotContains(
-            r, reverse("retreat_dashboard", args=[other_event.id])
-        )
+        self.assertContains(r, reverse("retreat_results", args=[other_event.id]))
+        self.assertNotContains(r, reverse("retreat_dashboard", args=[other_event.id]))
 
     def test_roster_check_defaults_missing_attendance_to_absent(self):
         attendee = RetreatAttendee.objects.create(group=self.group, name="기본결석")

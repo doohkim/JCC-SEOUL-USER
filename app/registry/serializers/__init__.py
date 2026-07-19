@@ -5,7 +5,10 @@ from registry.serializers.member_crud import (
     MemberSerializer,
     MemberVisitLogSerializer,
 )
-from registry.serializers.org import OrgChangeTeamSerializer, OrgTransferDivisionSerializer
+from registry.serializers.org import (
+    OrgChangeTeamSerializer,
+    OrgTransferDivisionSerializer,
+)
 
 __all__ = [
     "MemberDivisionTeamSerializer",

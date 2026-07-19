@@ -2,6 +2,7 @@
 조직도 시드: 상위 부서(Division), 직급(RoleLevel), 직책(Role), 일하는 부서(FunctionalDepartment) 등.
 실행: python manage.py seed_org_chart
 """
+
 from django.core.management.base import BaseCommand
 
 from users.models import Division, FunctionalDepartment, Region, Role, RoleLevel

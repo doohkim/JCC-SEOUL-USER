@@ -17,9 +17,7 @@ _TEMPLATE_RELATIVE_PATHS = (
     "docs/cursor-prompt-templates.md",
 )
 
-_PERMISSIONS_RELATIVE_PATHS = (
-    "docs/retreat-council-permissions.md",
-)
+_PERMISSIONS_RELATIVE_PATHS = ("docs/retreat-council-permissions.md",)
 
 CATEGORY_DETAIL_URL_NAMES = {
     CATEGORY_POLICY: "cursor_docs_policy_detail",
@@ -59,7 +57,11 @@ def _policy_root() -> Path:
 
 
 def _encode_slug(relative_path: str) -> str:
-    return base64.urlsafe_b64encode(relative_path.encode("utf-8")).decode("ascii").rstrip("=")
+    return (
+        base64.urlsafe_b64encode(relative_path.encode("utf-8"))
+        .decode("ascii")
+        .rstrip("=")
+    )
 
 
 def _decode_slug(slug: str) -> str:

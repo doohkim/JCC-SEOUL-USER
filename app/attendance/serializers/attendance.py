@@ -11,8 +11,12 @@ from users.models import Division, Team
 
 
 class DivisionBriefSerializer(serializers.ModelSerializer):
-    region_code = serializers.CharField(source="region.code", read_only=True, default="")
-    region_name = serializers.CharField(source="region.name", read_only=True, default="")
+    region_code = serializers.CharField(
+        source="region.code", read_only=True, default=""
+    )
+    region_name = serializers.CharField(
+        source="region.name", read_only=True, default=""
+    )
 
     class Meta:
         model = Division

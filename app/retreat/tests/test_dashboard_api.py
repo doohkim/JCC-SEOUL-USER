@@ -21,7 +21,13 @@ from retreat.models import (
     RetreatSession,
     RetreatSessionAttendee,
 )
-from users.models import Division, PastoralDivisionAssignment, Region, RoleLevel, UserDivisionTeam
+from users.models import (
+    Division,
+    PastoralDivisionAssignment,
+    Region,
+    RoleLevel,
+    UserDivisionTeam,
+)
 
 User = get_user_model()
 
@@ -99,9 +105,7 @@ class RetreatDashboardApiTests(APITestCase):
         # 입실 시각이 미래 → 저장 상태가 입실이어도 입실전으로 집계.
         self.attendee.check_in_status = RetreatAttendee.CheckInStatus.CHECKED_IN
         self.attendee.expected_check_in_at = now + timedelta(hours=1)
-        self.attendee.save(
-            update_fields=["check_in_status", "expected_check_in_at"]
-        )
+        self.attendee.save(update_fields=["check_in_status", "expected_check_in_at"])
         self.client.force_authenticate(self.leader)
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])
         data = self.client.get(url).json()
@@ -133,9 +137,7 @@ class RetreatDashboardApiTests(APITestCase):
         now = timezone.now()
         self.attendee.check_in_status = RetreatAttendee.CheckInStatus.PENDING
         self.attendee.expected_check_in_at = now - timedelta(hours=1)
-        self.attendee.save(
-            update_fields=["check_in_status", "expected_check_in_at"]
-        )
+        self.attendee.save(update_fields=["check_in_status", "expected_check_in_at"])
         self.client.force_authenticate(self.leader)
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])
         self.assertEqual(self.client.get(url).status_code, 200)
@@ -267,9 +269,7 @@ class RetreatDashboardApiTests(APITestCase):
             event=self.event, region=busan, division=busan_div, name="부산1조"
         )
         staff = User.objects.create_user(username="dash_staff", password="x")
-        UserDivisionTeam.objects.create(
-            user=staff, division=self.div, is_primary=True
-        )
+        UserDivisionTeam.objects.create(user=staff, division=self.div, is_primary=True)
         RetreatCouncilMembership.objects.create(user=staff, event=self.event)
         self.client.force_authenticate(staff)
         url = reverse("api_retreat_event_group_board", args=[self.event.id])
@@ -451,7 +451,9 @@ class RetreatDashboardApiTests(APITestCase):
             name="다른조미배정",
             expected_check_in_at=now + timedelta(hours=2),
         )
-        vice_leader = User.objects.create_user(username="dash_vice_leader", password="x")
+        vice_leader = User.objects.create_user(
+            username="dash_vice_leader", password="x"
+        )
         UserDivisionTeam.objects.create(
             user=vice_leader, division=self.div, is_primary=True
         )
@@ -604,12 +606,8 @@ class RetreatDashboardApiTests(APITestCase):
         council_leader = User.objects.create_user(
             username="dash_car_council_leader", password="x"
         )
-        RetreatCouncilMembership.objects.create(
-            user=council_leader, event=self.event
-        )
-        RetreatGroupMembership.objects.create(
-            user=council_leader, group=self.group
-        )
+        RetreatCouncilMembership.objects.create(user=council_leader, event=self.event)
+        RetreatGroupMembership.objects.create(user=council_leader, group=self.group)
         self.client.force_authenticate(council_leader)
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])
         data = self.client.get(url).json()

@@ -32,9 +32,7 @@ class RetreatCouncilMembership(models.Model):
         }
     )
     REGION_SCOPED_ROLES = frozenset({Role.REGION_ADMIN, Role.REGION_OBSERVER})
-    DIVISION_SCOPED_ROLES = frozenset(
-        {Role.DIVISION_ADMIN, Role.DIVISION_OBSERVER}
-    )
+    DIVISION_SCOPED_ROLES = frozenset({Role.DIVISION_ADMIN, Role.DIVISION_OBSERVER})
 
     event = models.ForeignKey(
         RetreatEvent,

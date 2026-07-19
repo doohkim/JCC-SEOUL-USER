@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Python weekday: 월=0 … 일=6 → 수=2, 토=5, 일=6
 _WORSHIP_WEEKDAYS = frozenset({2, 5, 6})
 
+
 def _rolling_days_default() -> int:
     return int(getattr(settings, "TEAM_ATTENDANCE_SESSION_ROLLING_DAYS", 3))
 

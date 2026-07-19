@@ -81,7 +81,9 @@ class _EventAdminMatrixFixture(TestCase):
             role=RetreatCouncilMembership.Role.EVENT_ADMIN,
         )
 
-        cls.link_user = User.objects.create_user(username="ea_link_target", password="x")
+        cls.link_user = User.objects.create_user(
+            username="ea_link_target", password="x"
+        )
         link_profile = ensure_user_profile(cls.link_user)
         link_profile.real_name = "연동실명"
         link_profile.phone = "010-1111-2222"
@@ -161,15 +163,9 @@ class EventAdminDropdownTests(_EventAdminMatrixFixture):
         self.assertIn(self.event_hs.id, available_ids)
         self.assertNotIn(self.inactive_event.id, available_ids)
         self.assertContains(r, 'id="retreatEventPicker"')
-        self.assertContains(
-            r, reverse("retreat_dashboard", args=[self.event.id])
-        )
-        self.assertContains(
-            r, reverse("retreat_staff_apply", args=[self.event_hs.id])
-        )
-        self.assertNotContains(
-            r, reverse("retreat_dashboard", args=[self.event_hs.id])
-        )
+        self.assertContains(r, reverse("retreat_dashboard", args=[self.event.id]))
+        self.assertContains(r, reverse("retreat_staff_apply", args=[self.event_hs.id]))
+        self.assertNotContains(r, reverse("retreat_dashboard", args=[self.event_hs.id]))
 
     def test_unassigned_event_dashboard_forbidden(self):
         r = self.page.get(reverse("retreat_dashboard", args=[self.event_hs.id]))
@@ -215,9 +211,7 @@ class EventAdminLeaderOnlyDropdownTests(TestCase):
         available_ids = {ev.id for ev in r.context["available_events"]}
         self.assertIn(self.event_hs.id, available_ids)
         self.assertIn(other.id, available_ids)
-        self.assertContains(
-            r, reverse("retreat_staff_apply", args=[other.id])
-        )
+        self.assertContains(r, reverse("retreat_staff_apply", args=[other.id]))
 
 
 class EventAdminTabPageTests(_EventAdminMatrixFixture):
@@ -258,7 +252,7 @@ class EventAdminTabPageTests(_EventAdminMatrixFixture):
         self.assertTrue(r.context["can_add_attendee"])
         self.assertTrue(r.context["can_link_attendee_user"])
         self.assertTrue(r.context["can_change_status"])
-        self.assertContains(r, 'data-user-link-unlink')
+        self.assertContains(r, "data-user-link-unlink")
 
 
 class EventAdminDashboardApiTests(_EventAdminMatrixFixture):
@@ -266,9 +260,7 @@ class EventAdminDashboardApiTests(_EventAdminMatrixFixture):
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])
         data = self.api.get(url).json()
         group_ids = {row["group_id"] for row in data["by_group"]}
-        self.assertEqual(
-            group_ids, {self.group_seoul.id, self.group_incheon.id}
-        )
+        self.assertEqual(group_ids, {self.group_seoul.id, self.group_incheon.id})
 
     def test_group_board_includes_all_groups(self):
         url = reverse("api_retreat_event_group_board", args=[self.event.id])
@@ -300,9 +292,7 @@ class EventAdminGroupApiPageTests(_EventAdminMatrixFixture):
         self.assertEqual(self.group_seoul.name, "서울1조-수정")
 
     def test_manage_list_shows_add_group(self):
-        r = self.page.get(
-            reverse("retreat_group_manage_list", args=[self.event.id])
-        )
+        r = self.page.get(reverse("retreat_group_manage_list", args=[self.event.id]))
         self.assertTrue(r.context["can_add_group"])
         self.assertContains(r, "조 추가")
 
@@ -393,9 +383,7 @@ class EventAdminAttendeeApiPageTests(_EventAdminMatrixFixture):
 
 class EventAdminPickupApiPageTests(_EventAdminMatrixFixture):
     def test_pickup_overview_tab_shows_add_button(self):
-        r = self.page.get(
-            reverse("retreat_pickup", args=[self.event.id]) + "?tab=all"
-        )
+        r = self.page.get(reverse("retreat_pickup", args=[self.event.id]) + "?tab=all")
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.context["can_manage_pickup"])
         self.assertContains(r, "btnPickupAdd")
@@ -453,20 +441,14 @@ class EventAdminPickupApiPageTests(_EventAdminMatrixFixture):
         self.assertEqual(r2.status_code, 201, r2.content)
 
     def test_pickup_patch(self):
-        detail = reverse(
-            "api_retreat_pickup_detail", args=[self.arrival_pickup.id]
-        )
-        r = self.api.patch(
-            detail, {"boarding_place": "수정역"}, format="json"
-        )
+        detail = reverse("api_retreat_pickup_detail", args=[self.arrival_pickup.id])
+        r = self.api.patch(detail, {"boarding_place": "수정역"}, format="json")
         self.assertEqual(r.status_code, 200, r.content)
 
 
 class EventAdminLodgingApiPageTests(_EventAdminMatrixFixture):
     def test_lodging_roster_editable(self):
-        r = self.page.get(
-            reverse("retreat_lodging_roster", args=[self.event.id])
-        )
+        r = self.page.get(reverse("retreat_lodging_roster", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.context["roster_any_can_edit"])
 

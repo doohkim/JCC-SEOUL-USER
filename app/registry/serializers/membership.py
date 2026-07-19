@@ -9,7 +9,9 @@ from registry.models import MemberDivisionTeam
 
 class MemberDivisionTeamSerializer(serializers.ModelSerializer):
     division_name = serializers.CharField(source="division.name", read_only=True)
-    team_name = serializers.CharField(source="team.name", read_only=True, allow_null=True)
+    team_name = serializers.CharField(
+        source="team.name", read_only=True, allow_null=True
+    )
 
     class Meta:
         model = MemberDivisionTeam

@@ -66,7 +66,9 @@ class PickupObserverApiTests(CouncilMatrixFixture):
             + "?direction=arrival"
         )
         self.assertEqual(
-            self.api.post(list_url, self.pickup_post_payload(), format="json").status_code,
+            self.api.post(
+                list_url, self.pickup_post_payload(), format="json"
+            ).status_code,
             403,
         )
         detail = reverse("api_retreat_pickup_detail", args=[self.arrival_pickup.id])

@@ -135,9 +135,7 @@ class UserSearchApiTests(APITestCase):
 
     def test_limit_capped(self):
         self.client.force_authenticate(self.leader)
-        r = self.client.get(
-            reverse("api_retreat_user_search"), {"limit": "999"}
-        )
+        r = self.client.get(reverse("api_retreat_user_search"), {"limit": "999"})
         self.assertEqual(r.status_code, 200)
         self.assertLessEqual(len(r.json()), 30)
 

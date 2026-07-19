@@ -50,7 +50,6 @@ urlpatterns = [
         RegistryMemberFamilyPageView.as_view(),
         name="registry_member_family",
     ),
-
     path(
         "api/v1/org/change-team/",
         OrgChangeTeamView.as_view(),
@@ -66,9 +65,10 @@ urlpatterns = [
         MemberMembershipListView.as_view(),
         name="api_org_memberships_list",
     ),
-
     # 교적부 CRUD API
-    path("api/v1/member/", MemberListCreateView.as_view(), name="api_member_list_create"),
+    path(
+        "api/v1/member/", MemberListCreateView.as_view(), name="api_member_list_create"
+    ),
     path(
         "api/v1/member/<int:member_id>/",
         MemberDetailUpdateView.as_view(),
@@ -104,12 +104,15 @@ urlpatterns = [
         MemberVisitLogDetailView.as_view(),
         name="api_member_visit_detail",
     ),
-
     # 교적부 목록(팀별 아코디언) - 팀/부서/팀원 구조 응답
     path(
         "api/v1/member/teams/accordion/",
         MemberRegistryTeamsAccordionView.as_view(),
         name="api_member_teams_accordion",
     ),
-    path("api/v1/member/roles/", MemberRoleOptionsView.as_view(), name="api_member_roles_list"),
+    path(
+        "api/v1/member/roles/",
+        MemberRoleOptionsView.as_view(),
+        name="api_member_roles_list",
+    ),
 ]

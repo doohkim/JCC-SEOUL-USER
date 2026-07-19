@@ -103,9 +103,7 @@ class StaffCapabilitiesUnitTests(_StaffRbacFixture):
         caps = effective_capabilities(obs, self.event)
         self.assertEqual(caps.dashboard, AccessLevel.NONE)
         self.assertEqual(caps.pickup, AccessLevel.VIEW)
-        self.assertEqual(
-            pickup_tab_access_level(caps, "overview"), AccessLevel.VIEW
-        )
+        self.assertEqual(pickup_tab_access_level(caps, "overview"), AccessLevel.VIEW)
         self.assertFalse(caps.delete_pickup)
 
     def test_region_admin_caps(self):
@@ -234,7 +232,10 @@ class StaffRbacApiTests(_StaffRbacFixture):
 
     def test_pickup_observer_can_list_pickup_cannot_create(self):
         self.client.force_authenticate(self.pickup_observer)
-        list_url = reverse("api_retreat_event_pickups", args=[self.event.id]) + "?direction=arrival"
+        list_url = (
+            reverse("api_retreat_event_pickups", args=[self.event.id])
+            + "?direction=arrival"
+        )
         self.assertEqual(self.client.get(list_url).status_code, 200)
         r = self.client.post(
             list_url,

@@ -22,4 +22,6 @@ def notify_new_counseling_request(request_obj, *, absolute_detail_url: str) -> N
         )
         return
     # 향후: settings.COUNSELING_KAKAO_* 키로 발송
-    logger.warning("COUNSELING_KAKAO_ALIMTALK_ENABLED is on but sender is not implemented")
+    logger.warning(
+        "COUNSELING_KAKAO_ALIMTALK_ENABLED is on but sender is not implemented"
+    )

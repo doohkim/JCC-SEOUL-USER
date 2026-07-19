@@ -45,11 +45,11 @@ def _dedupe_same_member_rows(
     parsed: list[ParsedSundayAttendanceRow],
 ) -> tuple[list[ParsedSundayAttendanceRow], int]:
     """
-    동일 인물 이름이 여러 번 나온 경우만 정리한다.
+       동일 인물 이름이 여러 번 나온 경우만 정리한다.
 
-    - 완전 동일한 (venue, 부, 지교 라벨) 중복 행은 하나만 남긴다.
- - **서로 다른 부** 는 모두 유지한다.
-    - 현장(1~4부) 줄이 있는데 같은 이름에 온라인·지교 줄도 있으면 현장만 남긴다.
+       - 완전 동일한 (venue, 부, 지교 라벨) 중복 행은 하나만 남긴다.
+    - **서로 다른 부** 는 모두 유지한다.
+       - 현장(1~4부) 줄이 있는데 같은 이름에 온라인·지교 줄도 있으면 현장만 남긴다.
     """
     from collections import defaultdict
 
@@ -84,9 +84,7 @@ def _dedupe_same_member_rows(
             and r.session_part > 0
         ]
         remote = [
-            r
-            for r in uniq
-            if r.venue in (WorshipVenue.ONLINE, WorshipVenue.BRANCH)
+            r for r in uniq if r.venue in (WorshipVenue.ONLINE, WorshipVenue.BRANCH)
         ]
         if physical and remote:
             out.extend(physical)
@@ -162,9 +160,7 @@ class Command(BaseCommand):
             )
             raise CommandError("날짜(YYYY.MM.DD)가 필요합니다.")
 
-        self.stdout.write(
-            f"주일 예배일(시트): {title_date} · 행 수: {len(parsed)}"
-        )
+        self.stdout.write(f"주일 예배일(시트): {title_date} · 행 수: {len(parsed)}")
 
         if dry:
             by_v = {}
@@ -188,7 +184,9 @@ class Command(BaseCommand):
             skipped_validation = 0
             create_missing = options["create_missing_members"]
             used_ik: set[str] = set(
-                Member.objects.exclude(import_key="").values_list("import_key", flat=True)
+                Member.objects.exclude(import_key="").values_list(
+                    "import_key", flat=True
+                )
             )
 
             for row in parsed:

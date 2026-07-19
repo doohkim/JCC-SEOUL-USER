@@ -80,7 +80,9 @@ class CouncilMatrixFixture(TestCase):
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
         )
 
-        cls.link_user = User.objects.create_user(username="cm_link_target", password="x")
+        cls.link_user = User.objects.create_user(
+            username="cm_link_target", password="x"
+        )
 
         cls.lodging = Lodging.objects.create(event=cls.event, name="본관")
         cls.room = LodgingRoom.objects.create(

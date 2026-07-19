@@ -8,13 +8,32 @@ from users.models.external_service import generate_integration_key_pair
 
 @admin.register(ExternalServiceClient)
 class ExternalServiceClientAdmin(admin.ModelAdmin):
-    list_display = ["name", "label", "key_prefix", "is_active", "last_used_at", "created_at"]
+    list_display = [
+        "name",
+        "label",
+        "key_prefix",
+        "is_active",
+        "last_used_at",
+        "created_at",
+    ]
     list_filter = ["is_active"]
     search_fields = ["name", "label"]
-    readonly_fields = ["key_prefix", "key_hash", "created_at", "updated_at", "last_used_at"]
+    readonly_fields = [
+        "key_prefix",
+        "key_hash",
+        "created_at",
+        "updated_at",
+        "last_used_at",
+    ]
     fieldsets = (
         (None, {"fields": ("name", "label", "is_active", "notes")}),
-        ("키 해시", {"fields": ("key_prefix", "key_hash"), "description": "신규 저장 시 평문 키가 상단 메시지로 한 번 표시됩니다."}),
+        (
+            "키 해시",
+            {
+                "fields": ("key_prefix", "key_hash"),
+                "description": "신규 저장 시 평문 키가 상단 메시지로 한 번 표시됩니다.",
+            },
+        ),
         ("감사", {"fields": ("last_used_at", "created_at", "updated_at")}),
     )
 

@@ -123,6 +123,8 @@ class AutoCheckInTests(TestCase):
         result = apply_due_auto_transitions(now=now, event_id=self.event.id)
         target.refresh_from_db()
         other.refresh_from_db()
-        self.assertEqual(target.check_in_status, RetreatAttendee.CheckInStatus.CHECKED_IN)
+        self.assertEqual(
+            target.check_in_status, RetreatAttendee.CheckInStatus.CHECKED_IN
+        )
         self.assertEqual(other.check_in_status, RetreatAttendee.CheckInStatus.PENDING)
         self.assertEqual(result["checked_in"], 1)

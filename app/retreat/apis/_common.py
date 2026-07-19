@@ -142,9 +142,13 @@ def profile_locked_patch_keys_for(user, group: RetreatGroup, attendee) -> frozen
 
     if not is_attendee_profile_locked(attendee):
         return frozenset()
-    if user and group and (
-        getattr(user, "is_superuser", False)
-        or can_change_retreat_check_in(user, group.event)
+    if (
+        user
+        and group
+        and (
+            getattr(user, "is_superuser", False)
+            or can_change_retreat_check_in(user, group.event)
+        )
     ):
         return _PROFILE_LOCKED_PATCH_KEYS - _COUNCIL_CHECKED_OUT_PATCH_KEYS
     return _PROFILE_LOCKED_PATCH_KEYS

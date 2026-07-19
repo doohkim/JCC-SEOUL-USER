@@ -128,9 +128,7 @@ def _create_single_group(
         Division.objects.select_related("region"), pk=int(division_id)
     )
     if int(region_id) != division.region_id:
-        raise ValidationError(
-            {"division": "선택한 지역에 속한 부서가 아닙니다."}
-        )
+        raise ValidationError({"division": "선택한 지역에 속한 부서가 아닙니다."})
 
     extra_scope_pairs = _parse_extra_scopes(
         data,
@@ -142,9 +140,7 @@ def _create_single_group(
         raise ValidationError({"name": "같은 요청에 중복된 조 이름이 있습니다."})
 
     if RetreatGroup.objects.filter(event=event, name=name).exists():
-        raise ValidationError(
-            {"name": "이 집회에 이미 같은 이름의 조가 있습니다."}
-        )
+        raise ValidationError({"name": "이 집회에 이미 같은 이름의 조가 있습니다."})
 
     if reserved_names is not None:
         reserved_names.add(name)
@@ -177,8 +173,7 @@ def _create_single_group(
             "name": group.name,
             "order": group.order,
             "extra_scopes": [
-                {"region_id": rid, "division_id": did}
-                for rid, did in extra_scope_pairs
+                {"region_id": rid, "division_id": did} for rid, did in extra_scope_pairs
             ],
         },
     )
@@ -203,9 +198,11 @@ def _create_single_group(
         log_retreat_change(
             user=user,
             event=event,
-            action=RetreatChangeLog.Action.CREATE
-            if created
-            else RetreatChangeLog.Action.UPDATE,
+            action=(
+                RetreatChangeLog.Action.CREATE
+                if created
+                else RetreatChangeLog.Action.UPDATE
+            ),
             target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
             target_id=membership.id,
             payload_after={
@@ -333,9 +330,7 @@ def _update_group(group: RetreatGroup, user, data: dict) -> RetreatGroup:
         Division.objects.select_related("region"), pk=int(division_id)
     )
     if int(region_id) != division.region_id:
-        raise ValidationError(
-            {"division": "선택한 지역에 속한 부서가 아닙니다."}
-        )
+        raise ValidationError({"division": "선택한 지역에 속한 부서가 아닙니다."})
 
     extra_scope_pairs: list[tuple[int, int]] | None
     if "scopes" in data:
@@ -352,13 +347,9 @@ def _update_group(group: RetreatGroup, user, data: dict) -> RetreatGroup:
         .exclude(pk=group.pk)
         .exists()
     ):
-        raise ValidationError(
-            {"name": "이 집회에 이미 같은 이름의 조가 있습니다."}
-        )
+        raise ValidationError({"name": "이 집회에 이미 같은 이름의 조가 있습니다."})
 
-    before_scopes = list(
-        group.extra_scopes.values_list("region_id", "division_id")
-    )
+    before_scopes = list(group.extra_scopes.values_list("region_id", "division_id"))
     payload_before = {
         "event_id": group.event_id,
         "region_id": group.region_id,
@@ -375,7 +366,9 @@ def _update_group(group: RetreatGroup, user, data: dict) -> RetreatGroup:
         group.region_id = int(region_id)
         group.division_id = int(division_id)
         group.order = int(order or 0)
-        group.save(update_fields=["name", "region_id", "division_id", "order", "updated_at"])
+        group.save(
+            update_fields=["name", "region_id", "division_id", "order", "updated_at"]
+        )
 
         if extra_scope_pairs is not None:
             group.extra_scopes.all().delete()
@@ -405,8 +398,7 @@ def _update_group(group: RetreatGroup, user, data: dict) -> RetreatGroup:
             "name": group.name,
             "order": group.order,
             "extra_scopes": [
-                {"region_id": rid, "division_id": did}
-                for rid, did in after_scopes
+                {"region_id": rid, "division_id": did} for rid, did in after_scopes
             ],
         },
     )

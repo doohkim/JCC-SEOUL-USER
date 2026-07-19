@@ -46,6 +46,7 @@ def _apply_region_filter(qs, region):
         return qs.filter(region_id=region)
     return qs.filter(region__code=str(region))
 
+
 _REGISTRY_ROLE_CODES = frozenset({"pastor", "evangelist"})
 _ATTENDANCE_LEADER_ROLE_CODES = frozenset({"team_leader", "cell_leader"})
 _ATTENDANCE_MANAGER_ROLE_CODES = frozenset({"attendance_admin"})
@@ -120,7 +121,9 @@ def limits_registry_division_scope(user: User) -> bool:
 
 def _primary_user_division_ids(user: User) -> list[int]:
     primary = (
-        user.division_teams.order_by("-is_primary", "sort_order", "division__sort_order", "id")
+        user.division_teams.order_by(
+            "-is_primary", "sort_order", "division__sort_order", "id"
+        )
         .values_list("division_id", flat=True)
         .first()
     )
@@ -132,7 +135,9 @@ def _primary_user_division_ids(user: User) -> list[int]:
 
 def _divisions_from_udt(user: User):
     """소속(UserDivisionTeam) 부서만 (복수). 없으면 빈 쿼리셋."""
-    division_ids = list(user.division_teams.values_list("division_id", flat=True).distinct())
+    division_ids = list(
+        user.division_teams.values_list("division_id", flat=True).distinct()
+    )
     if not division_ids:
         return Division.objects.none()
     return Division.objects.filter(pk__in=division_ids).order_by(
@@ -171,7 +176,11 @@ def dashboard_divisions_for(user: User, *, region=None):
     else:
         # 일반/팀장/셀장: 주 소속 1개만.
         primary_ids = _primary_user_division_ids(user)
-        qs = Division.objects.filter(pk__in=primary_ids) if primary_ids else Division.objects.none()
+        qs = (
+            Division.objects.filter(pk__in=primary_ids)
+            if primary_ids
+            else Division.objects.none()
+        )
     return _apply_region_filter(qs, region)
 
 
@@ -518,10 +527,14 @@ def visible_teams_for(user: User, division: Division):
     role_code = getattr(getattr(user, "role_level", None), "code", None)
     if user.is_superuser or role_code in {"pastor", "evangelist"}:
         return Team.objects.filter(division=division).order_by("sort_order", "name")
-    return Team.objects.filter(
-        division=division,
-        user_division_teams__user=user,
-    ).distinct().order_by("sort_order", "name")
+    return (
+        Team.objects.filter(
+            division=division,
+            user_division_teams__user=user,
+        )
+        .distinct()
+        .order_by("sort_order", "name")
+    )
 
 
 def visible_regions_for(user: User):
@@ -618,7 +631,10 @@ def can_access_counseling_request_object(user: User, counseling_request) -> bool
     """상담 신청 건: 신청자·목회자만 (관리자도 타인 건 API 조회 불가)."""
     if not user.is_authenticated:
         return False
-    return user.pk == counseling_request.applicant_id or user.pk == counseling_request.pastor_id
+    return (
+        user.pk == counseling_request.applicant_id
+        or user.pk == counseling_request.pastor_id
+    )
 
 
 class IsCounselingParticipant(BasePermission):
@@ -828,7 +844,11 @@ def visible_retreat_sessions_for(user: User, event):
 
     base = RetreatSession.objects.filter(event=event)
     caps = effective_capabilities(user, event)
-    if user.is_superuser or caps.manage_timetable or is_retreat_event_admin(user, event):
+    if (
+        user.is_superuser
+        or caps.manage_timetable
+        or is_retreat_event_admin(user, event)
+    ):
         return base
     return base.filter(status=RetreatSession.Status.ACTIVE)
 
@@ -905,7 +925,11 @@ class IsRetreatGroupLeaderOrStaff(BasePermission):
 
     def has_object_permission(self, request, view, obj):
         # obj 가 RetreatGroup 자체 또는 그룹 FK 를 가진 모델일 수 있다.
-        group = obj if hasattr(obj, "memberships") and hasattr(obj, "event") else getattr(obj, "group", None)
+        group = (
+            obj
+            if hasattr(obj, "memberships") and hasattr(obj, "event")
+            else getattr(obj, "group", None)
+        )
         if group is None:
             return False
         user = request.user

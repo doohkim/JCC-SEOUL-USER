@@ -48,7 +48,9 @@ urlpatterns = [
     ),
     path(
         "accounts/manage/",
-        RedirectView.as_view(pattern_name="user_division_account_roles", permanent=False),
+        RedirectView.as_view(
+            pattern_name="user_division_account_roles", permanent=False
+        ),
     ),
     path(
         "accounts/manage/roles/",
@@ -71,10 +73,18 @@ urlpatterns = [
         name="api_user_assignable_roles",
     ),
     # 모바일 앱 인증
-    path("api/v1/auth/kakao/", KakaoMobileLoginView.as_view(), name="api_auth_kakao_mobile"),
+    path(
+        "api/v1/auth/kakao/",
+        KakaoMobileLoginView.as_view(),
+        name="api_auth_kakao_mobile",
+    ),
     path("api/v1/auth/me/", MobileMeView.as_view(), name="api_auth_me"),
     # 외부 서버 연동 (서비스 키 X-JCC-Integration-Key)
-    path("api/v1/integration/ping/", IntegrationPingView.as_view(), name="api_integration_ping"),
+    path(
+        "api/v1/integration/ping/",
+        IntegrationPingView.as_view(),
+        name="api_integration_ping",
+    ),
     path(
         "api/v1/integration/verify-token/",
         IntegrationVerifyTokenView.as_view(),

@@ -81,4 +81,3 @@ class MemberVisitLogSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "member", "recorded_by", "created_at"]
-

@@ -46,6 +46,7 @@ class DivisionAdmin(JccModelAdmin):
             return qs
         allowed = registry_divisions_for(request.user)
         return qs.filter(pk__in=allowed.values_list("pk", flat=True))
+
     fieldsets = (
         ("필수", {"classes": ("jcc-required",), "fields": ("region", "name", "code")}),
         (
@@ -69,6 +70,7 @@ class TeamAdmin(JccModelAdmin):
             return qs
         allowed = registry_divisions_for(request.user)
         return qs.filter(division_id__in=allowed.values_list("pk", flat=True))
+
     list_filter = ["division"]
     list_editable = ["sort_order"]
     ordering = ("division", "sort_order", "name")
@@ -76,7 +78,10 @@ class TeamAdmin(JccModelAdmin):
     raw_id_fields = ["division", "parent"]
     autocomplete_fields = ["division"]
     fieldsets = (
-        ("필수", {"classes": ("jcc-required",), "fields": ("division", "name", "code")}),
+        (
+            "필수",
+            {"classes": ("jcc-required",), "fields": ("division", "name", "code")},
+        ),
         ("선택", {"classes": ("jcc-optional",), "fields": ("parent", "sort_order")}),
     )
 
@@ -104,7 +109,12 @@ class UserDivisionTeamAdmin(JccModelAdmin):
 class PastoralDivisionAssignmentAdmin(JccModelAdmin):
     list_display = ["user", "division", "is_primary", "sort_order", "created_at"]
     list_filter = ["division", "is_primary"]
-    search_fields = ["user__username", "user__email", "division__name", "division__code"]
+    search_fields = [
+        "user__username",
+        "user__email",
+        "division__name",
+        "division__code",
+    ]
     autocomplete_fields = ["user", "division"]
 
 

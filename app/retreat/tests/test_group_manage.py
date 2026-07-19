@@ -19,7 +19,14 @@ from retreat.models import (
     RetreatGroupScope,
 )
 from retreat.services.lodging import assert_room_can_accept, rooms_for_group
-from users.models import Division, PastoralDivisionAssignment, Region, RoleLevel, UserDivisionTeam, UserProfile
+from users.models import (
+    Division,
+    PastoralDivisionAssignment,
+    Region,
+    RoleLevel,
+    UserDivisionTeam,
+    UserProfile,
+)
 from users.permissions import can_add_retreat_group, can_manage_retreat_group_leaders
 
 User = get_user_model()
@@ -102,9 +109,7 @@ class GroupCreatePermissionTests(_GroupManageFixture):
         self.assertFalse(can_add_retreat_group(self.pastor, self.event))
 
     def test_leader_can_manage_leaders_on_own_group(self):
-        self.assertTrue(
-            can_manage_retreat_group_leaders(self.leader, self.group)
-        )
+        self.assertTrue(can_manage_retreat_group_leaders(self.leader, self.group))
 
     def test_pastor_cannot_manage_leaders(self):
         self.assertFalse(can_manage_retreat_group_leaders(self.pastor, self.group))
@@ -574,9 +579,7 @@ class AttendeeExpectedTimeValidationTests(_GroupManageFixture):
         now = timezone.now()
         self.attendee.check_in_status = RetreatAttendee.CheckInStatus.CHECKED_OUT
         self.attendee.expected_check_out_at = now + timedelta(hours=2)
-        self.attendee.save(
-            update_fields=["check_in_status", "expected_check_out_at"]
-        )
+        self.attendee.save(update_fields=["check_in_status", "expected_check_out_at"])
         r = self.client.patch(
             self.url,
             {
@@ -612,9 +615,7 @@ class AttendeeCheckInStatusEditTests(_GroupManageFixture):
 
     def test_council_can_revert_to_pending(self):
         self.client.force_authenticate(self.council_user)
-        r = self.client.patch(
-            self.url, {"check_in_status": "pending"}, format="json"
-        )
+        r = self.client.patch(self.url, {"check_in_status": "pending"}, format="json")
         self.assertEqual(r.status_code, 200, r.content)
         self.attendee.refresh_from_db()
         self.assertEqual(self.attendee.check_in_status, "pending")
@@ -785,9 +786,7 @@ class AttendeeCheckInRevertOverbookingTests(_GroupManageFixture):
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
         )
         persist_lodging_stay_status(self.checked_out)
-        self.url = reverse(
-            "api_retreat_attendee_detail", args=[self.checked_out.id]
-        )
+        self.url = reverse("api_retreat_attendee_detail", args=[self.checked_out.id])
 
     def test_revert_checked_in_allows_overbooking(self):
         self.client.force_authenticate(self.council_user)
@@ -851,7 +850,9 @@ class OnboardingRetreatAssignTests(_GroupManageFixture):
             ).exists()
         )
         self.assertTrue(
-            RetreatAttendee.objects.filter(group=self.group, name=applicant.username).exists()
+            RetreatAttendee.objects.filter(
+                group=self.group, name=applicant.username
+            ).exists()
         )
 
     def test_leader_profile_without_appoint_leadership_creates_member_only(self):
@@ -1033,4 +1034,3 @@ class AttendeeProfileSyncTests(_GroupManageFixture):
         self.assertEqual(attendee.name, "프로필성도")
         self.assertEqual(attendee.gender, "male")
         self.assertEqual(attendee.phone, "010-1111-2222")
-

@@ -156,7 +156,9 @@ class Command(BaseCommand):
                 self.stdout.write("  admin 계정에 직급 목사(pastor) 연결")
 
         skip_excel = options["skip_excel"]
-        path: Path | None = None if skip_excel else resolve_attendance_workbook(options["xlsx"])
+        path: Path | None = (
+            None if skip_excel else resolve_attendance_workbook(options["xlsx"])
+        )
 
         if skip_excel:
             self.stdout.write(
@@ -177,7 +179,9 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.NOTICE(f"엑셀 사용: {path}"),
                 )
-            self.stdout.write(self.style.SUCCESS(f"=== 3/4 seed_youth_roster ({path.name}) ==="))
+            self.stdout.write(
+                self.style.SUCCESS(f"=== 3/4 seed_youth_roster ({path.name}) ===")
+            )
             call_command(
                 "seed_youth_roster",
                 str(path),
@@ -206,7 +210,9 @@ class Command(BaseCommand):
                     f"파일: {path}"
                 )
             self.stdout.write(
-                self.style.SUCCESS(f"=== 4/4 import_sunday_attendance_xlsx (시트: {sheet!r}) ===")
+                self.style.SUCCESS(
+                    f"=== 4/4 import_sunday_attendance_xlsx (시트: {sheet!r}) ==="
+                )
             )
             call_command(
                 "import_sunday_attendance_xlsx",

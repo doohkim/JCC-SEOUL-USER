@@ -521,9 +521,7 @@ class LodgingAssignRedirectTests(_LodgingFixture):
 
     def test_assign_url_redirects_to_lodging_page(self):
         self.client.force_login(self.staff)
-        r = self.client.get(
-            reverse("retreat_lodging_assign", args=[self.event.id])
-        )
+        r = self.client.get(reverse("retreat_lodging_assign", args=[self.event.id]))
         self.assertEqual(r.status_code, 302)
         self.assertEqual(r["Location"], self._lodging_url())
 

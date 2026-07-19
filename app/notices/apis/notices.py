@@ -32,7 +32,9 @@ class NoticeListAPIView(APIView):
         except (TypeError, ValueError):
             page = 1
         try:
-            page_size = min(50, max(1, int(request.query_params.get("page_size", "12"))))
+            page_size = min(
+                50, max(1, int(request.query_params.get("page_size", "12")))
+            )
         except (TypeError, ValueError):
             page_size = 12
 
@@ -45,7 +47,9 @@ class NoticeListAPIView(APIView):
         total = qs.count()
         offset = (page - 1) * page_size
         items = qs[offset : offset + page_size]
-        serializer = NoticeListSerializer(items, many=True, context={"request": request})
+        serializer = NoticeListSerializer(
+            items, many=True, context={"request": request}
+        )
         return Response(
             {
                 "count": total,

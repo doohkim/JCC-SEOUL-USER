@@ -10,11 +10,17 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AlterModelOptions(
             name="rolelevel",
-            options={"ordering": ["-level", "sort_order"], "verbose_name": "직급", "verbose_name_plural": "직급"},
+            options={
+                "ordering": ["-level", "sort_order"],
+                "verbose_name": "직급",
+                "verbose_name_plural": "직급",
+            },
         ),
         migrations.AlterField(
             model_name="rolelevel",
             name="level",
-            field=models.PositiveSmallIntegerField(default=0, help_text="숫자 클수록 상위 직급", verbose_name="레벨"),
+            field=models.PositiveSmallIntegerField(
+                default=0, help_text="숫자 클수록 상위 직급", verbose_name="레벨"
+            ),
         ),
     ]

@@ -39,7 +39,10 @@ from retreat.models import RetreatAttendee, RetreatChangeLog, RetreatGroup
 from retreat.serializers import RetreatAttendeeSerializer
 from retreat.services.audit import log_retreat_change, serialize_model_fields
 from retreat.services.lodging import assert_room_can_accept
-from retreat.services.lodging_stay import persist_lodging_stay_status, sync_lodging_stay_status
+from retreat.services.lodging_stay import (
+    persist_lodging_stay_status,
+    sync_lodging_stay_status,
+)
 from retreat.services.participation import apply_participation_change
 from retreat.services.account_retired import (
     assert_attendee_visible_to,
@@ -110,7 +113,9 @@ class RetreatGroupAttendeesView(APIView):
     def post(self, request, group_id: int):
         group = get_group_or_403(request.user, group_id)
         assert_can_edit_attendee_details(request.user, group)
-        raw_status = request.data.get("check_in_status") or RetreatAttendee.CheckInStatus.PENDING
+        raw_status = (
+            request.data.get("check_in_status") or RetreatAttendee.CheckInStatus.PENDING
+        )
         if raw_status != RetreatAttendee.CheckInStatus.PENDING:
             assert_can_change_check_in_status(request.user, group)
         payload = _sanitize_attendee_payload(request.user, group, request.data)

@@ -57,13 +57,17 @@ def parse_week_rollup_key(raw: str) -> date:
 
 def distinct_week_sundays_for_division(division: Division) -> list[date]:
     keys: set[date] = set()
-    for d in SundayAttendanceLine.objects.filter(division=division).values_list(
-        "service_date", flat=True
-    ).distinct():
+    for d in (
+        SundayAttendanceLine.objects.filter(division=division)
+        .values_list("service_date", flat=True)
+        .distinct()
+    ):
         keys.add(week_sunday_on_or_after(d))
-    for d in MidweekAttendanceRecord.objects.filter(division=division).values_list(
-        "service_date", flat=True
-    ).distinct():
+    for d in (
+        MidweekAttendanceRecord.objects.filter(division=division)
+        .values_list("service_date", flat=True)
+        .distinct()
+    ):
         keys.add(week_sunday_on_or_after(d))
     # 팀 출석부만 있고 주일/수토 명단 라인이 아직 없을 때도 예배일 선택 가능하게
     for d in (

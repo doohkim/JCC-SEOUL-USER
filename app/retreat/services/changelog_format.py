@@ -136,8 +136,9 @@ def _build_context(logs: list[RetreatChangeLog]) -> dict:
     return {
         "attendance": {
             x.id: x
-            for x in RetreatAttendance.objects.filter(pk__in=attendance_ids)
-            .select_related(
+            for x in RetreatAttendance.objects.filter(
+                pk__in=attendance_ids
+            ).select_related(
                 "enrollment",
                 "enrollment__session",
                 "enrollment__source_group",
@@ -145,21 +146,22 @@ def _build_context(logs: list[RetreatChangeLog]) -> dict:
         },
         "attendee": {
             x.id: x
-            for x in RetreatAttendee.objects.filter(pk__in=attendee_ids)
-            .select_related("group", "group__region", "group__division")
+            for x in RetreatAttendee.objects.filter(pk__in=attendee_ids).select_related(
+                "group", "group__region", "group__division"
+            )
         },
         "enrollment": {
             x.id: x
-            for x in RetreatSessionAttendee.objects.filter(pk__in=enrollment_ids)
-            .select_related("session", "source_group")
+            for x in RetreatSessionAttendee.objects.filter(
+                pk__in=enrollment_ids
+            ).select_related("session", "source_group")
         },
-        "session": {
-            x.id: x for x in RetreatSession.objects.filter(pk__in=session_ids)
-        },
+        "session": {x.id: x for x in RetreatSession.objects.filter(pk__in=session_ids)},
         "membership": {
             x.id: x
-            for x in RetreatGroupMembership.objects.filter(pk__in=membership_ids)
-            .select_related("user", "user__profile", "group")
+            for x in RetreatGroupMembership.objects.filter(
+                pk__in=membership_ids
+            ).select_related("user", "user__profile", "group")
         },
     }
 
@@ -214,16 +216,29 @@ def _attendee_summary(log, ctx, before, after) -> str:
 def _enrollment_summary(log, ctx, before, after) -> str:
     data = after or before
     enrollment = ctx["enrollment"].get(log.target_id)
-    session_name = getattr(getattr(enrollment, "session", None), "name", "") or _session_name_from_payload(ctx, data)
-    name = getattr(enrollment, "name", "") or data.get("name") or f"조원 #{log.target_id}"
+    session_name = getattr(
+        getattr(enrollment, "session", None), "name", ""
+    ) or _session_name_from_payload(ctx, data)
+    name = (
+        getattr(enrollment, "name", "") or data.get("name") or f"조원 #{log.target_id}"
+    )
     group_name = getattr(enrollment, "group_name", "") or data.get("group_name") or ""
-    reason = "진행중 출석부 자동 합류" if data.get("auto_join_active_session") else "출석부 명단 스냅샷"
+    reason = (
+        "진행중 출석부 자동 합류"
+        if data.get("auto_join_active_session")
+        else "출석부 명단 스냅샷"
+    )
     return f"출석부 「{session_name}」에 {name}({group_name}) {reason}"
 
 
 def _session_summary(log, ctx, before, after) -> str:
     session = ctx["session"].get(log.target_id)
-    name = getattr(session, "name", "") or after.get("name") or before.get("name") or f"#{log.target_id}"
+    name = (
+        getattr(session, "name", "")
+        or after.get("name")
+        or before.get("name")
+        or f"#{log.target_id}"
+    )
     if before.get("status") != after.get("status"):
         if after.get("status") == "closed":
             return f"출석부 「{name}」 마감"
@@ -248,7 +263,11 @@ def _group_membership_summary(log, ctx, before, after) -> str:
         or data.get("username")
         or f"사용자 #{data.get('user_id', '-')}"
     )
-    group_name = getattr(getattr(membership, "group", None), "name", "") or data.get("group_name") or "조"
+    group_name = (
+        getattr(getattr(membership, "group", None), "name", "")
+        or data.get("group_name")
+        or "조"
+    )
     role = data.get("role_display") or data.get("role") or "운영진"
     if log.action == RetreatChangeLog.Action.CREATE:
         return f"{user_name}을 {group_name} {role}로 추가"

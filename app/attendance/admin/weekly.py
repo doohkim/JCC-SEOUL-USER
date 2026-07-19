@@ -65,7 +65,10 @@ class MidweekAttendanceRecordAdmin(AuditLoggingModelAdminMixin, JccModelAdmin):
 
     @admin.display(description="팀")
     def team_name_snapshot_display(self, obj: MidweekAttendanceRecord) -> str:
-        return self._normalize_team_label(getattr(obj, "team_name_snapshot", "") or (obj.team.name if obj.team_id else ""))
+        return self._normalize_team_label(
+            getattr(obj, "team_name_snapshot", "")
+            or (obj.team.name if obj.team_id else "")
+        )
 
     @admin.display(description="요일", ordering="service_date")
     def weekday_ko(self, obj):
@@ -124,7 +127,10 @@ class SundayAttendanceLineAdmin(AuditLoggingModelAdminMixin, JccModelAdmin):
 
     @admin.display(description="팀")
     def team_name_snapshot_display(self, obj: SundayAttendanceLine) -> str:
-        return self._normalize_team_label(getattr(obj, "team_name_snapshot", "") or (obj.team.name if obj.team_id else ""))
+        return self._normalize_team_label(
+            getattr(obj, "team_name_snapshot", "")
+            or (obj.team.name if obj.team_id else "")
+        )
 
     @admin.display(description="요일", ordering="service_date")
     def weekday_ko(self, obj):

@@ -16,7 +16,10 @@ from retreat.models import (
     RetreatEvent,
 )
 from retreat.serializers import RetreatCouncilMembershipSerializer
-from retreat.services.account_retired import assert_user_visible_to, visible_user_linked_for
+from retreat.services.account_retired import (
+    assert_user_visible_to,
+    visible_user_linked_for,
+)
 from retreat.services.audit import log_retreat_change
 from retreat.services.staff_roster import (
     CouncilScopeError,
@@ -100,7 +103,9 @@ class RetreatEventCouncilListCreateView(APIView):
             target = User.objects.filter(username=username).first()
         if target is None:
             raise ValidationError({"user": "사용자를 찾을 수 없습니다."})
-        if not RetreatCouncilMembership.objects.filter(event=event, user=target).exists():
+        if not RetreatCouncilMembership.objects.filter(
+            event=event, user=target
+        ).exists():
             try:
                 assert_can_assign_event_staff(target, event, kind="council")
             except ValueError as exc:
@@ -121,9 +126,11 @@ class RetreatEventCouncilListCreateView(APIView):
         log_retreat_change(
             user=request.user,
             event=event,
-            action=RetreatChangeLog.Action.CREATE
-            if created
-            else RetreatChangeLog.Action.UPDATE,
+            action=(
+                RetreatChangeLog.Action.CREATE
+                if created
+                else RetreatChangeLog.Action.UPDATE
+            ),
             target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
             target_id=membership.id,
             payload_after={
@@ -208,7 +215,9 @@ class RetreatCouncilMembershipDetailView(APIView):
         user = m.user
         mid = m.id
         m.delete()
-        from retreat.services.staff_application import delete_staff_application_if_unassigned
+        from retreat.services.staff_application import (
+            delete_staff_application_if_unassigned,
+        )
 
         delete_staff_application_if_unassigned(user, event, actor=request.user)
         log_retreat_change(

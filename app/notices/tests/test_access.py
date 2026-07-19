@@ -119,9 +119,13 @@ class NoticeAccessTests(_NoticeAccessFixture):
 
     def test_manage_button_only_for_superuser_or_staff(self):
         self.client.force_login(self.staff_user)
-        self.assertTrue(self.client.get(reverse("notice_list")).context["can_manage_notices"])
+        self.assertTrue(
+            self.client.get(reverse("notice_list")).context["can_manage_notices"]
+        )
         self.client.force_login(self.approved_user)
-        self.assertFalse(self.client.get(reverse("notice_list")).context["can_manage_notices"])
+        self.assertFalse(
+            self.client.get(reverse("notice_list")).context["can_manage_notices"]
+        )
 
     def test_timetable_login_required(self):
         self.client.force_login(self.superuser)
@@ -196,7 +200,12 @@ class NoticeWriteAccessTests(_NoticeAccessFixture):
         self.client.force_login(self.superuser)
         r = self.client.post(
             reverse("notice_create"),
-            {"title": "테스트 공지", "body": "내용", "is_pinned": False, "scope": "all"},
+            {
+                "title": "테스트 공지",
+                "body": "내용",
+                "is_pinned": False,
+                "scope": "all",
+            },
         )
         self.assertEqual(r.status_code, 302)
         from notices.models import Notice
@@ -212,7 +221,12 @@ class NoticeWriteAccessTests(_NoticeAccessFixture):
         self.client.force_login(self.staff_user)
         r = self.client.post(
             reverse("notice_create"),
-            {"title": "스태프 공지", "body": "내용", "is_pinned": False, "scope": "all"},
+            {
+                "title": "스태프 공지",
+                "body": "내용",
+                "is_pinned": False,
+                "scope": "all",
+            },
         )
         self.assertEqual(r.status_code, 302)
         from notices.models import Notice
@@ -241,7 +255,12 @@ class NoticeWriteAccessTests(_NoticeAccessFixture):
         self.client.force_login(self.approved_user)
         r = self.client.post(
             reverse("notice_create"),
-            {"title": "공지관리자 공지", "body": "내용", "is_pinned": False, "scope": "all"},
+            {
+                "title": "공지관리자 공지",
+                "body": "내용",
+                "is_pinned": False,
+                "scope": "all",
+            },
         )
         self.assertEqual(r.status_code, 302)
         from notices.models import Notice

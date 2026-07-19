@@ -131,7 +131,9 @@ class EventObserverApiTests(CouncilMatrixFixture):
         self.assertEqual(r.status_code, 403)
         detail = reverse("api_retreat_pickup_detail", args=[self.arrival_pickup.id])
         self.assertEqual(
-            self.api.patch(detail, {"boarding_place": "변경"}, format="json").status_code,
+            self.api.patch(
+                detail, {"boarding_place": "변경"}, format="json"
+            ).status_code,
             403,
         )
         self.assertEqual(self.api.delete(detail).status_code, 403)
@@ -171,6 +173,4 @@ class EventObserverApiTests(CouncilMatrixFixture):
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])
         data = self.api.get(url).json()
         group_ids = {row["group_id"] for row in data["by_group"]}
-        self.assertEqual(
-            group_ids, {self.group_seoul.id, self.group_incheon.id}
-        )
+        self.assertEqual(group_ids, {self.group_seoul.id, self.group_incheon.id})

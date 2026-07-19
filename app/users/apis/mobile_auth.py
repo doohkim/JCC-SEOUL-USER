@@ -10,7 +10,10 @@ from rest_framework.views import APIView
 from users.mixins import ensure_user_profile, is_onboarding_complete
 from users.permissions import can_access_notices_tab
 from users.services.integration_snapshot import build_integration_user_body
-from users.services.kakao_mobile_auth import KakaoMobileAuthError, login_with_kakao_access_token
+from users.services.kakao_mobile_auth import (
+    KakaoMobileAuthError,
+    login_with_kakao_access_token,
+)
 
 
 class KakaoMobileLoginView(APIView):
@@ -39,10 +42,18 @@ class KakaoMobileLoginView(APIView):
         except KakaoMobileAuthError as exc:
             code = exc.code
             if code == "access_token_required":
-                return Response({"detail": "access_token required"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"detail": "access_token required"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             if code == "invalid_kakao_token":
-                return Response({"detail": "invalid kakao token"}, status=status.HTTP_401_UNAUTHORIZED)
-            return Response({"detail": exc.message or code}, status=status.HTTP_502_BAD_GATEWAY)
+                return Response(
+                    {"detail": "invalid kakao token"},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+            return Response(
+                {"detail": exc.message or code}, status=status.HTTP_502_BAD_GATEWAY
+            )
 
         user = result.user
         profile = ensure_user_profile(user)

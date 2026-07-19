@@ -102,9 +102,7 @@ class Command(BaseCommand):
         xlsx_files = sorted(root.rglob("*.xlsx"))
         # 임시/숨김 제외
         xlsx_files = [
-            p
-            for p in xlsx_files
-            if not p.name.startswith("~$") and "/." not in str(p)
+            p for p in xlsx_files if not p.name.startswith("~$") and "/." not in str(p)
         ]
 
         if not xlsx_files:
@@ -119,9 +117,7 @@ class Command(BaseCommand):
             rel = path.relative_to(root)
             ctx = infer_roster_path_context(rel)
             if ctx is None:
-                self.stdout.write(
-                    self.style.WARNING(f"경로 추론 실패(스킵): {rel}")
-                )
+                self.stdout.write(self.style.WARNING(f"경로 추론 실패(스킵): {rel}"))
                 skipped += 1
                 continue
 
@@ -130,9 +126,7 @@ class Command(BaseCommand):
                 if single_sheet not in wb.sheetnames:
                     wb.close()
                     self.stdout.write(
-                        self.style.WARNING(
-                            f"시트 없음(스킵): {rel} → '{single_sheet}'"
-                        )
+                        self.style.WARNING(f"시트 없음(스킵): {rel} → '{single_sheet}'")
                     )
                     skipped += 1
                     continue
@@ -200,7 +194,9 @@ class Command(BaseCommand):
             )
 
             used_ik: set[str] = set(
-                Member.objects.exclude(import_key="").values_list("import_key", flat=True)
+                Member.objects.exclude(import_key="").values_list(
+                    "import_key", flat=True
+                )
             )
             by_name: dict[str, Member] = {}
             for m in Member.objects.all():

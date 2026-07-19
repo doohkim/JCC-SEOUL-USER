@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 from retreat.services.onboarding import is_pastoral_applicant
-from users.models import PastoralDivisionAssignment, RoleLevel, UserDivisionTeam, UserProfile
+from users.models import (
+    PastoralDivisionAssignment,
+    RoleLevel,
+    UserDivisionTeam,
+    UserProfile,
+)
 
 
 def approve_onboarding_profile(

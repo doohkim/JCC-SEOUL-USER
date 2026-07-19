@@ -35,7 +35,9 @@ class IntegrationServiceAuthentication(BaseAuthentication):
         if not raw:
             return None
 
-        client = ExternalServiceClient.objects.filter(key_prefix=raw[:16], is_active=True).first()
+        client = ExternalServiceClient.objects.filter(
+            key_prefix=raw[:16], is_active=True
+        ).first()
         if client is None or not client.check_key(raw):
             raise AuthenticationFailed("Invalid integration key.")
 

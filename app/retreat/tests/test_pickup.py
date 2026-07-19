@@ -85,7 +85,9 @@ class _PickupFixture(TestCase):
             user=cls.staff, division=cls.div, is_primary=True
         )
 
-        cls.stranger = User.objects.create_user(username="pickup_stranger", password="x")
+        cls.stranger = User.objects.create_user(
+            username="pickup_stranger", password="x"
+        )
 
     def _attendee(self, group, name, **kwargs):
         return RetreatAttendee.objects.create(group=group, name=name, **kwargs)
@@ -107,7 +109,7 @@ class PickupPageTests(_PickupFixture):
         self.assertFalse(r.context["can_select_pickup_group"])
         self.assertEqual(r.context["leader_group_id"], self.group.id)
         self.assertContains(r, "입회")
-        self.assertContains(r, 'data-leader-member-select')
+        self.assertContains(r, "data-leader-member-select")
 
     def test_council_can_view_pickup_page(self):
         self.page_client.force_login(self.council)

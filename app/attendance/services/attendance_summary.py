@@ -8,7 +8,10 @@ import re
 from django.db.models import Count
 
 from attendance.choices import MidweekAttendanceStatus, MidweekServiceType, WorshipVenue
-from attendance.services.week_rollup import midweek_records_for_week, sunday_lines_for_week
+from attendance.services.week_rollup import (
+    midweek_records_for_week,
+    sunday_lines_for_week,
+)
 
 
 def _venue_label(code: str) -> str:
@@ -85,9 +88,7 @@ def build_week_summary_payload(division, week_sunday: date, wtype: str) -> dict:
                     "venue": venue,
                     "venue_label": venue_label,
                     "session_part": part,
-                    "label": (
-                        f"{venue_label} {part}부" if part else venue_label
-                    ),
+                    "label": (f"{venue_label} {part}부" if part else venue_label),
                     "count": c,
                 }
             )
@@ -148,12 +149,12 @@ def build_week_summary_payload(division, week_sunday: date, wtype: str) -> dict:
                 .annotate(c=Count("id"))
                 .values_list("status", "c")
             )
-            by_status_labeled = {
-                _midweek_status_label(k): v for k, v in agg.items()
-            }
+            by_status_labeled = {_midweek_status_label(k): v for k, v in agg.items()}
             null_c = sub.filter(status__isnull=True).count()
             if null_c:
-                by_status_labeled["미입력"] = by_status_labeled.get("미입력", 0) + null_c
+                by_status_labeled["미입력"] = (
+                    by_status_labeled.get("미입력", 0) + null_c
+                )
             by_service[st] = {
                 "label": st_label,
                 "total": sub.count(),

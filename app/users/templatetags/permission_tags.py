@@ -78,9 +78,7 @@ def user_org_summary(user):
     if not user or not getattr(user, "is_authenticated", False):
         return ""
     udt = (
-        user.division_teams.select_related(
-            "division", "division__region", "team"
-        )
+        user.division_teams.select_related("division", "division__region", "team")
         .order_by("-is_primary", "sort_order", "division__sort_order", "id")
         .first()
     )

@@ -73,9 +73,7 @@ class BulkUpsertTests(TestCase):
         UserDivisionTeam.objects.create(
             user=cls.leader, division=cls.div_seoul, is_primary=True
         )
-        RetreatGroupMembership.objects.create(
-            user=cls.leader, group=cls.group_seoul
-        )
+        RetreatGroupMembership.objects.create(user=cls.leader, group=cls.group_seoul)
 
         # 기존 케이스는 입실 상태 가정 — 명시적으로 CHECKED_IN 지정.
         cls.att_a = RetreatAttendee.objects.create(
@@ -231,9 +229,7 @@ class BulkUpsertTests(TestCase):
         """입실전 상태인 조원에게 '참석'을 보내면 400."""
         r = self.client.post(
             URL,
-            self._payload(
-                [{"attendee_id": self.att_pending.id, "status": "present"}]
-            ),
+            self._payload([{"attendee_id": self.att_pending.id, "status": "present"}]),
             format="json",
         )
         self.assertEqual(r.status_code, 400, r.content)
@@ -243,9 +239,7 @@ class BulkUpsertTests(TestCase):
         """입실전 조원에게 '결석'도 설정 불가."""
         r = self.client.post(
             URL,
-            self._payload(
-                [{"attendee_id": self.att_pending.id, "status": "absent"}]
-            ),
+            self._payload([{"attendee_id": self.att_pending.id, "status": "absent"}]),
             format="json",
         )
         self.assertEqual(r.status_code, 400, r.content)

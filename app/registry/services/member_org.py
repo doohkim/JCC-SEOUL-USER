@@ -86,7 +86,9 @@ def transfer_to_division(
         _ensure_team_in_division(team, to_division)
 
     if remove_from_source and from_division is not None:
-        MemberDivisionTeam.objects.filter(member=member, division=from_division).delete()
+        MemberDivisionTeam.objects.filter(
+            member=member, division=from_division
+        ).delete()
 
     mdt, created = MemberDivisionTeam.objects.get_or_create(
         member=member,

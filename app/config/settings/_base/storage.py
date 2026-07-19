@@ -6,6 +6,7 @@ AWS_ACCESS_KEY_ID = secrets.S3_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY = secrets.S3_SECRET_ACCESS_KEY
 AWS_S3_CUSTOM_DOMAIN = secrets.S3_CUSTOM_DOMAIN
 
+
 def build_storage_settings(
     *,
     bucket_name,

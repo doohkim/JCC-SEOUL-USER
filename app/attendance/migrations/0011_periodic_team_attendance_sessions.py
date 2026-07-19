@@ -36,7 +36,10 @@ def remove_periodic_task(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("attendance", "0010_rename_attendance_p_division_2f4c8e_idx_attendance__divisio_14bd69_idx"),
+        (
+            "attendance",
+            "0010_rename_attendance_p_division_2f4c8e_idx_attendance__divisio_14bd69_idx",
+        ),
         ("django_celery_beat", "0019_alter_periodictasks_options"),
     ]
 

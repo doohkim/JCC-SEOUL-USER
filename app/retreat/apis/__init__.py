@@ -1,9 +1,16 @@
 """retreat DRF API."""
 
-from .events import RetreatEventListView, RetreatEventGroupListView, RetreatGroupDetailView
+from .events import (
+    RetreatEventListView,
+    RetreatEventGroupListView,
+    RetreatGroupDetailView,
+)
 from .attendees import RetreatGroupAttendeesView, RetreatAttendeeDetailView
 from .attendee_history import RetreatAttendeeHistoryView
-from .attendance import RetreatAttendanceBulkUpsertView, RetreatSessionAttendanceNamesView
+from .attendance import (
+    RetreatAttendanceBulkUpsertView,
+    RetreatSessionAttendanceNamesView,
+)
 from .sessions import (
     RetreatEventSessionListCreateView,
     RetreatSessionCloseView,

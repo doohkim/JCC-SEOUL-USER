@@ -73,7 +73,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "sort_order",
-                    models.PositiveSmallIntegerField(default=0, verbose_name="정렬 순서"),
+                    models.PositiveSmallIntegerField(
+                        default=0, verbose_name="정렬 순서"
+                    ),
                 ),
             ],
             options={

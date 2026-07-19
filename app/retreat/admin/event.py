@@ -19,7 +19,11 @@ class RetreatEventAdmin(admin.ModelAdmin):
         "staff_applications_open",
         "require_retreat_participation_on_signup",
     ]
-    list_filter = ["is_active", "staff_applications_open", "require_retreat_participation_on_signup"]
+    list_filter = [
+        "is_active",
+        "staff_applications_open",
+        "require_retreat_participation_on_signup",
+    ]
     search_fields = ["name"]
     fieldsets = (
         (None, {"fields": ("name", "start_date", "end_date", "is_active")}),
