@@ -4,7 +4,7 @@ from django.urls import path
 
 from retreat.apis import (
     RetreatAttendanceBulkUpsertView,
-    RetreatSessionAttendanceNamesView,
+    RetreatEventAttendanceNamesView,
     RetreatAttendeeDetailView,
     RetreatAttendeeHistoryView,
     RetreatCouncilMembershipDetailView,
@@ -236,9 +236,9 @@ urlpatterns = [
         name="api_retreat_attendance_bulk_upsert",
     ),
     path(
-        "api/v1/retreat/sessions/<int:session_id>/attendance-names/",
-        RetreatSessionAttendanceNamesView.as_view(),
-        name="api_retreat_session_attendance_names",
+        "api/v1/retreat/events/<int:event_id>/attendance-names/",
+        RetreatEventAttendanceNamesView.as_view(),
+        name="api_retreat_event_attendance_names",
     ),
     path(
         "api/v1/retreat/sessions/<int:session_id>/groups/<int:group_id>/snapshot-attendees/",

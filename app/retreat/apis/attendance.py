@@ -18,6 +18,7 @@ from retreat.models import (
     RetreatAttendance,
     RetreatAttendee,
     RetreatChangeLog,
+    RetreatEvent,
     RetreatSession,
     RetreatSessionAttendee,
 )
@@ -237,11 +238,11 @@ class RetreatAttendanceBulkUpsertView(APIView):
         )
 
 
-class RetreatSessionAttendanceNamesView(APIView):
+class RetreatEventAttendanceNamesView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
-    def get(self, request, session_id: int):
+    def get(self, request, event_id: int):
         token = (request.headers.get("X-Retreat-Token") or "").strip()
         expected = _retreat_api_token()
         if not token or not expected or not hmac.compare_digest(token, expected):
@@ -249,10 +250,13 @@ class RetreatSessionAttendanceNamesView(APIView):
                 {"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED
             )
 
-        session = get_object_or_404(
-            RetreatSession.objects.select_related("event"),
-            pk=session_id,
-        )
+        event = get_object_or_404(RetreatEvent, pk=event_id)
+        session = RetreatSession.objects.filter(event=event).first()
+        if session is None:
+            return Response(
+                {"detail": "No RetreatSession matches the given query."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         rows = (
             RetreatAttendance.objects.filter(
                 enrollment__session=session,
@@ -263,12 +267,14 @@ class RetreatSessionAttendanceNamesView(APIView):
         )
         return Response(
             {
+                "event_id": event.id,
+                "session_id": session.id,
                 "attendees": [
                     {
                         "group_name": row["enrollment__group_name"],
                         "name": row["enrollment__name"],
                     }
                     for row in rows
-                ]
+                ],
             }
         )

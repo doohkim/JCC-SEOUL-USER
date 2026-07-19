@@ -9,7 +9,7 @@ from .attendees import RetreatGroupAttendeesView, RetreatAttendeeDetailView
 from .attendee_history import RetreatAttendeeHistoryView
 from .attendance import (
     RetreatAttendanceBulkUpsertView,
-    RetreatSessionAttendanceNamesView,
+    RetreatEventAttendanceNamesView,
 )
 from .sessions import (
     RetreatEventSessionListCreateView,
@@ -66,6 +66,7 @@ __all__ = [
     "RetreatAttendeeDetailView",
     "RetreatAttendeeHistoryView",
     "RetreatAttendanceBulkUpsertView",
+    "RetreatEventAttendanceNamesView",
     "RetreatEventSessionListCreateView",
     "RetreatSessionDetailView",
     "RetreatSessionCloseView",

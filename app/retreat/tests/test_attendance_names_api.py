@@ -1,4 +1,4 @@
-"""세션 참석자(조+이름) 공개 API 테스트."""
+"""집회 최신 출석부 참석자(조+이름) 공개 API 테스트."""
 
 from __future__ import annotations
 
@@ -110,8 +110,8 @@ class AttendanceNamesApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.url = reverse(
-            "api_retreat_session_attendance_names",
-            args=[self.session.id],
+            "api_retreat_event_attendance_names",
+            args=[self.event.id],
         )
 
     def test_request_without_token_returns_401(self):
@@ -124,7 +124,7 @@ class AttendanceNamesApiTests(TestCase):
 
         self.assertEqual(response.status_code, 401)
 
-    def test_valid_token_returns_present_names_only(self):
+    def test_valid_token_returns_present_names_only_from_latest_session(self):
         response = self.client.get(
             self.url,
             HTTP_X_RETREAT_TOKEN=settings.RETREAT,
@@ -133,12 +133,14 @@ class AttendanceNamesApiTests(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         data = response.json()
         self.assertIn("attendees", data)
+        self.assertEqual(data.get("event_id"), self.event.id)
+        self.assertEqual(data.get("session_id"), self.other_session.id)
         self.assertEqual(
             data["attendees"],
             [
                 {
                     "group_name": "1조",
-                    "name": "참석자",
+                    "name": "다른세션참석자",
                 }
             ],
         )
@@ -151,3 +153,19 @@ class AttendanceNamesApiTests(TestCase):
                     HTTP_X_RETREAT_TOKEN="any-token",
                 )
         self.assertEqual(response.status_code, 401)
+
+    def test_event_without_session_returns_404(self):
+        empty_event = RetreatEvent.objects.create(
+            name="세션 없는 집회",
+            start_date=date(2026, 8, 1),
+            end_date=date(2026, 8, 2),
+        )
+        url = reverse(
+            "api_retreat_event_attendance_names",
+            args=[empty_event.id],
+        )
+        response = self.client.get(
+            url,
+            HTTP_X_RETREAT_TOKEN=settings.RETREAT,
+        )
+        self.assertEqual(response.status_code, 404)
