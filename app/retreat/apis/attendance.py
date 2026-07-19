@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import hmac
+
+from django.conf import settings
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -25,6 +28,15 @@ from retreat.serializers import (
     RetreatAttendanceSerializer,
 )
 from users.permissions import visible_retreat_groups_for, visible_retreat_sessions_for
+
+
+def _retreat_api_token() -> str:
+    """외부 공개 출석 API 토큰을 안전하게 조회한다."""
+    direct = str(getattr(settings, "RETREAT", "") or "").strip()
+    if direct:
+        return direct
+    secrets_obj = getattr(settings, "secrets", None)
+    return str(getattr(secrets_obj, "RETREAT", "") or "").strip()
 
 
 class RetreatAttendanceBulkUpsertView(APIView):
@@ -218,3 +230,34 @@ class RetreatAttendanceBulkUpsertView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+class RetreatSessionAttendanceNamesView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request, session_id: int):
+        token = (request.headers.get("X-Retreat-Token") or "").strip()
+        expected = _retreat_api_token()
+        if not token or not expected or not hmac.compare_digest(token, expected):
+            return Response({"detail": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        session = get_object_or_404(
+            RetreatSession.objects.select_related("event"),
+            pk=session_id,
+        )
+        rows = (
+            RetreatAttendance.objects.filter(
+                enrollment__session=session,
+                status=RetreatAttendance.Status.PRESENT,
+            )
+            .select_related("enrollment")
+            .values("enrollment__group_name", "enrollment__name")
+        )
+        return Response({
+            "attendees": [
+                {
+                    "group_name": row["enrollment__group_name"],
+                    "name": row["enrollment__name"],
+                } for row in rows
+            ]
+        })

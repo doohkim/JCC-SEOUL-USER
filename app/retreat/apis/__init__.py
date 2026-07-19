@@ -3,7 +3,7 @@
 from .events import RetreatEventListView, RetreatEventGroupListView, RetreatGroupDetailView
 from .attendees import RetreatGroupAttendeesView, RetreatAttendeeDetailView
 from .attendee_history import RetreatAttendeeHistoryView
-from .attendance import RetreatAttendanceBulkUpsertView
+from .attendance import RetreatAttendanceBulkUpsertView, RetreatSessionAttendanceNamesView
 from .sessions import (
     RetreatEventSessionListCreateView,
     RetreatSessionCloseView,
