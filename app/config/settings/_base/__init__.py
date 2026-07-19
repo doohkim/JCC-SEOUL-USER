@@ -32,6 +32,7 @@ DEBUG = IS_LOCAL or False  # static url활성화를 위해 로컬이면 DEBUG = 
 ATOMIC_REQUESTS = True
 ALLOWED_HOSTS = ["health-check"]
 SECRET_KEY = "django-insecure-$6gta((^uu4h+#9*^&buib(uwgsjxyepvve3o^sp7vlf8jav#x"
+RETREAT = secrets.RETREAT
 
 if DEBUG:
     ALLOWED_HOSTS += [
@@ -71,3 +72,4 @@ ALLOW_INTEGRATION_DEBUG_TOKEN = os.environ.get("ALLOW_INTEGRATION_DEBUG_TOKEN", 
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = True
+SECURE_SSL_REDIRECT = False
