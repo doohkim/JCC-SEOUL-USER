@@ -58,8 +58,15 @@ def staff_pool_users_for_event(event_id: int, *, assign_kind: str = "any") -> Qu
     )
     base_filter = Q(
         profile__onboarding_status=UserProfile.OnboardingStatus.APPROVED,
-        division_teams__division_id__in=division_ids,
-        division_teams__is_primary=True,
+    ) & (
+        Q(
+            division_teams__division_id__in=division_ids,
+            division_teams__is_primary=True,
+        )
+        | Q(
+            role_level__code__in=("pastor", "evangelist"),
+            pastoral_divisions__division_id__in=division_ids,
+        )
     )
     if assign_kind == "council" and group_staff_user_ids:
         base_filter |= Q(id__in=group_staff_user_ids)

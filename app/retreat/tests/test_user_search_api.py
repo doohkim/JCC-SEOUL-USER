@@ -15,7 +15,13 @@ from retreat.models import (
     RetreatGroupMembership,
 )
 from users.mixins import ensure_user_profile
-from users.models import Division, Region, UserDivisionTeam
+from users.models import (
+    Division,
+    PastoralDivisionAssignment,
+    Region,
+    RoleLevel,
+    UserDivisionTeam,
+)
 
 User = get_user_model()
 
@@ -208,3 +214,61 @@ class UserSearchApiTests(APITestCase):
         self.assertEqual(r.status_code, 200)
         usernames = [u["username"] for u in r.json()]
         self.assertNotIn(self.leader.username, usernames)
+
+    def test_staff_pool_includes_pastoral_assigned_division_and_affiliations(self):
+        div_univ = Division.objects.create(
+            region=self.seoul, code="us_staff_univ", name="대학부"
+        )
+        RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=div_univ,
+            name="2조",
+        )
+
+        pastoral_level, _ = RoleLevel.objects.get_or_create(
+            code="evangelist",
+            defaults={"name": "전도사", "level": 80, "sort_order": 90},
+        )
+        pastoral_user = User.objects.create_user(
+            username="us_pastoral_multi", password="x"
+        )
+        pastoral_user.role_level = pastoral_level
+        pastoral_user.save(update_fields=["role_level"])
+
+        # 주 소속은 집회 부서와 무관하게 두고, 목회 담당부서로만 집회 부서를 연결한다.
+        div_outside = Division.objects.create(
+            region=self.seoul, code="us_staff_outside", name="외부부서"
+        )
+        UserDivisionTeam.objects.create(
+            user=pastoral_user, division=div_outside, is_primary=True
+        )
+        PastoralDivisionAssignment.objects.create(
+            user=pastoral_user, division=self.div, is_primary=True
+        )
+        PastoralDivisionAssignment.objects.create(
+            user=pastoral_user, division=div_univ, is_primary=False
+        )
+        profile = ensure_user_profile(pastoral_user)
+        profile.onboarding_status = profile.OnboardingStatus.APPROVED
+        profile.save(update_fields=["onboarding_status", "updated_at"])
+
+        self.client.force_authenticate(self.leader)
+        r = self.client.get(
+            reverse("api_retreat_user_search"),
+            {
+                "event_id": self.event.id,
+                "staff_pool": "1",
+                "staff_pool_kind": "council",
+                "q": "us_pastoral_multi",
+            },
+        )
+        self.assertEqual(r.status_code, 200)
+        rows = r.json()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["username"], pastoral_user.username)
+        self.assertTrue(rows[0]["is_pastoral"])
+        affiliation_division_ids = sorted(
+            [row["division_id"] for row in rows[0]["affiliations"]]
+        )
+        self.assertEqual(affiliation_division_ids, sorted([self.div.id, div_univ.id]))

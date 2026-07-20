@@ -24,6 +24,7 @@
   let editingRow = null;
   let modalMode = "council";
   let confirmResolve = null;
+  let currentScopeAffiliations = [];
 
   function csrf() {
     const m = document.cookie.match(/csrftoken=([^;]+)/);
@@ -119,15 +120,44 @@
     return `jcc-retreat-staffRoleTag--${role}`;
   }
 
-  function filterDivisionsByRegion(selectEl, regionId) {
+  function filterRegionsByAllowed(selectEl, allowedRegionIds) {
     if (!selectEl) return;
+    const selected = selectEl.value;
+    const allowed = allowedRegionIds || null;
+    Array.from(selectEl.options).forEach((opt, idx) => {
+      if (idx === 0) {
+        opt.hidden = false;
+        return;
+      }
+      const rid = Number(opt.value || 0);
+      const blocked = allowed && !allowed.has(rid);
+      opt.hidden = blocked && String(opt.value) !== String(selected);
+    });
+    if (
+      selectEl.value &&
+      selectEl.selectedOptions[0] &&
+      selectEl.selectedOptions[0].hidden
+    ) {
+      selectEl.value = "";
+    }
+  }
+
+  function filterDivisionsByRegion(selectEl, regionId, allowedDivisionIds) {
+    if (!selectEl) return;
+    const selected = selectEl.value;
+    const allowed = allowedDivisionIds || null;
     Array.from(selectEl.options).forEach((opt, idx) => {
       if (idx === 0) {
         opt.hidden = false;
         return;
       }
       const rid = opt.dataset.regionId;
-      opt.hidden = Boolean(regionId && rid && String(rid) !== String(regionId));
+      const divisionId = Number(opt.value || 0);
+      const blockedByRegion = Boolean(regionId && rid && String(rid) !== String(regionId));
+      const blockedByAffiliation = Boolean(allowed && !allowed.has(divisionId));
+      opt.hidden =
+        (blockedByRegion || blockedByAffiliation) &&
+        String(opt.value) !== String(selected);
     });
     if (
       selectEl.value &&
@@ -169,9 +199,17 @@
     window.JccCustomSelect?.refresh?.(modalOverlay);
   }
 
-  function userAffiliationFromSelection(selected) {
-    if (!selected) return { region_id: null, division_id: null };
-    return {
+  function userAffiliationsFromSelection(selected) {
+    if (!selected) return [];
+    const rows = Array.isArray(selected.affiliations) ? selected.affiliations : [];
+    const normalized = rows
+      .map((row) => ({
+        region_id: row?.region_id != null ? Number(row.region_id) : null,
+        division_id: row?.division_id != null ? Number(row.division_id) : null,
+      }))
+      .filter((row) => row.division_id != null);
+    if (normalized.length) return normalized;
+    const fallback = {
       region_id:
         selected.region_id != null
           ? Number(selected.region_id)
@@ -185,6 +223,34 @@
             ? Number(selected.userDivisionId)
             : null,
     };
+    return fallback.division_id != null ? [fallback] : [];
+  }
+
+  function eventDivisionIds() {
+    const divisionSel = document.getElementById("staffModalDivision");
+    if (!divisionSel) return new Set();
+    const ids = new Set();
+    Array.from(divisionSel.options).forEach((opt, idx) => {
+      if (idx === 0) return;
+      const did = Number(opt.value || 0);
+      if (did) ids.add(did);
+    });
+    return ids;
+  }
+
+  function scopedAffiliationsForUser(selected) {
+    const eventDivisionSet = eventDivisionIds();
+    const all = userAffiliationsFromSelection(selected);
+    const seen = new Set();
+    const filtered = [];
+    all.forEach((row) => {
+      if (!row.division_id) return;
+      if (eventDivisionSet.size && !eventDivisionSet.has(Number(row.division_id))) return;
+      if (seen.has(row.division_id)) return;
+      seen.add(row.division_id);
+      filtered.push(row);
+    });
+    return filtered;
   }
 
   function syncScopeFromUser(user, role) {
@@ -193,6 +259,9 @@
       toggleScopeFields("", regionWrap, divisionWrap);
       if (regionSel) regionSel.value = "";
       if (divisionSel) divisionSel.value = "";
+      currentScopeAffiliations = [];
+      filterRegionsByAllowed(regionSel, null);
+      filterDivisionsByRegion(divisionSel, null, null);
       setScopeSelectsLocked(false);
       window.JccCustomSelect?.refresh?.(modalOverlay);
       return;
@@ -200,22 +269,95 @@
 
     const kind = scopeKind(role);
     toggleScopeFields(role, regionWrap, divisionWrap);
-    const { region_id: regionId, division_id: divisionId } = userAffiliationFromSelection(user);
+    currentScopeAffiliations = scopedAffiliationsForUser(user);
+    const hasScopedAffiliation = currentScopeAffiliations.length > 0;
+    const allowedDivisionIds = new Set(
+      currentScopeAffiliations.map((row) => Number(row.division_id)).filter(Boolean)
+    );
+    const allowedRegionIds = new Set(
+      currentScopeAffiliations.map((row) => Number(row.region_id)).filter(Boolean)
+    );
 
     if (kind === "event") {
       if (regionSel) regionSel.value = "";
       if (divisionSel) divisionSel.value = "";
+      filterRegionsByAllowed(regionSel, null);
+      filterDivisionsByRegion(divisionSel, null, null);
       setScopeSelectsLocked(true);
     } else if (kind === "region") {
-      if (regionSel && regionId) regionSel.value = String(regionId);
+      filterRegionsByAllowed(
+        regionSel,
+        hasScopedAffiliation ? allowedRegionIds : null
+      );
+      if (regionSel) {
+        if (
+          hasScopedAffiliation &&
+          (regionSel.value === "" ||
+            !allowedRegionIds.has(Number(regionSel.value || 0)))
+        ) {
+          regionSel.value =
+            allowedRegionIds.size === 1
+              ? String(Array.from(allowedRegionIds)[0])
+              : "";
+        }
+      }
       if (divisionSel) divisionSel.value = "";
-      setScopeSelectsLocked(true);
+      filterDivisionsByRegion(
+        divisionSel,
+        regionSel?.value || null,
+        hasScopedAffiliation ? allowedDivisionIds : null
+      );
+      if (regionSel) {
+        const lockRegion = hasScopedAffiliation && allowedRegionIds.size <= 1;
+        regionSel.disabled = !!lockRegion;
+      }
+      if (divisionSel) divisionSel.disabled = true;
     } else if (kind === "division") {
-      if (regionSel && regionId) regionSel.value = String(regionId);
-      filterDivisionsByRegion(divisionSel, regionId);
-      if (divisionSel && divisionId) divisionSel.value = String(divisionId);
-      setScopeSelectsLocked(true);
+      filterRegionsByAllowed(
+        regionSel,
+        hasScopedAffiliation ? allowedRegionIds : null
+      );
+      if (regionSel) {
+        if (
+          hasScopedAffiliation &&
+          (regionSel.value === "" ||
+            !allowedRegionIds.has(Number(regionSel.value || 0)))
+        ) {
+          regionSel.value =
+            allowedRegionIds.size === 1
+              ? String(Array.from(allowedRegionIds)[0])
+              : "";
+        }
+      }
+      filterDivisionsByRegion(
+        divisionSel,
+        regionSel?.value || null,
+        hasScopedAffiliation ? allowedDivisionIds : null
+      );
+      if (divisionSel) {
+        const visibleDivisionOptions = Array.from(divisionSel.options).filter(
+          (opt, idx) => idx > 0 && !opt.hidden
+        );
+        const visibleDivisionIds = visibleDivisionOptions
+          .map((opt) => Number(opt.value || 0))
+          .filter(Boolean);
+        if (
+          hasScopedAffiliation &&
+          !visibleDivisionIds.includes(Number(divisionSel.value || 0))
+        ) {
+          divisionSel.value =
+            visibleDivisionIds.length === 1 ? String(visibleDivisionIds[0]) : "";
+        }
+        const lockDivision = hasScopedAffiliation && visibleDivisionIds.length <= 1;
+        divisionSel.disabled = !!lockDivision;
+      }
+      if (regionSel) {
+        const lockRegion = hasScopedAffiliation && allowedRegionIds.size <= 1;
+        regionSel.disabled = !!lockRegion;
+      }
     } else {
+      filterRegionsByAllowed(regionSel, null);
+      filterDivisionsByRegion(divisionSel, null, null);
       setScopeSelectsLocked(false);
     }
     window.JccCustomSelect?.refresh?.(modalOverlay);
@@ -602,9 +744,17 @@
   });
 
   document.getElementById("staffModalRegion")?.addEventListener("change", (e) => {
+    const allowedDivisionIds = currentScopeAffiliations.length
+      ? new Set(
+          currentScopeAffiliations
+            .map((row) => Number(row.division_id))
+            .filter(Boolean)
+        )
+      : null;
     filterDivisionsByRegion(
       document.getElementById("staffModalDivision"),
-      e.target.value
+      e.target.value,
+      allowedDivisionIds
     );
   });
 

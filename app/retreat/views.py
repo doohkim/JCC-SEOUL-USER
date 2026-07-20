@@ -518,18 +518,14 @@ class RetreatCouncilView(_RetreatEventMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         event = ctx["event"]
         from users.models import Division, Region
+        from retreat.services.staff_pool import event_staff_eligible_division_ids
 
         from retreat.models import (
             RetreatCouncilMembership,
-            RetreatGroup,
             RetreatGroupMembership,
         )
 
-        event_division_ids = list(
-            RetreatGroup.objects.filter(event=event)
-            .values_list("division_id", flat=True)
-            .distinct()
-        )
+        event_division_ids = list(event_staff_eligible_division_ids(event.id))
         ctx["role_choices"] = RetreatCouncilMembership.Role.choices
         ctx["group_role_choices"] = RetreatGroupMembership.Role.choices
         ctx["role_choices_json"] = list(RetreatCouncilMembership.Role.choices)
