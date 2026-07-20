@@ -50,55 +50,27 @@ def _primary_affiliation_for_user(user):
 
 def _affiliations_for_user(user):
     """운영진 등록 모달용 다중 소속 목록."""
-    role_code = getattr(getattr(user, "role_level", None), "code", None)
-    if role_code in {"pastor", "evangelist"}:
-        rows = (
-            user.pastoral_divisions.order_by(
-                "-is_primary",
-                "sort_order",
-                "division__region__sort_order",
-                "division__sort_order",
-                "id",
-            )
-            .select_related("division", "division__region")
-            .all()
+    rows = (
+        user.division_teams.order_by(
+            "-is_primary", "sort_order", "division__sort_order", "id"
         )
-        values = [
+        .select_related("division", "division__region")
+        .all()
+    )
+    values = [
+        (
+            row.division_id,
+            row.division.region_id if row.division else None,
+            row.division.name if row.division else "",
             (
-                row.division_id,
-                row.division.region_id if row.division else None,
-                row.division.name if row.division else "",
-                (
-                    row.division.region.name
-                    if row.division and row.division.region_id
-                    else ""
-                ),
-            )
-            for row in rows
-            if row.division_id
-        ]
-    else:
-        rows = (
-            user.division_teams.order_by(
-                "-is_primary", "sort_order", "division__sort_order", "id"
-            )
-            .select_related("division", "division__region")
-            .all()
+                row.division.region.name
+                if row.division and row.division.region_id
+                else ""
+            ),
         )
-        values = [
-            (
-                row.division_id,
-                row.division.region_id if row.division else None,
-                row.division.name if row.division else "",
-                (
-                    row.division.region.name
-                    if row.division and row.division.region_id
-                    else ""
-                ),
-            )
-            for row in rows
-            if row.division_id
-        ]
+        for row in rows
+        if row.division_id
+    ]
     seen = set()
     results = []
     for division_id, region_id, division_name, region_name in values:

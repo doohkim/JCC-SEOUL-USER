@@ -19,6 +19,8 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
     user_division_id = serializers.SerializerMethodField()
     user_account_retired = serializers.SerializerMethodField()
     user_account_retired_display = serializers.SerializerMethodField()
+    user_is_pastoral = serializers.SerializerMethodField()
+    user_affiliations = serializers.SerializerMethodField()
     role_display = serializers.CharField(source="get_role_display", read_only=True)
     scope_label = serializers.CharField(read_only=True)
     region_name = serializers.CharField(
@@ -41,6 +43,8 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
             "user_division_id",
             "user_account_retired",
             "user_account_retired_display",
+            "user_is_pastoral",
+            "user_affiliations",
             "role",
             "role_display",
             "region",
@@ -80,6 +84,52 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
 
     def get_user_account_retired_display(self, obj: RetreatCouncilMembership) -> str:
         return ACCOUNT_RETIRED_DISPLAY if is_retired_user(obj.user) else ""
+
+    def get_user_is_pastoral(self, obj: RetreatCouncilMembership) -> bool:
+        role_code = getattr(getattr(obj.user, "role_level", None), "code", None)
+        return role_code in {"pastor", "evangelist"}
+
+    def get_user_affiliations(self, obj: RetreatCouncilMembership) -> list[dict]:
+        user = obj.user
+        rows = (
+            user.division_teams.order_by(
+                "-is_primary",
+                "sort_order",
+                "division__sort_order",
+                "id",
+            )
+            .select_related("division", "division__region")
+            .all()
+        )
+        values = [
+            (
+                row.division_id,
+                row.division.region_id if row.division else None,
+                row.division.name if row.division else "",
+                (
+                    row.division.region.name
+                    if row.division and row.division.region_id
+                    else ""
+                ),
+            )
+            for row in rows
+            if row.division_id
+        ]
+        seen = set()
+        results = []
+        for division_id, region_id, division_name, region_name in values:
+            if division_id in seen:
+                continue
+            seen.add(division_id)
+            results.append(
+                {
+                    "division_id": division_id,
+                    "region_id": region_id,
+                    "division_name": division_name or "",
+                    "region_name": region_name or "",
+                }
+            )
+        return results
 
     def validate(self, attrs):
         role = attrs.get("role") or getattr(self.instance, "role", None)

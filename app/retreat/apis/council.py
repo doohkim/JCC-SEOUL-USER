@@ -26,6 +26,7 @@ from retreat.services.staff_roster import (
     assert_can_assign_event_staff,
     resolve_council_staff_scope,
 )
+from retreat.services.staff_pool import event_staff_eligible_division_ids
 from users.permissions import (
     can_access_retreat_admin,
     can_access_retreat_tab,
@@ -66,6 +67,81 @@ def _validate_staff_scope(
         raise ValidationError({exc.field: str(exc)}) from exc
 
 
+def _candidate_affiliations_for_staff_scope(user):
+    rows = (
+        user.division_teams.order_by(
+            "-is_primary",
+            "sort_order",
+            "division__sort_order",
+            "id",
+        )
+        .select_related("division", "division__region")
+        .all()
+    )
+    values = [
+        (
+            row.division_id,
+            row.division.region_id if row.division else None,
+        )
+        for row in rows
+        if row.division_id
+    ]
+    seen = set()
+    results = []
+    for division_id, region_id in values:
+        if division_id in seen:
+            continue
+        seen.add(division_id)
+        results.append((division_id, region_id))
+    return results
+
+
+def _validate_user_scope_intersection(
+    *,
+    event: RetreatEvent,
+    user,
+    role: str,
+    region_id: int | None,
+    division_id: int | None,
+) -> None:
+    if role in RetreatCouncilMembership.EVENT_WIDE_ROLES:
+        return
+    event_division_ids = event_staff_eligible_division_ids(event.id)
+    if not event_division_ids:
+        raise ValidationError(
+            {
+                "scope": "집회에 배정된 부서가 없어 역할을 저장할 수 없습니다. 집회 조/범위를 먼저 확인해 주세요."
+            }
+        )
+    scoped = [
+        (d_id, r_id)
+        for d_id, r_id in _candidate_affiliations_for_staff_scope(user)
+        if d_id in event_division_ids
+    ]
+    if not scoped:
+        raise ValidationError(
+            {
+                "scope": "이 사용자는 이 집회의 배정 부서와 겹치는 담당 부서가 없어 역할을 저장할 수 없습니다. 사용자 소속 또는 집회 배정 부서를 확인해 주세요."
+            }
+        )
+    if role in RetreatCouncilMembership.DIVISION_SCOPED_ROLES:
+        allowed_division_ids = {d_id for d_id, _ in scoped}
+        if not division_id or division_id not in allowed_division_ids:
+            raise ValidationError(
+                {
+                    "division": "선택한 담당 부서는 이 사용자의 담당 부서(집회 배정 부서 교집합)에 없습니다."
+                }
+            )
+    if role in RetreatCouncilMembership.REGION_SCOPED_ROLES:
+        allowed_region_ids = {r_id for _, r_id in scoped if r_id}
+        if not region_id or region_id not in allowed_region_ids:
+            raise ValidationError(
+                {
+                    "region": "선택한 담당 지역은 이 사용자의 담당 부서(집회 배정 부서 교집합)에서 선택할 수 없습니다."
+                }
+            )
+
+
 class RetreatEventCouncilListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -103,6 +179,13 @@ class RetreatEventCouncilListCreateView(APIView):
             target = User.objects.filter(username=username).first()
         if target is None:
             raise ValidationError({"user": "사용자를 찾을 수 없습니다."})
+        _validate_user_scope_intersection(
+            event=event,
+            user=target,
+            role=role,
+            region_id=region_id,
+            division_id=division_id,
+        )
         if not RetreatCouncilMembership.objects.filter(
             event=event, user=target
         ).exists():
@@ -178,6 +261,13 @@ class RetreatCouncilMembershipDetailView(APIView):
         division_id = int(division_id) if division_id else None
         region_id, division_id = _validate_staff_scope(
             role, region_id=region_id, division_id=division_id
+        )
+        _validate_user_scope_intersection(
+            event=m.event,
+            user=m.user,
+            role=role,
+            region_id=region_id,
+            division_id=division_id,
         )
         m.role = role
         m.note = note

@@ -17,7 +17,12 @@ from retreat.models import (
     RetreatSession,
 )
 from users.mixins import ensure_user_profile
-from users.models import Division, Region, RoleLevel, UserDivisionTeam
+from users.models import (
+    Division,
+    Region,
+    RoleLevel,
+    UserDivisionTeam,
+)
 
 User = get_user_model()
 
@@ -139,6 +144,39 @@ class CouncilManagementApiTests(APITestCase, _CouncilFixture):
         r = self.client.get(url)
         self.assertEqual(r.status_code, 403)
 
+    def test_cannot_assign_division_role_when_no_event_intersection(self):
+        level, _ = RoleLevel.objects.get_or_create(
+            code="evangelist",
+            defaults={"name": "전도사", "level": 80, "sort_order": 80},
+        )
+        outside_div = Division.objects.create(
+            region=self.seoul,
+            code="council_outside_div",
+            name="외부부서",
+        )
+        user = User.objects.create_user(username="cl_no_intersection", password="x")
+        user.role_level = level
+        user.save(update_fields=["role_level"])
+        UserDivisionTeam.objects.create(
+            user=user,
+            division=outside_div,
+            is_primary=True,
+        )
+
+        self.client.force_authenticate(self.council)
+        url = reverse("api_retreat_event_council", args=[self.event.id])
+        r = self.client.post(
+            url,
+            {
+                "user_id": user.id,
+                "role": RetreatCouncilMembership.Role.DIVISION_OBSERVER,
+                "division": self.div.id,
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("겹치는 담당 부서", str(r.json()))
+
 
 class CouncilRosterApiFieldTests(APITestCase, _CouncilFixture):
     @classmethod
@@ -158,6 +196,7 @@ class CouncilRosterApiFieldTests(APITestCase, _CouncilFixture):
         row = next(item for item in r.json() if item["user"] == self.council.id)
         self.assertEqual(row["user_phone"], "01098765432")
         self.assertTrue(row["created_at"])
+        self.assertIn("user_affiliations", row)
 
     def test_group_memberships_include_phone_and_created_at(self):
         r = self.client.get(reverse("api_retreat_event_groups", args=[self.event.id]))

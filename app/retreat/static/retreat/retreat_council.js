@@ -13,6 +13,7 @@
   const modalTitle = document.getElementById("staffModalTitle");
   const modalSubtitle = document.getElementById("staffModalSubtitle");
   const modalStatus = document.getElementById("staffModalStatus");
+  const modalSubmitBtn = document.getElementById("staffModalSubmit");
   const confirmOverlay = document.getElementById("staffConfirmOverlay");
   const confirmMsg = document.getElementById("staffConfirmMsg");
   const confirmOk = document.getElementById("staffConfirmOk");
@@ -25,6 +26,10 @@
   let modalMode = "council";
   let confirmResolve = null;
   let currentScopeAffiliations = [];
+  let scopeBlocked = false;
+
+  const NO_INTERSECTION_MSG =
+    "이 사용자는 이 집회의 배정 부서와 겹치는 담당 부서가 없어 역할을 저장할 수 없습니다. 사용자 소속 또는 집회 배정 부서를 확인해 주세요.";
 
   function csrf() {
     const m = document.cookie.match(/csrftoken=([^;]+)/);
@@ -49,6 +54,16 @@
     if (!modalStatus) return;
     modalStatus.textContent = msg || "";
     modalStatus.style.color = isError ? "var(--err, #fda4af)" : "";
+  }
+
+  function setScopeBlocked(blocked, message) {
+    scopeBlocked = !!blocked;
+    if (modalSubmitBtn) modalSubmitBtn.disabled = !!blocked;
+    if (blocked) {
+      showModalStatus(message || NO_INTERSECTION_MSG, true);
+      return;
+    }
+    showModalStatus("");
   }
 
   function scopeKind(role) {
@@ -262,6 +277,7 @@
       currentScopeAffiliations = [];
       filterRegionsByAllowed(regionSel, null);
       filterDivisionsByRegion(divisionSel, null, null);
+      setScopeBlocked(false);
       setScopeSelectsLocked(false);
       window.JccCustomSelect?.refresh?.(modalOverlay);
       return;
@@ -277,14 +293,30 @@
     const allowedRegionIds = new Set(
       currentScopeAffiliations.map((row) => Number(row.region_id)).filter(Boolean)
     );
+    const firstAffiliation = currentScopeAffiliations[0] || null;
+    const firstRegionId = firstAffiliation?.region_id
+      ? Number(firstAffiliation.region_id)
+      : null;
 
     if (kind === "event") {
       if (regionSel) regionSel.value = "";
       if (divisionSel) divisionSel.value = "";
       filterRegionsByAllowed(regionSel, null);
       filterDivisionsByRegion(divisionSel, null, null);
+      setScopeBlocked(false);
       setScopeSelectsLocked(true);
     } else if (kind === "region") {
+      if (user && !hasScopedAffiliation) {
+        if (regionSel) regionSel.value = "";
+        if (divisionSel) divisionSel.value = "";
+        filterRegionsByAllowed(regionSel, new Set());
+        filterDivisionsByRegion(divisionSel, null, new Set());
+        if (regionSel) regionSel.disabled = true;
+        if (divisionSel) divisionSel.disabled = true;
+        setScopeBlocked(true, NO_INTERSECTION_MSG);
+        window.JccCustomSelect?.refresh?.(modalOverlay);
+        return;
+      }
       filterRegionsByAllowed(
         regionSel,
         hasScopedAffiliation ? allowedRegionIds : null
@@ -296,9 +328,7 @@
             !allowedRegionIds.has(Number(regionSel.value || 0)))
         ) {
           regionSel.value =
-            allowedRegionIds.size === 1
-              ? String(Array.from(allowedRegionIds)[0])
-              : "";
+            firstRegionId != null ? String(firstRegionId) : "";
         }
       }
       if (divisionSel) divisionSel.value = "";
@@ -312,7 +342,19 @@
         regionSel.disabled = !!lockRegion;
       }
       if (divisionSel) divisionSel.disabled = true;
+      setScopeBlocked(false);
     } else if (kind === "division") {
+      if (user && !hasScopedAffiliation) {
+        if (regionSel) regionSel.value = "";
+        if (divisionSel) divisionSel.value = "";
+        filterRegionsByAllowed(regionSel, new Set());
+        filterDivisionsByRegion(divisionSel, null, new Set());
+        if (regionSel) regionSel.disabled = true;
+        if (divisionSel) divisionSel.disabled = true;
+        setScopeBlocked(true, NO_INTERSECTION_MSG);
+        window.JccCustomSelect?.refresh?.(modalOverlay);
+        return;
+      }
       filterRegionsByAllowed(
         regionSel,
         hasScopedAffiliation ? allowedRegionIds : null
@@ -324,9 +366,7 @@
             !allowedRegionIds.has(Number(regionSel.value || 0)))
         ) {
           regionSel.value =
-            allowedRegionIds.size === 1
-              ? String(Array.from(allowedRegionIds)[0])
-              : "";
+            firstRegionId != null ? String(firstRegionId) : "";
         }
       }
       filterDivisionsByRegion(
@@ -345,8 +385,9 @@
           hasScopedAffiliation &&
           !visibleDivisionIds.includes(Number(divisionSel.value || 0))
         ) {
-          divisionSel.value =
-            visibleDivisionIds.length === 1 ? String(visibleDivisionIds[0]) : "";
+          divisionSel.value = visibleDivisionIds.length
+            ? String(visibleDivisionIds[0])
+            : "";
         }
         const lockDivision = hasScopedAffiliation && visibleDivisionIds.length <= 1;
         divisionSel.disabled = !!lockDivision;
@@ -355,9 +396,11 @@
         const lockRegion = hasScopedAffiliation && allowedRegionIds.size <= 1;
         regionSel.disabled = !!lockRegion;
       }
+      setScopeBlocked(false);
     } else {
       filterRegionsByAllowed(regionSel, null);
       filterDivisionsByRegion(divisionSel, null, null);
+      setScopeBlocked(false);
       setScopeSelectsLocked(false);
     }
     window.JccCustomSelect?.refresh?.(modalOverlay);
@@ -622,7 +665,7 @@
   function openModal(preset) {
     if (!modalOverlay || !ctx.canManage) return;
     editingRow = preset?.row || null;
-    showModalStatus("");
+    setScopeBlocked(false);
     modalForm?.reset();
     userPicker?.clear();
 
@@ -659,6 +702,7 @@
         division_id: editingRow.userDivisionId,
         userRegionId: editingRow.userRegionId,
         userDivisionId: editingRow.userDivisionId,
+        affiliations: editingRow.affiliations || [],
       });
       document.getElementById("staffModalUserPicker")?.classList.add("is-locked");
       if (editingRow.kind === "group" && groupSel) {
@@ -683,6 +727,7 @@
           division_id: preset.user.division_id,
           userRegionId: preset.user.region_id,
           userDivisionId: preset.user.division_id,
+          affiliations: preset.user.affiliations || [],
         });
       }
       if (modalMode === "group") {
@@ -756,6 +801,23 @@
       e.target.value,
       allowedDivisionIds
     );
+    const divisionSel = document.getElementById("staffModalDivision");
+    if (divisionSel) {
+      const visibleDivisionOptions = Array.from(divisionSel.options).filter(
+        (opt, idx) => idx > 0 && !opt.hidden
+      );
+      const visibleDivisionIds = visibleDivisionOptions
+        .map((opt) => Number(opt.value || 0))
+        .filter(Boolean);
+      if (!visibleDivisionIds.includes(Number(divisionSel.value || 0))) {
+        divisionSel.value = visibleDivisionIds.length
+          ? String(visibleDivisionIds[0])
+          : "";
+      }
+      window.JccCustomSelect?.refresh?.(
+        divisionSel.closest(".jcc-cselect") || divisionSel.parentNode
+      );
+    }
   });
 
   document.getElementById("staffModalDivision")?.addEventListener("change", (e) => {
@@ -798,6 +860,7 @@
           divisionId: m.division,
           userRegionId: m.user_region_id,
           userDivisionId: m.user_division_id,
+          affiliations: Array.isArray(m.user_affiliations) ? m.user_affiliations : [],
           note: m.note || "",
           createdAt: m.created_at,
           accountRetired: !!m.user_account_retired,
@@ -962,7 +1025,9 @@
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
-        throw new Error(err.detail || err.scope || "운영 역할 저장 실패");
+        const msg =
+          err.scope || err.region || err.division || err.user || err.detail || "운영 역할 저장 실패";
+        throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
       }
       return;
     }
@@ -983,6 +1048,10 @@
   async function submitModal(e) {
     e.preventDefault();
     if (!ctx.canManage) return;
+    if (scopeBlocked) {
+      showModalStatus(NO_INTERSECTION_MSG, true);
+      return;
+    }
 
     const kind = editingRow ? editingRow.kind : modalMode;
     const selected = userPicker?.getSelected();
