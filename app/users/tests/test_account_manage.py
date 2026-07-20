@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from retreat.models import (
+    RetreatCouncilMembership,
+    RetreatEvent,
+    RetreatGroup,
+    RetreatGroupMembership,
+)
 from users.mixins import ensure_user_profile
 from users.models import (
     Division,
@@ -189,6 +196,21 @@ class AccountManagePostTests(AccountManageFixture):
         payload.update(data)
         return self.client.post(reverse("user_division_account_roles"), payload)
 
+    def _post_memberships(self, user, memberships, removed_actions=None):
+        payload = {
+            "user_id": str(self.member.id),
+            "real_name": "멤버",
+            "phone": "",
+            "division_id": str(self.div_a.id),
+            "team_id": str(self.team_a.id),
+            "memberships_payload": json.dumps(memberships, ensure_ascii=False),
+            "removed_membership_actions": json.dumps(
+                removed_actions or [], ensure_ascii=False
+            ),
+        }
+        self.client.force_login(user)
+        return self.client.post(reverse("user_division_account_roles"), payload)
+
     def test_manager_can_change_team_only(self):
         self.client.force_login(self.manager)
         r = self._post_row(self.manager, {"team_id": str(self.team_a2.id)})
@@ -257,6 +279,350 @@ class AccountManagePostTests(AccountManageFixture):
         )
         membership = UserDivisionTeam.objects.get(user=self.member, division=self.div_b)
         self.assertEqual(membership.team_id, self.team_b.id)
+
+    def test_staff_can_save_multi_memberships_payload(self):
+        r = self._post_memberships(
+            self.staff,
+            [
+                {
+                    "division_id": self.div_b.id,
+                    "team_id": self.team_b.id,
+                    "is_primary": True,
+                    "sort_order": 0,
+                },
+                {
+                    "division_id": self.div_a.id,
+                    "team_id": self.team_a2.id,
+                    "is_primary": True,
+                    "sort_order": 1,
+                },
+            ],
+        )
+        self.assertEqual(r.status_code, 302)
+        rows = list(
+            UserDivisionTeam.objects.filter(
+                user=self.member, division_id__in=[self.div_a.id, self.div_b.id]
+            ).order_by("sort_order", "division__sort_order")
+        )
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0].division_id, self.div_b.id)
+        self.assertEqual(rows[0].team_id, self.team_b.id)
+        self.assertTrue(rows[0].is_primary)
+        self.assertEqual(rows[1].division_id, self.div_a.id)
+        self.assertEqual(rows[1].team_id, self.team_a2.id)
+        self.assertTrue(rows[1].is_primary)
+
+        profile = ensure_user_profile(self.member)
+        profile.refresh_from_db()
+        self.assertEqual(profile.requested_division_id, self.div_b.id)
+        self.assertEqual(profile.requested_team_id, self.team_b.id)
+
+    def test_memberships_payload_rejects_duplicate_division(self):
+        before_count = UserDivisionTeam.objects.filter(user=self.member).count()
+        r = self._post_memberships(
+            self.staff,
+            [
+                {
+                    "division_id": self.div_a.id,
+                    "team_id": self.team_a.id,
+                    "is_primary": True,
+                    "sort_order": 0,
+                },
+                {
+                    "division_id": self.div_a.id,
+                    "team_id": self.team_a2.id,
+                    "is_primary": False,
+                    "sort_order": 1,
+                },
+            ],
+        )
+        self.assertEqual(r.status_code, 302)
+        after_count = UserDivisionTeam.objects.filter(user=self.member).count()
+        self.assertEqual(before_count, after_count)
+        self.assertTrue(
+            UserDivisionTeam.objects.filter(
+                user=self.member, division=self.div_a, team=self.team_a
+            ).exists()
+        )
+
+    def test_memberships_payload_rejects_team_division_mismatch(self):
+        r = self._post_memberships(
+            self.staff,
+            [
+                {
+                    "division_id": self.div_a.id,
+                    "team_id": self.team_b.id,
+                    "is_primary": True,
+                    "sort_order": 0,
+                }
+            ],
+        )
+        self.assertEqual(r.status_code, 302)
+        membership = UserDivisionTeam.objects.get(user=self.member, division=self.div_a)
+        self.assertEqual(membership.team_id, self.team_a.id)
+
+    def test_remove_mode_deletes_only_active_retreat_assignments(self):
+        active_event = RetreatEvent.objects.create(
+            name="활성 집회",
+            start_date=date(2026, 8, 10),
+            end_date=date(2026, 8, 12),
+            is_active=True,
+        )
+        inactive_event = RetreatEvent.objects.create(
+            name="비활성 집회",
+            start_date=date(2026, 8, 13),
+            end_date=date(2026, 8, 15),
+            is_active=False,
+        )
+        active_group = RetreatGroup.objects.create(
+            event=active_event,
+            region=self.seoul,
+            division=self.div_a,
+            name="1조",
+        )
+        inactive_group = RetreatGroup.objects.create(
+            event=inactive_event,
+            region=self.seoul,
+            division=self.div_a,
+            name="2조",
+        )
+        RetreatCouncilMembership.objects.create(
+            event=active_event,
+            user=self.member,
+            role=RetreatCouncilMembership.Role.DIVISION_ADMIN,
+            division=self.div_a,
+        )
+        RetreatCouncilMembership.objects.create(
+            event=inactive_event,
+            user=self.member,
+            role=RetreatCouncilMembership.Role.DIVISION_ADMIN,
+            division=self.div_a,
+        )
+        RetreatGroupMembership.objects.create(
+            user=self.member,
+            group=active_group,
+            role=RetreatGroupMembership.Role.LEADER,
+        )
+        RetreatGroupMembership.objects.create(
+            user=self.member,
+            group=inactive_group,
+            role=RetreatGroupMembership.Role.VICE_LEADER,
+        )
+
+        r = self._post_memberships(
+            self.staff,
+            [
+                {
+                    "division_id": self.div_b.id,
+                    "team_id": self.team_b.id,
+                    "is_primary": True,
+                    "sort_order": 0,
+                }
+            ],
+            removed_actions=[
+                {
+                    "division_id": self.div_a.id,
+                    "remove_mode": "membership_and_retreat_assignments",
+                    "expected_active_event_count": 1,
+                    "expected_council_count": 1,
+                    "expected_group_count": 1,
+                }
+            ],
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assertFalse(
+            RetreatCouncilMembership.objects.filter(
+                event=active_event, user=self.member
+            ).exists()
+        )
+        self.assertTrue(
+            RetreatCouncilMembership.objects.filter(
+                event=inactive_event, user=self.member
+            ).exists()
+        )
+        self.assertFalse(
+            RetreatGroupMembership.objects.filter(
+                group=active_group, user=self.member
+            ).exists()
+        )
+        self.assertTrue(
+            RetreatGroupMembership.objects.filter(
+                group=inactive_group, user=self.member
+            ).exists()
+        )
+
+    def test_hybrid_blocks_when_unassign_mode_preview_mismatch(self):
+        active_event = RetreatEvent.objects.create(
+            name="활성 집회 mismatch",
+            start_date=date(2026, 8, 20),
+            end_date=date(2026, 8, 22),
+            is_active=True,
+        )
+        active_group = RetreatGroup.objects.create(
+            event=active_event,
+            region=self.seoul,
+            division=self.div_a,
+            name="3조",
+        )
+        RetreatCouncilMembership.objects.create(
+            event=active_event,
+            user=self.member,
+            role=RetreatCouncilMembership.Role.DIVISION_ADMIN,
+            division=self.div_a,
+        )
+        RetreatGroupMembership.objects.create(
+            user=self.member,
+            group=active_group,
+            role=RetreatGroupMembership.Role.LEADER,
+        )
+
+        r = self._post_memberships(
+            self.staff,
+            [
+                {
+                    "division_id": self.div_b.id,
+                    "team_id": self.team_b.id,
+                    "is_primary": True,
+                    "sort_order": 0,
+                }
+            ],
+            removed_actions=[
+                {
+                    "division_id": self.div_a.id,
+                    "remove_mode": "membership_and_retreat_assignments",
+                    "expected_active_event_count": 0,
+                    "expected_council_count": 0,
+                    "expected_group_count": 0,
+                }
+            ],
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(
+            UserDivisionTeam.objects.filter(
+                user=self.member, division=self.div_a
+            ).exists()
+        )
+        self.assertFalse(
+            UserDivisionTeam.objects.filter(
+                user=self.member, division=self.div_b
+            ).exists()
+        )
+        self.assertTrue(
+            RetreatCouncilMembership.objects.filter(
+                event=active_event, user=self.member
+            ).exists()
+        )
+        self.assertTrue(
+            RetreatGroupMembership.objects.filter(
+                group=active_group, user=self.member
+            ).exists()
+        )
+
+    def test_hybrid_allows_membership_only_when_preview_mismatch(self):
+        active_event = RetreatEvent.objects.create(
+            name="활성 집회 soft",
+            start_date=date(2026, 8, 23),
+            end_date=date(2026, 8, 25),
+            is_active=True,
+        )
+        active_group = RetreatGroup.objects.create(
+            event=active_event,
+            region=self.seoul,
+            division=self.div_a,
+            name="4조",
+        )
+        RetreatCouncilMembership.objects.create(
+            event=active_event,
+            user=self.member,
+            role=RetreatCouncilMembership.Role.DIVISION_ADMIN,
+            division=self.div_a,
+        )
+        RetreatGroupMembership.objects.create(
+            user=self.member,
+            group=active_group,
+            role=RetreatGroupMembership.Role.LEADER,
+        )
+
+        r = self._post_memberships(
+            self.staff,
+            [
+                {
+                    "division_id": self.div_b.id,
+                    "team_id": self.team_b.id,
+                    "is_primary": True,
+                    "sort_order": 0,
+                }
+            ],
+            removed_actions=[
+                {
+                    "division_id": self.div_a.id,
+                    "remove_mode": "membership_only",
+                    "expected_active_event_count": 0,
+                    "expected_council_count": 0,
+                    "expected_group_count": 0,
+                }
+            ],
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assertFalse(
+            UserDivisionTeam.objects.filter(
+                user=self.member, division=self.div_a
+            ).exists()
+        )
+        self.assertTrue(
+            UserDivisionTeam.objects.filter(
+                user=self.member, division=self.div_b
+            ).exists()
+        )
+        self.assertTrue(
+            RetreatCouncilMembership.objects.filter(
+                event=active_event, user=self.member
+            ).exists()
+        )
+        self.assertTrue(
+            RetreatGroupMembership.objects.filter(
+                group=active_group, user=self.member
+            ).exists()
+        )
+
+    def test_reject_removed_actions_for_non_removed_division(self):
+        r = self._post_memberships(
+            self.staff,
+            [
+                {
+                    "division_id": self.div_a.id,
+                    "team_id": self.team_a.id,
+                    "is_primary": True,
+                    "sort_order": 0,
+                },
+                {
+                    "division_id": self.div_b.id,
+                    "team_id": self.team_b.id,
+                    "is_primary": False,
+                    "sort_order": 1,
+                },
+            ],
+            removed_actions=[
+                {
+                    "division_id": self.div_b.id,
+                    "remove_mode": "membership_and_retreat_assignments",
+                    "expected_active_event_count": 0,
+                    "expected_council_count": 0,
+                    "expected_group_count": 0,
+                }
+            ],
+        )
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(
+            UserDivisionTeam.objects.filter(
+                user=self.member, division=self.div_a
+            ).exists()
+        )
+        self.assertFalse(
+            UserDivisionTeam.objects.filter(
+                user=self.member, division=self.div_b
+            ).exists()
+        )
 
 
 class DivisionAccountActivityLogTests(AccountManageFixture):

@@ -35,6 +35,7 @@ from users.validators import normalize_korea_mobile_phone, validate_korea_mobile
 from retreat.models import (
     RetreatAttendee,
     RetreatChangeLog,
+    RetreatCouncilMembership,
     RetreatGroupMembership,
 )
 from users.services.user_display import (
@@ -871,6 +872,12 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         user_id = (request.POST.get("user_id") or "").strip()
         team_id = (request.POST.get("team_id") or "").strip()
         division_id_raw = (request.POST.get("division_id") or "").strip()
+        memberships_payload_raw = (
+            request.POST.get("memberships_payload") or ""
+        ).strip()
+        removed_membership_actions_raw = (
+            request.POST.get("removed_membership_actions") or ""
+        ).strip()
         valid_role_codes = set(Role.objects.values_list("code", flat=True))
         selected_role_codes = [
             c for c in request.POST.getlist("role_codes") if c in valid_role_codes
@@ -915,12 +922,16 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                 messages.error(request, "선택한 부서를 찾을 수 없습니다.")
                 return HttpResponseRedirect(redirect_url)
             target_division = new_division
-        elif division_id_raw.isdigit() and int(division_id_raw) != active_division.id:
+        elif (
+            not memberships_payload_raw
+            and division_id_raw.isdigit()
+            and int(division_id_raw) != active_division.id
+        ):
             messages.error(request, "부서 이동은 스태프(관리자)만 가능합니다.")
             return HttpResponseRedirect(redirect_url)
 
         selected_team = None
-        if team_id:
+        if team_id and not memberships_payload_raw:
             if not team_id.isdigit():
                 messages.error(request, "팀 선택 값이 올바르지 않습니다.")
                 return HttpResponseRedirect(redirect_url)
@@ -930,6 +941,148 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             if selected_team is None:
                 messages.error(request, "선택한 팀을 찾을 수 없습니다.")
                 return HttpResponseRedirect(redirect_url)
+
+        memberships_payload = None
+        removed_membership_actions_by_division = {}
+        if memberships_payload_raw:
+            try:
+                payload_rows = json.loads(memberships_payload_raw)
+            except json.JSONDecodeError:
+                messages.error(request, "소속 저장 값이 올바르지 않습니다.")
+                return HttpResponseRedirect(redirect_url)
+            if not isinstance(payload_rows, list) or not payload_rows:
+                messages.error(request, "최소 1개의 소속을 설정해 주세요.")
+                return HttpResponseRedirect(redirect_url)
+
+            manageable_division_ids = set(manageable.values_list("id", flat=True))
+            division_map = {
+                d.id: d for d in Division.objects.filter(id__in=manageable_division_ids)
+            }
+            normalized_rows = []
+            used_division_ids = set()
+            for index, row in enumerate(payload_rows):
+                if not isinstance(row, dict):
+                    messages.error(request, "소속 저장 값이 올바르지 않습니다.")
+                    return HttpResponseRedirect(redirect_url)
+                division_id_raw = row.get("division_id")
+                try:
+                    division_id = int(division_id_raw)
+                except (TypeError, ValueError):
+                    messages.error(request, "소속 부서를 확인해 주세요.")
+                    return HttpResponseRedirect(redirect_url)
+                if division_id in used_division_ids:
+                    messages.error(request, "같은 부서는 한 번만 등록할 수 있습니다.")
+                    return HttpResponseRedirect(redirect_url)
+                used_division_ids.add(division_id)
+                division = division_map.get(division_id)
+                if division is None:
+                    messages.error(
+                        request, "권한 범위를 벗어난 부서는 저장할 수 없습니다."
+                    )
+                    return HttpResponseRedirect(redirect_url)
+
+                team_id_raw = row.get("team_id")
+                team = None
+                if team_id_raw not in (None, ""):
+                    try:
+                        team_id_int = int(team_id_raw)
+                    except (TypeError, ValueError):
+                        messages.error(request, "소속 팀 값을 확인해 주세요.")
+                        return HttpResponseRedirect(redirect_url)
+                    team = Team.objects.filter(
+                        pk=team_id_int, division_id=division_id
+                    ).first()
+                    if team is None:
+                        messages.error(
+                            request, "선택한 팀이 해당 부서에 속하지 않습니다."
+                        )
+                        return HttpResponseRedirect(redirect_url)
+
+                sort_order_raw = row.get("sort_order", index)
+                try:
+                    sort_order = int(sort_order_raw)
+                except (TypeError, ValueError):
+                    sort_order = index
+
+                normalized_rows.append(
+                    {
+                        "division": division,
+                        "team": team,
+                        "is_primary": bool(row.get("is_primary")),
+                        "sort_order": sort_order,
+                    }
+                )
+            memberships_payload = normalized_rows
+
+            if removed_membership_actions_raw:
+                try:
+                    action_rows = json.loads(removed_membership_actions_raw)
+                except json.JSONDecodeError:
+                    messages.error(request, "소속 삭제 옵션 값이 올바르지 않습니다.")
+                    return HttpResponseRedirect(redirect_url)
+                if not isinstance(action_rows, list):
+                    messages.error(request, "소속 삭제 옵션 값이 올바르지 않습니다.")
+                    return HttpResponseRedirect(redirect_url)
+                for row in action_rows:
+                    if not isinstance(row, dict):
+                        messages.error(
+                            request, "소속 삭제 옵션 값이 올바르지 않습니다."
+                        )
+                        return HttpResponseRedirect(redirect_url)
+                    division_id_raw = row.get("division_id")
+                    remove_mode = (row.get("remove_mode") or "").strip()
+                    if remove_mode not in {
+                        "membership_only",
+                        "membership_and_retreat_assignments",
+                    }:
+                        messages.error(
+                            request, "소속 삭제 옵션 값이 올바르지 않습니다."
+                        )
+                        return HttpResponseRedirect(redirect_url)
+                    try:
+                        division_id = int(division_id_raw)
+                    except (TypeError, ValueError):
+                        messages.error(
+                            request, "소속 삭제 옵션 값이 올바르지 않습니다."
+                        )
+                        return HttpResponseRedirect(redirect_url)
+                    if division_id not in division_map:
+                        messages.error(
+                            request,
+                            "권한 범위를 벗어난 소속 삭제 옵션이 포함되어 있습니다.",
+                        )
+                        return HttpResponseRedirect(redirect_url)
+                    if division_id in removed_membership_actions_by_division:
+                        messages.error(request, "소속 삭제 옵션 값이 중복되었습니다.")
+                        return HttpResponseRedirect(redirect_url)
+                    expected_event_count_raw = row.get("expected_active_event_count")
+                    expected_council_count_raw = row.get("expected_council_count")
+                    expected_group_count_raw = row.get("expected_group_count")
+
+                    def _as_non_negative_int_or_none(value):
+                        if value in (None, ""):
+                            return None
+                        try:
+                            parsed = int(value)
+                        except (TypeError, ValueError):
+                            return None
+                        return parsed if parsed >= 0 else None
+
+                    expected_event_count = _as_non_negative_int_or_none(
+                        expected_event_count_raw
+                    )
+                    expected_council_count = _as_non_negative_int_or_none(
+                        expected_council_count_raw
+                    )
+                    expected_group_count = _as_non_negative_int_or_none(
+                        expected_group_count_raw
+                    )
+                    removed_membership_actions_by_division[division_id] = {
+                        "remove_mode": remove_mode,
+                        "expected_active_event_count": expected_event_count,
+                        "expected_council_count": expected_council_count,
+                        "expected_group_count": expected_group_count,
+                    }
 
         user_updates = []
         if target_user.can_manage_attendance != manage_attendance:
@@ -956,25 +1109,219 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         if user_updates:
             target_user.save(update_fields=user_updates)
 
-        old_membership = (
-            target_user.division_teams.filter(division=active_division)
-            .order_by("-is_primary", "sort_order", "id")
-            .first()
-        )
-        if target_division.id != active_division.id:
-            target_membership = target_user.division_teams.filter(
-                division=target_division
-            ).first()
-            if target_membership:
-                target_membership.team = selected_team
-                target_membership.is_primary = True
-                target_membership.save(update_fields=["team", "is_primary"])
-                if old_membership and old_membership.pk != target_membership.pk:
-                    old_membership.delete()
+        if memberships_payload is not None:
+            editable_division_ids = set(manageable.values_list("id", flat=True))
+            editable_qs = target_user.division_teams.filter(
+                division_id__in=editable_division_ids
+            )
+            existing_division_ids = set(
+                editable_qs.values_list("division_id", flat=True)
+            )
+            existing_by_division_id = {m.division_id: m for m in editable_qs}
+            payload_division_ids = {row["division"].id for row in memberships_payload}
+            removed_division_ids = existing_division_ids - payload_division_ids
+
+            invalid_action_divisions = sorted(
+                d_id
+                for d_id in removed_membership_actions_by_division
+                if d_id not in removed_division_ids
+            )
+            if invalid_action_divisions:
+                messages.error(
+                    request,
+                    "삭제 대상이 아닌 소속의 삭제 옵션이 포함되어 있습니다. "
+                    "화면을 새로고침 후 다시 시도해 주세요.",
+                )
+                return HttpResponseRedirect(redirect_url)
+
+            active_council_rows = list(
+                RetreatCouncilMembership.objects.filter(
+                    user=target_user,
+                    event__is_active=True,
+                    division_id__in=removed_division_ids,
+                ).values("division_id", "event_id")
+            )
+            active_group_rows = list(
+                RetreatGroupMembership.objects.filter(
+                    user=target_user,
+                    group__event__is_active=True,
+                    group__division_id__in=removed_division_ids,
+                ).values("group__division_id", "group__event_id")
+            )
+            actual_impact_by_division = {
+                d_id: {
+                    "event_ids": set(),
+                    "council_count": 0,
+                    "group_count": 0,
+                }
+                for d_id in removed_division_ids
+            }
+            for row in active_council_rows:
+                d_id = row["division_id"]
+                bucket = actual_impact_by_division.setdefault(
+                    d_id, {"event_ids": set(), "council_count": 0, "group_count": 0}
+                )
+                bucket["council_count"] += 1
+                bucket["event_ids"].add(row["event_id"])
+            for row in active_group_rows:
+                d_id = row["group__division_id"]
+                bucket = actual_impact_by_division.setdefault(
+                    d_id, {"event_ids": set(), "council_count": 0, "group_count": 0}
+                )
+                bucket["group_count"] += 1
+                bucket["event_ids"].add(row["group__event_id"])
+
+            mismatch_for_hard_block = []
+            mismatch_for_soft_notice = []
+            for d_id in sorted(removed_division_ids):
+                action = removed_membership_actions_by_division.get(
+                    d_id,
+                    {
+                        "remove_mode": "membership_only",
+                        "expected_active_event_count": None,
+                        "expected_council_count": None,
+                        "expected_group_count": None,
+                    },
+                )
+                expected_event_count = action.get("expected_active_event_count")
+                expected_council_count = action.get("expected_council_count")
+                expected_group_count = action.get("expected_group_count")
+                if (
+                    expected_event_count is None
+                    and expected_council_count is None
+                    and expected_group_count is None
+                ):
+                    continue
+                bucket = actual_impact_by_division.get(
+                    d_id, {"event_ids": set(), "council_count": 0, "group_count": 0}
+                )
+                actual_event_count = len(bucket["event_ids"])
+                actual_council_count = bucket["council_count"]
+                actual_group_count = bucket["group_count"]
+                mismatch = (
+                    (
+                        expected_event_count is not None
+                        and expected_event_count != actual_event_count
+                    )
+                    or (
+                        expected_council_count is not None
+                        and expected_council_count != actual_council_count
+                    )
+                    or (
+                        expected_group_count is not None
+                        and expected_group_count != actual_group_count
+                    )
+                )
+                if not mismatch:
+                    continue
+                if action.get("remove_mode") == "membership_and_retreat_assignments":
+                    mismatch_for_hard_block.append(d_id)
+                else:
+                    mismatch_for_soft_notice.append(d_id)
+
+            if mismatch_for_hard_block:
+                messages.error(
+                    request,
+                    "프리뷰 이후 배정 상태가 변경되었습니다. 다시 확인 후 저장해 주세요.",
+                )
+                return HttpResponseRedirect(redirect_url)
+            if mismatch_for_soft_notice:
+                messages.info(
+                    request,
+                    "프리뷰 이후 활성 집회 영향 수치가 변경되어 최신 상태 기준으로 소속만 삭제를 진행했습니다.",
+                )
+
+            for row in memberships_payload:
+                division = row["division"]
+                membership = existing_by_division_id.get(division.id)
+                if membership is None:
+                    UserDivisionTeam.objects.create(
+                        user=target_user,
+                        division=division,
+                        team=row["team"],
+                        is_primary=row["is_primary"],
+                        sort_order=row["sort_order"],
+                    )
+                    continue
+                updates = []
+                next_team_id = row["team"].id if row["team"] else None
+                if membership.team_id != next_team_id:
+                    membership.team = row["team"]
+                    updates.append("team")
+                if membership.is_primary != row["is_primary"]:
+                    membership.is_primary = row["is_primary"]
+                    updates.append("is_primary")
+                if membership.sort_order != row["sort_order"]:
+                    membership.sort_order = row["sort_order"]
+                    updates.append("sort_order")
+                if updates:
+                    membership.save(update_fields=updates)
+
+            editable_qs.exclude(division_id__in=payload_division_ids).delete()
+            remove_with_retreat_division_ids = sorted(
+                d_id
+                for d_id in removed_division_ids
+                if removed_membership_actions_by_division.get(d_id, {}).get(
+                    "remove_mode"
+                )
+                == "membership_and_retreat_assignments"
+            )
+            if remove_with_retreat_division_ids:
+                council_qs = RetreatCouncilMembership.objects.filter(
+                    user=target_user,
+                    event__is_active=True,
+                    division_id__in=remove_with_retreat_division_ids,
+                )
+                group_qs = RetreatGroupMembership.objects.filter(
+                    user=target_user,
+                    group__event__is_active=True,
+                    group__division_id__in=remove_with_retreat_division_ids,
+                )
+                removed_council_count = council_qs.count()
+                removed_group_count = group_qs.count()
+                council_qs.delete()
+                group_qs.delete()
+                if removed_council_count or removed_group_count:
+                    messages.info(
+                        request,
+                        "소속 삭제와 함께 활성 집회 배정을 해제했습니다 "
+                        f"(운영진 {removed_council_count}건, 조운영진 {removed_group_count}건). "
+                        "비활성 집회는 영향 계산/해제에서 제외됩니다.",
+                    )
+        else:
+            old_membership = (
+                target_user.division_teams.filter(division=active_division)
+                .order_by("-is_primary", "sort_order", "id")
+                .first()
+            )
+            if target_division.id != active_division.id:
+                target_membership = target_user.division_teams.filter(
+                    division=target_division
+                ).first()
+                if target_membership:
+                    target_membership.team = selected_team
+                    target_membership.is_primary = True
+                    target_membership.save(update_fields=["team", "is_primary"])
+                    if old_membership and old_membership.pk != target_membership.pk:
+                        old_membership.delete()
+                elif old_membership:
+                    old_membership.division = target_division
+                    old_membership.team = selected_team
+                    old_membership.save(update_fields=["division", "team"])
+                else:
+                    UserDivisionTeam.objects.create(
+                        user=target_user,
+                        division=target_division,
+                        team=selected_team,
+                        is_primary=True,
+                        sort_order=0,
+                    )
             elif old_membership:
-                old_membership.division = target_division
-                old_membership.team = selected_team
-                old_membership.save(update_fields=["division", "team"])
+                if old_membership.team_id != (
+                    selected_team.id if selected_team else None
+                ):
+                    old_membership.team = selected_team
+                    old_membership.save(update_fields=["team"])
             else:
                 UserDivisionTeam.objects.create(
                     user=target_user,
@@ -983,18 +1330,6 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                     is_primary=True,
                     sort_order=0,
                 )
-        elif old_membership:
-            if old_membership.team_id != (selected_team.id if selected_team else None):
-                old_membership.team = selected_team
-                old_membership.save(update_fields=["team"])
-        else:
-            UserDivisionTeam.objects.create(
-                user=target_user,
-                division=target_division,
-                team=selected_team,
-                is_primary=True,
-                sort_order=0,
-            )
 
         profile = ensure_user_profile(target_user)
         prof_updates = []
@@ -1009,8 +1344,15 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             profile.phone = normalized
             prof_updates.append("phone")
 
-        profile.requested_division = target_division
-        profile.requested_team = selected_team
+        profile_membership = (
+            target_user.division_teams.select_related("division", "team")
+            .order_by("-is_primary", "sort_order", "division__sort_order", "id")
+            .first()
+        )
+        profile.requested_division = (
+            profile_membership.division if profile_membership else None
+        )
+        profile.requested_team = profile_membership.team if profile_membership else None
         prof_updates.extend(["requested_division", "requested_team"])
 
         if prof_updates:
@@ -1150,11 +1492,74 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
 
             kakao_nickname_by_user = kakao_nickname_map_for_user_ids(user_ids)
             memberships_detail: dict[int, list] = {}
-            for udt in UserDivisionTeam.objects.filter(
-                user_id__in=user_ids
-            ).select_related("division", "division__region", "team"):
+            visible_division_ids = set(division_by_id.keys())
+            active_council_by_user_division: dict[tuple[int, int], dict] = {}
+            for row in RetreatCouncilMembership.objects.filter(
+                user_id__in=user_ids,
+                event__is_active=True,
+                division_id__in=visible_division_ids,
+            ).values("user_id", "division_id", "event_id", "event__name"):
+                key = (row["user_id"], row["division_id"])
+                bucket = active_council_by_user_division.setdefault(
+                    key, {"count": 0, "event_ids": set(), "event_names": []}
+                )
+                bucket["count"] += 1
+                if row["event_id"] not in bucket["event_ids"]:
+                    bucket["event_ids"].add(row["event_id"])
+                    bucket["event_names"].append(row["event__name"])
+
+            active_group_by_user_division: dict[tuple[int, int], dict] = {}
+            for row in RetreatGroupMembership.objects.filter(
+                user_id__in=user_ids,
+                group__event__is_active=True,
+                group__division_id__in=visible_division_ids,
+            ).values(
+                "user_id", "group__division_id", "group__event_id", "group__event__name"
+            ):
+                key = (row["user_id"], row["group__division_id"])
+                bucket = active_group_by_user_division.setdefault(
+                    key, {"count": 0, "event_ids": set(), "event_names": []}
+                )
+                bucket["count"] += 1
+                if row["group__event_id"] not in bucket["event_ids"]:
+                    bucket["event_ids"].add(row["group__event_id"])
+                    bucket["event_names"].append(row["group__event__name"])
+
+            for udt in (
+                UserDivisionTeam.objects.filter(
+                    user_id__in=user_ids,
+                    division_id__in=visible_division_ids,
+                )
+                .select_related("division", "division__region", "team")
+                .order_by(
+                    "-is_primary",
+                    "sort_order",
+                    "division__sort_order",
+                    "division__name",
+                    "id",
+                )
+            ):
+                key = (udt.user_id, udt.division_id)
+                council_impact = active_council_by_user_division.get(
+                    key, {"count": 0, "event_ids": set(), "event_names": []}
+                )
+                group_impact = active_group_by_user_division.get(
+                    key, {"count": 0, "event_ids": set(), "event_names": []}
+                )
+                active_event_names = []
+                for name in council_impact["event_names"]:
+                    if name not in active_event_names:
+                        active_event_names.append(name)
+                for name in group_impact["event_names"]:
+                    if name not in active_event_names:
+                        active_event_names.append(name)
                 memberships_detail.setdefault(udt.user_id, []).append(
                     {
+                        "region_id": (
+                            udt.division.region_id if udt.division_id else None
+                        ),
+                        "division_id": udt.division_id,
+                        "team_id": udt.team_id,
                         "division": (
                             f"{udt.division.region.name} · {udt.division.name}"
                             if udt.division_id and udt.division.region_id
@@ -1162,6 +1567,14 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                         ),
                         "team": udt.team.name if udt.team_id else "",
                         "is_primary": bool(getattr(udt, "is_primary", False)),
+                        "active_retreat_impact": {
+                            "event_count": len(
+                                council_impact["event_ids"] | group_impact["event_ids"]
+                            ),
+                            "council_count": council_impact["count"],
+                            "group_count": group_impact["count"],
+                            "event_names": active_event_names,
+                        },
                     }
                 )
 

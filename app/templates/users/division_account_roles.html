@@ -117,6 +117,7 @@
       display: none;
     }
     .jcc-account-editModal {
+      position: relative;
       width: min(100%, 40rem);
       max-height: min(92vh, 820px);
       overflow: hidden;
@@ -457,6 +458,207 @@
     }
     .jcc-account-editField:last-child {
       margin-bottom: 0;
+    }
+    .jcc-account-membershipTop {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.7rem;
+    }
+    .jcc-account-membershipRows {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .jcc-account-membershipItem {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.7rem;
+      padding: 0.7rem 0.85rem;
+      border-radius: 14px;
+      border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+      background: color-mix(in srgb, var(--surface-2, #f8fafc) 72%, var(--card));
+    }
+    .jcc-account-membershipInfo {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex: 1 1 auto;
+    }
+    .jcc-account-membershipIcon {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: color-mix(in srgb, #2563eb 10%, #fff);
+      color: #2563eb;
+      flex-shrink: 0;
+      border: 1px solid color-mix(in srgb, #2563eb 28%, transparent);
+    }
+    .jcc-account-membershipText {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.16rem;
+    }
+    .jcc-account-membershipMain {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .jcc-account-membershipSub {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .jcc-account-membershipRight {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      flex-shrink: 0;
+    }
+    .jcc-account-membershipPrimaryToggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.33rem;
+      font-size: 0.8rem;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .jcc-account-membershipDeleteIcon {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 10px;
+      border: 1px solid color-mix(in srgb, #ef4444 48%, var(--border));
+      background: #fff5f5;
+      color: #dc2626;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .jcc-account-membershipDeleteIcon svg {
+      width: 1rem;
+      height: 1rem;
+    }
+    .jcc-account-membershipAdd {
+      min-height: 2.25rem;
+      padding: 0.35rem 0.75rem;
+      border: 1px dashed color-mix(in srgb, #2563eb 40%, var(--border));
+      background: #f8fbff;
+      color: #1d4ed8;
+      border-radius: 10px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .jcc-account-membershipAdder {
+      margin-top: 0.7rem;
+      padding: 0.85rem;
+      border-radius: 14px;
+      border: 1px solid color-mix(in srgb, #2563eb 28%, var(--border));
+      background: color-mix(in srgb, #eff6ff 90%, #fff);
+    }
+    .jcc-account-membershipAdderActions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
+    .jcc-account-membershipAdderBtn {
+      min-height: 2.2rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .jcc-account-membershipAdderBtn--primary {
+      border-color: #2563eb;
+      background: #2563eb;
+      color: #fff;
+    }
+    .jcc-account-membershipConfirm {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(2, 6, 23, 0.42);
+      z-index: 12;
+    }
+    .jcc-account-membershipConfirm[hidden] {
+      display: none;
+    }
+    .jcc-account-membershipConfirmCard {
+      width: min(92%, 22rem);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      padding: 1rem;
+      box-shadow: 0 20px 32px rgba(0, 0, 0, 0.28);
+    }
+    .jcc-account-membershipConfirmTitle {
+      margin: 0 0 0.4rem;
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .jcc-account-membershipConfirmMsg {
+      margin: 0 0 0.85rem;
+      font-size: 0.84rem;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    .jcc-account-membershipConfirmActions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+    .jcc-account-membershipConfirmBtn {
+      min-height: 2.2rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .jcc-account-membershipConfirmBtn--danger {
+      border-color: #dc2626;
+      background: #dc2626;
+      color: #fff;
+    }
+    .jcc-account-membershipError {
+      margin-top: 0.6rem;
+      padding: 0.55rem 0.7rem;
+      border-radius: 10px;
+      border: 1px solid color-mix(in srgb, #ef4444 55%, var(--border));
+      background: #fff1f2;
+      color: #be123c;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+    .jcc-account-membershipFallback {
+      display: none;
     }
     .jcc-account-editField label {
       display: block;
@@ -916,6 +1118,27 @@
         </div>
         <button type="button" class="jcc-account-editModal__close" id="accountEditClose" aria-label="닫기">&times;</button>
       </div>
+      <div id="accountMembershipDeleteConfirm" class="jcc-account-membershipConfirm" hidden>
+        <div class="jcc-account-membershipConfirmCard">
+          <p class="jcc-account-membershipConfirmTitle">소속 제거 확인</p>
+          <p id="accountMembershipDeleteConfirmMsg" class="jcc-account-membershipConfirmMsg">선택한 소속을 제거하시겠습니까?</p>
+          <p id="accountMembershipDeleteImpactSummary" class="jcc-account-membershipConfirmMsg" style="margin-top:-0.35rem;"></p>
+          <div style="display:flex;flex-direction:column;gap:0.45rem;margin:0 0 0.85rem;">
+            <label class="jcc-account-membershipPrimaryToggle" style="font-size:0.82rem;">
+              <input type="radio" name="membership_remove_mode" value="membership_only" checked>
+              <span>소속만 삭제 (집회 배정 유지)</span>
+            </label>
+            <label class="jcc-account-membershipPrimaryToggle" style="font-size:0.82rem;">
+              <input type="radio" name="membership_remove_mode" value="membership_and_retreat_assignments">
+              <span>소속 + 활성 집회 배정 함께 해제</span>
+            </label>
+          </div>
+          <div class="jcc-account-membershipConfirmActions">
+            <button type="button" id="accountMembershipDeleteCancel" class="jcc-account-membershipConfirmBtn">취소</button>
+            <button type="button" id="accountMembershipDeleteApply" class="jcc-account-membershipConfirmBtn jcc-account-membershipConfirmBtn--danger">제거</button>
+          </div>
+        </div>
+      </div>
       <div class="jcc-account-editModal__body">
       <form method="post" id="accountEditForm" class="jcc-account-editForm">
         {% csrf_token %}
@@ -936,6 +1159,48 @@
 
         <section class="jcc-account-editSection">
           <h3 class="jcc-account-editSection__title">소속</h3>
+          <input type="hidden" name="memberships_payload" id="accountEditMembershipsPayload" value="">
+          <input type="hidden" name="removed_membership_actions" id="accountEditRemovedMembershipActions" value="">
+          <div class="jcc-account-editField">
+            <div class="jcc-account-membershipTop">
+              <label>현재 소속</label>
+              <button type="button" id="accountEditMembershipAdd" class="jcc-account-membershipAdd">
+                <span aria-hidden="true">+</span>
+                소속 추가
+              </button>
+            </div>
+            <div id="accountEditMembershipRows" class="jcc-account-membershipRows"></div>
+            <div id="accountEditMembershipAdder" class="jcc-account-membershipAdder" hidden>
+              <div class="jcc-account-editField">
+                <label for="accountMembershipAddRegion">지역</label>
+                <select id="accountMembershipAddRegion" data-cselect aria-label="추가할 지역">
+                  <option value="">지역 선택</option>
+                </select>
+              </div>
+              <div class="jcc-account-editField">
+                <label for="accountMembershipAddDivision">부서</label>
+                <select id="accountMembershipAddDivision" data-cselect aria-label="추가할 부서">
+                  <option value="">부서 선택</option>
+                </select>
+              </div>
+              <div class="jcc-account-editField">
+                <label for="accountMembershipAddTeam">팀</label>
+                <select id="accountMembershipAddTeam" data-cselect aria-label="추가할 팀">
+                  <option value="">팀 미지정</option>
+                </select>
+              </div>
+              <div class="jcc-account-membershipPrimaryToggle">
+                <input type="checkbox" id="accountMembershipAddPrimary">
+                <span>주 소속으로 추가</span>
+              </div>
+              <div class="jcc-account-membershipAdderActions">
+                <button type="button" id="accountMembershipAddCancel" class="jcc-account-membershipAdderBtn">취소</button>
+                <button type="button" id="accountMembershipAddApply" class="jcc-account-membershipAdderBtn jcc-account-membershipAdderBtn--primary">추가</button>
+              </div>
+            </div>
+            <div id="accountEditMembershipError" class="jcc-account-membershipError" hidden></div>
+          </div>
+          <div class="jcc-account-membershipFallback" aria-hidden="true">
           <div class="jcc-account-editField">
             <label for="accountEditRegion">지역</label>
             <select id="accountEditRegion" class="jcc-row-region" data-cselect aria-label="지역" {% if not can_move_division %}disabled{% endif %}>
@@ -959,6 +1224,7 @@
             <select id="accountEditTeam" class="jcc-row-team" name="team_id" data-cselect aria-label="팀">
               <option value="">팀 미지정</option>
             </select>
+          </div>
           </div>
         </section>
 
@@ -1106,6 +1372,23 @@
       const regionSel = document.getElementById("accountEditRegion");
       const divisionSel = document.getElementById("accountEditDivision");
       const teamSel = document.getElementById("accountEditTeam");
+      const membershipRowsEl = document.getElementById("accountEditMembershipRows");
+      const membershipAddBtn = document.getElementById("accountEditMembershipAdd");
+      const membershipErrorEl = document.getElementById("accountEditMembershipError");
+      const membershipsPayloadInput = document.getElementById("accountEditMembershipsPayload");
+      const removedActionsInput = document.getElementById("accountEditRemovedMembershipActions");
+      const membershipAdderEl = document.getElementById("accountEditMembershipAdder");
+      const addRegionSel = document.getElementById("accountMembershipAddRegion");
+      const addDivisionSel = document.getElementById("accountMembershipAddDivision");
+      const addTeamSel = document.getElementById("accountMembershipAddTeam");
+      const addPrimaryChk = document.getElementById("accountMembershipAddPrimary");
+      const addApplyBtn = document.getElementById("accountMembershipAddApply");
+      const addCancelBtn = document.getElementById("accountMembershipAddCancel");
+      const deleteConfirmEl = document.getElementById("accountMembershipDeleteConfirm");
+      const deleteConfirmMsgEl = document.getElementById("accountMembershipDeleteConfirmMsg");
+      const deleteConfirmImpactSummaryEl = document.getElementById("accountMembershipDeleteImpactSummary");
+      const deleteConfirmApplyBtn = document.getElementById("accountMembershipDeleteApply");
+      const deleteConfirmCancelBtn = document.getElementById("accountMembershipDeleteCancel");
       const rolePickerEl = document.getElementById("accountEditRolePicker");
       const phoneInput = document.getElementById("accountEditPhone");
       if (phoneInput && window.JccPhoneFormat) {
@@ -1117,6 +1400,10 @@
       let rolePickerMounted = false;
       let currentUserId = "";
       let modalView = "detail";
+      let membershipRowsState = [];
+      let originalMembershipDivisionIds = new Set();
+      let removedMembershipActions = {};
+      let pendingDeleteMembershipIndex = null;
       const ACTIVITY_PAGE_SIZE = 5;
       let activityItemsAll = [];
       let activityPage = 1;
@@ -1346,6 +1633,299 @@
         }
       }
 
+      function setMembershipError(message) {
+        if (!membershipErrorEl) return;
+        const msg = (message || "").trim();
+        membershipErrorEl.textContent = msg;
+        membershipErrorEl.hidden = !msg;
+      }
+
+      function regionOptionsForMembership() {
+        const seen = new Set();
+        const regions = [];
+        divisions.forEach((d) => {
+          const regionId = d.region_id;
+          if (!regionId || seen.has(regionId)) return;
+          seen.add(regionId);
+          regions.push({ id: regionId, name: d.region_name || "" });
+        });
+        return regions;
+      }
+
+      function labelForMembership(row) {
+        const division = divisions.find((d) => String(d.id) === String(row.division_id || ""));
+        const regionName = division?.region_name || "";
+        const divisionName = division?.name || "부서 미지정";
+        const teamName = (teamsMap[String(row.division_id)] || []).find(
+          (t) => String(t.id) === String(row.team_id || "")
+        )?.name || "미지정";
+        return `${regionName ? `${regionName} · ` : ""}${divisionName} · ${teamName}`;
+      }
+
+      function openDeleteMembershipConfirm(index) {
+        if (!deleteConfirmEl || !deleteConfirmMsgEl) return;
+        const row = membershipRowsState[index];
+        if (!row) return;
+        pendingDeleteMembershipIndex = index;
+        deleteConfirmMsgEl.textContent = `${labelForMembership(row)} 소속을 제거하시겠습니까?`;
+        const impact = row.active_retreat_impact || {};
+        const eventCount = Number(impact.event_count || 0);
+        const councilCount = Number(impact.council_count || 0);
+        const groupCount = Number(impact.group_count || 0);
+        if (deleteConfirmImpactSummaryEl) {
+          if (eventCount <= 0) {
+            deleteConfirmImpactSummaryEl.textContent = "활성 집회 영향 없음 (비활성 집회는 영향 계산에서 제외)";
+          } else {
+            deleteConfirmImpactSummaryEl.textContent =
+              `활성 집회 ${eventCount}개 영향 (운영진 ${councilCount}건, 조운영진 ${groupCount}건)`;
+          }
+        }
+        const defaultMode = eventCount > 0 ? "membership_only" : "membership_only";
+        document
+          .querySelectorAll('input[name="membership_remove_mode"]')
+          .forEach((radio) => {
+            radio.checked = radio.value === defaultMode;
+            if (radio.value === "membership_and_retreat_assignments") {
+              radio.disabled = eventCount <= 0;
+            }
+          });
+        deleteConfirmEl.hidden = false;
+      }
+
+      function closeDeleteMembershipConfirm() {
+        pendingDeleteMembershipIndex = null;
+        if (deleteConfirmEl) deleteConfirmEl.hidden = true;
+      }
+
+      function applyDeleteMembership() {
+        if (pendingDeleteMembershipIndex == null) return;
+        const row = membershipRowsState[pendingDeleteMembershipIndex];
+        if (row) {
+          const selectedMode = document.querySelector(
+            'input[name="membership_remove_mode"]:checked'
+          )?.value || "membership_only";
+          const divisionId = Number(row.division_id || 0);
+          const impact = row.active_retreat_impact || {};
+          if (divisionId) {
+            removedMembershipActions[String(divisionId)] = {
+              remove_mode: selectedMode,
+              expected_active_event_count: Number(impact.event_count || 0),
+              expected_council_count: Number(impact.council_count || 0),
+              expected_group_count: Number(impact.group_count || 0),
+            };
+          }
+        }
+        membershipRowsState = membershipRowsState.filter((_, i) => i !== pendingDeleteMembershipIndex);
+        closeDeleteMembershipConfirm();
+        if (!membershipRowsState.length) {
+          setMembershipError("최소 1개의 소속이 필요합니다. 새 소속을 추가해 주세요.");
+        } else {
+          setMembershipError("");
+        }
+        renderMembershipRows();
+      }
+
+      function resetMembershipAdder(defaults) {
+        if (!addRegionSel || !addDivisionSel || !addTeamSel || !addPrimaryChk) return;
+        const firstDivision = divisions[0] || null;
+        const defaultRegion = String(defaults?.region_id || firstDivision?.region_id || "");
+        const defaultDivision = String(defaults?.division_id || firstDivision?.id || "");
+        const defaultTeam = String(defaults?.team_id || "");
+
+        addRegionSel.innerHTML = '<option value="">지역 선택</option>';
+        regionOptionsForMembership().forEach((region) => {
+          const opt = document.createElement("option");
+          opt.value = String(region.id);
+          opt.textContent = region.name || `지역 ${region.id}`;
+          if (String(region.id) === defaultRegion) opt.selected = true;
+          addRegionSel.appendChild(opt);
+        });
+
+        function fillAdderDivision(selectedDivisionId) {
+          const regionId = addRegionSel.value || "";
+          addDivisionSel.innerHTML = '<option value="">부서 선택</option>';
+          divisions
+            .filter((d) => !regionId || String(d.region_id) === String(regionId))
+            .forEach((d) => {
+              const opt = document.createElement("option");
+              opt.value = String(d.id);
+              opt.textContent = d.region_name ? `${d.region_name} · ${d.name}` : d.name;
+              if (String(d.id) === String(selectedDivisionId || "")) opt.selected = true;
+              addDivisionSel.appendChild(opt);
+            });
+        }
+
+        function fillAdderTeam(selectedTeamId) {
+          const divisionId = addDivisionSel.value || "";
+          addTeamSel.innerHTML = '<option value="">팀 미지정</option>';
+          (teamsMap[String(divisionId)] || []).forEach((team) => {
+            const opt = document.createElement("option");
+            opt.value = String(team.id);
+            opt.textContent = team.name;
+            if (String(team.id) === String(selectedTeamId || "")) opt.selected = true;
+            addTeamSel.appendChild(opt);
+          });
+        }
+
+        fillAdderDivision(defaultDivision);
+        fillAdderTeam(defaultTeam);
+        addPrimaryChk.checked = !!defaults?.is_primary;
+
+        addRegionSel.onchange = () => {
+          const regionId = addRegionSel.value || "";
+          const firstForRegion = divisions.find((d) => String(d.region_id) === String(regionId));
+          fillAdderDivision(firstForRegion ? String(firstForRegion.id) : "");
+          fillAdderTeam("");
+          refreshCustomSelects(membershipAdderEl);
+        };
+        addDivisionSel.onchange = () => {
+          fillAdderTeam("");
+          refreshCustomSelects(membershipAdderEl);
+        };
+
+        refreshCustomSelects(membershipAdderEl);
+      }
+
+      function renderMembershipRows() {
+        if (!membershipRowsEl) return;
+        membershipRowsEl.innerHTML = "";
+        membershipRowsState.forEach((row, index) => {
+          const division = divisions.find((d) => String(d.id) === String(row.division_id || ""));
+          const regionName = division?.region_name || "";
+          const divisionName = division?.name || "부서 미지정";
+          const teamName = (teamsMap[String(row.division_id)] || []).find(
+            (t) => String(t.id) === String(row.team_id || "")
+          )?.name || "미지정";
+
+          const card = document.createElement("div");
+          card.className = "jcc-account-membershipItem";
+          card.innerHTML = `
+            <div class="jcc-account-membershipInfo">
+              <span class="jcc-account-membershipIcon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M3 7.5C3 6.67 3.67 6 4.5 6h15c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5h-15C3.67 18 3 17.33 3 16.5v-9Z" stroke="currentColor" stroke-width="1.7"/>
+                  <path d="M8 11h8M8 14h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <div class="jcc-account-membershipText">
+                <span class="jcc-account-membershipMain">${escapeHtml(`${regionName ? `${regionName} · ` : ""}${divisionName} · ${teamName}`)}</span>
+                <span class="jcc-account-membershipSub">${row.is_primary ? "기본 소속" : "추가 소속"}</span>
+              </div>
+            </div>
+            <div class="jcc-account-membershipRight">
+              <label class="jcc-account-membershipPrimaryToggle">
+                <input type="checkbox" ${row.is_primary ? "checked" : ""} aria-label="주 소속">
+                <span>주 소속</span>
+              </label>
+              <button type="button" class="jcc-account-membershipDeleteIcon" aria-label="소속 제거">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M4 7h16M9.5 4.5h5M9 10v7M12 10v7M15 10v7M6.5 7l.7 11.1c.05.8.72 1.4 1.52 1.4h6.52c.8 0 1.47-.61 1.52-1.4L17.5 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+          `;
+          const primaryInput = card.querySelector('input[type="checkbox"]');
+          const deleteBtn = card.querySelector(".jcc-account-membershipDeleteIcon");
+          primaryInput?.addEventListener("change", () => {
+            membershipRowsState[index] = {
+              ...membershipRowsState[index],
+              is_primary: !!primaryInput.checked,
+            };
+            renderMembershipRows();
+          });
+          deleteBtn?.addEventListener("click", () => {
+            if (membershipRowsState.length <= 1) {
+              setMembershipError("최소 1개의 소속은 유지되어야 합니다.");
+              return;
+            }
+            openDeleteMembershipConfirm(index);
+          });
+
+          membershipRowsEl.appendChild(card);
+        });
+      }
+
+      function openMembershipAdder() {
+        if (!membershipAdderEl) return;
+        const last = membershipRowsState[membershipRowsState.length - 1] || null;
+        resetMembershipAdder(last);
+        membershipAdderEl.hidden = false;
+        setMembershipError("");
+      }
+
+      function closeMembershipAdder() {
+        if (!membershipAdderEl) return;
+        membershipAdderEl.hidden = true;
+      }
+
+      function applyMembershipAdder() {
+        if (!addDivisionSel) return;
+        const divisionId = String(addDivisionSel.value || "");
+        if (!divisionId) {
+          setMembershipError("추가할 부서를 선택해 주세요.");
+          return;
+        }
+        if (membershipRowsState.some((row) => String(row.division_id) === divisionId)) {
+          setMembershipError("같은 부서는 한 번만 추가할 수 있습니다.");
+          return;
+        }
+        const division = divisions.find((d) => String(d.id) === divisionId);
+        const teamId = String(addTeamSel?.value || "");
+        if (teamId) {
+          const teamBelongs = (teamsMap[divisionId] || []).some((team) => String(team.id) === teamId);
+          if (!teamBelongs) {
+            setMembershipError("선택한 팀이 부서와 일치하지 않습니다.");
+            return;
+          }
+        }
+        membershipRowsState.push({
+          region_id: String(division?.region_id || addRegionSel?.value || ""),
+          division_id: divisionId,
+          team_id: teamId,
+          is_primary: !!addPrimaryChk?.checked,
+          active_retreat_impact: {
+            event_count: 0,
+            council_count: 0,
+            group_count: 0,
+          },
+        });
+        delete removedMembershipActions[String(divisionId)];
+        closeMembershipAdder();
+        setMembershipError("");
+        renderMembershipRows();
+      }
+
+      function buildMembershipPayloadOrThrow() {
+        if (!membershipRowsState.length) {
+          throw new Error("최소 1개의 소속이 필요합니다.");
+        }
+        const usedDivisionIds = new Set();
+        const payload = membershipRowsState.map((row, index) => {
+          const divisionId = Number(row.division_id || 0);
+          if (!divisionId) {
+            throw new Error("모든 소속에 부서를 선택해 주세요.");
+          }
+          if (usedDivisionIds.has(divisionId)) {
+            throw new Error("같은 부서는 한 번만 추가할 수 있습니다.");
+          }
+          usedDivisionIds.add(divisionId);
+          const teamId = row.team_id ? Number(row.team_id) : null;
+          if (teamId) {
+            const belongs = (teamsMap[String(divisionId)] || []).some((t) => Number(t.id) === teamId);
+            if (!belongs) {
+              throw new Error("선택한 팀이 부서와 일치하지 않습니다.");
+            }
+          }
+          return {
+            division_id: divisionId,
+            team_id: teamId,
+            is_primary: !!row.is_primary,
+            sort_order: index,
+          };
+        });
+        return payload;
+      }
+
       function escAttr(s) {
         return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
       }
@@ -1561,6 +2141,55 @@
           hiddenDiv.value = d.division_id ? String(d.division_id) : "";
         }
         syncFromRegion(d.division_id, d.team_id);
+
+        const memberships = Array.isArray(d.memberships) && d.memberships.length
+          ? d.memberships
+          : [{
+              region_id: d.region_id || "",
+              division_id: d.division_id || "",
+              team_id: d.team_id || "",
+              is_primary: true,
+              active_retreat_impact: {
+                event_count: 0,
+                council_count: 0,
+                group_count: 0,
+              },
+            }];
+        membershipRowsState = memberships.map((row) => ({
+          region_id: String(row.region_id || ""),
+          division_id: String(row.division_id || ""),
+          team_id: String(row.team_id || ""),
+          is_primary: !!row.is_primary,
+          active_retreat_impact: row.active_retreat_impact || {
+            event_count: 0,
+            council_count: 0,
+            group_count: 0,
+          },
+        }));
+        originalMembershipDivisionIds = new Set(
+          membershipRowsState.map((row) => Number(row.division_id || 0)).filter(Boolean)
+        );
+        removedMembershipActions = {};
+        if (!membershipRowsState.length) {
+          const firstDivision = divisions[0] || null;
+          membershipRowsState = firstDivision
+            ? [{
+                region_id: String(firstDivision.region_id || ""),
+                division_id: String(firstDivision.id),
+                team_id: "",
+                is_primary: true,
+              }]
+            : [];
+        }
+        if (membershipRowsState.length) {
+          renderMembershipRows();
+        } else {
+          if (membershipRowsEl) membershipRowsEl.innerHTML = "";
+        }
+        closeMembershipAdder();
+        closeDeleteMembershipConfirm();
+        setMembershipError("");
+
         document.getElementById("accountEditAtt").checked = !!d.can_manage_attendance;
         document.getElementById("accountEditParking").checked = !!d.can_manage_parking;
         document.getElementById("accountEditAccounts").checked = !!d.can_manage_accounts;
@@ -1591,6 +2220,15 @@
         activityPage = 1;
         rolePickerMounted = false;
         selectedRoleCodes = [];
+        membershipRowsState = [];
+        originalMembershipDivisionIds = new Set();
+        removedMembershipActions = {};
+        pendingDeleteMembershipIndex = null;
+        closeMembershipAdder();
+        closeDeleteMembershipConfirm();
+        if (membershipsPayloadInput) membershipsPayloadInput.value = "";
+        if (removedActionsInput) removedActionsInput.value = "";
+        setMembershipError("");
       }
 
       document.querySelectorAll(".js-account-user-link").forEach((btn) => {
@@ -1601,6 +2239,13 @@
       });
 
       closeBtn.addEventListener("click", closeModal);
+      membershipAddBtn?.addEventListener("click", () => {
+        openMembershipAdder();
+      });
+      addCancelBtn?.addEventListener("click", closeMembershipAdder);
+      addApplyBtn?.addEventListener("click", applyMembershipAdder);
+      deleteConfirmCancelBtn?.addEventListener("click", closeDeleteMembershipConfirm);
+      deleteConfirmApplyBtn?.addEventListener("click", applyDeleteMembership);
       activityBtn?.addEventListener("click", openActivityView);
       activityBackBtn?.addEventListener("click", showDetailView);
       document.getElementById("accountActivityUserName")?.addEventListener("click", goToUserDetailFromActivity);
@@ -1611,10 +2256,22 @@
         if (!Number.isNaN(page)) goActivityPage(page);
       });
       overlay.addEventListener("click", (e) => {
+        if (!deleteConfirmEl?.hidden && e.target === deleteConfirmEl) {
+          closeDeleteMembershipConfirm();
+          return;
+        }
         if (e.target === overlay) closeModal();
       });
       document.addEventListener("keydown", (e) => {
         if (e.key !== "Escape" || overlay.hidden) return;
+        if (!deleteConfirmEl?.hidden) {
+          closeDeleteMembershipConfirm();
+          return;
+        }
+        if (membershipAdderEl && !membershipAdderEl.hidden) {
+          closeMembershipAdder();
+          return;
+        }
         if (modalView === "activity") showDetailView();
         else closeModal();
       });
@@ -1635,7 +2292,43 @@
         window.history.replaceState({}, "", nextUrl);
       }
 
-      form.addEventListener("submit", () => {
+      form.addEventListener("submit", (evt) => {
+        setMembershipError("");
+        try {
+          const payload = buildMembershipPayloadOrThrow();
+          if (membershipsPayloadInput) {
+            membershipsPayloadInput.value = JSON.stringify(payload);
+          }
+          const currentDivisionIds = new Set(payload.map((row) => Number(row.division_id)));
+          const removedRows = [];
+          Object.entries(removedMembershipActions).forEach(([divisionIdRaw, mode]) => {
+            const divisionId = Number(divisionIdRaw || 0);
+            if (!divisionId) return;
+            if (!originalMembershipDivisionIds.has(divisionId)) return;
+            if (currentDivisionIds.has(divisionId)) return;
+            const action = mode && typeof mode === "object" ? mode : { remove_mode: "membership_only" };
+            removedRows.push({
+              division_id: divisionId,
+              remove_mode: action.remove_mode || "membership_only",
+              expected_active_event_count: Number(action.expected_active_event_count || 0),
+              expected_council_count: Number(action.expected_council_count || 0),
+              expected_group_count: Number(action.expected_group_count || 0),
+            });
+          });
+          if (removedActionsInput) {
+            removedActionsInput.value = JSON.stringify(removedRows);
+          }
+          const first = payload[0] || null;
+          if (divisionSel) divisionSel.value = first ? String(first.division_id) : "";
+          if (teamSel) teamSel.value = first && first.team_id ? String(first.team_id) : "";
+          const hiddenDiv = document.getElementById("accountEditDivisionHidden");
+          if (hiddenDiv) hiddenDiv.value = first ? String(first.division_id) : "";
+        } catch (err) {
+          setMembershipError(err && err.message ? err.message : "소속 입력값을 확인해 주세요.");
+          evt.preventDefault();
+          return;
+        }
+
         if (phoneInput && window.JccPhoneFormat) {
           phoneInput.value = JccPhoneFormat.normalizeForSubmit(phoneInput.value);
         }
