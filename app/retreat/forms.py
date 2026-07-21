@@ -33,6 +33,7 @@ class RetreatApplyForm(forms.Form):
             ("", "참가자(일반)"),
             ("leader", "조장"),
             ("vice_leader", "부조장"),
+            ("teacher", "선생님"),
         ],
         required=False,
     )

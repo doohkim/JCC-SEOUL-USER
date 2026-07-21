@@ -5,15 +5,15 @@
     {% include 'includes/jcc_theme_head.html' %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ notice.title }} · 함께하기</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
+    <title>{{ notice.title }} · 함께보기</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260721s" />
   </head>
   <body class="has-notice-bottom-tabs jcc-notice-detail-page">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
         {% url 'notice_list' as notice_back_url %}
-        {% include 'includes/jcc_page_header.html' with page_title='함께하기' tabs_template='notices/_subtabs.html' notices_tab='notices' back_url=notice_back_url %}
+        {% include 'includes/jcc_page_header.html' with page_title='함께보기' tabs_template='notices/_subtabs.html' notices_tab='notices' back_url=notice_back_url %}
 
         <main class="jcc-notice-detailMain">
           {% if can_manage_notices %}

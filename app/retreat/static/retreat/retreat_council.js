@@ -10,6 +10,8 @@
   const rosterCards = document.getElementById("staffRosterCards");
   const rosterPager = document.getElementById("staffRosterPager");
   const filterPills = document.getElementById("staffFilterPills");
+  const rosterSearchBlock = document.getElementById("staffRosterSearchBlock");
+  const rosterSearchInput = document.getElementById("staffRosterSearch");
   const PAGE_SIZE = 10;
   const modalOverlay = document.getElementById("staffModalOverlay");
   const modalForm = document.getElementById("staffModalForm");
@@ -28,6 +30,8 @@
   let sortKey = null;
   let sortDir = "asc";
   let rosterPage = 1;
+  let searchQuery = "";
+  let searchTimer = null;
   let editingRow = null;
   let modalMode = "council";
   let confirmResolve = null;
@@ -134,9 +138,9 @@
 
   function roleBadgeClass(role, kind) {
     if (kind === "group") {
-      return role === "vice_leader"
-        ? "jcc-retreat-staffRoleTag--vice_leader"
-        : "jcc-retreat-staffRoleTag--leader";
+      if (role === "vice_leader") return "jcc-retreat-staffRoleTag--vice_leader";
+      if (role === "teacher") return "jcc-retreat-staffRoleTag--teacher";
+      return "jcc-retreat-staffRoleTag--leader";
     }
     return `jcc-retreat-staffRoleTag--${role}`;
   }
@@ -821,7 +825,7 @@
     if (editingRow) {
       modalMode = editingRow.kind;
       modalTitle.textContent =
-        editingRow.kind === "council" ? "집회 운영진 수정" : "조장·부조장 수정";
+        editingRow.kind === "council" ? "집회 운영진 수정" : "조 운영진 수정";
       document.getElementById("staffModalSubmit").textContent = "저장";
       modalSubtitle.textContent = editingRow.name || "";
       if (editingRow.kind === "council") {
@@ -847,12 +851,12 @@
     } else {
       modalMode = preset?.mode || preset?.kind || "council";
       modalTitle.textContent =
-        modalMode === "council" ? "집회 운영진 등록" : "조장·부조장 등록";
+        modalMode === "council" ? "집회 운영진 등록" : "조 운영진 등록";
       document.getElementById("staffModalSubmit").textContent = "등록 완료";
       modalSubtitle.textContent =
         modalMode === "council"
           ? "집회 조가 배정된 지역·부서 소속 계정만 선택할 수 있습니다."
-          : "조를 선택하고 조장 또는 부조장 역할을 지정하세요.";
+          : "조를 선택하고 조장·부조장·선생님 역할을 지정하세요.";
       document.getElementById("staffModalUserPicker")?.classList.remove("is-locked");
       if (councilRole) councilRole.value = preset?.suggestedCouncilRole || "";
       if (preset?.user) {
@@ -1077,9 +1081,58 @@
     });
   }
 
+  function rowSearchText(row) {
+    const parts = [
+      row.name,
+      row.realName,
+      row.username,
+      row.phone,
+      String(row.phone || "").replace(/\D/g, ""),
+      row.roleLabel,
+      row.role,
+      row.scopeLabel,
+      row.groupName,
+      row.homeGroupName,
+      row.regionName,
+      row.divisionName,
+      row.note,
+    ];
+    if (Array.isArray(row.roleBadges)) {
+      row.roleBadges.forEach((b) => parts.push(b.label, b.role));
+    }
+    if (Array.isArray(row.scopeBadges)) {
+      row.scopeBadges.forEach((b) => parts.push(b.label));
+    }
+    if (Array.isArray(row.groupAssignments)) {
+      row.groupAssignments.forEach((a) => {
+        parts.push(a.groupName, a.roleLabel, a.role);
+      });
+    }
+    return parts
+      .map((v) => String(v || "").trim().toLowerCase())
+      .filter(Boolean)
+      .join(" ");
+  }
+
+  function matchesSearch(row, query) {
+    const q = String(query || "").trim().toLowerCase();
+    if (!q) return true;
+    const hay = rowSearchText(row);
+    if (hay.includes(q)) return true;
+    const digits = q.replace(/\D/g, "");
+    if (digits && hay.replace(/\D/g, "").includes(digits)) return true;
+    return false;
+  }
+
   function filteredRows(filter) {
-    if (filter === "all") return rosterRows.slice();
-    return rosterRows.filter((row) => rowCategory(row) === filter);
+    let rows =
+      filter === "all"
+        ? rosterRows.slice()
+        : rosterRows.filter((row) => rowCategory(row) === filter);
+    if (filter === "all" && searchQuery.trim()) {
+      rows = rows.filter((row) => matchesSearch(row, searchQuery));
+    }
+    return rows;
   }
 
   function sortValue(row, key) {
@@ -1234,6 +1287,9 @@
       rosterPage = 1;
     }
     activeFilter = nextFilter;
+    if (rosterSearchBlock) {
+      rosterSearchBlock.hidden = activeFilter !== "all";
+    }
     const layout = filterColumnLayout(activeFilter);
     renderTableHeader(activeFilter);
     const allRows = sortedRows(filteredRows(activeFilter));
@@ -1241,9 +1297,13 @@
     syncSortHeaders();
 
     if (!allRows.length) {
-      const empty = '<tr><td colspan="' + colSpan + '">등록된 운영진이 없습니다.</td></tr>';
+      const emptyMsg =
+        activeFilter === "all" && searchQuery.trim()
+          ? "검색 결과가 없습니다."
+          : "등록된 운영진이 없습니다.";
+      const empty = '<tr><td colspan="' + colSpan + '">' + emptyMsg + "</td></tr>";
       if (rosterTbody) rosterTbody.innerHTML = empty;
-      if (rosterCards) rosterCards.innerHTML = '<p class="muted">등록된 운영진이 없습니다.</p>';
+      if (rosterCards) rosterCards.innerHTML = '<p class="muted">' + emptyMsg + "</p>";
       renderPager(0, 1, 1);
       return;
     }
@@ -1345,6 +1405,16 @@
     });
     renderRoster(btn.dataset.filter || "all", { resetPage: true });
   });
+
+  if (rosterSearchInput) {
+    rosterSearchInput.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        searchQuery = rosterSearchInput.value || "";
+        renderRoster("all", { resetPage: true });
+      }, 150);
+    });
+  }
 
   rosterPager?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-staff-page]");

@@ -1,5 +1,5 @@
-{% comment %}함께하기 모바일 하단 탭 — notices_tab('notices'|'timetable') 로 활성 표시{% endcomment %}
-<nav class="jcc-bottomTabs jcc-noticeBottomTabs" id="jccNoticeBottomTabs" aria-label="함께하기 메뉴">
+{% comment %}함께보기 모바일 하단 탭 — notices_tab('notices'|'timetable') 로 활성 표시{% endcomment %}
+<nav class="jcc-bottomTabs jcc-noticeBottomTabs" id="jccNoticeBottomTabs" aria-label="함께보기 메뉴">
   <a
     class="jcc-bottomTab{% if notices_tab == 'notices' %} is-active{% endif %}"
     href="{% url 'notice_list' %}"

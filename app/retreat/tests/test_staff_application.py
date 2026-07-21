@@ -391,7 +391,8 @@ class StaffApplicationPageTests(StaffApplicationFixture):
         )
         self.assertContains(r, "조 운영진")
 
-    def test_staff_apply_approved_hides_submit_and_shows_notice(self):
+    def test_staff_apply_orphan_approved_heals_and_allows_resubmit(self):
+        """배정 없이 APPROVED만 남은 경우 신청서 화면에서 정리되어 재신청 가능."""
         RetreatStaffApplication.objects.create(
             event=self.event,
             user=self.applicant,
@@ -402,13 +403,14 @@ class StaffApplicationPageTests(StaffApplicationFixture):
             group_role=RetreatGroupMembership.Role.LEADER,
             status=RetreatStaffApplication.Status.APPROVED,
         )
-        self.client.force_login(self.applicant)
-        r = self.client.get(reverse("retreat_staff_apply", args=[self.event.id]))
-        self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "참가 신청이 승인되었습니다")
-        self.assertContains(r, "다시 신청할 수 있습니다")
-        self.assertNotContains(r, "역할 배정 대기")
-        self.assertNotContains(r, "참가 신청하기")
+        self.assertEqual(event_staff_status(self.applicant, self.event), "open")
+        self.assertFalse(
+            RetreatStaffApplication.objects.filter(
+                event=self.event,
+                user=self.applicant,
+                status=RetreatStaffApplication.Status.APPROVED,
+            ).exists()
+        )
 
     def test_dashboard_forbidden_without_assignment(self):
         self.client.force_login(self.applicant)
@@ -752,4 +754,118 @@ class StaffApplicationReapplyTests(StaffApplicationFixture):
             delete_staff_application_if_unassigned(
                 self.applicant, self.event, actor=self.admin
             )
+        )
+
+    def test_cannot_delete_own_attendee_row(self):
+        application = RetreatStaffApplication.objects.create(
+            event=self.event,
+            user=self.applicant,
+            region=self.seoul,
+            division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
+            group=self.group,
+            group_role=RetreatGroupMembership.Role.LEADER,
+            status=RetreatStaffApplication.Status.PENDING,
+        )
+        apply_staff_application(application, reviewer=self.admin)
+        attendee = RetreatAttendee.objects.get(user=self.applicant, group=self.group)
+        self.api.force_authenticate(self.applicant)
+        r = self.api.delete(reverse("api_retreat_attendee_detail", args=[attendee.id]))
+        self.assertEqual(r.status_code, 403, r.content)
+        self.assertTrue(RetreatAttendee.objects.filter(pk=attendee.id).exists())
+        self.assertTrue(
+            RetreatGroupMembership.objects.filter(
+                user=self.applicant, group=self.group
+            ).exists()
+        )
+        self.assertTrue(
+            RetreatStaffApplication.objects.filter(
+                event=self.event,
+                user=self.applicant,
+                status=RetreatStaffApplication.Status.APPROVED,
+            ).exists()
+        )
+
+    def test_attendee_delete_clears_approved_application(self):
+        application = RetreatStaffApplication.objects.create(
+            event=self.event,
+            user=self.applicant,
+            region=self.seoul,
+            division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
+            group=self.group,
+            group_role=RetreatGroupMembership.Role.LEADER,
+            status=RetreatStaffApplication.Status.PENDING,
+        )
+        apply_staff_application(application, reviewer=self.admin)
+        attendee = RetreatAttendee.objects.get(user=self.applicant, group=self.group)
+        self.api.force_authenticate(self.admin)
+        r = self.api.delete(reverse("api_retreat_attendee_detail", args=[attendee.id]))
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertFalse(
+            RetreatGroupMembership.objects.filter(
+                user=self.applicant, group__event=self.event
+            ).exists()
+        )
+        self.assertFalse(
+            RetreatStaffApplication.objects.filter(
+                event=self.event,
+                user=self.applicant,
+                status=RetreatStaffApplication.Status.APPROVED,
+            ).exists()
+        )
+        self.assertEqual(event_staff_status(self.applicant, self.event), "open")
+
+    def test_orphan_approved_application_heals_to_open(self):
+        RetreatStaffApplication.objects.create(
+            event=self.event,
+            user=self.applicant,
+            region=self.seoul,
+            division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
+            group=self.group,
+            group_role=RetreatGroupMembership.Role.LEADER,
+            status=RetreatStaffApplication.Status.APPROVED,
+        )
+        self.assertFalse(
+            RetreatGroupMembership.objects.filter(
+                user=self.applicant, group__event=self.event
+            ).exists()
+        )
+        self.assertEqual(event_staff_status(self.applicant, self.event), "open")
+        self.assertFalse(
+            RetreatStaffApplication.objects.filter(
+                event=self.event,
+                user=self.applicant,
+                status=RetreatStaffApplication.Status.APPROVED,
+            ).exists()
+        )
+
+    def test_attendee_delete_keeps_application_when_council_remains(self):
+        application = RetreatStaffApplication.objects.create(
+            event=self.event,
+            user=self.applicant,
+            region=self.seoul,
+            division=self.div_youth,
+            application_track=StaffApplicationTrack.GROUP_LEADERSHIP,
+            group=self.group,
+            group_role=RetreatGroupMembership.Role.LEADER,
+            status=RetreatStaffApplication.Status.PENDING,
+        )
+        apply_staff_application(application, reviewer=self.admin)
+        RetreatCouncilMembership.objects.create(
+            event=self.event,
+            user=self.applicant,
+            role=RetreatCouncilMembership.Role.EVENT_OBSERVER,
+        )
+        attendee = RetreatAttendee.objects.get(user=self.applicant, group=self.group)
+        self.api.force_authenticate(self.admin)
+        r = self.api.delete(reverse("api_retreat_attendee_detail", args=[attendee.id]))
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertTrue(
+            RetreatStaffApplication.objects.filter(
+                event=self.event,
+                user=self.applicant,
+                status=RetreatStaffApplication.Status.APPROVED,
+            ).exists()
         )

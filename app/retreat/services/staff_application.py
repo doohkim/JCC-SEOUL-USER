@@ -57,7 +57,11 @@ def event_staff_status(user: User, event: RetreatEvent) -> StaffEventStatus:
         if application.status == RetreatStaffApplication.Status.PENDING:
             return "pending"
         if application.status == RetreatStaffApplication.Status.APPROVED:
-            return "approved"
+            # 배정은 없는데 APPROVED만 남은 고아 상태 → 정리 후 재신청 가능
+            delete_staff_application_if_unassigned(user, event, actor=user)
+            if event.staff_applications_open:
+                return "open"
+            return "closed"
         if application.status == RetreatStaffApplication.Status.REJECTED:
             if event.staff_applications_open:
                 return "open"
@@ -210,6 +214,7 @@ def _provision_group_leadership_from_staff_application(
     if role not in (
         RetreatGroupMembership.Role.LEADER,
         RetreatGroupMembership.Role.VICE_LEADER,
+        RetreatGroupMembership.Role.TEACHER,
     ):
         return
 
@@ -324,8 +329,9 @@ def _resolve_approval_group_and_role(
     if role not in (
         RetreatGroupMembership.Role.LEADER,
         RetreatGroupMembership.Role.VICE_LEADER,
+        RetreatGroupMembership.Role.TEACHER,
     ):
-        raise ValueError("조장 또는 부조장 역할을 선택해 주세요.")
+        raise ValueError("조장·부조장·선생님 역할을 선택해 주세요.")
 
     target_group_id = group_id if group_id is not None else application.group_id
     if not target_group_id:

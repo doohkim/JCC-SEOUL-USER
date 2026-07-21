@@ -126,6 +126,7 @@ class RetreatGroupMembership(models.Model):
     class Role(models.TextChoices):
         LEADER = "leader", "조장"
         VICE_LEADER = "vice_leader", "부조장"
+        TEACHER = "teacher", "선생님"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

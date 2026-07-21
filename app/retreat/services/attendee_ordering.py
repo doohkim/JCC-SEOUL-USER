@@ -6,7 +6,8 @@ from typing import Iterable
 
 from django.db.models import Case, F, IntegerField, QuerySet, Value, When
 
-from retreat.models import RetreatAttendee
+from retreat.models import RetreatAttendee, RetreatGroupMembership
+from users.services.user_display import user_display_name
 
 _CHECK_IN_SORT = {
     RetreatAttendee.CheckInStatus.CHECKED_IN: 0,
@@ -29,7 +30,8 @@ def attendee_role_sort_annotation() -> Case:
     return Case(
         When(member_role=RetreatAttendee.MemberRole.LEADER, then=Value(0)),
         When(member_role=RetreatAttendee.MemberRole.VICE_LEADER, then=Value(1)),
-        default=Value(2),
+        When(member_role=RetreatAttendee.MemberRole.TEACHER, then=Value(2)),
+        default=Value(3),
         output_field=IntegerField(),
     )
 
@@ -50,7 +52,7 @@ def order_attendees_for_member_list(qs: QuerySet) -> QuerySet:
 
 
 def pick_group_card_leader_name(leaders: Iterable[RetreatAttendee]) -> str:
-    """조 카드에 표시할 조장 이름 1명.
+    """조 카드에 표시할 조장 이름 1명 (소속 명단 기준).
 
     1. 입실 > 입실전 (퇴실 제외)
     2. 사용자 계정이 연동된 조장
@@ -74,3 +76,34 @@ def pick_group_card_leader_name(leaders: Iterable[RetreatAttendee]) -> str:
 
     best = min(candidates, key=rank)
     return (best.name or "").strip()
+
+
+def pick_group_card_leader_name_from_memberships(
+    memberships: Iterable[RetreatGroupMembership],
+) -> str:
+    """소속 명단에 조장이 없을 때(겸직 담당조 등) membership 조장 이름.
+
+    ``role=leader`` 만 대상. 여러 명이면 가장 먼저 배정된 순(id).
+    """
+    leaders = [
+        m
+        for m in memberships
+        if m.role == RetreatGroupMembership.Role.LEADER and m.user_id
+    ]
+    if not leaders:
+        return ""
+    best = min(leaders, key=lambda m: m.id)
+    return (user_display_name(best.user) or "").strip()
+
+
+def resolve_group_card_leader_name(
+    attendee_leaders: Iterable[RetreatAttendee],
+    memberships: Iterable[RetreatGroupMembership] | None = None,
+) -> str:
+    """조 카드 조장 표시: 소속 명단 조장 우선, 없으면 운영진 membership."""
+    name = pick_group_card_leader_name(attendee_leaders)
+    if name:
+        return name
+    if memberships is None:
+        return ""
+    return pick_group_card_leader_name_from_memberships(memberships)

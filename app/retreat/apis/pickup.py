@@ -223,7 +223,8 @@ class RetreatEventPickupListCreateView(APIView):
 
         can_select = can_select_pickup_group(request.user, event)
 
-        # 조 결정: 회장단·슈퍼유저는 요청에서 선택, 조장/부조장은 본인 조 자동 지정
+        # 조 결정: 회장단·슈퍼유저는 요청에서 선택.
+        # 조장/부조장·선생님은 본인 담당 조만 지정 가능(복수 조면 요청 group 사용).
         group = None
         if can_select:
             group_id = request.data.get("group")
@@ -235,12 +236,27 @@ class RetreatEventPickupListCreateView(APIView):
             group_ids = retreat_pickup_group_ids_for(request.user, event)
             if not group_ids:
                 raise PermissionDenied("배정된 조가 없어 픽업을 등록할 수 없습니다.")
-            group = (
-                RetreatGroup.objects.filter(id__in=group_ids)
-                .select_related("region", "division")
-                .order_by("order", "id")
-                .first()
-            )
+            requested_gid = request.data.get("group")
+            if requested_gid not in (None, ""):
+                try:
+                    requested_gid = int(requested_gid)
+                except (TypeError, ValueError):
+                    requested_gid = None
+                if requested_gid not in group_ids:
+                    errors["group"] = "본인이 담당하는 조만 선택할 수 있습니다."
+                else:
+                    group = (
+                        RetreatGroup.objects.filter(pk=requested_gid, event=event)
+                        .select_related("region", "division")
+                        .first()
+                    )
+            if group is None and "group" not in errors:
+                group = (
+                    RetreatGroup.objects.filter(id__in=group_ids)
+                    .select_related("region", "division")
+                    .order_by("order", "id")
+                    .first()
+                )
 
         # 지역·부서: 회장단은 직접 선택, 조장/부조장은 본인 조의 지역·부서로 자동 지정
         region = None
@@ -413,7 +429,7 @@ class RetreatPickupDetailView(APIView):
             pickup.note = (data.get("note") or "").strip()
             update_fields.append("note")
 
-        # 조·지역·부서는 회장단·슈퍼유저만 변경 가능 (조장은 본인 조 고정)
+        # 조·지역·부서: 회장단은 자유 변경, 조장은 본인 담당 조만 변경 가능
         if can_select:
             if "group" in data:
                 gid = data.get("group")
@@ -448,6 +464,28 @@ class RetreatPickupDetailView(APIView):
                     errors["division"] = "선택한 지역에 속하지 않는 부서입니다."
                 pickup.division = div_obj
                 update_fields.append("division")
+        elif "group" in data:
+            own_group_ids = retreat_pickup_group_ids_for(request.user, event)
+            gid = data.get("group")
+            try:
+                gid = int(gid) if gid not in (None, "") else None
+            except (TypeError, ValueError):
+                gid = None
+            if gid is None or gid not in own_group_ids:
+                errors["group"] = "본인이 담당하는 조만 선택할 수 있습니다."
+            else:
+                grp = (
+                    RetreatGroup.objects.filter(pk=gid, event=event)
+                    .select_related("region", "division")
+                    .first()
+                )
+                if grp is None:
+                    errors["group"] = "올바르지 않은 조입니다."
+                else:
+                    pickup.group = grp
+                    pickup.region = grp.region
+                    pickup.division = grp.division
+                    update_fields.extend(["group", "region", "division"])
 
         if errors:
             raise ValidationError(errors)

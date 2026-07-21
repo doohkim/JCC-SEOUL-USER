@@ -2,16 +2,32 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from notices.models import Notice, NoticeCategory
+from notices.services.newness import has_notices_created_today, is_created_today
 from users.models import Division, Region, UserProfile
 
 User = get_user_model()
 
+_STATIC_STORAGE = override_settings(
+    STORAGES={
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+)
 
+
+@_STATIC_STORAGE
 class NoticeCardFeatureTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -77,8 +93,8 @@ class NoticeCardFeatureTests(TestCase):
     def test_list_renders_card_grid_markup(self):
         r = self.client.get(reverse("notice_list"))
         self.assertContains(r, "jcc-notice-cardGrid")
-        self.assertContains(r, "jcc-notice-searchInput")
-        self.assertContains(r, "jcc-notice-categoryPill")
+        self.assertContains(r, "jcc-notice-cardTitle")
+        self.assertContains(r, "jcc-leftNav-newBadge")
 
     def test_detail_renders_banner_and_tags(self):
         r = self.client.get(reverse("notice_detail", args=[self.notice_a.pk]))
@@ -90,3 +106,38 @@ class NoticeCardFeatureTests(TestCase):
         self.client.logout()
         r = self.client.get(reverse("notice_category_list_api"))
         self.assertEqual(r.status_code, 403)
+
+    def test_is_new_is_same_calendar_day(self):
+        self.assertTrue(is_created_today(self.notice_a.created_at))
+        Notice.objects.filter(pk=self.notice_a.pk).update(
+            created_at=timezone.now() - timedelta(days=1)
+        )
+        self.notice_a.refresh_from_db()
+        self.assertFalse(is_created_today(self.notice_a.created_at))
+
+    def test_nav_shows_new_badge_when_notice_created_today(self):
+        r = self.client.get(reverse("notice_list"))
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(has_notices_created_today())
+        self.assertContains(r, "jcc-leftNav-newBadge")
+        self.assertContains(r, "오늘 새 이야기")
+
+    def test_nav_hides_new_badge_when_no_notice_today(self):
+        Notice.objects.all().update(created_at=timezone.now() - timedelta(days=1))
+        self.assertFalse(has_notices_created_today())
+        r = self.client.get(reverse("notice_list"))
+        self.assertEqual(r.status_code, 200)
+        self.assertNotContains(r, "jcc-leftNav-newBadge")
+
+    def test_api_is_new_matches_same_day(self):
+        r = self.client.get(reverse("notice_list_api"))
+        self.assertEqual(r.status_code, 200)
+        results = r.json()["results"]
+        by_title = {item["title"]: item["is_new"] for item in results}
+        self.assertTrue(by_title["영성 공지"])
+        Notice.objects.filter(pk=self.notice_a.pk).update(
+            created_at=timezone.now() - timedelta(days=2)
+        )
+        r2 = self.client.get(reverse("notice_list_api"))
+        by_title2 = {item["title"]: item["is_new"] for item in r2.json()["results"]}
+        self.assertFalse(by_title2["영성 공지"])

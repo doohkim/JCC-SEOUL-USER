@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>픽업 · {{ event.name }}</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260721s" />
     <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260702a" />
   </head>
   <body class="has-retreat-bottom-tabs">
@@ -193,12 +193,30 @@
                 </select>
               </div>
               {% else %}
+              {% if group_choices|length > 1 %}
+              <div class="field">
+                <label for="pickupGroup">조 *</label>
+                <select id="pickupGroup" name="group" required autocomplete="off" data-cselect data-leader-group-select>
+                  <option value="">선택</option>
+                  {% for g in group_choices %}
+                    <option value="{{ g.id }}">{{ g.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="pickupName">조원 *</label>
+                <select id="pickupName" name="name" required autocomplete="off" data-cselect data-member-select data-leader-member-select disabled>
+                  <option value="">조를 먼저 선택</option>
+                </select>
+              </div>
+              {% else %}
               <div class="field">
                 <label for="pickupName">조원 *</label>
                 <select id="pickupName" name="name" required autocomplete="off" data-cselect data-member-select data-leader-member-select>
                   <option value="">선택</option>
                 </select>
               </div>
+              {% endif %}
               {% endif %}
               <div class="field">
                 <label for="pickupTrainTime">버스,열차 승하차 시각 *</label>
@@ -289,6 +307,7 @@
         canSelectGroup: {{ can_select_pickup_group|yesno:"true,false" }},
         canViewRetiredAccountData: {{ can_view_retired_account_data|yesno:"true,false" }},
         leaderGroupId: {% if leader_group_id %}{{ leader_group_id }}{% else %}null{% endif %},
+        leaderGroupIds: [{% for gid in leader_group_ids %}{{ gid }}{% if not forloop.last %}, {% endif %}{% endfor %}],
         apiList: "{% url 'api_retreat_event_pickups' event.id %}",
         apiDetailBase: "/api/v1/retreat/pickups/",
         apiLocationList: "{% url 'api_retreat_event_pickup_locations' event.id %}",
@@ -299,6 +318,6 @@
     <script src="{% static 'retreat/datetime_picker.js' %}?v=20260619a" defer></script>
     <script src="{% static 'retreat/date_filter.js' %}?v=20260615a" defer></script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/pickup.js' %}?v=20260702d" defer></script>
+    <script src="{% static 'retreat/pickup.js' %}?v=20260721a" defer></script>
   </body>
 </html>

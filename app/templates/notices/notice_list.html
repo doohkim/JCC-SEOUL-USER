@@ -5,14 +5,14 @@
     {% include 'includes/jcc_theme_head.html' %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>함께하기</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
+    <title>함께보기</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260721s" />
   </head>
   <body class="has-notice-bottom-tabs jcc-notice-list-page">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        {% include 'includes/jcc_page_header.html' with page_title='함께하기' tabs_template='notices/_subtabs.html' notices_tab='notices' %}
+        {% include 'includes/jcc_page_header.html' with page_title='함께보기' tabs_template='notices/_subtabs.html' notices_tab='notices' %}
         <main class="jcc-notice-listMain">
           {% if notices %}
             <div class="jcc-notice-cardGrid">

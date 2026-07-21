@@ -319,6 +319,7 @@ _LEADER_ROLES = frozenset(
     {
         RetreatAttendee.MemberRole.LEADER,
         RetreatAttendee.MemberRole.VICE_LEADER,
+        RetreatAttendee.MemberRole.TEACHER,
     }
 )
 
@@ -533,6 +534,7 @@ def sync_membership_from_attendee(
     leader_roles = (
         RetreatAttendee.MemberRole.LEADER,
         RetreatAttendee.MemberRole.VICE_LEADER,
+        RetreatAttendee.MemberRole.TEACHER,
     )
     prev_role = (previous_member_role or "").strip()
     current_user_id = user.id if user else None
@@ -694,6 +696,7 @@ def clear_leader_role_on_membership_removed(
         if attendee.member_role in (
             RetreatAttendee.MemberRole.LEADER,
             RetreatAttendee.MemberRole.VICE_LEADER,
+            RetreatAttendee.MemberRole.TEACHER,
         ):
             attendee.member_role = RetreatAttendee.MemberRole.MEMBER
             attendee.save(update_fields=["member_role", "updated_at"])

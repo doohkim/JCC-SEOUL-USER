@@ -221,6 +221,108 @@ class RetreatDashboardApiTests(APITestCase):
         data = self.client.get(url).json()
         self.assertEqual(data["summary"]["lodging_unassigned"], 2)
 
+    def test_multi_scope_group_counts_once_in_by_division(self):
+        """다스코프 조는 지역 행마다 인원을 복제하지 않고, 동일 스코프면 한 행으로 합친다."""
+        daegu = Region.objects.create(code="dash_daegu", name="대구", sort_order=40)
+        daejeon = Region.objects.create(code="dash_daejeon", name="대전", sort_order=41)
+        sejong = Region.objects.create(code="dash_sejong", name="세종", sort_order=42)
+        div_daegu = Division.objects.create(
+            region=daegu, code="dash_daegu_youth", name="청년부"
+        )
+        div_daejeon = Division.objects.create(
+            region=daejeon, code="dash_daejeon_youth", name="청년부"
+        )
+        div_sejong = Division.objects.create(
+            region=sejong, code="dash_sejong_youth", name="청년부"
+        )
+        for order, name in ((17, "17조"), (18, "18조")):
+            group = RetreatGroup.objects.create(
+                event=self.event,
+                region=daegu,
+                division=div_daegu,
+                name=name,
+                order=order,
+            )
+            RetreatGroupScope.objects.create(
+                group=group, region=daejeon, division=div_daejeon
+            )
+            RetreatGroupScope.objects.create(
+                group=group, region=sejong, division=div_sejong
+            )
+            RetreatAttendee.objects.create(
+                group=group,
+                name=f"{name}원",
+                expected_check_in_at=timezone.now() + timedelta(hours=2),
+            )
+        staff = User.objects.create_user(
+            username="dash_multi_scope_admin", password="x"
+        )
+        RetreatCouncilMembership.objects.create(
+            user=staff,
+            event=self.event,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
+        )
+        self.client.force_authenticate(staff)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+
+        multi_rows = [
+            row
+            for row in data["by_division"]
+            if "17" in str(row.get("group_range") or "")
+            or "18" in str(row.get("group_range") or "")
+        ]
+        self.assertEqual(len(multi_rows), 1)
+        self.assertEqual(multi_rows[0]["group_range"], "17~18조")
+        self.assertEqual(multi_rows[0]["pending"], 2)
+        self.assertIn("대구", multi_rows[0]["region"])
+        self.assertIn("대전", multi_rows[0]["region"])
+        self.assertIn("세종", multi_rows[0]["region"])
+        self.assertEqual(multi_rows[0].get("division") or "", "")
+
+    def test_same_region_multi_division_scopes_merge_to_one_row(self):
+        """인천 청년부+대학부처럼 같은 지역 다부서 스코프 조들은 1행으로 합친다."""
+        incheon = Region.objects.create(code="dash_incheon", name="인천", sort_order=50)
+        div_youth = Division.objects.create(
+            region=incheon, code="dash_icn_youth", name="청년부"
+        )
+        div_univ = Division.objects.create(
+            region=incheon, code="dash_icn_univ", name="대학부"
+        )
+        for order in (9, 10):
+            group = RetreatGroup.objects.create(
+                event=self.event,
+                region=incheon,
+                division=div_youth,
+                name=f"{order}조",
+                order=order,
+            )
+            RetreatGroupScope.objects.create(
+                group=group, region=incheon, division=div_univ
+            )
+            RetreatAttendee.objects.create(
+                group=group,
+                name=f"{order}조원",
+                expected_check_in_at=timezone.now() + timedelta(hours=2),
+            )
+        staff = User.objects.create_user(username="dash_incheon_merge", password="x")
+        RetreatCouncilMembership.objects.create(
+            user=staff,
+            event=self.event,
+            role=RetreatCouncilMembership.Role.EVENT_ADMIN,
+        )
+        self.client.force_authenticate(staff)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        rows = [
+            row for row in data["by_division"] if "인천" in str(row.get("region") or "")
+        ]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["group_range"], "9~10조")
+        self.assertEqual(rows[0]["pending"], 2)
+        self.assertEqual(rows[0]["region"], "인천 · 청년부·대학부")
+        self.assertEqual(rows[0].get("division") or "", "")
+
     def test_results_grand_total(self):
         self.client.force_authenticate(self.leader)
         url = reverse("api_retreat_event_results", args=[self.event.id])

@@ -347,3 +347,95 @@ class GroupMembershipApiTests(APITestCase, _Fixture):
         m = RetreatGroupMembership.objects.get(group=self.group, user=self.leader)
         r = self.client.delete(self._detail_url(m.id))
         self.assertIn(r.status_code, (403, 404))
+
+    def test_council_can_add_teacher(self):
+        self.client.force_authenticate(self.council)
+        r = self.client.post(
+            self._list_url(),
+            {"username": self.new_member.username, "role": "teacher"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertTrue(
+            RetreatGroupMembership.objects.filter(
+                group=self.group,
+                user=self.new_member,
+                role=RetreatGroupMembership.Role.TEACHER,
+            ).exists()
+        )
+        attendee = RetreatAttendee.objects.get(group=self.group, user=self.new_member)
+        self.assertEqual(attendee.member_role, RetreatAttendee.MemberRole.TEACHER)
+
+    def test_teacher_appointed_other_group_keeps_home(self):
+        group2 = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="겸직대상조",
+        )
+        teacher = User.objects.create_user(username="gm_teacher", password="x")
+        profile = ensure_user_profile(teacher)
+        profile.real_name = "선생님"
+        profile.save(update_fields=["real_name", "updated_at"])
+        RetreatAttendee.objects.create(
+            group=self.group,
+            user=teacher,
+            name="선생님",
+            member_role=RetreatAttendee.MemberRole.TEACHER,
+            gender=RetreatAttendee.Gender.FEMALE,
+        )
+        RetreatGroupMembership.objects.create(
+            user=teacher,
+            group=self.group,
+            role=RetreatGroupMembership.Role.TEACHER,
+        )
+        self.client.force_authenticate(self.council)
+        r = self.client.post(
+            reverse("api_retreat_group_memberships", args=[group2.id]),
+            {"username": teacher.username, "role": "teacher"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        body = r.json()
+        self.assertTrue(body.get("kept_home_group"))
+        self.assertEqual(body.get("home_group_id"), self.group.id)
+        self.assertTrue(
+            RetreatAttendee.objects.filter(group=self.group, user=teacher).exists()
+        )
+        self.assertFalse(
+            RetreatAttendee.objects.filter(group=group2, user=teacher).exists()
+        )
+        self.assertTrue(
+            RetreatGroupMembership.objects.filter(
+                group=group2, user=teacher, role=RetreatGroupMembership.Role.TEACHER
+            ).exists()
+        )
+
+    def test_attendee_teacher_role_creates_membership(self):
+        target = User.objects.create_user(username="gm_att_teacher", password="x")
+        profile = ensure_user_profile(target)
+        profile.real_name = "구분선생님"
+        profile.save(update_fields=["real_name", "updated_at"])
+        attendee = RetreatAttendee.objects.create(
+            group=self.group,
+            user=target,
+            name="구분선생님",
+            member_role=RetreatAttendee.MemberRole.MEMBER,
+            gender=RetreatAttendee.Gender.MALE,
+        )
+        self.client.force_authenticate(self.council)
+        r = self.client.patch(
+            reverse("api_retreat_attendee_detail", args=[attendee.id]),
+            {"member_role": "teacher"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        attendee.refresh_from_db()
+        self.assertEqual(attendee.member_role, RetreatAttendee.MemberRole.TEACHER)
+        self.assertTrue(
+            RetreatGroupMembership.objects.filter(
+                group=self.group,
+                user=target,
+                role=RetreatGroupMembership.Role.TEACHER,
+            ).exists()
+        )

@@ -123,7 +123,16 @@
       : null;
   const isLeaderMemberSelect =
     !!memberSelect && memberSelect.hasAttribute("data-leader-member-select");
+  const isLeaderGroupSelect =
+    !!groupSelect && groupSelect.hasAttribute("data-leader-group-select");
   const leaderGroupId = ctx.leaderGroupId != null ? String(ctx.leaderGroupId) : "";
+  const leaderGroupIds = Array.isArray(ctx.leaderGroupIds)
+    ? ctx.leaderGroupIds.map(String)
+    : leaderGroupId
+      ? [leaderGroupId]
+      : [];
+  const hasMultipleLeaderGroups =
+    isLeaderMemberSelect && leaderGroupIds.length > 1;
 
   function parseJsonEl(id, fallback) {
     try {
@@ -464,7 +473,20 @@
     const grp = editItem ? editItem.group || "" : "";
     if (memberSelect) {
       if (isLeaderMemberSelect) {
-        fillMemberSelect(leaderGroupId, editItem ? editItem.name : "");
+        if (isLeaderGroupSelect) {
+          const targetGroup = grp || "";
+          if (groupSelect) {
+            groupSelect.disabled = false;
+            groupSelect.value = targetGroup;
+          }
+          if (targetGroup) {
+            fillMemberSelect(targetGroup, editItem ? editItem.name : "");
+          } else {
+            fillMemberSelect("", null);
+          }
+        } else {
+          fillMemberSelect(leaderGroupId, editItem ? editItem.name : "");
+        }
       } else {
         // 캐스케이딩 플로우: 지역→부서→조→조원 순서로 복원
         if (regionSelect) regionSelect.value = reg;
@@ -593,7 +615,9 @@
       const contact =
         document.getElementById("pickupContact")?.value.trim() || "";
       const note = document.getElementById("pickupNote")?.value.trim() || "";
-      const group = groupSelect?.value || (isLeaderMemberSelect ? leaderGroupId : "");
+      const group =
+        groupSelect?.value ||
+        (isLeaderMemberSelect && !isLeaderGroupSelect ? leaderGroupId : "");
       const region = regionSelect?.value || "";
       const division = divisionSelect?.value || "";
 
@@ -607,6 +631,8 @@
       if (memberSelect && !isLeaderMemberSelect) {
         if (!region) missing.push(["pickupRegion", "지역을 선택해 주세요."]);
         if (!division) missing.push(["pickupDivision", "부서를 선택해 주세요."]);
+        if (!group) missing.push(["pickupGroup", "조를 선택해 주세요."]);
+      } else if (isLeaderMemberSelect && (isLeaderGroupSelect || hasMultipleLeaderGroups)) {
         if (!group) missing.push(["pickupGroup", "조를 선택해 주세요."]);
       }
       if (!name)

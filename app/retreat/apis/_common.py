@@ -158,6 +158,9 @@ def user_can_delete_attendee(user, group: RetreatGroup, attendee=None) -> bool:
     """조원 삭제."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
+    if attendee is not None and attendee.user_id and attendee.user_id == user.id:
+        # 본인 연동 행은 조원 명단에서 삭제 불가 (조 운영진 해제 경로 사용)
+        return False
     if attendee is not None:
         from retreat.services.check_in_stamps import is_attendee_profile_locked
 
@@ -169,7 +172,19 @@ def user_can_delete_attendee(user, group: RetreatGroup, attendee=None) -> bool:
     return is_retreat_group_leader(user, group)
 
 
+_SELF_ATTENDEE_DELETE_DENIED = (
+    "본인 조원 행은 삭제할 수 없습니다. " "본인 해제는 관리 > 조 운영진에서 처리하세요."
+)
+
+
 def assert_can_delete_attendee(user, group: RetreatGroup, attendee=None) -> None:
+    if (
+        attendee is not None
+        and attendee.user_id
+        and user
+        and attendee.user_id == user.id
+    ):
+        raise PermissionDenied(_SELF_ATTENDEE_DELETE_DENIED)
     if not user_can_delete_attendee(user, group, attendee=attendee):
         raise PermissionDenied("조원을 삭제할 권한이 없습니다.")
 

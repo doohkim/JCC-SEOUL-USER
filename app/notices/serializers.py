@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
-
-from django.utils import timezone
 from rest_framework import serializers
 
 from notices.models import Notice, NoticeCategory
+from notices.services.newness import is_created_today
 from users.services.user_display import user_display_name
-
-_NOTICE_NEW_DAYS = 7
 
 
 class NoticeCategorySerializer(serializers.ModelSerializer):
@@ -56,9 +52,7 @@ class NoticeListSerializer(serializers.ModelSerializer):
         return user_display_name(obj.created_by)
 
     def get_is_new(self, obj: Notice) -> bool:
-        if not obj.created_at:
-            return False
-        return obj.created_at >= timezone.now() - timedelta(days=_NOTICE_NEW_DAYS)
+        return is_created_today(obj.created_at)
 
 
 class NoticeDetailSerializer(NoticeListSerializer):

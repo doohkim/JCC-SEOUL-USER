@@ -29,6 +29,7 @@ class RetreatAttendee(models.Model):
         MEMBER = "member", "조원"
         LEADER = "leader", "조장"
         VICE_LEADER = "vice_leader", "부조장"
+        TEACHER = "teacher", "선생님"
 
     class ParticipationStatus(models.TextChoices):
         PARTICIPATING = "participating", "참석"

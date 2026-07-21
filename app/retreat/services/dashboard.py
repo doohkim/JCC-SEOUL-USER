@@ -155,25 +155,21 @@ def build_session_dashboard(
             }
         )
 
-    rollup_rows: list[dict[str, Any]] = []
-    for row in by_group:
-        group = group_by_id[row["group_id"]]
-        for scope_row in _visible_rollup_scope_rows_for_group(
-            group,
-            scope_kind=scope_kind,
-            scope_region_id=scope_region_id,
-            scope_division_id=scope_division_id,
-        ):
-            rollup_rows.append(
-                {
-                    **row,
-                    "region": scope_row["region"],
-                    "region_id": scope_row["region_id"],
-                    "division": scope_row["division"],
-                    "division_id": scope_row["division_id"],
-                }
-            )
-    by_division = _rollup_by_region_division(rollup_rows)
+    by_division = _build_division_rows_without_scope_duplication(
+        by_group,
+        group_by_id,
+        scope_kind=scope_kind,
+        scope_region_id=scope_region_id,
+        scope_division_id=scope_division_id,
+        count_keys=("present",),
+        rollup_fn=_rollup_by_region_division,
+        multi_row_extra={
+            "entered": "__present__",
+            "left_scheduled": 0,
+            "current": "__present__",
+            "final_attendance": "__present__",
+        },
+    )
     grand_total = sum(row["present"] for row in by_group)
 
     return {
@@ -191,6 +187,123 @@ def build_session_dashboard(
             "final_attendance": grand_total,
         },
     }
+
+
+def _format_combined_scope_label(scopes: list[dict[str, Any]]) -> str:
+    """다스코프 조 지역·부서 표시.
+
+    - 부서 동일: 대구·대전·세종 · 청년부
+    - 지역 동일: 인천 · 청년부·대학부
+    - 그 외: 콤마로 나열
+    """
+    if not scopes:
+        return "-"
+    if len(scopes) == 1:
+        return f"{scopes[0]['region']} · {scopes[0]['division']}"
+    regions = [str(s.get("region") or "").strip() for s in scopes]
+    divisions = [str(s.get("division") or "").strip() for s in scopes]
+    region_set = {r for r in regions if r}
+    division_set = {d for d in divisions if d}
+    if len(division_set) == 1:
+        return f"{'·'.join(regions)} · {next(iter(division_set))}"
+    if len(region_set) == 1:
+        return f"{next(iter(region_set))} · {'·'.join(divisions)}"
+    return ", ".join(
+        f"{s.get('region', '')} · {s.get('division', '')}".strip(" ·") for s in scopes
+    )
+
+
+def _scope_fingerprint(scopes: list[dict[str, Any]]) -> tuple:
+    return tuple(
+        sorted(
+            (int(s["region_id"]), int(s["division_id"]))
+            for s in scopes
+            if s.get("region_id") is not None and s.get("division_id") is not None
+        )
+    )
+
+
+def _build_division_rows_without_scope_duplication(
+    by_group: list[dict[str, Any]],
+    group_by_id: dict[int, RetreatGroup],
+    *,
+    scope_kind: str,
+    scope_region_id: int | None,
+    scope_division_id: int | None,
+    count_keys: tuple[str, ...],
+    rollup_fn,
+    multi_row_extra: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """지역·부서 표용 행 생성.
+
+    - 단일 스코프 조: 기존처럼 (지역, 부서)로 묶어 조 범위를 합침
+    - 다스코프 조: 인원 복제 없이, 동일 스코프 조합끼리 한 행으로 합침
+      (예: 인천 청년부+대학부 9~16조 → 1행)
+    """
+    single_scope_rows: list[dict[str, Any]] = []
+    multi_buckets: dict[tuple, dict[str, Any]] = {}
+    for row in by_group:
+        group = group_by_id[row["group_id"]]
+        scopes = _visible_rollup_scope_rows_for_group(
+            group,
+            scope_kind=scope_kind,
+            scope_region_id=scope_region_id,
+            scope_division_id=scope_division_id,
+        )
+        if not scopes:
+            continue
+        if len(scopes) == 1:
+            scope_row = scopes[0]
+            single_scope_rows.append(
+                {
+                    **row,
+                    "region": scope_row["region"],
+                    "region_id": scope_row["region_id"],
+                    "division": scope_row["division"],
+                    "division_id": scope_row["division_id"],
+                }
+            )
+            continue
+
+        counts = {key: int(row.get(key, 0) or 0) for key in count_keys}
+        if multi_row_extra:
+            present = int(row.get("present", 0) or 0)
+            counts = {
+                **counts,
+                **{
+                    k: (present if v == "__present__" else int(v or 0))
+                    for k, v in multi_row_extra.items()
+                },
+            }
+
+        fp = _scope_fingerprint(scopes)
+        bucket = multi_buckets.get(fp)
+        if bucket is None:
+            multi_buckets[fp] = {
+                "region": _format_combined_scope_label(scopes),
+                "region_id": scopes[0]["region_id"],
+                "division": "",
+                "division_id": scopes[0]["division_id"],
+                "group_names": [row["name"]],
+                **counts,
+            }
+        else:
+            bucket["group_names"].append(row["name"])
+            for key, value in counts.items():
+                bucket[key] = int(bucket.get(key, 0) or 0) + value
+
+    multi_scope_rows: list[dict[str, Any]] = []
+    for bucket in multi_buckets.values():
+        names = bucket.pop("group_names")
+        multi_scope_rows.append(
+            {
+                **bucket,
+                "group_range": _format_group_range(names),
+            }
+        )
+
+    rolled = rollup_fn(single_scope_rows)
+    return rolled + multi_scope_rows
 
 
 def _rollup_by_region_division(by_group: list[dict]) -> list[dict]:
@@ -374,25 +487,15 @@ def build_realtime_dashboard(
             }
         )
 
-    rollup_rows: list[dict[str, Any]] = []
-    for row in by_group:
-        group = group_by_id[row["group_id"]]
-        for scope_row in _visible_rollup_scope_rows_for_group(
-            group,
-            scope_kind=scope_kind,
-            scope_region_id=scope_region_id,
-            scope_division_id=scope_division_id,
-        ):
-            rollup_rows.append(
-                {
-                    **row,
-                    "region": scope_row["region"],
-                    "region_id": scope_row["region_id"],
-                    "division": scope_row["division"],
-                    "division_id": scope_row["division_id"],
-                }
-            )
-    by_division = _rollup_realtime_by_region_division(rollup_rows)
+    by_division = _build_division_rows_without_scope_duplication(
+        by_group,
+        group_by_id,
+        scope_kind=scope_kind,
+        scope_region_id=scope_region_id,
+        scope_division_id=scope_division_id,
+        count_keys=("pending", "checked_in", "checked_out", "attended", "total"),
+        rollup_fn=_rollup_realtime_by_region_division,
+    )
     hourly = _hourly_check_in_out(group_ids, now, user=user)
 
     grand_pending = sum(r["pending"] for r in by_group)

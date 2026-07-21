@@ -13,6 +13,7 @@ from django.utils import timezone
 from retreat.models import (
     RetreatAttendance,
     RetreatAttendee,
+    RetreatChangeLog,
     RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
@@ -453,13 +454,65 @@ class RetreatPageAccessTests(_PageFixture):
         self.assertIn(self.group.id, row_groups)
 
     def test_admin_changelog_tab_returns_entries_context(self):
-        self.client.force_login(self.superuser)
-        r = self.client.get(
+        from django.test import RequestFactory
+
+        from retreat.views import RetreatAdminView
+
+        factory = RequestFactory()
+        request = factory.get(
             reverse("retreat_admin", args=[self.event.id]) + "?tab=changelog"
         )
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.context["active_tab"], "changelog")
-        self.assertIn("changelog_entries", r.context)
+        request.user = self.superuser
+        request.session = self.client.session
+        view = RetreatAdminView()
+        view.setup(request, event_id=self.event.id)
+        ctx = view.get_context_data()
+        self.assertEqual(ctx["active_tab"], "changelog")
+        self.assertIn("changelog_entries", ctx)
+        self.assertIn("changelog_page", ctx)
+        self.assertIn("changelog_filters", ctx)
+        self.assertIn("q", ctx["changelog_filters"])
+        self.assertIn("target_type", ctx["changelog_filters"])
+
+    def test_admin_changelog_paginates_twenty(self):
+        from django.test import RequestFactory
+
+        from retreat.views import RetreatAdminView
+
+        for i in range(25):
+            RetreatChangeLog.objects.create(
+                event=self.event,
+                action=RetreatChangeLog.Action.UPDATE,
+                target_type=RetreatChangeLog.TargetType.ATTENDEE,
+                target_id=i + 1,
+                payload_after={"name": f"조원{i}"},
+                changed_by=self.superuser,
+            )
+        factory = RequestFactory()
+        request = factory.get(
+            reverse("retreat_admin", args=[self.event.id]) + "?tab=changelog"
+        )
+        request.user = self.superuser
+        request.session = self.client.session
+        view = RetreatAdminView()
+        view.setup(request, event_id=self.event.id)
+        ctx = view.get_context_data()
+        self.assertEqual(len(ctx["changelog_entries"]), 20)
+        self.assertEqual(ctx["changelog_page"].paginator.per_page, 20)
+        self.assertGreaterEqual(ctx["changelog_page"].paginator.count, 25)
+
+        request2 = factory.get(
+            reverse("retreat_admin", args=[self.event.id])
+            + f"?tab=changelog&actor={self.superuser.id}&target_type=attendee"
+        )
+        request2.user = self.superuser
+        request2.session = self.client.session
+        view2 = RetreatAdminView()
+        view2.setup(request2, event_id=self.event.id)
+        ctx2 = view2.get_context_data()
+        self.assertEqual(ctx2["changelog_filters"]["actor"], str(self.superuser.id))
+        self.assertEqual(ctx2["changelog_filters"]["target_type"], "attendee")
+        self.assertTrue(len(ctx2["changelog_entries"]) <= 20)
 
     def test_admin_pastor_forbidden_on_sessions_tab(self):
         self.client.force_login(self.pastor)

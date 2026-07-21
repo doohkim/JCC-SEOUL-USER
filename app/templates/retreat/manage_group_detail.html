@@ -6,8 +6,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ group.name }} · 그룹</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260702k" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260721s" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260721n" />
   </head>
   <body class="has-retreat-bottom-tabs jcc-retreat-detail">
     <div class="jcc-layout">
@@ -162,6 +162,15 @@
                           <button type="button" class="jcc-retreat-rowEdit" data-edit aria-label="{{ a.name }} {% if a.profile_locked %}보기{% else %}수정{% endif %}">{% if a.profile_locked %}보기{% else %}수정{% endif %}</button>
                           {% if a.can_delete %}
                             <button type="button" class="jcc-retreat-pickupDelete" data-del aria-label="{{ a.name }} 삭제" title="삭제">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M3 6h18" />
+                                <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                <path d="M10 11v6M14 11v6" />
+                              </svg>
+                            </button>
+                          {% elif a.user_id == request.user.id %}
+                            <button type="button" class="jcc-retreat-pickupDelete" disabled aria-label="본인 행은 삭제할 수 없습니다" title="본인 해제는 관리 > 조 운영진에서 처리하세요.">
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M3 6h18" />
                                 <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
@@ -359,6 +368,7 @@
       window.RETREAT_CTX = {
         eventId: {{ event.id }},
         groupId: {{ group.id }},
+        currentUserId: {{ request.user.id }},
         groupRegionId: {{ group.region_id|default:"null" }},
         groupDivisionId: {{ group.division_id|default:"null" }},
         groupDivisionIds: [{{ group.division_id }}{% for s in group.extra_scopes.all %}, {{ s.division_id }}{% endfor %}],
@@ -380,6 +390,7 @@
           groupMemberships: "/api/v1/retreat/groups/{{ group.id }}/memberships/",
           membershipDetail: "/api/v1/retreat/group-memberships/",
           userSearchUrl: "{% url 'api_retreat_user_search' %}",
+          staffApplyUrl: "{% url 'retreat_staff_apply' event.id %}",
         },
       };
     </script>
@@ -391,7 +402,7 @@
     <script src="{% static 'retreat/datetime_picker.js' %}?v=20260619a" defer></script>
     <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
     <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618b" defer></script>
-    <script src="{% static 'retreat/manage_group.js' %}?v=20260721a" defer></script>
+    <script src="{% static 'retreat/manage_group.js' %}?v=20260721d" defer></script>
     <script>
       // 조원 수정 모달은 열릴 때 select 값을 프로그램으로 채우므로, 표시될 때 커스텀 드롭다운 라벨을 다시 동기화한다.
       document.addEventListener("DOMContentLoaded", function () {

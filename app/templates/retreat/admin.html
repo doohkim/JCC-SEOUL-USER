@@ -12,8 +12,8 @@
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260617g" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260721s" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260721q" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -154,13 +154,81 @@
             </div>
           {% else %}
             <div class="jcc-retreat-listTop jcc-retreat-listTop--placeholder" aria-hidden="true"></div>
-            <div class="card jcc-retreat-adminCard">
+            <div class="card jcc-retreat-adminCard jcc-retreat-changelogCard">
+              <form class="jcc-retreat-changelogFilters" method="get" action="">
+                <input type="hidden" name="tab" value="changelog" />
+                <div class="jcc-retreat-changelogFilterRow jcc-retreat-changelogFilterRow--primary">
+                  <div class="jcc-retreat-rosterSearchBlock jcc-retreat-changelogSearch">
+                    <label class="jcc-retreat-rosterSearchWrap" for="changelogSearch">
+                      <svg class="jcc-retreat-rosterSearchIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/>
+                        <path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                      </svg>
+                      <input
+                        type="search"
+                        class="jcc-retreat-rosterSearch"
+                        id="changelogSearch"
+                        name="q"
+                        value="{{ changelog_filters.q }}"
+                        placeholder="이름·요약 키워드 검색…"
+                        autocomplete="off"
+                        aria-label="이름·요약 키워드 검색"
+                      />
+                    </label>
+                  </div>
+                  <div class="jcc-retreat-changelogDates">
+                    <div class="field">
+                      <label for="changelogDateFrom">시작일</label>
+                      <input type="date" id="changelogDateFrom" name="date_from" value="{{ changelog_filters.date_from }}" />
+                    </div>
+                    <div class="field">
+                      <label for="changelogDateTo">종료일</label>
+                      <input type="date" id="changelogDateTo" name="date_to" value="{{ changelog_filters.date_to }}" />
+                    </div>
+                  </div>
+                </div>
+                <div class="jcc-retreat-changelogFilterRow jcc-retreat-changelogFilterRow--secondary">
+                  <div class="field">
+                    <label for="changelogActor">작업자</label>
+                    <select id="changelogActor" name="actor" data-cselect>
+                      <option value="">전체</option>
+                      {% for actor in changelog_actors %}
+                        <option value="{{ actor.id }}"{% if changelog_filters.actor == actor.id|stringformat:"s" %} selected{% endif %}>{{ actor.label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="changelogTargetType">대상</label>
+                    <select id="changelogTargetType" name="target_type" data-cselect>
+                      <option value="">전체</option>
+                      {% for code, label in changelog_target_type_choices %}
+                        <option value="{{ code }}"{% if changelog_filters.target_type == code %} selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="changelogAction">동작</label>
+                    <select id="changelogAction" name="action" data-cselect>
+                      <option value="">전체</option>
+                      {% for code, label in changelog_action_choices %}
+                        <option value="{{ code }}"{% if changelog_filters.action == code %} selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="jcc-retreat-changelogFilterActions">
+                    <button type="submit" class="jcc-retreat-btnPrimary">적용</button>
+                    <a class="secondary jcc-retreat-changelogReset" href="{% url 'retreat_admin' event.id %}?tab=changelog">초기화</a>
+                  </div>
+                </div>
+              </form>
+
               <div class="jcc-retreat-tableWrap">
-                <table class="jcc-table">
+                <table class="jcc-table jcc-retreat-changelogTable">
                   <thead>
                     <tr>
                       <th>일시</th>
                       <th>작업자</th>
+                      <th>대상</th>
                       <th>요약</th>
                       <th>상세</th>
                     </tr>
@@ -170,6 +238,10 @@
                       <tr>
                         <td>{{ entry.log.changed_at|date:"m/d H:i" }}</td>
                         <td>{{ entry.actor }}</td>
+                        <td>
+                          <span class="jcc-retreat-pill jcc-retreat-pill--scopeReadonly">{{ entry.log.get_target_type_display }}</span>
+                          <span class="muted jcc-retreat-changelogActionLabel">{{ entry.log.get_action_display }}</span>
+                        </td>
                         <td>{{ entry.summary }}</td>
                         <td class="jcc-retreat-logPayload">
                           {% if entry.detail %}
@@ -182,11 +254,29 @@
                         </td>
                       </tr>
                     {% empty %}
-                      <tr><td colspan="4">변경 이력이 없습니다.</td></tr>
+                      <tr><td colspan="5">{% if changelog_filters.q or changelog_filters.date_from or changelog_filters.date_to or changelog_filters.actor or changelog_filters.target_type or changelog_filters.action %}검색 결과가 없습니다.{% else %}변경 이력이 없습니다.{% endif %}</td></tr>
                     {% endfor %}
                   </tbody>
                 </table>
               </div>
+
+              {% if changelog_page and changelog_page.paginator.count %}
+                <nav class="jcc-retreat-staffPager jcc-retreat-changelogPager" aria-label="변경 이력 페이지">
+                  {% if changelog_page.has_previous %}
+                    <a class="secondary jcc-retreat-staffPagerBtn" href="?{{ changelog_querystring }}&amp;page={{ changelog_page.previous_page_number }}">이전</a>
+                  {% else %}
+                    <button type="button" class="secondary jcc-retreat-staffPagerBtn" disabled>이전</button>
+                  {% endif %}
+                  <span class="jcc-retreat-staffPagerInfo muted">
+                    {{ changelog_page.start_index }}–{{ changelog_page.end_index }} / {{ changelog_page.paginator.count }}
+                  </span>
+                  {% if changelog_page.has_next %}
+                    <a class="secondary jcc-retreat-staffPagerBtn" href="?{{ changelog_querystring }}&amp;page={{ changelog_page.next_page_number }}">다음</a>
+                  {% else %}
+                    <button type="button" class="secondary jcc-retreat-staffPagerBtn" disabled>다음</button>
+                  {% endif %}
+                </nav>
+              {% endif %}
             </div>
           {% endif %}
         </main>

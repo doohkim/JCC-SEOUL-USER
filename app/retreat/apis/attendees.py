@@ -64,6 +64,7 @@ _LEADER_MEMBER_ROLES = frozenset(
     {
         RetreatAttendee.MemberRole.LEADER,
         RetreatAttendee.MemberRole.VICE_LEADER,
+        RetreatAttendee.MemberRole.TEACHER,
     }
 )
 
@@ -88,7 +89,7 @@ def _assert_home_role_upgrade_allowed(attendee: RetreatAttendee, new_role: str) 
         raise ValidationError(
             {
                 "member_role": (
-                    "이미 다른 조 조장·부조장입니다. "
+                    "이미 다른 조 조장·부조장·선생님입니다. "
                     "소속 조 역할은 조원 수정이 아니라 관리 > 조 운영진에서 처리하세요."
                 )
             }
@@ -136,7 +137,7 @@ def _assert_user_home_group_allows(
         {
             "user": (
                 f"이미 {home.group.name} 소속입니다. "
-                f"{group.name}에는 관리 > 조 운영진에서 조장·부조장 권한만 추가하거나, "
+                f"{group.name}에는 관리 > 조 운영진에서 조장·부조장·선생님 권한만 추가하거나, "
                 f"소속 조를 이동하세요."
             )
         }
@@ -191,6 +192,7 @@ class RetreatGroupAttendeesView(APIView):
         if payload.get("user") or role in (
             RetreatAttendee.MemberRole.LEADER,
             RetreatAttendee.MemberRole.VICE_LEADER,
+            RetreatAttendee.MemberRole.TEACHER,
         ):
             assert_can_edit_attendee_details(request.user, group)
         data = dict(payload)
@@ -339,11 +341,13 @@ class RetreatAttendeeDetailView(APIView):
             in (
                 RetreatAttendee.MemberRole.LEADER,
                 RetreatAttendee.MemberRole.VICE_LEADER,
+                RetreatAttendee.MemberRole.TEACHER,
             )
             and attendee.member_role
             in (
                 RetreatAttendee.MemberRole.LEADER,
                 RetreatAttendee.MemberRole.VICE_LEADER,
+                RetreatAttendee.MemberRole.TEACHER,
             )
         ):
             attendee.member_role = RetreatAttendee.MemberRole.MEMBER
@@ -399,9 +403,18 @@ class RetreatAttendeeDetailView(APIView):
         before = serialize_model_fields(attendee, _ATTENDEE_FIELDS)
         event = attendee.group.event
         aid = attendee.id
+        linked_user = attendee.user
         deleted_pickups = delete_pickups_for_attendee(attendee, changed_by=request.user)
         remove_membership_for_attendee(attendee, changed_by=request.user)
         attendee.delete()
+        if linked_user is not None:
+            from retreat.services.staff_application import (
+                delete_staff_application_if_unassigned,
+            )
+
+            delete_staff_application_if_unassigned(
+                linked_user, event, actor=request.user
+            )
         log_retreat_change(
             user=request.user,
             event=event,

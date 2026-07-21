@@ -9,11 +9,19 @@ from django.urls import reverse
 from django.utils import timezone
 
 from users.models import Division, Region, User
-from retreat.models import RetreatAttendee, RetreatEvent, RetreatGroup
+from retreat.models import (
+    RetreatAttendee,
+    RetreatEvent,
+    RetreatGroup,
+    RetreatGroupMembership,
+)
 from retreat.services.attendee_ordering import (
     order_attendees_for_member_list,
     pick_group_card_leader_name,
+    pick_group_card_leader_name_from_memberships,
+    resolve_group_card_leader_name,
 )
+from users.mixins import ensure_user_profile
 
 
 class PickGroupCardLeaderNameTests(TestCase):
@@ -98,6 +106,42 @@ class PickGroupCardLeaderNameTests(TestCase):
         )
         self.assertEqual(pick_group_card_leader_name(leaders), first.name)
 
+    def test_membership_fallback_for_cross_group_leader(self):
+        """담당조(명단 없음)는 membership 조장 이름을 쓴다."""
+        user = User.objects.create_user(username="cross_leader", password="x")
+        profile = ensure_user_profile(user)
+        profile.real_name = "겸직조장"
+        profile.save(update_fields=["real_name", "updated_at"])
+        membership = RetreatGroupMembership.objects.create(
+            user=user,
+            group=self.group,
+            role=RetreatGroupMembership.Role.LEADER,
+        )
+        self.assertEqual(
+            pick_group_card_leader_name_from_memberships([membership]),
+            "겸직조장",
+        )
+        self.assertEqual(
+            resolve_group_card_leader_name([], [membership]),
+            "겸직조장",
+        )
+
+    def test_attendee_leader_preferred_over_membership(self):
+        user = User.objects.create_user(username="mem_only", password="x")
+        profile = ensure_user_profile(user)
+        profile.real_name = "멤버십조장"
+        profile.save(update_fields=["real_name", "updated_at"])
+        membership = RetreatGroupMembership.objects.create(
+            user=user,
+            group=self.group,
+            role=RetreatGroupMembership.Role.LEADER,
+        )
+        attendee = self._leader(name="명단조장")
+        self.assertEqual(
+            resolve_group_card_leader_name([attendee], [membership]),
+            "명단조장",
+        )
+
 
 class AttendeeMemberListOrderTests(TestCase):
     def setUp(self):
@@ -167,6 +211,12 @@ class AttendeeMemberListOrderTests(TestCase):
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
             checked_in_at=timezone.now() + timedelta(minutes=5),
         )
+        teacher = self._attendee(
+            name="선생님",
+            member_role=RetreatAttendee.MemberRole.TEACHER,
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            checked_in_at=timezone.now() + timedelta(minutes=7),
+        )
         member = self._attendee(
             name="조원",
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
@@ -177,7 +227,9 @@ class AttendeeMemberListOrderTests(TestCase):
                 RetreatAttendee.objects.filter(group=self.group)
             )
         )
-        self.assertEqual([a.id for a in ordered], [leader.id, vice.id, member.id])
+        self.assertEqual(
+            [a.id for a in ordered], [leader.id, vice.id, teacher.id, member.id]
+        )
 
     def test_orders_checked_in_at_within_same_status_and_role(self):
         earlier = self._attendee(

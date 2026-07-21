@@ -24,6 +24,7 @@ RETREAT_ROLE_LABELS = {
     "participant": "참가자",
     "leader": "조장",
     "vice_leader": "부조장",
+    "teacher": "선생님",
 }
 
 APPLICANT_ROLE_LABELS = dict(UserProfile.ApplicantRole.choices)
@@ -128,6 +129,7 @@ def _ensure_attendee_for_group(
         if role_code in (
             RetreatGroupMembership.Role.LEADER,
             RetreatGroupMembership.Role.VICE_LEADER,
+            RetreatGroupMembership.Role.TEACHER,
         ):
             member_role = role_code
 
@@ -263,12 +265,14 @@ def apply_retreat_membership_on_approval(
             if role not in (
                 RetreatGroupMembership.Role.LEADER,
                 RetreatGroupMembership.Role.VICE_LEADER,
+                RetreatGroupMembership.Role.TEACHER,
             ):
                 role = "participant"
 
         if role in (
             RetreatGroupMembership.Role.LEADER,
             RetreatGroupMembership.Role.VICE_LEADER,
+            RetreatGroupMembership.Role.TEACHER,
         ):
             membership, created = RetreatGroupMembership.objects.update_or_create(
                 user=profile.user,

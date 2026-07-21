@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -108,8 +108,35 @@ class PickupPageTests(_PickupFixture):
         self.assertTrue(r.context["can_manage_pickup"])
         self.assertFalse(r.context["can_select_pickup_group"])
         self.assertEqual(r.context["leader_group_id"], self.group.id)
+        self.assertEqual(r.context["leader_group_ids"], [self.group.id])
         self.assertContains(r, "입회")
         self.assertContains(r, "data-leader-member-select")
+        self.assertNotContains(r, "data-leader-group-select")
+
+    @override_settings(
+        STORAGES={
+            "default": {
+                "BACKEND": "django.core.files.storage.FileSystemStorage",
+            },
+            "staticfiles": {
+                "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            },
+        }
+    )
+    def test_multi_group_leader_sees_group_select_and_both_rosters(self):
+        RetreatGroupMembership.objects.create(user=self.leader, group=self.group2)
+        self._attendee(self.group, "일조원")
+        self._attendee(self.group2, "이조원")
+        self.page_client.force_login(self.leader)
+        r = self.page_client.get(self._url())
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(
+            set(r.context["leader_group_ids"]), {self.group.id, self.group2.id}
+        )
+        self.assertContains(r, "data-leader-group-select")
+        members = r.context["pickup_group_members_json"]
+        self.assertIn("일조원", members)
+        self.assertIn("이조원", members)
 
     def test_council_can_view_pickup_page(self):
         self.page_client.force_login(self.council)
@@ -172,6 +199,51 @@ class PickupApiTests(_PickupFixture):
         )
         self.assertEqual(r2.status_code, 201)
         self.assertEqual(r2.data["number"], 2)
+
+    def test_multi_group_leader_can_create_pickup_for_second_group(self):
+        RetreatGroupMembership.objects.create(user=self.leader, group=self.group2)
+        self._attendee(self.group2, "이조원")
+        self.client.force_login(self.leader)
+        r = self.client.post(
+            self._list_url(),
+            {
+                "direction": RetreatPickup.Direction.ARRIVAL,
+                "group": self.group2.id,
+                "name": "이조원",
+                "train_time": "2026-08-01T11:00",
+                "boarding_place": "장성역",
+                "contact": "010-2222-3333",
+                "note": "",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertEqual(r.data["group"], self.group2.id)
+        self.assertEqual(r.data["name"], "이조원")
+
+    def test_multi_group_leader_cannot_create_pickup_for_other_group(self):
+        RetreatGroupMembership.objects.create(user=self.leader, group=self.group2)
+        other = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="3조",
+        )
+        self._attendee(other, "삼조원")
+        self.client.force_login(self.leader)
+        r = self.client.post(
+            self._list_url(),
+            {
+                "direction": RetreatPickup.Direction.ARRIVAL,
+                "group": other.id,
+                "name": "삼조원",
+                "train_time": "2026-08-01T11:00",
+                "boarding_place": "장성역",
+                "contact": "010-2222-3333",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
 
     def test_duplicate_pickup_same_group_name_rejected(self):
         self._attendee(self.group, "김비투")

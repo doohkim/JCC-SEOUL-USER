@@ -514,6 +514,73 @@
     return '<span class="muted">-</span>';
   }
 
+  const SELF_DELETE_HINT = "본인 해제는 관리 > 조 운영진에서 처리하세요.";
+
+  function syncDeleteButton(tr) {
+    if (!tr || !ctx.canEditAttendee) return;
+    const actions = tr.querySelector(".jcc-retreat-attCol-actions");
+    if (!actions) return;
+    let btn = actions.querySelector(".jcc-retreat-pickupDelete");
+    const canDelete = tr.dataset.canDelete === "true";
+    const rowUserId = Number(tr.dataset.userId || 0);
+    const isSelf =
+      rowUserId > 0 && Number(ctx.currentUserId || 0) === rowUserId;
+    if (!canDelete && !isSelf) {
+      btn?.remove();
+      return;
+    }
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "jcc-retreat-pickupDelete";
+      btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 6h18" />
+        <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+        <path d="M10 11v6M14 11v6" />
+      </svg>`;
+      actions.appendChild(btn);
+    }
+    if (canDelete) {
+      btn.disabled = false;
+      btn.setAttribute("data-del", "");
+      btn.title = "삭제";
+      btn.setAttribute("aria-label", "삭제");
+    } else {
+      btn.disabled = true;
+      btn.removeAttribute("data-del");
+      btn.title = SELF_DELETE_HINT;
+      btn.setAttribute("aria-label", "본인 행은 삭제할 수 없습니다");
+    }
+  }
+
+  function formatDeleteAttendeeConfirmHtml(attendeeName, linkedPickups) {
+    const name = escapeHtml(attendeeName || "조원");
+    const lines = [
+      `<strong>${name}</strong>님을 조원 명단에서 삭제합니다.`,
+      "과거 출석 기록은 보존됩니다.",
+    ];
+    const pickups = Array.isArray(linkedPickups) ? linkedPickups : [];
+    if (pickups.length) {
+      lines.push(
+        `<p class="jcc-retreat-confirmWarn">이 조원의 픽업 차량 요청 <strong>${pickups.length}건</strong>도 함께 삭제됩니다.</p>`
+      );
+      lines.push('<ul class="jcc-retreat-confirmPickupList">');
+      pickups.forEach((p) => {
+        const label = `${escapeHtml(p.direction_display || "")} #${escapeHtml(p.number)}`;
+        const when = escapeHtml(p.train_time || "");
+        const place = escapeHtml(p.boarding_place || "");
+        lines.push(
+          `<li>${label}${when ? ` · ${when}` : ""}${place ? ` · ${place}` : ""}</li>`
+        );
+      });
+      lines.push("</ul>");
+    } else {
+      lines.push('<p class="jcc-retreat-confirmMuted">등록된 픽업 차량 요청은 없습니다.</p>');
+    }
+    return lines.join("");
+  }
+
   function updateRowFromData(tr, data) {
     if (!tr || !data) return;
     if (data.participation_status) {
@@ -532,6 +599,11 @@
       } else if (ctx.canDeleteAttendee) {
         tr.dataset.canDelete = "true";
       }
+      const rowUserId = Number(tr.dataset.userId || 0);
+      if (rowUserId > 0 && Number(ctx.currentUserId || 0) === rowUserId) {
+        tr.dataset.canDelete = "false";
+      }
+      syncDeleteButton(tr);
     }
     if (data.checked_in_at) {
       tr.dataset.checkedInAt = data.checked_in_at;
@@ -568,6 +640,16 @@
           ? '<span class="jcc-retreat-roleTag jcc-retreat-roleTag--linked">연동</span>'
           : '<span class="muted">미연동</span>';
       }
+      const rowUserId = Number(tr.dataset.userId || 0);
+      if (rowUserId > 0 && Number(ctx.currentUserId || 0) === rowUserId) {
+        tr.dataset.canDelete = "false";
+      } else if (
+        ctx.canDeleteAttendee &&
+        tr.dataset.checkIn !== "checked_out"
+      ) {
+        tr.dataset.canDelete = "true";
+      }
+      syncDeleteButton(tr);
     }
 
     if (
@@ -736,7 +818,7 @@
   }
 
   // --- 컬럼 헤더 클릭 정렬 -------------------------------------------------
-  const ROLE_ORDER = { leader: 0, vice_leader: 1, member: 2 };
+  const ROLE_ORDER = { leader: 0, vice_leader: 1, teacher: 2, member: 3 };
   const STATUS_ORDER = { checked_in: 0, pending: 1, checked_out: 2 };
   let sortKey = null;
   let sortDir = "asc";
@@ -975,33 +1057,6 @@
     return new Promise((resolve) => {
       confirmResolve = resolve;
     });
-  }
-
-  function formatDeleteAttendeeConfirmHtml(attendeeName, linkedPickups) {
-    const name = escapeHtml(attendeeName || "조원");
-    const lines = [
-      `<strong>${name}</strong>님을 조원 명단에서 삭제합니다.`,
-      "과거 출석 기록은 보존됩니다.",
-    ];
-    const pickups = Array.isArray(linkedPickups) ? linkedPickups : [];
-    if (pickups.length) {
-      lines.push(
-        `<p class="jcc-retreat-confirmWarn">이 조원의 픽업 차량 요청 <strong>${pickups.length}건</strong>도 함께 삭제됩니다.</p>`
-      );
-      lines.push('<ul class="jcc-retreat-confirmPickupList">');
-      pickups.forEach((p) => {
-        const label = `${escapeHtml(p.direction_display || "")} #${escapeHtml(p.number)}`;
-        const when = escapeHtml(p.train_time || "");
-        const place = escapeHtml(p.boarding_place || "");
-        lines.push(
-          `<li>${label}${when ? ` · ${when}` : ""}${place ? ` · ${place}` : ""}</li>`
-        );
-      });
-      lines.push("</ul>");
-    } else {
-      lines.push('<p class="jcc-retreat-confirmMuted">등록된 픽업 차량 요청은 없습니다.</p>');
-    }
-    return lines.join("");
   }
 
   function resolveConfirm(value) {
@@ -1461,6 +1516,13 @@
   async function confirmDelete(attendeeId) {
     const tr = attBody?.querySelector(`tr[data-attendee-id="${attendeeId}"]`);
     const attendeeName = tr?.querySelector("td")?.textContent?.trim() || "";
+    const rowUserId = Number(tr?.dataset.userId || 0);
+    const isSelf =
+      rowUserId > 0 && Number(ctx.currentUserId || 0) === rowUserId;
+    if (isSelf) {
+      showToast(SELF_DELETE_HINT, true);
+      return;
+    }
     let linkedPickups = [];
     try {
       const previewUrl = `${ctx.urls.attendeeDetailTemplate.replace(
@@ -1491,7 +1553,12 @@
           credentials: "same-origin",
         }
       );
-      if (!res.ok) throw new Error("삭제 실패");
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(
+          errBody.detail || errBody.message || "삭제 실패"
+        );
+      }
       let deletedPickups = linkedPickups.length;
       try {
         const body = await res.json();

@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
@@ -50,6 +51,13 @@ from retreat.services.staff_application import (
     staff_applicant_tier_label,
 )
 from retreat.services.changelog_format import humanize_change_logs
+from retreat.services.changelog_query import (
+    CHANGELOG_PAGE_SIZE,
+    changelog_actors_for_event,
+    changelog_queryset_for_event,
+    parse_changelog_filters,
+    parse_page,
+)
 from retreat.services.account_retired import (
     ACCOUNT_RETIRED_DISPLAY,
     can_view_retired_account_data,
@@ -704,12 +712,17 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         if can_select_group:
             group_list = list(event.groups.order_by("order", "name"))
             leader_group_id = None
+            leader_group_ids: list[int] = []
         else:
-            leader_group_ids = list(retreat_pickup_group_ids_for(user, event))
+            leader_group_ids = list(
+                event.groups.filter(id__in=retreat_pickup_group_ids_for(user, event))
+                .order_by("order", "name", "id")
+                .values_list("id", flat=True)
+            )
             group_list = (
                 list(
                     event.groups.filter(id__in=leader_group_ids).order_by(
-                        "order", "name"
+                        "order", "name", "id"
                     )
                 )
                 if leader_group_ids
@@ -718,6 +731,7 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
             leader_group_id = leader_group_ids[0] if leader_group_ids else None
         ctx["group_choices"] = group_list
         ctx["leader_group_id"] = leader_group_id
+        ctx["leader_group_ids"] = leader_group_ids
         from users.models import Division, Region
 
         ctx["region_choices"] = list(Region.objects.order_by("sort_order", "name"))
@@ -811,7 +825,8 @@ class RetreatRosterCheckView(_RetreatEventMixin, TemplateView):
         role_order = Case(
             When(member_role=RetreatAttendee.MemberRole.LEADER, then=Value(0)),
             When(member_role=RetreatAttendee.MemberRole.VICE_LEADER, then=Value(1)),
-            default=Value(2),
+            When(member_role=RetreatAttendee.MemberRole.TEACHER, then=Value(2)),
+            default=Value(3),
             output_field=IntegerField(),
         )
         check_in_order = Case(
@@ -937,10 +952,11 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
             .order_by("order", "id")
         )
 
-        # 조 카드 조장 표시 — 퇴실 제외, 입실·연동·등록 순 우선순위.
+        # 조 카드 조장 표시 — 소속 명단 조장 우선, 없으면 운영진 membership(겸직 담당조).
         from collections import defaultdict
 
-        from retreat.services.attendee_ordering import pick_group_card_leader_name
+        from retreat.models import RetreatGroupMembership
+        from retreat.services.attendee_ordering import resolve_group_card_leader_name
 
         leaders_by_group: dict[int, list[RetreatAttendee]] = defaultdict(list)
         leader_attendee_qs = visible_attendees_for(
@@ -951,9 +967,21 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
         )
         for leader in leader_attendee_qs:
             leaders_by_group[leader.group_id].append(leader)
-        for g in groups:
-            g.leader_names = pick_group_card_leader_name(leaders_by_group.get(g.id, []))
 
+        memberships_by_group: dict[int, list[RetreatGroupMembership]] = defaultdict(
+            list
+        )
+        for membership in RetreatGroupMembership.objects.filter(
+            group__in=groups,
+            role=RetreatGroupMembership.Role.LEADER,
+        ).select_related("user", "user__profile"):
+            memberships_by_group[membership.group_id].append(membership)
+
+        for g in groups:
+            g.leader_names = resolve_group_card_leader_name(
+                leaders_by_group.get(g.id, []),
+                memberships_by_group.get(g.id, []),
+            )
         group_ids = [g.id for g in groups]
         participating_q = ~Q(
             participation_status=RetreatAttendee.ParticipationStatus.ABSENT
@@ -1433,7 +1461,8 @@ class RetreatGroupDetailView(_RetreatAccessMixin, TemplateView):
             role_rank = {
                 RetreatAttendee.MemberRole.LEADER: 0,
                 RetreatAttendee.MemberRole.VICE_LEADER: 1,
-            }.get(role, 2)
+                RetreatAttendee.MemberRole.TEACHER: 2,
+            }.get(role, 3)
             check_in_rank = {
                 RetreatAttendee.CheckInStatus.CHECKED_IN: 0,
                 RetreatAttendee.CheckInStatus.PENDING: 1,
@@ -1627,12 +1656,30 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
             ctx.setdefault("my_groups", [])
 
         if ctx["active_tab"] == "changelog":
-            changelog = list(
-                RetreatChangeLog.objects.filter(event=event)
-                .select_related("changed_by", "changed_by__profile")
-                .order_by("-changed_at", "-id")[:200]
-            )
-            ctx["changelog_entries"] = humanize_change_logs(changelog)
+            filters = parse_changelog_filters(self.request.GET)
+            qs = changelog_queryset_for_event(event, **filters)
+            paginator = Paginator(qs, CHANGELOG_PAGE_SIZE)
+            page_obj = paginator.get_page(parse_page(self.request.GET))
+            ctx["changelog_entries"] = humanize_change_logs(page_obj.object_list)
+            ctx["changelog_page"] = page_obj
+            ctx["changelog_filters"] = {
+                "q": filters["q"],
+                "date_from": (
+                    filters["date_from"].isoformat() if filters["date_from"] else ""
+                ),
+                "date_to": filters["date_to"].isoformat() if filters["date_to"] else "",
+                "actor": str(filters["actor_id"] or ""),
+                "target_type": filters["target_type"],
+                "action": filters["action"],
+            }
+            ctx["changelog_actors"] = changelog_actors_for_event(event)
+            ctx["changelog_target_type_choices"] = RetreatChangeLog.TargetType.choices
+            ctx["changelog_action_choices"] = RetreatChangeLog.Action.choices
+            # pager 링크용: tab + 필터 유지, page 제외
+            query = self.request.GET.copy()
+            query["tab"] = "changelog"
+            query.pop("page", None)
+            ctx["changelog_querystring"] = query.urlencode()
 
         from retreat.models import RetreatGroupMembership
 

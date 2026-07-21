@@ -1,15 +1,13 @@
 import re
-from datetime import timedelta
 
 from django import template
-from django.utils import timezone
 from django.utils.safestring import mark_safe
+
+from notices.services.newness import has_notices_created_today, is_created_today
 
 register = template.Library()
 
 _IMG_TAG_RE = re.compile(r"<img\b([^>]*?)>", re.IGNORECASE)
-
-_NOTICE_NEW_DAYS = 7
 
 
 def _add_lazy_loading(match: re.Match[str]) -> str:
@@ -28,10 +26,14 @@ def lazy_images(value: str) -> str:
 
 @register.filter
 def is_notice_new(notice) -> bool:
-    created_at = getattr(notice, "created_at", None)
-    if not created_at:
-        return False
-    return created_at >= timezone.now() - timedelta(days=_NOTICE_NEW_DAYS)
+    """이야기 카드 NEW — 작성일이 로컬 당일인 경우."""
+    return is_created_today(getattr(notice, "created_at", None))
+
+
+@register.simple_tag
+def notices_has_new_today() -> bool:
+    """좌측 네비 등 — 당일 등록된 이야기가 하나라도 있으면 True."""
+    return has_notices_created_today()
 
 
 @register.filter

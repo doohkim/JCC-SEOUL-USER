@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from retreat.models import RetreatChangeLog, RetreatEvent
+from retreat.models import RetreatEvent
 from retreat.serializers import RetreatChangeLogSerializer
 from retreat.services.dashboard import (
     build_event_results,
@@ -17,6 +18,13 @@ from retreat.services.dashboard import (
     build_results_analytics,
 )
 from retreat.services.auto_check_in import apply_due_auto_transitions
+from retreat.services.changelog_query import (
+    CHANGELOG_PAGE_SIZE,
+    changelog_queryset_for_event,
+    parse_changelog_filters,
+    parse_page,
+    parse_page_size,
+)
 from users.permissions import (
     can_access_retreat_tab,
     can_view_retreat_all,
@@ -95,10 +103,18 @@ class RetreatEventChangelogView(APIView):
         event = get_object_or_404(RetreatEvent, pk=event_id)
         if not is_retreat_staff(request.user, event):
             raise PermissionDenied("변경 이력 조회 권한이 없습니다.")
-        limit = min(int(request.query_params.get("limit", 100)), 500)
-        qs = (
-            RetreatChangeLog.objects.filter(event=event)
-            .select_related("changed_by")
-            .order_by("-changed_at", "-id")[:limit]
+        filters = parse_changelog_filters(request.query_params)
+        qs = changelog_queryset_for_event(event, **filters)
+        page_size = parse_page_size(request.query_params, default=CHANGELOG_PAGE_SIZE)
+        paginator = Paginator(qs, page_size)
+        page_obj = paginator.get_page(parse_page(request.query_params))
+        return Response(
+            {
+                "count": paginator.count,
+                "page": page_obj.number,
+                "page_size": page_size,
+                "results": RetreatChangeLogSerializer(
+                    page_obj.object_list, many=True
+                ).data,
+            }
         )
-        return Response(RetreatChangeLogSerializer(qs, many=True).data)

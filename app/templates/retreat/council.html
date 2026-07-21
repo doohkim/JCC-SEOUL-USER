@@ -6,8 +6,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>운영진 관리 · {{ event.name }}</title>
-    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260721k" />
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260721s" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260721o" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -23,12 +23,12 @@
           <div class="jcc-retreat-staffPageHead">
             <div>
               <h1 class="jcc-retreat-staffPageTitle">운영진 관리</h1>
-              <p class="jcc-retreat-staffPageSubtitle muted">집회 운영진과 조장·부조장을 한곳에서 관리합니다.</p>
+              <p class="jcc-retreat-staffPageSubtitle muted">집회 운영진과 조 운영진(조장·부조장·선생님)을 한곳에서 관리합니다.</p>
             </div>
             {% if can_manage_staff %}
               <div class="jcc-retreat-staffAddBtns">
                 <button type="button" class="jcc-retreat-staffAddBtn" id="btnStaffAddCouncil">+ 집회 운영진</button>
-                <button type="button" class="secondary jcc-retreat-staffAddBtn" id="btnStaffAddGroup">+ 조장·부조장</button>
+                <button type="button" class="secondary jcc-retreat-staffAddBtn" id="btnStaffAddGroup">+ 조 운영진</button>
               </div>
             {% endif %}
           </div>
@@ -38,8 +38,25 @@
               <button type="button" class="jcc-retreat-staffPill is-active" data-filter="all" role="tab" aria-selected="true">전체 <span class="jcc-retreat-staffPillCount" data-count="all">0</span></button>
               <button type="button" class="jcc-retreat-staffPill" data-filter="event" role="tab" aria-selected="false">집회운영 <span class="jcc-retreat-staffPillCount" data-count="event">0</span></button>
               <button type="button" class="jcc-retreat-staffPill" data-filter="region_division" role="tab" aria-selected="false">지역·부서 <span class="jcc-retreat-staffPillCount" data-count="region_division">0</span></button>
-              <button type="button" class="jcc-retreat-staffPill" data-filter="leader" role="tab" aria-selected="false">조장·부조장 <span class="jcc-retreat-staffPillCount" data-count="leader">0</span></button>
+              <button type="button" class="jcc-retreat-staffPill" data-filter="leader" role="tab" aria-selected="false">조 운영진 <span class="jcc-retreat-staffPillCount" data-count="leader">0</span></button>
               <button type="button" class="jcc-retreat-staffPill" data-filter="pickup" role="tab" aria-selected="false">픽업 <span class="jcc-retreat-staffPillCount" data-count="pickup">0</span></button>
+            </div>
+
+            <div class="jcc-retreat-rosterSearchBlock" id="staffRosterSearchBlock" hidden>
+              <label class="jcc-retreat-rosterSearchWrap" for="staffRosterSearch">
+                <svg class="jcc-retreat-rosterSearchIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/>
+                  <path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                <input
+                  type="search"
+                  class="jcc-retreat-rosterSearch"
+                  id="staffRosterSearch"
+                  placeholder="이름, 연락처, 역할, 소속으로 검색…"
+                  autocomplete="off"
+                  aria-label="이름, 연락처, 역할, 소속으로 검색"
+                />
+              </label>
             </div>
 
             <div id="staffRosterStatus" class="msg" role="status"></div>
@@ -186,6 +203,6 @@
       };
     </script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_council.js' %}?v=20260721k" defer></script>
+    <script src="{% static 'retreat/retreat_council.js' %}?v=20260721o" defer></script>
   </body>
 </html>

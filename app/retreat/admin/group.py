@@ -30,9 +30,16 @@ class RetreatGroupAdmin(admin.ModelAdmin):
                 for f in formset.forms
                 if getattr(f.instance, "pk", None) and f.cleaned_data.get("DELETE")
             ]
+            pairs = [(m.user, m.group.event) for m in to_clean]
             super().save_formset(request, form, formset, change)
             for membership in to_clean:
                 delete_attendees_for_membership(membership, changed_by=request.user)
+            from retreat.services.staff_application import (
+                delete_staff_application_if_unassigned,
+            )
+
+            for user, event in pairs:
+                delete_staff_application_if_unassigned(user, event, actor=request.user)
         else:
             super().save_formset(request, form, formset, change)
 
@@ -46,11 +53,25 @@ class RetreatGroupMembershipAdmin(admin.ModelAdmin):
 
     def delete_model(self, request, obj):
         """단건 삭제: 연결된 조원 명단 행도 함께 제거."""
+        user = obj.user
+        event = obj.group.event
         delete_attendees_for_membership(obj, changed_by=request.user)
         super().delete_model(request, obj)
+        from retreat.services.staff_application import (
+            delete_staff_application_if_unassigned,
+        )
+
+        delete_staff_application_if_unassigned(user, event, actor=request.user)
 
     def delete_queryset(self, request, queryset):
         """일괄 삭제: 각 운영진에 연결된 조원 명단 행도 함께 제거."""
+        from retreat.services.staff_application import (
+            delete_staff_application_if_unassigned,
+        )
+
+        pairs = [(obj.user, obj.group.event) for obj in queryset]
         for obj in queryset:
             delete_attendees_for_membership(obj, changed_by=request.user)
         super().delete_queryset(request, queryset)
+        for user, event in pairs:
+            delete_staff_application_if_unassigned(user, event, actor=request.user)

@@ -1,4 +1,4 @@
-{% load static permission_tags %}
+{% load static permission_tags notice_extras %}
 <button
   type="button"
   class="jcc-mobile-menu-btn"
@@ -68,7 +68,8 @@
       </a>
     {% endif %}
     {% if user|can_access_notices_tab %}
-      <a class="jcc-leftNav-item" href="{% url 'notice_list' %}" data-tab="notices">
+      {% notices_has_new_today as notices_new_today %}
+      <a class="jcc-leftNav-item{% if notices_new_today %} has-new{% endif %}" href="{% url 'notice_list' %}" data-tab="notices">
         <svg class="jcc-leftNav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
           <circle cx="9" cy="7" r="3.5" stroke="currentColor" stroke-width="1.75"/>
           <path d="M3 20v-1.2a4.8 4.8 0 014.8-4.8h2.4a4.8 4.8 0 014.8 4.8V20" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
@@ -76,6 +77,9 @@
           <path d="M14 20v-1a3.8 3.8 0 013.3-3.76" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
         </svg>
         <span>함께보기</span>
+        {% if notices_new_today %}
+          <span class="jcc-leftNav-newBadge" aria-label="오늘 새 이야기">NEW</span>
+        {% endif %}
       </a>
     {% endif %}
     {% if user|can_manage_division_accounts_tab %}
