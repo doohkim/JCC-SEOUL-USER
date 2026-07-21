@@ -24,7 +24,7 @@ from retreat.serializers import RetreatEventSerializer, RetreatGroupSerializer
 from retreat.services.account_retired import visible_user_linked_for
 from retreat.services.audit import log_retreat_change
 from retreat.services.event_picker import active_retreat_events
-from users.models import Division
+from users.models import Division, UserDivisionTeam
 from users.permissions import (
     can_access_retreat_staff_apply,
     can_access_retreat_tab,
@@ -35,9 +35,24 @@ User = get_user_model()
 
 
 def _memberships_prefetch(viewer):
-    qs = RetreatGroupMembership.objects.select_related(
-        "user", "user__profile"
-    ).order_by("role", "user__username")
+    qs = (
+        RetreatGroupMembership.objects.select_related("user", "user__profile")
+        .prefetch_related(
+            Prefetch(
+                "user__division_teams",
+                queryset=UserDivisionTeam.objects.select_related(
+                    "division", "division__region"
+                ).order_by(
+                    "-is_primary",
+                    "sort_order",
+                    "division__sort_order",
+                    "id",
+                ),
+                to_attr="prefetched_division_teams",
+            )
+        )
+        .order_by("role", "user__username")
+    )
     return Prefetch(
         "memberships",
         queryset=visible_user_linked_for(viewer, qs, user_prefix="user"),

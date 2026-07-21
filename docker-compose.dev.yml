@@ -17,21 +17,18 @@ services:
     networks:
       default:
         ipv4_address: 172.19.0.2
-
-  ddns-route53:
-    image: crazymax/ddns-route53:latest
-    container_name: ddns-route53
-    restart: always
-    volumes:
-      - ./ddns-route53.dev.yml:/ddns-route53.yml:ro
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel run
     environment:
-      - TZ=Asia/Seoul
-      - SCHEDULE=*/15 * * * *
-      - LOG_LEVEL=info
-      - LOG_JSON=false
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - nginx
     networks:
       default:
-        ipv4_address: 172.19.0.3
+        ipv4_address: 172.19.0.20 
 
   django:
     &django

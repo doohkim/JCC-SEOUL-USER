@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.contrib.auth import get_user_model
+from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -32,6 +33,7 @@ from users.permissions import (
     can_access_retreat_tab,
     can_manage_staff,
 )
+from users.models import UserDivisionTeam
 
 User = get_user_model()
 
@@ -148,9 +150,26 @@ class RetreatEventCouncilListCreateView(APIView):
     def get(self, request, event_id: int):
         event = get_object_or_404(RetreatEvent, pk=event_id)
         _assert_can_view(request.user, event)
-        qs = event.council_memberships.select_related(
-            "user", "user__profile", "region", "division"
-        ).order_by("role", "user__username")
+        qs = (
+            event.council_memberships.select_related(
+                "user", "user__profile", "region", "division"
+            )
+            .prefetch_related(
+                Prefetch(
+                    "user__division_teams",
+                    queryset=UserDivisionTeam.objects.select_related(
+                        "division", "division__region"
+                    ).order_by(
+                        "-is_primary",
+                        "sort_order",
+                        "division__sort_order",
+                        "id",
+                    ),
+                    to_attr="prefetched_division_teams",
+                )
+            )
+            .order_by("role", "user__username")
+        )
         qs = visible_user_linked_for(request.user, qs, user_prefix="user")
         return Response(RetreatCouncilMembershipSerializer(qs, many=True).data)
 

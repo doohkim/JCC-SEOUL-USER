@@ -56,23 +56,23 @@ INTERNAL_IPS = [
 MIDDLEWARE.append("debug_toolbar.middleware.DebugToolbarMiddleware")
 
 
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
+#     }
+# }
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+        "ENGINE": "django.db.backends.postgresql",
+        "HOST": secrets.RDS_HOST_PRODUCTION,
+        "PORT": secrets.RDS_PORT_PRODUCTION,
+        "NAME": secrets.RDS_NAME_PRODUCTION,
+        "USER": secrets.RDS_USERNAME_PRODUCTION,
+        "PASSWORD": secrets.RDS_PASSWORD_PRODUCTION,
+    },
 }
-
-# DATABASES = {
-#         "default": {
-#             "ENGINE": "django.db.backends.postgresql",
-#             "HOST": secrets.RDS_HOST_PRODUCTION,
-#             "PORT": secrets.RDS_PORT_PRODUCTION,
-#             "NAME": secrets.RDS_NAME_PRODUCTION,
-#             "USER": secrets.RDS_USERNAME_PRODUCTION,
-#             "PASSWORD": secrets.RDS_PASSWORD_PRODUCTION,
-#         },
-# }
 
 
 CSRF_TRUSTED_ORIGINS = [

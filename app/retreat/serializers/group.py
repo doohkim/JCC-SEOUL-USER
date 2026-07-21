@@ -4,15 +4,22 @@ from rest_framework import serializers
 
 from retreat.models import RetreatGroup, RetreatGroupMembership, RetreatGroupScope
 from retreat.services.account_retired import ACCOUNT_RETIRED_DISPLAY, is_retired_user
-from retreat.services.staff_application import primary_affiliation_for
 from users.services.user_display import user_account_link_label
 
 
-def _user_affiliation_ids(user) -> tuple[int | None, int | None]:
-    region, division = primary_affiliation_for(user)
-    return (
-        region.id if region else None,
-        division.id if division else None,
+def _division_team_rows_for(user):
+    prefetched = getattr(user, "prefetched_division_teams", None)
+    if prefetched is not None:
+        return prefetched
+    return list(
+        user.division_teams.order_by(
+            "-is_primary",
+            "sort_order",
+            "division__sort_order",
+            "id",
+        )
+        .select_related("division", "division__region")
+        .all()
     )
 
 
@@ -47,6 +54,27 @@ class RetreatGroupMembershipSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
+    def _affiliation_ids(self, user) -> tuple[int | None, int | None]:
+        cache = getattr(self, "_user_affiliation_id_cache", None)
+        if cache is None:
+            cache = {}
+            self._user_affiliation_id_cache = cache
+        key = user.id
+        if key in cache:
+            return cache[key]
+
+        region_id = None
+        division_id = None
+        for row in _division_team_rows_for(user):
+            division = getattr(row, "division", None)
+            if not division or not row.division_id:
+                continue
+            division_id = row.division_id
+            region_id = division.region_id
+            break
+        cache[key] = (region_id, division_id)
+        return cache[key]
+
     def _display_name(self, obj) -> str:
         return user_account_link_label(obj.user)
 
@@ -66,11 +94,11 @@ class RetreatGroupMembershipSerializer(serializers.ModelSerializer):
         return (getattr(profile, "phone", "") or "").strip()
 
     def get_user_region_id(self, obj) -> int | None:
-        region_id, _division_id = _user_affiliation_ids(obj.user)
+        region_id, _division_id = self._affiliation_ids(obj.user)
         return region_id
 
     def get_user_division_id(self, obj) -> int | None:
-        _region_id, division_id = _user_affiliation_ids(obj.user)
+        _region_id, division_id = self._affiliation_ids(obj.user)
         return division_id
 
     def get_user_account_retired(self, obj) -> bool:

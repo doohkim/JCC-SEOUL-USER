@@ -5,7 +5,6 @@ from rest_framework import serializers
 
 from retreat.models import RetreatCouncilMembership
 from retreat.services.account_retired import ACCOUNT_RETIRED_DISPLAY, is_retired_user
-from retreat.services.staff_application import primary_affiliation_for
 
 User = get_user_model()
 
@@ -57,6 +56,68 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["scope_label", "region_name", "division_name"]
 
+    @staticmethod
+    def _division_team_rows_for(user):
+        prefetched = getattr(user, "prefetched_division_teams", None)
+        if prefetched is not None:
+            return prefetched
+        return list(
+            user.division_teams.order_by(
+                "-is_primary",
+                "sort_order",
+                "division__sort_order",
+                "id",
+            )
+            .select_related("division", "division__region")
+            .all()
+        )
+
+    def _affiliation_bundle_for(self, user) -> dict:
+        cache = getattr(self, "_user_affiliation_cache", None)
+        if cache is None:
+            cache = {}
+            self._user_affiliation_cache = cache
+        key = user.id
+        if key in cache:
+            return cache[key]
+
+        rows = self._division_team_rows_for(user)
+        seen = set()
+        affiliations = []
+        primary_region_id = None
+        primary_division_id = None
+        for row in rows:
+            division = getattr(row, "division", None)
+            division_id = row.division_id
+            if not division_id or not division:
+                continue
+            if primary_division_id is None:
+                primary_division_id = division_id
+                primary_region_id = division.region_id
+            if division_id in seen:
+                continue
+            seen.add(division_id)
+            affiliations.append(
+                {
+                    "division_id": division_id,
+                    "region_id": division.region_id,
+                    "division_name": division.name or "",
+                    "region_name": (
+                        division.region.name
+                        if division.region_id and getattr(division, "region", None)
+                        else ""
+                    ),
+                }
+            )
+
+        bundle = {
+            "region_id": primary_region_id,
+            "division_id": primary_division_id,
+            "affiliations": affiliations,
+        }
+        cache[key] = bundle
+        return bundle
+
     def get_user_display_name(self, obj: RetreatCouncilMembership) -> str:
         profile = getattr(obj.user, "profile", None)
         if profile and getattr(profile, "real_name", ""):
@@ -72,12 +133,10 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
         return (getattr(profile, "phone", "") or "").strip()
 
     def get_user_region_id(self, obj: RetreatCouncilMembership) -> int | None:
-        region, _division = primary_affiliation_for(obj.user)
-        return region.id if region else None
+        return self._affiliation_bundle_for(obj.user)["region_id"]
 
     def get_user_division_id(self, obj: RetreatCouncilMembership) -> int | None:
-        _region, division = primary_affiliation_for(obj.user)
-        return division.id if division else None
+        return self._affiliation_bundle_for(obj.user)["division_id"]
 
     def get_user_account_retired(self, obj: RetreatCouncilMembership) -> bool:
         return is_retired_user(obj.user)
@@ -90,46 +149,7 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
         return role_code in {"pastor", "evangelist"}
 
     def get_user_affiliations(self, obj: RetreatCouncilMembership) -> list[dict]:
-        user = obj.user
-        rows = (
-            user.division_teams.order_by(
-                "-is_primary",
-                "sort_order",
-                "division__sort_order",
-                "id",
-            )
-            .select_related("division", "division__region")
-            .all()
-        )
-        values = [
-            (
-                row.division_id,
-                row.division.region_id if row.division else None,
-                row.division.name if row.division else "",
-                (
-                    row.division.region.name
-                    if row.division and row.division.region_id
-                    else ""
-                ),
-            )
-            for row in rows
-            if row.division_id
-        ]
-        seen = set()
-        results = []
-        for division_id, region_id, division_name, region_name in values:
-            if division_id in seen:
-                continue
-            seen.add(division_id)
-            results.append(
-                {
-                    "division_id": division_id,
-                    "region_id": region_id,
-                    "division_name": division_name or "",
-                    "region_name": region_name or "",
-                }
-            )
-        return results
+        return self._affiliation_bundle_for(obj.user)["affiliations"]
 
     def validate(self, attrs):
         role = attrs.get("role") or getattr(self.instance, "role", None)
