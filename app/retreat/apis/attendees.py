@@ -7,7 +7,7 @@ from copy import deepcopy
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -31,11 +31,17 @@ from retreat.services.check_in_stamps import (
 from retreat.services.attendee_ordering import order_attendees_for_member_list
 from retreat.services.enrollment import enroll_attendee_into_active_sessions
 from retreat.services.group_sync import (
+    home_attendee_for_user_in_event,
     remove_membership_for_attendee,
     sync_membership_from_attendee,
 )
 from users.permissions import can_change_retreat_check_in, can_link_attendee_user
-from retreat.models import RetreatAttendee, RetreatChangeLog, RetreatGroup
+from retreat.models import (
+    RetreatAttendee,
+    RetreatChangeLog,
+    RetreatGroup,
+    RetreatGroupMembership,
+)
 from retreat.serializers import RetreatAttendeeSerializer
 from retreat.services.audit import log_retreat_change, serialize_model_fields
 from retreat.services.lodging import assert_room_can_accept
@@ -53,6 +59,41 @@ from retreat.services.pickup_attendee import (
     pickups_for_attendee,
     serialize_pickup_for_attendee_preview,
 )
+
+_LEADER_MEMBER_ROLES = frozenset(
+    {
+        RetreatAttendee.MemberRole.LEADER,
+        RetreatAttendee.MemberRole.VICE_LEADER,
+    }
+)
+
+
+def _assert_home_role_upgrade_allowed(attendee: RetreatAttendee, new_role: str) -> None:
+    """다른 조 조장/부조장이면 소속 조 명단에서 조장·부조장 승격을 막는다."""
+    if new_role not in _LEADER_MEMBER_ROLES:
+        return
+    if attendee.member_role in _LEADER_MEMBER_ROLES:
+        return
+    user_id = attendee.user_id
+    if not user_id:
+        return
+    if (
+        RetreatGroupMembership.objects.filter(
+            user_id=user_id,
+            group__event_id=attendee.group.event_id,
+        )
+        .exclude(group_id=attendee.group_id)
+        .exists()
+    ):
+        raise ValidationError(
+            {
+                "member_role": (
+                    "이미 다른 조 조장·부조장입니다. "
+                    "소속 조 역할은 조원 수정이 아니라 관리 > 조 운영진에서 처리하세요."
+                )
+            }
+        )
+
 
 _ATTENDEE_FIELDS = [
     "id",
@@ -73,6 +114,33 @@ _ATTENDEE_FIELDS = [
     "participation_status",
     "sort_order",
 ]
+
+
+def _assert_user_home_group_allows(
+    *,
+    user,
+    group: RetreatGroup,
+    exclude_attendee_id: int | None = None,
+) -> None:
+    """집회당 소속 조는 1개. 다른 조에 이미 있으면 명단 추가/연동을 막는다."""
+    if user is None or not getattr(user, "pk", None):
+        return
+    home = home_attendee_for_user_in_event(user, event_id=group.event_id)
+    if home is None:
+        return
+    if exclude_attendee_id is not None and home.id == exclude_attendee_id:
+        return
+    if home.group_id == group.id:
+        return
+    raise ValidationError(
+        {
+            "user": (
+                f"이미 {home.group.name} 소속입니다. "
+                f"{group.name}에는 관리 > 조 운영진에서 조장·부조장 권한만 추가하거나, "
+                f"소속 조를 이동하세요."
+            )
+        }
+    )
 
 
 def _sanitize_attendee_payload(user, group: RetreatGroup, data):
@@ -130,6 +198,8 @@ class RetreatGroupAttendeesView(APIView):
         ser = RetreatAttendeeSerializer(data=data)
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+        linked_user = ser.validated_data.get("user")
+        _assert_user_home_group_allows(user=linked_user, group=group)
         target_room = ser.validated_data.get("lodging_room")
         if target_room is not None:
             tmp = RetreatAttendee(
@@ -235,6 +305,17 @@ class RetreatAttendeeDetailView(APIView):
         )
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+        if "member_role" in ser.validated_data:
+            _assert_home_role_upgrade_allowed(
+                attendee, str(ser.validated_data["member_role"])
+            )
+        linked_user = ser.validated_data.get("user", attendee.user)
+        if "user" in ser.validated_data and linked_user is not None:
+            _assert_user_home_group_allows(
+                user=linked_user,
+                group=group,
+                exclude_attendee_id=attendee.id,
+            )
         if "lodging_room" in ser.validated_data or "gender" in ser.validated_data:
             target_room = ser.validated_data.get("lodging_room", attendee.lodging_room)
             if target_room is not None:

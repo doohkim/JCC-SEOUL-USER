@@ -97,9 +97,15 @@
           )
           .join("");
         const shown = m.name || m.display_name || m.username;
+        const homeBadge =
+          m.is_cross_group_leader && m.home_group_name
+            ? ` <span class="jcc-retreat-pill jcc-retreat-pill--alt" title="소속 조">${escapeHtml(
+                m.home_group_name
+              )} 소속</span>`
+            : "";
         return `
           <tr data-membership-id="${m.id}">
-            <td>${escapeHtml(shown)}</td>
+            <td>${escapeHtml(shown)}${homeBadge}</td>
             <td>
               <select class="leader-role-select" data-prev="${escapeHtml(m.role)}" data-cselect>
                 ${roleOptions}
@@ -125,12 +131,15 @@
       return;
     }
     cell.innerHTML = items
-      .map(
-        (m) =>
-          `<span class="jcc-retreat-pill jcc-retreat-pill--alt">${escapeHtml(
-            m.name || m.display_name || m.username
-          )} · ${escapeHtml(m.role_display || m.role)}</span>`
-      )
+      .map((m) => {
+        const home =
+          m.is_cross_group_leader && m.home_group_name
+            ? ` · ${m.home_group_name} 소속`
+            : "";
+        return `<span class="jcc-retreat-pill jcc-retreat-pill--alt">${escapeHtml(
+          m.name || m.display_name || m.username
+        )} · ${escapeHtml(m.role_display || m.role)}${escapeHtml(home)}</span>`;
+      })
       .join(" ");
   }
 
@@ -155,11 +164,11 @@
         },
         body: JSON.stringify({ user_id: selected.id, role }),
       });
+      const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.user || err.detail || err.role || "추가 실패");
+        throw new Error(body.user || body.detail || body.role || "추가 실패");
       }
-      showStatus("추가됨");
+      showStatus(body.message || "추가됨");
       if (picker) picker.clear();
       await loadMemberships();
     } catch (err) {

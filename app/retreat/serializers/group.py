@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from retreat.models import RetreatGroup, RetreatGroupMembership, RetreatGroupScope
 from retreat.services.account_retired import ACCOUNT_RETIRED_DISPLAY, is_retired_user
+from retreat.services.group_sync import home_group_meta_for_user
 from users.services.user_display import user_account_link_label
 
 
@@ -32,8 +33,12 @@ class RetreatGroupMembershipSerializer(serializers.ModelSerializer):
     user_phone = serializers.SerializerMethodField()
     user_region_id = serializers.SerializerMethodField()
     user_division_id = serializers.SerializerMethodField()
+    user_affiliations = serializers.SerializerMethodField()
     user_account_retired = serializers.SerializerMethodField()
     user_account_retired_display = serializers.SerializerMethodField()
+    home_group_id = serializers.SerializerMethodField()
+    home_group_name = serializers.SerializerMethodField()
+    is_cross_group_leader = serializers.SerializerMethodField()
 
     class Meta:
         model = RetreatGroupMembership
@@ -47,33 +52,83 @@ class RetreatGroupMembershipSerializer(serializers.ModelSerializer):
             "user_phone",
             "user_region_id",
             "user_division_id",
+            "user_affiliations",
             "user_account_retired",
             "user_account_retired_display",
+            "home_group_id",
+            "home_group_name",
+            "is_cross_group_leader",
             "role",
             "role_display",
             "created_at",
         ]
 
-    def _affiliation_ids(self, user) -> tuple[int | None, int | None]:
-        cache = getattr(self, "_user_affiliation_id_cache", None)
+    def _home_meta(self, obj) -> dict:
+        cache = getattr(self, "_home_meta_cache", None)
         if cache is None:
             cache = {}
-            self._user_affiliation_id_cache = cache
+            self._home_meta_cache = cache
+        key = (obj.user_id, obj.group.event_id, obj.group_id)
+        if key not in cache:
+            cache[key] = home_group_meta_for_user(
+                user=obj.user,
+                event_id=obj.group.event_id,
+                assigned_group_id=obj.group_id,
+            )
+        return cache[key]
+
+    def get_home_group_id(self, obj) -> int | None:
+        return self._home_meta(obj)["home_group_id"]
+
+    def get_home_group_name(self, obj) -> str:
+        return self._home_meta(obj)["home_group_name"]
+
+    def get_is_cross_group_leader(self, obj) -> bool:
+        return self._home_meta(obj)["is_cross_group_leader"]
+
+    def _affiliation_bundle(self, user) -> dict:
+        cache = getattr(self, "_user_affiliation_cache", None)
+        if cache is None:
+            cache = {}
+            self._user_affiliation_cache = cache
         key = user.id
         if key in cache:
             return cache[key]
 
-        region_id = None
-        division_id = None
+        seen: set[int] = set()
+        affiliations: list[dict] = []
+        primary_region_id = None
+        primary_division_id = None
         for row in _division_team_rows_for(user):
             division = getattr(row, "division", None)
-            if not division or not row.division_id:
-                continue
             division_id = row.division_id
-            region_id = division.region_id
-            break
-        cache[key] = (region_id, division_id)
-        return cache[key]
+            if not division_id or not division:
+                continue
+            if primary_division_id is None:
+                primary_division_id = division_id
+                primary_region_id = division.region_id
+            if division_id in seen:
+                continue
+            seen.add(division_id)
+            affiliations.append(
+                {
+                    "division_id": division_id,
+                    "region_id": division.region_id,
+                    "division_name": division.name or "",
+                    "region_name": (
+                        division.region.name
+                        if division.region_id and getattr(division, "region", None)
+                        else ""
+                    ),
+                }
+            )
+        bundle = {
+            "region_id": primary_region_id,
+            "division_id": primary_division_id,
+            "affiliations": affiliations,
+        }
+        cache[key] = bundle
+        return bundle
 
     def _display_name(self, obj) -> str:
         return user_account_link_label(obj.user)
@@ -94,12 +149,13 @@ class RetreatGroupMembershipSerializer(serializers.ModelSerializer):
         return (getattr(profile, "phone", "") or "").strip()
 
     def get_user_region_id(self, obj) -> int | None:
-        region_id, _division_id = self._affiliation_ids(obj.user)
-        return region_id
+        return self._affiliation_bundle(obj.user)["region_id"]
 
     def get_user_division_id(self, obj) -> int | None:
-        _region_id, division_id = self._affiliation_ids(obj.user)
-        return division_id
+        return self._affiliation_bundle(obj.user)["division_id"]
+
+    def get_user_affiliations(self, obj) -> list[dict]:
+        return self._affiliation_bundle(obj.user)["affiliations"]
 
     def get_user_account_retired(self, obj) -> bool:
         return is_retired_user(obj.user)

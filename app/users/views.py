@@ -841,11 +841,23 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             },
         )[0]
 
-    def _roles_redirect(self, division: Division | None) -> str:
-        base = reverse_lazy("user_division_account_roles")
-        if division is None:
-            return str(base)
-        return f"{base}?division_code={division.code}"
+    def _roles_redirect(
+        self, division: Division | None, *, q: str | None = None
+    ) -> str:
+        base = str(reverse_lazy("user_division_account_roles"))
+        params: dict[str, str] = {}
+        if division is not None:
+            params["division_code"] = division.code
+        query = (
+            q
+            if q is not None
+            else (self.request.POST.get("q") or self.request.GET.get("q") or "")
+        ).strip()
+        if query:
+            params["q"] = query
+        if not params:
+            return base
+        return f"{base}?{urlencode(params)}"
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):
@@ -857,18 +869,21 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
             and manageable.exists()
             and requested_code == self.ALL_DIVISIONS_CODE
         )
+        search_q = (request.POST.get("q") or request.GET.get("q") or "").strip()
 
         if active_division is None and not all_mode:
             messages.error(request, "관리 가능한 부서가 없습니다.")
             return HttpResponseRedirect(reverse_lazy("user_division_account_roles"))
 
         if all_mode:
+            params = {"division_code": self.ALL_DIVISIONS_CODE}
+            if search_q:
+                params["q"] = search_q
             redirect_url = (
-                f"{reverse_lazy('user_division_account_roles')}"
-                f"?division_code={self.ALL_DIVISIONS_CODE}"
+                f"{reverse_lazy('user_division_account_roles')}?{urlencode(params)}"
             )
         else:
-            redirect_url = self._roles_redirect(active_division)
+            redirect_url = self._roles_redirect(active_division, q=search_q)
         user_id = (request.POST.get("user_id") or "").strip()
         team_id = (request.POST.get("team_id") or "").strip()
         division_id_raw = (request.POST.get("division_id") or "").strip()
@@ -1684,6 +1699,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         ctx["can_choose_division"] = can_choose_division
         ctx["can_move_division"] = is_platform_admin(self.request.user)
         ctx["users_payload"] = users_payload
+        ctx["search_query"] = (self.request.GET.get("q") or "").strip()
         ctx["account_details_json"] = json.dumps(account_details, ensure_ascii=False)
         ctx["region_choices"] = list(region_qs)
         ctx["divisions_json"] = json.dumps(

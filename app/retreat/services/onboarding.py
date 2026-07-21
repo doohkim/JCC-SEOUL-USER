@@ -12,6 +12,7 @@ from retreat.models import (
 from retreat.services.audit import log_retreat_change
 from retreat.services.group_sync import (
     consolidate_user_to_event_group,
+    home_attendee_for_user_in_event,
     sync_attendee_from_membership,
 )
 from retreat.services.lodging_stay import persist_lodging_stay_status
@@ -110,7 +111,11 @@ def _ensure_attendee_for_group(
     changed_by,
     member_role: str | None = None,
 ) -> RetreatAttendee | None:
-    """조원 명단에 사용자를 반영한다 (이름 기준 중복 방지)."""
+    """조원 명단에 사용자를 반영한다 (이름 기준 중복 방지).
+
+    집회에 이미 다른 조 소속이 있으면 옮기지 않고 기존 소속을 유지한다.
+    (조장 권한만 추가하는 경우는 ``sync_attendee_from_membership`` 이 담당)
+    """
     name = _attendee_name_for_user(user, profile)
     phone = (getattr(profile, "phone", "") or "").strip()
     gender = (getattr(profile, "gender", "") or "").strip()
@@ -125,6 +130,10 @@ def _ensure_attendee_for_group(
             RetreatGroupMembership.Role.VICE_LEADER,
         ):
             member_role = role_code
+
+    home = home_attendee_for_user_in_event(user, event_id=group.event_id)
+    if home is not None and home.group_id != group.id:
+        return home
 
     existing = (
         RetreatAttendee.objects.filter(group=group, user=user).first()

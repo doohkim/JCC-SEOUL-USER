@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>운영진 관리 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260619g" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260711a" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260721k" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -47,11 +47,11 @@
             <div class="jcc-retreat-tableWrap jcc-retreat-staffRosterTableWrap">
               <table class="jcc-table jcc-retreat-staffRosterTable">
                 <thead>
-                  <tr>
-                    <th>이름</th>
+                  <tr id="staffRosterTheadRow">
+                    <th class="jcc-retreat-sortable" data-sort-key="scope" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">소속</span></th>
+                    <th class="jcc-retreat-sortable" data-sort-key="role" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">역할</span></th>
+                    <th class="jcc-retreat-sortable" data-sort-key="name" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">이름</span></th>
                     <th class="jcc-retreat-staffColPhone">연락처</th>
-                    <th>소속</th>
-                    <th>역할</th>
                     <th>메모</th>
                     <th>등록일</th>
                     {% if can_manage_staff %}<th class="jcc-retreat-staffColAction">Action</th>{% endif %}
@@ -64,6 +64,7 @@
             </div>
 
             <div class="jcc-retreat-staffRosterCards" id="staffRosterCards" aria-live="polite"></div>
+            <nav class="jcc-retreat-staffPager" id="staffRosterPager" aria-label="운영진 목록 페이지" hidden></nav>
           </div>
         </main>
       </div>
@@ -185,6 +186,6 @@
       };
     </script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_council.js' %}?v=20260711a" defer></script>
+    <script src="{% static 'retreat/retreat_council.js' %}?v=20260721k" defer></script>
   </body>
 </html>

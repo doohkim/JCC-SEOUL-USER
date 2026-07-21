@@ -6,8 +6,11 @@
   const roleScopes = ctx.roleScopes || {};
   const statusEl = document.getElementById("staffRosterStatus");
   const rosterTbody = document.getElementById("staffRosterTbody");
+  const rosterTheadRow = document.getElementById("staffRosterTheadRow");
   const rosterCards = document.getElementById("staffRosterCards");
+  const rosterPager = document.getElementById("staffRosterPager");
   const filterPills = document.getElementById("staffFilterPills");
+  const PAGE_SIZE = 10;
   const modalOverlay = document.getElementById("staffModalOverlay");
   const modalForm = document.getElementById("staffModalForm");
   const modalTitle = document.getElementById("staffModalTitle");
@@ -22,6 +25,9 @@
   let rosterRows = [];
   let groupsCache = [];
   let activeFilter = "all";
+  let sortKey = null;
+  let sortDir = "asc";
+  let rosterPage = 1;
   let editingRow = null;
   let modalMode = "council";
   let confirmResolve = null;
@@ -133,6 +139,136 @@
         : "jcc-retreat-staffRoleTag--leader";
     }
     return `jcc-retreat-staffRoleTag--${role}`;
+  }
+
+  function renderRoleBadges(row) {
+    const items =
+      Array.isArray(row.roleBadges) && row.roleBadges.length
+        ? row.roleBadges
+        : [{ role: row.role, label: row.roleLabel }];
+    const badges = items
+      .map(
+        (item) =>
+          `<span class="jcc-retreat-staffRoleTag ${roleBadgeClass(item.role, row.kind)}">${escapeHtml(item.label)}</span>`
+      )
+      .join("");
+    return `<span class="jcc-retreat-staffRoleBadges">${badges}</span>`;
+  }
+
+  function renderScopeBadges(row) {
+    const items =
+      Array.isArray(row.scopeBadges) && row.scopeBadges.length
+        ? row.scopeBadges
+        : [{ label: row.scopeLabel || "—", kind: "plain" }];
+    const pills = items
+      .map((item) => {
+        const label = String(item.label || "").trim();
+        if (!label || label === "—") return "";
+        const kind = item.kind || "plain";
+        const klass =
+          kind === "region"
+            ? "jcc-retreat-pill jcc-retreat-pill--scopeRegion"
+            : kind === "division"
+              ? "jcc-retreat-pill jcc-retreat-pill--scopeDivision"
+              : "jcc-retreat-pill jcc-retreat-pill--scopeReadonly";
+        return `<span class="${klass}">${escapeHtml(label)}</span>`;
+      })
+      .filter(Boolean)
+      .join("");
+    return `<span class="jcc-retreat-staffScopeBadges jcc-retreat-scopeTags">${pills || "—"}</span>`;
+  }
+
+  /** 사용자 계정(UserDivisionTeam) 지역·부서 태그. */
+  function affiliationScopeBadges(affiliations) {
+    const rows = Array.isArray(affiliations) ? affiliations : [];
+    const badges = [];
+    let lastRegion = "";
+    rows.forEach((row) => {
+      const region = String(row?.region_name || "").trim();
+      const division = String(row?.division_name || "").trim();
+      if (region && region !== lastRegion) {
+        badges.push({ label: region, kind: "region" });
+        lastRegion = region;
+      }
+      if (division) badges.push({ label: division, kind: "division" });
+    });
+    return badges.length ? badges : [{ label: "—", kind: "plain" }];
+  }
+
+  function affiliationScopeLabel(affiliations) {
+    return (
+      affiliationScopeBadges(affiliations)
+        .map((b) => b.label)
+        .filter((label) => label && label !== "—")
+        .join(" · ") || "—"
+    );
+  }
+
+  /** 겸직 조장은 사람당 1행으로 합친다 (소속/담당 표기). */
+  function mergeGroupMembershipRows(rows) {
+    const councilRows = [];
+    const groupByUser = new Map();
+    rows.forEach((row) => {
+      if (row.kind !== "group") {
+        councilRows.push(row);
+        return;
+      }
+      const key = String(row.userId);
+      if (!groupByUser.has(key)) groupByUser.set(key, []);
+      groupByUser.get(key).push(row);
+    });
+
+    const mergedGroupRows = [];
+    groupByUser.forEach((list) => {
+      list.sort((a, b) => {
+        if (!!a.isCrossGroupLeader !== !!b.isCrossGroupLeader) {
+          return a.isCrossGroupLeader ? 1 : -1;
+        }
+        return String(a.groupName || "").localeCompare(
+          String(b.groupName || ""),
+          "ko"
+        );
+      });
+      const primary =
+        list.find((row) => !row.isCrossGroupLeader) || list[0];
+      const assignments = list.map((row) => ({
+        id: row.id,
+        groupId: row.groupId,
+        groupName: row.groupName,
+        role: row.role,
+        roleLabel: row.roleLabel,
+        isCrossGroupLeader: !!row.isCrossGroupLeader,
+        createdAt: row.createdAt,
+      }));
+      const scopeBadges =
+        Array.isArray(primary.scopeBadges) && primary.scopeBadges.length
+          ? primary.scopeBadges
+          : affiliationScopeBadges(primary.affiliations);
+      const scopeLabel =
+        primary.scopeLabel && primary.scopeLabel !== "—"
+          ? primary.scopeLabel
+          : affiliationScopeLabel(primary.affiliations);
+      const roleBadges = list.map((row) => ({
+        role: row.role,
+        label: `${row.groupName} ${row.roleLabel}`.trim(),
+      }));
+      const createdAt = list
+        .map((row) => row.createdAt)
+        .filter(Boolean)
+        .sort()[0];
+      mergedGroupRows.push({
+        ...primary,
+        scopeLabel,
+        scopeBadges,
+        affiliations: primary.affiliations || [],
+        roleLabel: roleBadges.map((b) => b.label).join(" · "),
+        roleBadges,
+        groupAssignments: assignments,
+        createdAt: createdAt || primary.createdAt,
+      });
+    });
+
+    return councilRows.concat(mergedGroupRows);
   }
 
   function filterRegionsByAllowed(selectEl, allowedRegionIds) {
@@ -845,6 +981,10 @@
 
       const rows = [];
       council.forEach((m) => {
+        const affiliations = Array.isArray(m.user_affiliations)
+          ? m.user_affiliations
+          : [];
+        const scopeBadges = affiliationScopeBadges(affiliations);
         rows.push({
           kind: "council",
           id: m.id,
@@ -855,12 +995,17 @@
           phone: m.user_phone || "",
           role: m.role,
           roleLabel: m.role_display,
-          scopeLabel: m.scope_label || "전체",
+          scopeLabel: affiliationScopeLabel(affiliations),
+          scopeBadges,
           regionId: m.region,
           divisionId: m.division,
+          regionName: m.region_name || "",
+          divisionName: m.division_name || "",
           userRegionId: m.user_region_id,
           userDivisionId: m.user_division_id,
-          affiliations: Array.isArray(m.user_affiliations) ? m.user_affiliations : [],
+          affiliations,
+          roleLevelName: m.user_role_level_name || "",
+          roleLevel: m.user_role_level,
           note: m.note || "",
           createdAt: m.created_at,
           accountRetired: !!m.user_account_retired,
@@ -870,6 +1015,12 @@
 
       groupsCache.forEach((g) => {
         (g.memberships || []).forEach((m) => {
+          const homeName = m.home_group_name || "";
+          const cross = !!m.is_cross_group_leader;
+          const affiliations = Array.isArray(m.user_affiliations)
+            ? m.user_affiliations
+            : [];
+          const scopeBadges = affiliationScopeBadges(affiliations);
           rows.push({
             kind: "group",
             id: m.id,
@@ -880,9 +1031,14 @@
             phone: m.user_phone || "",
             role: m.role,
             roleLabel: m.role_display || m.role,
-            scopeLabel: g.name,
+            scopeLabel: affiliationScopeLabel(affiliations),
+            scopeBadges,
+            affiliations,
             groupId: g.id,
             groupName: g.name,
+            homeGroupId: m.home_group_id || null,
+            homeGroupName: homeName,
+            isCrossGroupLeader: cross,
             userRegionId: m.user_region_id,
             userDivisionId: m.user_division_id,
             note: "",
@@ -893,13 +1049,17 @@
         });
       });
 
-      rosterRows = rows;
+      rosterRows = mergeGroupMembershipRows(rows);
       updateFilterCounts();
-      renderRoster(activeFilter);
+      renderRoster(activeFilter, { resetPage: true });
     } catch (err) {
       console.error(err);
       if (rosterTbody) {
         rosterTbody.innerHTML = `<tr><td colspan="${ctx.canManage ? 7 : 6}">목록을 불러오지 못했습니다.</td></tr>`;
+      }
+      if (rosterPager) {
+        rosterPager.hidden = true;
+        rosterPager.innerHTML = "";
       }
       showStatus("목록을 불러오지 못했습니다.", true);
     }
@@ -918,31 +1078,193 @@
   }
 
   function filteredRows(filter) {
-    if (filter === "all") return rosterRows;
+    if (filter === "all") return rosterRows.slice();
     return rosterRows.filter((row) => rowCategory(row) === filter);
   }
 
-  function renderRoster(filter) {
-    activeFilter = filter;
-    const rows = filteredRows(filter);
-    const colSpan = ctx.canManage ? 7 : 6;
+  function sortValue(row, key) {
+    if (key === "scope") return String(row.scopeLabel || "").trim();
+    if (key === "role") {
+      if (Array.isArray(row.roleBadges) && row.roleBadges.length) {
+        return row.roleBadges.map((b) => b.label || "").join(" ");
+      }
+      return String(row.roleLabel || row.role || "").trim();
+    }
+    if (key === "name") return String(row.name || "").trim();
+    if (key === "title") return String(row.roleLevelName || "").trim();
+    return "";
+  }
 
-    if (!rows.length) {
+  function isSortableFilter(filter) {
+    return (
+      filter === "all" ||
+      filter === "event" ||
+      filter === "region_division" ||
+      filter === "leader"
+    );
+  }
+
+  function filterColumnLayout(filter) {
+    if (filter === "region_division") {
+      return {
+        showTitle: true,
+        sortableKeys: ["scope", "role", "name", "title"],
+        colSpan: ctx.canManage ? 8 : 7,
+      };
+    }
+    if (filter === "leader") {
+      return {
+        showTitle: false,
+        sortableKeys: ["scope", "role", "name"],
+        colSpan: ctx.canManage ? 7 : 6,
+      };
+    }
+    return {
+      showTitle: false,
+      sortableKeys: ["scope", "role", "name"],
+      colSpan: ctx.canManage ? 7 : 6,
+    };
+  }
+
+  function renderTitleCell(row) {
+    const label = String(row.roleLevelName || "").trim();
+    if (!label) return `<td>—</td>`;
+    return `<td><span class="jcc-retreat-pill jcc-retreat-pill--scopeReadonly">${escapeHtml(label)}</span></td>`;
+  }
+
+  function renderTableHeader(filter) {
+    if (!rosterTheadRow) return;
+    const layout = filterColumnLayout(filter);
+    const sortable = new Set(layout.sortableKeys);
+    const sortTh = (key, label) => {
+      if (!sortable.has(key)) {
+        return `<th scope="col">${escapeHtml(label)}</th>`;
+      }
+      return (
+        `<th class="jcc-retreat-sortable" data-sort-key="${key}" scope="col" aria-sort="none">` +
+        `<span class="jcc-retreat-sortLabel">${escapeHtml(label)}</span></th>`
+      );
+    };
+    let html =
+      sortTh("scope", "소속") +
+      sortTh("role", "역할") +
+      sortTh("name", "이름") +
+      `<th class="jcc-retreat-staffColPhone">연락처</th>`;
+    if (layout.showTitle) {
+      html += sortTh("title", "직책");
+    }
+    html += `<th>메모</th><th>등록일</th>`;
+    if (ctx.canManage) {
+      html += `<th class="jcc-retreat-staffColAction">Action</th>`;
+    }
+    rosterTheadRow.innerHTML = html;
+  }
+
+  function sortedRows(rows) {
+    if (!sortKey || !isSortableFilter(activeFilter)) return rows;
+    const layout = filterColumnLayout(activeFilter);
+    if (!layout.sortableKeys.includes(sortKey)) return rows;
+    const dir = sortDir === "desc" ? -1 : 1;
+    return rows.slice().sort((a, b) => {
+      if (sortKey === "title") {
+        const la = a.roleLevel == null ? -1 : Number(a.roleLevel);
+        const lb = b.roleLevel == null ? -1 : Number(b.roleLevel);
+        if (la !== lb) return (la - lb) * dir;
+      }
+      const va = sortValue(a, sortKey);
+      const vb = sortValue(b, sortKey);
+      const cmp = va.localeCompare(vb, "ko", { sensitivity: "base", numeric: true });
+      if (cmp !== 0) return cmp * dir;
+      return String(a.name || "").localeCompare(String(b.name || ""), "ko");
+    });
+  }
+
+  function syncSortHeaders() {
+    const headers = document.querySelectorAll(
+      ".jcc-retreat-staffRosterTable .jcc-retreat-sortable[data-sort-key]"
+    );
+    const sortingEnabled = isSortableFilter(activeFilter);
+    const layout = filterColumnLayout(activeFilter);
+    if (sortKey && !layout.sortableKeys.includes(sortKey)) {
+      sortKey = null;
+      sortDir = "asc";
+    }
+    headers.forEach((th) => {
+      th.classList.toggle("is-disabled", !sortingEnabled);
+      th.setAttribute("aria-disabled", sortingEnabled ? "false" : "true");
+      if (!sortingEnabled) {
+        delete th.dataset.sortDir;
+        th.setAttribute("aria-sort", "none");
+        return;
+      }
+      if (th.dataset.sortKey === sortKey) {
+        th.dataset.sortDir = sortDir;
+        th.setAttribute(
+          "aria-sort",
+          sortDir === "asc" ? "ascending" : "descending"
+        );
+      } else {
+        delete th.dataset.sortDir;
+        th.setAttribute("aria-sort", "none");
+      }
+    });
+  }
+
+  function renderPager(total, page, pageCount) {
+    if (!rosterPager) return;
+    if (total <= PAGE_SIZE) {
+      rosterPager.hidden = true;
+      rosterPager.innerHTML = "";
+      return;
+    }
+    rosterPager.hidden = false;
+    const start = (page - 1) * PAGE_SIZE + 1;
+    const end = Math.min(page * PAGE_SIZE, total);
+    const prevDisabled = page <= 1 ? " disabled" : "";
+    const nextDisabled = page >= pageCount ? " disabled" : "";
+    rosterPager.innerHTML =
+      `<button type="button" class="secondary jcc-retreat-staffPagerBtn" data-staff-page="prev"${prevDisabled}>이전</button>` +
+      `<span class="jcc-retreat-staffPagerInfo muted">${start}–${end} / ${total}</span>` +
+      `<button type="button" class="jcc-retreat-staffPagerBtn" data-staff-page="next"${nextDisabled}>다음</button>`;
+  }
+
+  function renderRoster(filter, { resetPage } = {}) {
+    const nextFilter = filter || activeFilter;
+    if (resetPage || nextFilter !== activeFilter) {
+      rosterPage = 1;
+    }
+    activeFilter = nextFilter;
+    const layout = filterColumnLayout(activeFilter);
+    renderTableHeader(activeFilter);
+    const allRows = sortedRows(filteredRows(activeFilter));
+    const colSpan = layout.colSpan;
+    syncSortHeaders();
+
+    if (!allRows.length) {
       const empty = '<tr><td colspan="' + colSpan + '">등록된 운영진이 없습니다.</td></tr>';
       if (rosterTbody) rosterTbody.innerHTML = empty;
       if (rosterCards) rosterCards.innerHTML = '<p class="muted">등록된 운영진이 없습니다.</p>';
+      renderPager(0, 1, 1);
       return;
     }
+
+    const pageCount = Math.max(1, Math.ceil(allRows.length / PAGE_SIZE));
+    if (rosterPage > pageCount) rosterPage = pageCount;
+    if (rosterPage < 1) rosterPage = 1;
+    const startIdx = (rosterPage - 1) * PAGE_SIZE;
+    const rows = allRows.slice(startIdx, startIdx + PAGE_SIZE);
+    renderPager(allRows.length, rosterPage, pageCount);
 
     if (rosterTbody) {
       rosterTbody.innerHTML = rows
         .map((row) => {
           return (
             `<tr data-row-id="${row.kind}-${row.id}">` +
+            `<td>${renderScopeBadges(row)}</td>` +
+            `<td>${renderRoleBadges(row)}</td>` +
             renderNameCell(row) +
             `<td class="jcc-retreat-staffColPhone">${escapeHtml(phoneDisplay(row.phone) || "—")}</td>` +
-            `<td>${escapeHtml(row.scopeLabel || "—")}</td>` +
-            `<td><span class="jcc-retreat-staffRoleTag ${roleBadgeClass(row.role, row.kind)}">${escapeHtml(row.roleLabel)}</span></td>` +
+            (layout.showTitle ? renderTitleCell(row) : "") +
             `<td>${escapeHtml(row.note || "—")}</td>` +
             `<td>${escapeHtml(formatDate(row.createdAt))}</td>` +
             renderDeleteAction(row) +
@@ -965,6 +1287,9 @@
             ? `<span class="jcc-retreat-checkInBadge jcc-retreat-checkInBadge--account_retired">${escapeHtml(row.accountRetiredDisplay)}</span>`
             : "";
           const metaParts = [phoneDisplay(row.phone) || "—", formatDate(row.createdAt)];
+          if (layout.showTitle && row.roleLevelName) {
+            metaParts.unshift(row.roleLevelName);
+          }
           return (
             `<article class="jcc-retreat-staffCard" data-row-id="${row.kind}-${row.id}">` +
             `<div class="jcc-retreat-staffCardMain">` +
@@ -972,10 +1297,10 @@
             `<div class="jcc-retreat-staffCardBody">` +
             nameEl +
             retiredBadge +
-            `<div class="jcc-retreat-staffCardMeta muted">${escapeHtml(row.scopeLabel || "—")}</div>` +
+            `<div class="jcc-retreat-staffCardMeta">${renderScopeBadges(row)}</div>` +
             `<div class="jcc-retreat-staffCardMeta muted">${escapeHtml(metaParts.join(" · "))}</div>` +
             `</div>` +
-            `<span class="jcc-retreat-staffRoleTag ${roleBadgeClass(row.role, row.kind)}">${escapeHtml(row.roleLabel)}</span>` +
+            renderRoleBadges(row) +
             deleteBtn +
             `</div>` +
             `</article>`
@@ -983,6 +1308,26 @@
         })
         .join("");
     }
+  }
+
+  function bindStaffSorting() {
+    const table = document.querySelector(".jcc-retreat-staffRosterTable");
+    if (!table) return;
+    table.addEventListener("click", (e) => {
+      const th = e.target.closest(".jcc-retreat-sortable[data-sort-key]");
+      if (!th || !table.contains(th)) return;
+      if (!isSortableFilter(activeFilter)) return;
+      const key = th.dataset.sortKey;
+      const layout = filterColumnLayout(activeFilter);
+      if (!layout.sortableKeys.includes(key)) return;
+      if (sortKey === key) {
+        sortDir = sortDir === "asc" ? "desc" : "asc";
+      } else {
+        sortKey = key;
+        sortDir = "asc";
+      }
+      renderRoster(activeFilter, { resetPage: true });
+    });
   }
 
   function findRow(rowId) {
@@ -998,8 +1343,21 @@
       pill.classList.toggle("is-active", active);
       pill.setAttribute("aria-selected", active ? "true" : "false");
     });
-    renderRoster(btn.dataset.filter || "all");
+    renderRoster(btn.dataset.filter || "all", { resetPage: true });
   });
+
+  rosterPager?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-staff-page]");
+    if (!btn || btn.disabled) return;
+    if (btn.dataset.staffPage === "prev") {
+      rosterPage = Math.max(1, rosterPage - 1);
+    } else if (btn.dataset.staffPage === "next") {
+      rosterPage += 1;
+    }
+    renderRoster(activeFilter);
+  });
+
+  bindStaffSorting();
 
   async function saveCouncilMembership({ userId, membershipId, role }) {
     const body = { role, note: "" };
@@ -1108,10 +1466,14 @@
           headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() },
           body: JSON.stringify({ role, user_id: userId }),
         });
+        const body = await r.json().catch(() => ({}));
         if (!r.ok) {
-          const err = await r.json().catch(() => ({}));
-          throw new Error(err.detail || err.user || "등록 실패");
+          throw new Error(body.detail || body.user || "등록 실패");
         }
+        closeModal();
+        showStatus(body.message || (editingRow ? "저장됨" : "등록됨"));
+        await loadRoster();
+        return;
       }
 
       closeModal();
@@ -1125,20 +1487,44 @@
   modalForm?.addEventListener("submit", submitModal);
 
   async function handleDelete(row) {
-    const label = row.kind === "council" ? "운영진에서 제거" : "조 운영진에서 제거";
-    const ok = await showConfirm(`${label}하시겠습니까?`);
+    const assignments =
+      row.kind === "group" && Array.isArray(row.groupAssignments)
+        ? row.groupAssignments
+        : null;
+    let confirmMsg;
+    if (row.kind === "council") {
+      confirmMsg = "운영진에서 제거하시겠습니까?";
+    } else if (assignments && assignments.length > 1) {
+      const groups = assignments.map((a) => a.groupName).join(", ");
+      confirmMsg =
+        `${row.name} 님의 조 운영진 권한을 모두 해제할까요?\n(${groups})`;
+    } else {
+      confirmMsg = "조 운영진에서 제거하시겠습니까?";
+    }
+    const ok = await showConfirm(confirmMsg);
     if (!ok) return;
     try {
-      const url =
-        row.kind === "council"
-          ? `${ctx.apiDetailBase}${row.id}/`
-          : `${ctx.apiGroupMembershipDetailBase}${row.id}/`;
-      const r = await fetch(url, {
-        method: "DELETE",
-        credentials: "same-origin",
-        headers: { "X-CSRFToken": csrf() },
-      });
-      if (!r.ok) throw new Error(await r.text());
+      if (row.kind === "council") {
+        const r = await fetch(`${ctx.apiDetailBase}${row.id}/`, {
+          method: "DELETE",
+          credentials: "same-origin",
+          headers: { "X-CSRFToken": csrf() },
+        });
+        if (!r.ok) throw new Error(await r.text());
+      } else {
+        const ids = (assignments || [{ id: row.id }]).map((a) => a.id);
+        for (const membershipId of ids) {
+          const r = await fetch(
+            `${ctx.apiGroupMembershipDetailBase}${membershipId}/`,
+            {
+              method: "DELETE",
+              credentials: "same-origin",
+              headers: { "X-CSRFToken": csrf() },
+            }
+          );
+          if (!r.ok) throw new Error(await r.text());
+        }
+      }
       showStatus("명단에서 제거했습니다. 배정이 모두 해제되면 참가 신청서가 삭제되어 재신청할 수 있습니다.");
       await loadRoster();
     } catch (err) {

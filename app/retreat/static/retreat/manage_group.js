@@ -1440,7 +1440,13 @@
           credentials: "same-origin",
           body: JSON.stringify(payload),
         });
-        if (!res.ok) throw new Error("추가 실패");
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          const userErr = Array.isArray(errBody.user)
+            ? errBody.user[0]
+            : errBody.user;
+          throw new Error(userErr || errBody.detail || "추가 실패");
+        }
         showToast("추가됨", false);
         window.location.reload();
       }

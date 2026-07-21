@@ -198,7 +198,10 @@ class UserSearchApiTests(APITestCase):
         usernames = [u["username"] for u in r.json()]
         self.assertNotIn(self.leader.username, usernames)
 
-    def test_staff_pool_group_search_excludes_group_staff(self):
+    def test_staff_pool_group_search_includes_group_staff(self):
+        profile = ensure_user_profile(self.leader)
+        profile.onboarding_status = profile.OnboardingStatus.APPROVED
+        profile.save(update_fields=["onboarding_status", "updated_at"])
         self.client.force_authenticate(self.leader)
         r = self.client.get(
             reverse("api_retreat_user_search"),
@@ -211,7 +214,7 @@ class UserSearchApiTests(APITestCase):
         )
         self.assertEqual(r.status_code, 200)
         usernames = [u["username"] for u in r.json()]
-        self.assertNotIn(self.leader.username, usernames)
+        self.assertIn(self.leader.username, usernames)
 
     def test_staff_pool_includes_udt_multi_division_affiliations(self):
         div_univ = Division.objects.create(

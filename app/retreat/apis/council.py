@@ -152,7 +152,7 @@ class RetreatEventCouncilListCreateView(APIView):
         _assert_can_view(request.user, event)
         qs = (
             event.council_memberships.select_related(
-                "user", "user__profile", "region", "division"
+                "user", "user__profile", "user__role_level", "region", "division"
             )
             .prefetch_related(
                 Prefetch(

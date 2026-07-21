@@ -105,7 +105,11 @@ def assert_can_assign_event_staff(
     exclude_council_id: int | None = None,
     exclude_group_membership_id: int | None = None,
 ) -> None:
-    """집회당 집회운영 1건 + 조장·부조장 1개 조 (규칙 B)."""
+    """집회 운영진·조 운영진 배정 검증.
+
+    - 집회 운영진(council): 집회당 1건
+    - 조장·부조장: 같은 집회에서 여러 조에 배정 가능 (소속 조 명단은 1개만)
+    """
     summary = user_event_staff_summary(user, event)
 
     if kind == "council":
@@ -120,14 +124,5 @@ def assert_can_assign_event_staff(
         raise ValueError("조를 지정해야 합니다.")
     if group.event_id != event.id:
         raise ValueError("이 집회의 조가 아닙니다.")
-
-    existing_group = summary.group_membership
-    if existing_group is None:
-        return
-    if (
-        exclude_group_membership_id is not None
-        and existing_group.id == exclude_group_membership_id
-    ):
-        return
-    if existing_group.group_id != group.id:
-        raise ValueError("이 집회에 이미 다른 조 운영진으로 배정된 사용자입니다.")
+    # 복수 조 조장/부조장 허용. exclude 인자는 호환용으로 유지.
+    _ = exclude_group_membership_id

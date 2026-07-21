@@ -20,6 +20,8 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
     user_account_retired_display = serializers.SerializerMethodField()
     user_is_pastoral = serializers.SerializerMethodField()
     user_affiliations = serializers.SerializerMethodField()
+    user_role_level = serializers.SerializerMethodField()
+    user_role_level_name = serializers.SerializerMethodField()
     role_display = serializers.CharField(source="get_role_display", read_only=True)
     scope_label = serializers.CharField(read_only=True)
     region_name = serializers.CharField(
@@ -44,6 +46,8 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
             "user_account_retired_display",
             "user_is_pastoral",
             "user_affiliations",
+            "user_role_level",
+            "user_role_level_name",
             "role",
             "role_display",
             "region",
@@ -147,6 +151,15 @@ class RetreatCouncilMembershipSerializer(serializers.ModelSerializer):
     def get_user_is_pastoral(self, obj: RetreatCouncilMembership) -> bool:
         role_code = getattr(getattr(obj.user, "role_level", None), "code", None)
         return role_code in {"pastor", "evangelist"}
+
+    def get_user_role_level(self, obj: RetreatCouncilMembership) -> int | None:
+        level = getattr(getattr(obj.user, "role_level", None), "level", None)
+        return int(level) if level is not None else None
+
+    def get_user_role_level_name(self, obj: RetreatCouncilMembership) -> str:
+        return (
+            getattr(getattr(obj.user, "role_level", None), "name", "") or ""
+        ).strip()
 
     def get_user_affiliations(self, obj: RetreatCouncilMembership) -> list[dict]:
         return self._affiliation_bundle_for(obj.user)["affiliations"]

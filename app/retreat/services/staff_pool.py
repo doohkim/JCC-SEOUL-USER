@@ -79,7 +79,8 @@ def staff_pool_users_for_event(event_id: int, *, assign_kind: str = "any") -> Qu
             )
         )
     elif assign_kind == "group":
-        assigned = group_staff_user_ids
+        # 다른 조 겸직·이동 배정을 위해 기존 조 운영진도 검색에 포함한다.
+        assigned = set()
     else:
         assigned = event_staff_assigned_user_ids(event_id)
     if assigned:

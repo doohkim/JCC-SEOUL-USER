@@ -197,6 +197,7 @@ class CouncilRosterApiFieldTests(APITestCase, _CouncilFixture):
         self.assertEqual(row["user_phone"], "01098765432")
         self.assertTrue(row["created_at"])
         self.assertIn("user_affiliations", row)
+        self.assertIn("user_role_level_name", row)
 
     def test_group_memberships_include_phone_and_created_at(self):
         r = self.client.get(reverse("api_retreat_event_groups", args=[self.event.id]))
@@ -207,6 +208,11 @@ class CouncilRosterApiFieldTests(APITestCase, _CouncilFixture):
         )
         self.assertEqual(membership["user_phone"], "01011112222")
         self.assertTrue(membership["created_at"])
+        self.assertIn("user_affiliations", membership)
+        self.assertTrue(membership["user_affiliations"])
+        self.assertEqual(
+            membership["user_affiliations"][0]["division_name"], self.div.name
+        )
 
 
 class CouncilPageAccessTests(TestCase, _CouncilFixture):

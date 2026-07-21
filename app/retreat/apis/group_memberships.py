@@ -26,6 +26,7 @@ from retreat.services.account_retired import (
 )
 from retreat.services.group_sync import (
     clear_leader_role_on_membership_removed,
+    home_attendee_for_user_in_event,
     sync_attendee_from_membership,
 )
 from retreat.services.staff_roster import assert_can_assign_event_staff
@@ -81,6 +82,9 @@ class RetreatGroupMembershipListCreateView(APIView):
             except ValueError as exc:
                 raise ValidationError({"user": str(exc)}) from exc
 
+        home_before = home_attendee_for_user_in_event(target, event_id=group.event_id)
+        prev_group_id = home_before.group_id if home_before else None
+        prev_group_name = home_before.group.name if home_before else ""
         membership, created = RetreatGroupMembership.objects.update_or_create(
             group=group,
             user=target,
@@ -104,8 +108,26 @@ class RetreatGroupMembershipListCreateView(APIView):
             },
         )
         sync_attendee_from_membership(membership, changed_by=request.user)
+        data = RetreatGroupMembershipSerializer(membership).data
+        if created and prev_group_id is not None and prev_group_id != group.id:
+            home_after = home_attendee_for_user_in_event(
+                target, event_id=group.event_id
+            )
+            role_label = membership.get_role_display()
+            if home_after is not None and home_after.group_id == group.id:
+                data["moved_home_group"] = True
+                data["message"] = (
+                    f"{prev_group_name}에서 {group.name}으로 소속을 옮기고 "
+                    f"{role_label}으로 등록했습니다."
+                )
+            else:
+                data["kept_home_group"] = True
+                data["message"] = (
+                    f"{prev_group_name} 소속을 유지한 채 "
+                    f"{group.name} {role_label} 권한을 추가했습니다."
+                )
         return Response(
-            RetreatGroupMembershipSerializer(membership).data,
+            data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
 

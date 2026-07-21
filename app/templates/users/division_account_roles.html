@@ -16,6 +16,60 @@
       gap: 0.65rem;
       margin-bottom: 1rem;
     }
+    .jcc-appsSearchWrap {
+      position: relative;
+      flex: 1 1 12rem;
+      min-width: min(100%, 12rem);
+    }
+    .jcc-appsSearchIcon {
+      position: absolute;
+      left: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 1.05rem;
+      height: 1.05rem;
+      color: var(--muted);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .jcc-appsSearchIcon svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .jcc-appsToolbar .jcc-appsSearchInput {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      min-width: 0;
+      height: var(--jcc-apps-control-h);
+      min-height: var(--jcc-apps-control-h);
+      max-height: var(--jcc-apps-control-h);
+      padding: 0 0.85rem 0 2.45rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 500;
+      line-height: normal;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .jcc-appsToolbar .jcc-appsSearchInput::placeholder {
+      color: var(--muted);
+      opacity: 1;
+    }
+    .jcc-appsToolbar .jcc-appsSearchInput:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+    }
+    .jcc-appsToolbar .jcc-appsSearchInput::-webkit-search-cancel-button,
+    .jcc-appsToolbar .jcc-appsSearchInput::-webkit-search-decoration {
+      -webkit-appearance: none;
+      appearance: none;
+    }
     .jcc-appsFilter {
       flex: 1 1 9.5rem;
       min-width: min(100%, 9.5rem);
@@ -1037,6 +1091,22 @@
 
         {% if allowed_divisions %}
           <form method="get" class="jcc-appsToolbar">
+            <div class="jcc-appsSearchWrap">
+              <svg class="jcc-appsSearchIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+                <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <input
+                class="jcc-appsSearchInput"
+                type="search"
+                name="q"
+                value="{{ search_query }}"
+                placeholder="이름, 휴대폰, 지역, 부서로 검색..."
+                aria-label="검색"
+                autocomplete="off"
+                enterkeyhint="search"
+              >
+            </div>
             <div class="jcc-appsToolbar-filters">
               {% if can_choose_division %}
                 <div class="jcc-appsFilter">
@@ -1054,6 +1124,7 @@
                 </div>
               {% elif active_division %}
                 <p class="jcc-accountsDivisionHint">{{ active_division.name }}</p>
+                <input type="hidden" name="division_code" value="{{ active_division.code }}">
               {% endif %}
             </div>
           </form>
@@ -1063,10 +1134,10 @@
           </div>
         {% endif %}
 
-        <div class="jcc-appsTableCard">
+        <div class="jcc-appsTableCard" id="accountUsersTableCard">
           {% if users_payload %}
-            <div class="jcc-appsTableWrap">
-              <table class="jcc-appsTable">
+            <div class="jcc-appsTableWrap" id="accountUsersTableWrap">
+              <table class="jcc-appsTable" id="accountUsersTable">
                 <thead>
                   <tr>
                     <th>사용자</th>
@@ -1076,9 +1147,12 @@
                     <th>가입한 날짜</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody id="accountUsersTbody">
                   {% for u in users_payload %}
-                    <tr>
+                    <tr
+                      class="js-account-user-row"
+                      data-search="{{ u.real_name }} {{ u.username }} {{ u.phone }} {{ u.region_name }} {{ u.division_name }}"
+                    >
                       <td>
                         <button
                           type="button"
@@ -1096,6 +1170,7 @@
                 </tbody>
               </table>
             </div>
+            <div class="jcc-appsEmpty" id="accountUsersSearchEmpty" hidden>검색 결과가 없습니다.</div>
           {% else %}
             <div class="jcc-appsEmpty">해당 부서에 조회할 계정이 없습니다.</div>
           {% endif %}
@@ -1144,6 +1219,7 @@
         {% csrf_token %}
         <input type="hidden" name="user_id" id="accountEditUserId" value="">
         <input type="hidden" name="division_code" value="{{ active_division_code }}">
+        <input type="hidden" name="q" value="{{ search_query }}">
 
         <section class="jcc-account-editSection">
           <h3 class="jcc-account-editSection__title">기본 정보</h3>
@@ -2237,6 +2313,60 @@
           if (id) openModal(id);
         });
       });
+
+      (function bindAccountLiveSearch() {
+        const form = document.querySelector("form.jcc-appsToolbar");
+        const input = form?.querySelector('input[name="q"].jcc-appsSearchInput');
+        const rows = Array.from(document.querySelectorAll(".js-account-user-row"));
+        const tableWrap = document.getElementById("accountUsersTableWrap");
+        const emptyEl = document.getElementById("accountUsersSearchEmpty");
+        const hiddenQ = document.querySelector('#accountEditForm input[name="q"]');
+        if (!input || !rows.length) return;
+
+        function normalize(value) {
+          return String(value || "")
+            .toLowerCase()
+            .replace(/\s+/g, "")
+            .replace(/[^0-9a-z가-힣]/gi, "");
+        }
+
+        function applyFilter() {
+          const raw = (input.value || "").trim();
+          const q = normalize(raw);
+          const qDigits = String(raw).replace(/\D/g, "");
+          let visible = 0;
+          rows.forEach((row) => {
+            const hay = normalize(row.getAttribute("data-search") || "");
+            const hayDigits = String(row.getAttribute("data-search") || "").replace(
+              /\D/g,
+              ""
+            );
+            const matched =
+              !q ||
+              hay.includes(q) ||
+              (qDigits.length >= 3 && hayDigits.includes(qDigits));
+            row.hidden = !matched;
+            if (matched) visible += 1;
+          });
+          if (tableWrap) tableWrap.hidden = visible === 0;
+          if (emptyEl) emptyEl.hidden = visible !== 0;
+          if (hiddenQ) hiddenQ.value = raw;
+          const url = new URL(window.location.href);
+          if (raw) url.searchParams.set("q", raw);
+          else url.searchParams.delete("q");
+          window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+        }
+
+        input.addEventListener("input", applyFilter);
+        input.addEventListener("search", applyFilter);
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            applyFilter();
+          }
+        });
+        applyFilter();
+      })();
 
       closeBtn.addEventListener("click", closeModal);
       membershipAddBtn?.addEventListener("click", () => {

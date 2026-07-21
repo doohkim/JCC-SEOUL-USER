@@ -1,4 +1,4 @@
-"""집회 운영진 배정 규칙 B — 집회운영 1 + 조 1."""
+"""집회 운영진 배정 규칙 — 집회운영 1 + 조 운영진 복수 허용."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
 
 from retreat.models import (
+    RetreatAttendee,
     RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
@@ -60,7 +61,7 @@ class StaffRosterRulesApiTests(APITestCase):
         self.client = APIClient()
         self.client.force_authenticate(self.admin)
 
-    def test_second_group_in_same_event_rejected(self):
+    def test_second_group_in_same_event_allowed(self):
         url_a = reverse("api_retreat_group_memberships", args=[self.group_a.id])
         r1 = self.client.post(
             url_a,
@@ -74,8 +75,20 @@ class StaffRosterRulesApiTests(APITestCase):
             {"user_id": self.target.id, "role": "leader"},
             format="json",
         )
-        self.assertEqual(r2.status_code, 400)
-        self.assertIn("다른 조", str(r2.json()))
+        self.assertEqual(r2.status_code, 201, r2.content)
+        self.assertTrue(r2.json().get("kept_home_group"))
+        self.assertEqual(
+            RetreatGroupMembership.objects.filter(
+                user=self.target, group__event=self.event
+            ).count(),
+            2,
+        )
+        self.assertEqual(
+            RetreatAttendee.objects.filter(
+                user=self.target, group__event=self.event
+            ).count(),
+            1,
+        )
 
     def test_council_plus_one_group_allowed(self):
         council_url = reverse("api_retreat_event_council", args=[self.event.id])
