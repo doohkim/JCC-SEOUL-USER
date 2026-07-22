@@ -22,6 +22,8 @@ WSGI_APPLICATION = "config.wsgi.dev.application"
 # sentry_init(ENV)
 
 # Database
+# Docker 네트워크 안에서는 postgres 컨테이너 포트(5432)를 쓴다.
+# secrets.DB_PORT_DEV(55432)는 호스트 포트 매핑용이라 컨테이너→컨테이너 접속에 쓰면 Connection refused.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",

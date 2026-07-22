@@ -320,4 +320,8 @@ def create_or_update_kakao_user(
             len(saved_hashes),
             new_avatar_content_hash[:10] if new_avatar_content_hash else "",
         )
+
+    from utils.slack import slack_client
+
+    slack_client.send_user_signup(created)
     return {"user": created}

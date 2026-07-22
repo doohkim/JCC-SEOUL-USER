@@ -1808,6 +1808,21 @@ files = [
 ]
 
 [[package]]
+name = "slack-sdk"
+version = "3.43.0"
+description = "The Slack API Platform SDK for Python"
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "slack_sdk-3.43.0-py2.py3-none-any.whl", hash = "sha256:4b6557c65577fc172f685af218b811f9f3b4909e24cddd839ada09565f10c585"},
+    {file = "slack_sdk-3.43.0.tar.gz", hash = "sha256:0553152e46c4259eb69f7464cdadc35ba4802ca10f9f5a849c92cf03d6c2ba07"},
+]
+
+[package.extras]
+optional = ["SQLAlchemy (>=2.0.49,<3)", "aiodns (>1.0)", "aiohttp (>=3.13.5,<4)", "aiohttp (>=3.7.3,<3.11)", "aiohttp (>=3.7.3,<3.9)", "boto3 (<=2)", "websocket-client (>=1,<2)", "websockets (>=9.1,<16)"]
+
+[[package]]
 name = "social-auth-app-django"
 version = "5.7.0"
 description = "Python Social Authentication, Django integration."
@@ -1958,4 +1973,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4.0"
-content-hash = "1986f6dd4d647eb842d4ee344258d76753c2e4fb3304bdd28eb23dc56a825d7f"
+content-hash = "0382f351f81404cebed74b9cad1faa116ed8f5ffac391ab5e20feb50248bf828"

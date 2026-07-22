@@ -14,6 +14,7 @@ from .installed_apps import *
 from .middleware import *
 from .password import *
 from .phonenumber import *
+from .slack import *
 from .static import *
 from .storage import *
 from .logging import *

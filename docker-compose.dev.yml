@@ -50,6 +50,9 @@ services:
       python manage.py collectstatic --noinput &&
       python manage.py migrate --noinput &&
       gunicorn -c ${GUNICORN_CONF} ${GUNICORN_WSGI}'
+    depends_on:
+      postgres-django:
+        condition: service_healthy
     volumes:
       - django-static:/srv/.static
       - django-media:/srv/.media
@@ -85,7 +88,10 @@ services:
     command: bash -c 'celery -A config worker -l INFO -Q celery --concurrency=5'
     restart: always
     depends_on:
-      - rabbitmq
+      postgres-django:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
     networks:
       default:
         ipv4_address: 172.19.0.15
@@ -96,8 +102,12 @@ services:
     command: bash -c 'celery -A config beat -l INFO --scheduler django_celery_beat.schedulers:DatabaseScheduler'
     restart: always
     depends_on:
-      - rabbitmq
-      - django
+      postgres-django:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      django:
+        condition: service_started
     networks:
       default:
         ipv4_address: 172.19.0.16

@@ -194,7 +194,7 @@ class RetreatStaffApplicationForm(forms.Form):
         track = (
             self.cleaned_data.get("application_track") or StaffApplicationTrack.COUNCIL
         )
-        return RetreatStaffApplication.objects.create(
+        application = RetreatStaffApplication.objects.create(
             event=self.event,
             user=self.user,
             region=region,
@@ -208,3 +208,7 @@ class RetreatStaffApplicationForm(forms.Form):
             ),
             status=RetreatStaffApplication.Status.PENDING,
         )
+        from utils.slack import slack_client
+
+        slack_client.send_staff_application(application)
+        return application
