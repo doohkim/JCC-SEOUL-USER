@@ -34,7 +34,9 @@ env/
 !.env.example
 .deploy/env/nginx-certbot.env
 .deploy/dev/nginx/secrets/
+.deploy/prod_onprem/nginx/secrets/
 .deploy/production/nginx/secrets/
+
 local_settings.py
 secrets.json
 
