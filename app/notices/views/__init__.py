@@ -1,4 +1,8 @@
 from .notices import (
+    FaqCreateView,
+    FaqDeleteView,
+    FaqUpdateView,
+    FaqView,
     NoticeCreateView,
     NoticeDeleteView,
     NoticeDetailView,
@@ -15,5 +19,9 @@ __all__ = [
     "NoticeUpdateView",
     "NoticeDeleteView",
     "TimetableView",
+    "FaqView",
+    "FaqCreateView",
+    "FaqUpdateView",
+    "FaqDeleteView",
     "notice_image_upload",
 ]

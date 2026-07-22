@@ -1,4 +1,4 @@
-# onpremise(odroid) - onpremise(local)
+# onpremise(beelink) - onpremise(local) / domain:8443 (no Cloudflare)
 services:
   nginx:
     image: ${NGINX_IMAGE:-jonasal/nginx-certbot:latest}
@@ -17,18 +17,21 @@ services:
     networks:
       default:
         ipv4_address: 172.19.0.2
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: cloudflared
-    restart: unless-stopped
-    command: tunnel run
+
+  ddns-route53:
+    image: crazymax/ddns-route53:latest
+    container_name: ddns-route53
+    restart: always
+    volumes:
+      - ./.deploy/dev/ddns-route53.yml:/ddns-route53.yml:ro
     environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
-    depends_on:
-      - nginx
+      - TZ=Asia/Seoul
+      - SCHEDULE=*/15 * * * *
+      - LOG_LEVEL=info
+      - LOG_JSON=false
     networks:
       default:
-        ipv4_address: 172.19.0.20 
+        ipv4_address: 172.19.0.3
 
   django:
     &django

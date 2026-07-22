@@ -5,6 +5,10 @@ from django.urls import path
 from notices.apis.categories import NoticeCategoryListAPIView
 from notices.apis.notices import NoticeDetailAPIView, NoticeListAPIView
 from notices.views import (
+    FaqCreateView,
+    FaqDeleteView,
+    FaqUpdateView,
+    FaqView,
     NoticeCreateView,
     NoticeDeleteView,
     NoticeDetailView,
@@ -33,4 +37,8 @@ urlpatterns = [
     path("notices/<int:pk>/edit/", NoticeUpdateView.as_view(), name="notice_edit"),
     path("notices/<int:pk>/delete/", NoticeDeleteView.as_view(), name="notice_delete"),
     path("timetable/", TimetableView.as_view(), name="timetable"),
+    path("faq/", FaqView.as_view(), name="notice_faq"),
+    path("faq/new/", FaqCreateView.as_view(), name="notice_faq_create"),
+    path("faq/<int:pk>/edit/", FaqUpdateView.as_view(), name="notice_faq_edit"),
+    path("faq/<int:pk>/delete/", FaqDeleteView.as_view(), name="notice_faq_delete"),
 ]

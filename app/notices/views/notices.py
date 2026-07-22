@@ -16,9 +16,13 @@ from django.views.generic import (
     UpdateView,
 )
 
-from notices.forms import NoticeForm
-from notices.models import Notice
-from users.mixins import NoticeManageRequiredMixin, NoticeReadAccessRequiredMixin
+from notices.forms import FaqForm, NoticeForm
+from notices.models import FaqItem, Notice
+from users.mixins import (
+    NoticeManageRequiredMixin,
+    NoticeReadAccessRequiredMixin,
+    SuperuserRequiredMixin,
+)
 from users.models import Division, Region
 from users.permissions import is_notice_manager
 
@@ -224,4 +228,64 @@ class TimetableView(LoginRequiredMixin, NoticeReadAccessRequiredMixin, TemplateV
         ctx["selected_event"] = selected
         ctx["entries_by_day"] = grouped
         ctx["notices_tab"] = "timetable"
+        return ctx
+
+
+class FaqView(LoginRequiredMixin, NoticeReadAccessRequiredMixin, TemplateView):
+    """함께보기 FAQ 목록. 슈퍼유저만 웹에서 추가·수정·삭제."""
+
+    template_name = "notices/faq.html"
+    login_url = reverse_lazy("user_login")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        can_manage = bool(self.request.user.is_superuser)
+        faqs = (
+            FaqItem.objects.all()
+            if can_manage
+            else FaqItem.objects.filter(is_active=True)
+        )
+        ctx["faqs"] = faqs
+        ctx["can_manage_faq"] = can_manage
+        ctx["notices_tab"] = "faq"
+        return ctx
+
+
+class FaqCreateView(SuperuserRequiredMixin, LoginRequiredMixin, CreateView):
+    model = FaqItem
+    form_class = FaqForm
+    template_name = "notices/faq_form.html"
+    login_url = reverse_lazy("user_login")
+    success_url = reverse_lazy("notice_faq")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["notices_tab"] = "faq"
+        ctx["faq_form_mode"] = "create"
+        return ctx
+
+
+class FaqUpdateView(SuperuserRequiredMixin, LoginRequiredMixin, UpdateView):
+    model = FaqItem
+    form_class = FaqForm
+    template_name = "notices/faq_form.html"
+    login_url = reverse_lazy("user_login")
+    success_url = reverse_lazy("notice_faq")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["notices_tab"] = "faq"
+        ctx["faq_form_mode"] = "edit"
+        return ctx
+
+
+class FaqDeleteView(SuperuserRequiredMixin, LoginRequiredMixin, DeleteView):
+    model = FaqItem
+    template_name = "notices/faq_confirm_delete.html"
+    login_url = reverse_lazy("user_login")
+    success_url = reverse_lazy("notice_faq")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["notices_tab"] = "faq"
         return ctx

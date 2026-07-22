@@ -1,4 +1,4 @@
-{% comment %}함께보기 모바일 하단 탭 — notices_tab('notices'|'timetable') 로 활성 표시{% endcomment %}
+{% comment %}함께보기 모바일 하단 탭 — notices_tab('notices'|'timetable'|'faq') 로 활성 표시{% endcomment %}
 <nav class="jcc-bottomTabs jcc-noticeBottomTabs" id="jccNoticeBottomTabs" aria-label="함께보기 메뉴">
   <a
     class="jcc-bottomTab{% if notices_tab == 'notices' %} is-active{% endif %}"
@@ -20,5 +20,17 @@
       <path d="M4 9h16M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
     </svg>
     <span>타임테이블</span>
+  </a>
+  <a
+    class="jcc-bottomTab{% if notices_tab == 'faq' %} is-active{% endif %}"
+    href="{% url 'notice_faq' %}"
+    {% if notices_tab == 'faq' %}aria-current="page"{% endif %}
+  >
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.75"/>
+      <path d="M9.5 9.5a2.5 2.5 0 114 2c-.7.5-1.5 1-1.5 2.2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+      <circle cx="12" cy="16.5" r="1" fill="currentColor" stroke="none"/>
+    </svg>
+    <span>FAQ</span>
   </a>
 </nav>

@@ -5,32 +5,29 @@
     {% include 'includes/jcc_theme_head.html' %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>공지 삭제</title>
+    <title>FAQ 삭제 · 함께보기</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
   </head>
   <body class="has-notice-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        <header class="app-header">
-          <div class="jcc-detail-titleWrap">
-            <h1>공지 삭제</h1>
-          </div>
-        </header>
-        <main>
+        {% url 'notice_faq' as form_back_url %}
+        {% include 'includes/jcc_page_header.html' with page_title='FAQ 삭제' tabs_template='notices/_subtabs.html' notices_tab='faq' back_url=form_back_url %}
+        <main class="jcc-notice-faqMain">
           <div class="card">
-            <p>「{{ object.title }}」 공지를 삭제할까요?</p>
+            <p>「{{ object.question }}」 FAQ를 삭제할까요?</p>
             <form method="post">
               {% csrf_token %}
-              <div class="toolbar" style="padding:0; border:none; background:transparent;">
+              <div class="jcc-notice-faqFormToolbar">
                 <button type="submit">삭제</button>
-                <a class="secondary" href="{% url 'notice_detail' object.pk %}">취소</a>
+                <a class="secondary" href="{% url 'notice_faq' %}">취소</a>
               </div>
             </form>
           </div>
         </main>
       </div>
     </div>
-    {% include 'includes/notice_bottom_tabs.html' with notices_tab='notices' %}
+    {% include 'includes/notice_bottom_tabs.html' with notices_tab='faq' %}
   </body>
 </html>

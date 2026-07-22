@@ -5,7 +5,7 @@ from django import forms
 from django.core.files.uploadedfile import UploadedFile
 from tinymce.widgets import TinyMCE
 
-from notices.models import Notice
+from notices.models import FaqItem, Notice
 from notices.services import compress_thumbnail
 from users.models import Division
 
@@ -113,3 +113,26 @@ class NoticeForm(forms.ModelForm):
         if scope == Notice.Scope.ALL:
             cleaned["division"] = None
         return cleaned
+
+
+class FaqForm(forms.ModelForm):
+    class Meta:
+        model = FaqItem
+        fields = ["question", "answer", "sort_order", "is_active"]
+        widgets = {
+            "question": forms.TextInput(
+                attrs={
+                    "maxlength": 300,
+                    "autocomplete": "off",
+                    "placeholder": "질문을 입력하세요",
+                }
+            ),
+            "answer": forms.Textarea(
+                attrs={
+                    "rows": 8,
+                    "placeholder": "답변을 입력하세요",
+                }
+            ),
+            "sort_order": forms.NumberInput(attrs={"min": 0}),
+            "is_active": forms.CheckboxInput(),
+        }

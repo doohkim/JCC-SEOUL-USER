@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from notices.models import Notice, NoticeCategory, TimetableEntry
+from notices.models import FaqItem, Notice, NoticeCategory, TimetableEntry
 
 
 @admin.register(NoticeCategory)
@@ -36,3 +36,13 @@ class TimetableEntryAdmin(admin.ModelAdmin):
     list_filter = ("day",)
     search_fields = ("title", "location", "description")
     ordering = ("day", "start_time", "sort_order")
+
+
+@admin.register(FaqItem)
+class FaqItemAdmin(admin.ModelAdmin):
+    list_display = ("question", "sort_order", "is_active", "updated_at")
+    list_editable = ("sort_order", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("question", "answer")
+    ordering = ("sort_order", "id")
+    readonly_fields = ("created_at", "updated_at")

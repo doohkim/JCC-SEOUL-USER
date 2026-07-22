@@ -1,7 +1,8 @@
-{% comment %}함께보기 하위 탭 — notices_tab('notices'|'timetable') 필요.{% endcomment %}
+{% comment %}함께보기 하위 탭 — notices_tab('notices'|'timetable'|'faq') 필요.{% endcomment %}
 <div class="jcc-notice-pageTabsRow jcc-pageHeader-tabsRow">
   <nav class="jcc-page-tabs jcc-notice-pageTabs jcc-pageHeader-tabs" aria-label="함께보기 하위 메뉴">
     <a class="jcc-page-tab{% if notices_tab == 'notices' %} is-active{% endif %}" href="{% url 'notice_list' %}">이야기</a>
     <a class="jcc-page-tab{% if notices_tab == 'timetable' %} is-active{% endif %}" href="{% url 'timetable' %}">타임테이블</a>
+    <a class="jcc-page-tab{% if notices_tab == 'faq' %} is-active{% endif %}" href="{% url 'notice_faq' %}">FAQ</a>
   </nav>
 </div>

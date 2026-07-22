@@ -4913,3 +4913,174 @@ html[data-theme="light"] .jcc-parking-input {
   border-color: rgba(29, 100, 216, 0.28);
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.06) inset;
 }
+
+/* 함께보기 FAQ */
+.jcc-notice-faqMain {
+  padding: 0.25rem 0 1.25rem;
+}
+
+.jcc-notice-faqList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-width: 720px;
+}
+
+.jcc-notice-faqWrap {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  overflow: hidden;
+}
+
+.jcc-notice-faqWrap.is-inactive {
+  opacity: 0.72;
+}
+
+.jcc-notice-faqItem {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.jcc-notice-faqQuestion {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.95rem 1rem;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 800;
+  color: var(--text);
+  user-select: none;
+}
+
+.jcc-notice-faqQuestion::-webkit-details-marker {
+  display: none;
+}
+
+.jcc-notice-faqQLabel {
+  flex-shrink: 0;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: var(--accent, #4a9eff);
+}
+
+.jcc-notice-faqQText {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.45;
+  font-size: 0.98rem;
+}
+
+.jcc-notice-faqInactiveBadge {
+  flex-shrink: 0;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: #8896a6;
+}
+
+.jcc-notice-faqChevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.18s ease;
+}
+
+.jcc-notice-faqItem[open] .jcc-notice-faqChevron {
+  transform: rotate(180deg);
+}
+
+.jcc-notice-faqAnswer {
+  padding: 0 1rem 1.05rem 3.25rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 500;
+  line-height: 1.65;
+}
+
+.jcc-notice-faqActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  padding: 0 0.75rem 0.75rem;
+}
+
+.jcc-notice-faqForm {
+  max-width: 720px;
+}
+
+.jcc-notice-faqFormCard {
+  margin-bottom: 1rem;
+}
+
+.jcc-notice-faqForm .jcc-notice-field input[type="text"],
+.jcc-notice-faqForm .jcc-notice-field input[type="number"],
+.jcc-notice-faqForm .jcc-notice-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface, var(--card));
+  color: var(--text);
+  font: inherit;
+}
+
+.jcc-notice-faqForm .jcc-notice-field textarea {
+  resize: vertical;
+  min-height: 10rem;
+}
+
+.jcc-notice-faqFormMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem 1.5rem;
+}
+
+.jcc-notice-faqFormMeta .jcc-notice-field {
+  min-width: 7rem;
+  max-width: 10rem;
+}
+
+.jcc-notice-faqActiveCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  padding-bottom: 0.35rem;
+}
+
+.jcc-notice-faqFormToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+@media (max-width: 640px) {
+  .jcc-notice-faqAnswer {
+    padding-left: 1rem;
+  }
+}

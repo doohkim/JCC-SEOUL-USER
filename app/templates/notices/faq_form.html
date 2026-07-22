@@ -1,0 +1,63 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    {% include 'includes/jcc_theme_head.html' %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% if faq_form_mode == 'edit' %}FAQ 수정{% else %}FAQ 작성{% endif %} · 함께보기</title>
+    <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
+  </head>
+  <body class="has-notice-bottom-tabs jcc-notice-faq-form-page">
+    <div class="jcc-layout">
+      {% include 'includes/jcc_left_nav.html' %}
+      <div class="jcc-layout-content">
+        {% url 'notice_faq' as form_back_url %}
+        {% if faq_form_mode == 'edit' %}
+          {% include 'includes/jcc_page_header.html' with page_title='FAQ 수정' tabs_template='notices/_subtabs.html' notices_tab='faq' back_url=form_back_url %}
+        {% else %}
+          {% include 'includes/jcc_page_header.html' with page_title='FAQ 작성' tabs_template='notices/_subtabs.html' notices_tab='faq' back_url=form_back_url %}
+        {% endif %}
+        <main class="jcc-notice-faqMain">
+          <form method="post" class="jcc-notice-faqForm">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+              <div class="msg error">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <section class="jcc-notice-formCard jcc-notice-faqFormCard">
+              <div class="jcc-notice-field">
+                <label for="{{ form.question.id_for_label }}">질문</label>
+                {{ form.question }}
+                {{ form.question.errors }}
+              </div>
+              <div class="jcc-notice-field">
+                <label for="{{ form.answer.id_for_label }}">답변</label>
+                {{ form.answer }}
+                {{ form.answer.errors }}
+              </div>
+              <div class="jcc-notice-faqFormMeta">
+                <div class="jcc-notice-field">
+                  <label for="{{ form.sort_order.id_for_label }}">정렬</label>
+                  {{ form.sort_order }}
+                  {{ form.sort_order.errors }}
+                </div>
+                <label class="jcc-notice-faqActiveCheck" for="{{ form.is_active.id_for_label }}">
+                  {{ form.is_active }}
+                  <span>활성 (목록에 표시)</span>
+                </label>
+                {{ form.is_active.errors }}
+              </div>
+            </section>
+
+            <div class="jcc-notice-faqFormToolbar">
+              <button type="submit">{% if faq_form_mode == 'edit' %}저장{% else %}등록{% endif %}</button>
+              <a class="secondary" href="{% url 'notice_faq' %}">취소</a>
+            </div>
+          </form>
+        </main>
+      </div>
+    </div>
+    {% include 'includes/notice_bottom_tabs.html' with notices_tab='faq' %}
+  </body>
+</html>

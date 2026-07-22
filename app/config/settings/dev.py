@@ -32,7 +32,9 @@ DATABASES = {
         "PASSWORD": secrets.DB_PASSWORD_DEV,
     },
 }
-SOCIAL_AUTH_KAKAO_REDIRECT_URI = "https://shalom.dev.jcc-seoul.com/auth/complete/kakao/"
+SOCIAL_AUTH_KAKAO_REDIRECT_URI = (
+    "https://shalom.dev.jcc-seoul.com:8443/auth/complete/kakao/"
+)
 
 CSRF_COOKIE_DOMAIN = ".jcc-seoul.com"
 CSRF_TRUSTED_ORIGINS = [
@@ -42,6 +44,11 @@ CSRF_TRUSTED_ORIGINS = [
     f"https://shalom.dev.api.jcc-seoul.com",
     f"https://shalom.dev.docs.jcc-seoul.com",
     f"https://shalom.dev.*.jcc-seoul.com",
+    # 공유기 포트포워딩(외부 8443 → 내부 443)으로 접속할 때
+    f"https://shalom.dev.jcc-seoul.com:8443",
+    f"https://shalom.dev.admin.jcc-seoul.com:8443",
+    f"https://shalom.dev.api.jcc-seoul.com:8443",
+    f"https://shalom.dev.docs.jcc-seoul.com:8443",
 ]
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
