@@ -57,6 +57,7 @@ class SlackBlocksTests(TestCase):
         )
         profile = ensure_user_profile(cls.user)
         profile.display_name = "슬랙유저"
+        profile.real_name = "김슬랙"
         profile.phone = "01012345678"
         profile.onboarding_status = UserProfile.OnboardingStatus.APPROVED
         profile.save()
@@ -83,7 +84,10 @@ class SlackBlocksTests(TestCase):
         self.assertIn("slack@example.com", text)
         self.assertIn("01012345678", text)
         button = blocks[2]["elements"][0]
-        self.assertIn(reverse("user_onboarding_applications"), button["url"])
+        self.assertEqual(button["text"]["text"], "계정 관리에서 확인")
+        self.assertIn(reverse("user_division_account_roles"), button["url"])
+        self.assertIn("q=%EA%B9%80%EC%8A%AC%EB%9E%99", button["url"])  # 김슬랙
+        self.assertIn("division_code=__all__", button["url"])
 
     def test_staff_application_blocks_include_fields_and_link(self):
         application = RetreatStaffApplication.objects.create(

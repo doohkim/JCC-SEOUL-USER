@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import urlencode
+
 from django.conf import settings
 from django.urls import reverse
 
@@ -57,8 +59,10 @@ def _section_blocks(
 def get_user_signup_blocks(user) -> list[dict]:
     profile = getattr(user, "profile", None)
     display_name = ""
+    real_name = ""
     phone = ""
     if profile is not None:
+        real_name = (profile.real_name or "").strip()
         display_name = (profile.display_name or profile.real_name or "").strip()
         phone = (profile.phone or "").strip()
 
@@ -80,10 +84,14 @@ def get_user_signup_blocks(user) -> list[dict]:
         f"휴대폰: {phone or '-'}",
         f"가입 시각: {joined_text}",
     ]
+    # 계정 관리(roles)는 슈퍼유저·계정관리 권한자만 접근 가능.
+    search_name = real_name or display_name
+    roles_path = reverse("user_division_account_roles")
+    query = urlencode({"q": search_name, "division_code": "__all__"})
     return _section_blocks(
         info_lines,
-        button_text="가입신청 목록에서 확인",
-        button_url=_absolute_url(reverse("user_onboarding_applications")),
+        button_text="계정 관리에서 확인",
+        button_url=_absolute_url(f"{roles_path}?{query}"),
     )
 
 
