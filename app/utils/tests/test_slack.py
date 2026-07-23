@@ -77,14 +77,18 @@ class SlackBlocksTests(TestCase):
 
     def test_user_signup_blocks_include_fields_and_link(self):
         blocks = get_user_signup_blocks(self.user)
-        text = blocks[0]["text"]["text"]
-        self.assertIn("회원가입 알림", text)
-        self.assertIn("슬랙유저", text)
-        self.assertIn("slack_user", text)
-        self.assertIn("slack@example.com", text)
-        self.assertIn("01012345678", text)
-        button = blocks[2]["elements"][0]
-        self.assertEqual(button["text"]["text"], "계정 관리에서 확인")
+        self.assertEqual(blocks[0]["type"], "header")
+        self.assertIn("회원가입 알림", blocks[0]["text"]["text"])
+        fields_text = "\n".join(f["text"] for f in blocks[1]["fields"])
+        self.assertIn("슬랙유저", fields_text)
+        self.assertIn("김슬랙", fields_text)
+        self.assertIn("slack_user", fields_text)
+        self.assertIn("slack@example.com", fields_text)
+        self.assertIn("01012345678", fields_text)
+        actions = next(b for b in blocks if b["type"] == "actions")
+        button = actions["elements"][0]
+        self.assertEqual(button["style"], "primary")
+        self.assertIn("계정 관리에서 확인", button["text"]["text"])
         self.assertIn(reverse("user_division_account_roles"), button["url"])
         self.assertIn("q=%EA%B9%80%EC%8A%AC%EB%9E%99", button["url"])  # 김슬랙
         self.assertIn("division_code=__all__", button["url"])
@@ -101,12 +105,16 @@ class SlackBlocksTests(TestCase):
             status=RetreatStaffApplication.Status.PENDING,
         )
         blocks = get_staff_application_blocks(application)
-        text = blocks[0]["text"]["text"]
-        self.assertIn("수련회 운영진 참가 신청 알림", text)
-        self.assertIn("슬랙 수련회", text)
-        self.assertIn("슬랙유저", text)
-        self.assertIn("조 운영진", text)
-        button = blocks[2]["elements"][0]
+        self.assertEqual(blocks[0]["type"], "header")
+        self.assertIn("수련회 운영진 참가 신청", blocks[0]["text"]["text"])
+        fields_text = "\n".join(f["text"] for f in blocks[1]["fields"])
+        self.assertIn("슬랙 수련회", fields_text)
+        self.assertIn("슬랙유저", fields_text)
+        self.assertIn("조 운영진", fields_text)
+        actions = next(b for b in blocks if b["type"] == "actions")
+        button = actions["elements"][0]
+        self.assertEqual(button["style"], "primary")
+        self.assertIn("참가 신청 목록에서 확인", button["text"]["text"])
         self.assertIn(
             reverse("retreat_staff_applications", args=[self.event.id]),
             button["url"],
