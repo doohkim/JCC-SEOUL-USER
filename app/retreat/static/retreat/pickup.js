@@ -152,13 +152,15 @@
   /**
    * 구분에 따라 조원 노출 여부 결정.
    * - 입회(arrival): 입실 전(pending)만 — 아직 입실 안 한 조원
-   * - 출회(departure): 입실(checked_in)만 — 입실했고 아직 퇴실 전인 조원
+   * - 출회(departure): 입실 전(pending) + 입실(checked_in) — 퇴실만 제외
    * - 그 외(all 등): 전체 노출
    */
   function memberAllowedForDirection(status) {
     const st = status || "";
     if (modalDirection === "arrival") return st === "pending" || st === "";
-    if (modalDirection === "departure") return st === "checked_in";
+    if (modalDirection === "departure") {
+      return st === "checked_in" || st === "pending" || st === "";
+    }
     return true;
   }
 

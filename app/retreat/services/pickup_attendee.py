@@ -50,8 +50,9 @@ def pickup_name_eligibility_error(
         if att.check_in_status != S.PENDING:
             return "입회 차량 요청은 입실전 상태 조원만 등록할 수 있습니다."
     elif direction == RetreatPickup.Direction.DEPARTURE:
-        if att.check_in_status != S.CHECKED_IN:
-            return "출회 차량 요청은 입실 상태 조원만 등록할 수 있습니다."
+        # 입실전·입실 허용, 퇴실만 거부
+        if att.check_in_status == S.CHECKED_OUT:
+            return "출회 차량 요청은 퇴실 상태 조원은 등록할 수 없습니다."
     return None
 
 

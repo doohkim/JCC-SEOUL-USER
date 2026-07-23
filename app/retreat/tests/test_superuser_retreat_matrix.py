@@ -532,7 +532,7 @@ class SuperuserPickupApiPageTests(_SuperuserMatrixFixture):
         )
         self.assertEqual(r2.status_code, 201, r2.content)
 
-    def test_departure_checked_in_ok_pending_rejected(self):
+    def test_departure_pending_and_checked_in_ok(self):
         url = reverse("api_retreat_event_pickups", args=[self.event.id])
         r = self.api.post(
             url,
@@ -546,7 +546,7 @@ class SuperuserPickupApiPageTests(_SuperuserMatrixFixture):
             },
             format="json",
         )
-        self.assertEqual(r.status_code, 400)
+        self.assertEqual(r.status_code, 201, r.content)
 
         RetreatAttendee.objects.create(
             group=self.group_seoul,

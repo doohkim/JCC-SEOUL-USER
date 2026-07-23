@@ -570,7 +570,7 @@ class PickupApiTests(_PickupFixture):
         self.assertEqual(r.status_code, 400)
         self.assertIn("name", r.data)
 
-    def test_departure_rejects_pending_attendee(self):
+    def test_departure_accepts_pending_attendee(self):
         self._attendee(self.group, "입실전")
         self.client.force_login(self.council)
         r = self.client.post(
@@ -578,6 +578,27 @@ class PickupApiTests(_PickupFixture):
             {
                 "direction": RetreatPickup.Direction.DEPARTURE,
                 "name": "입실전",
+                "group": self.group.id,
+                "train_time": "2026-08-01T10:00",
+                "boarding_place": "역",
+                "contact": "010-1234-5678",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+
+    def test_departure_rejects_checked_out_attendee(self):
+        self._attendee(
+            self.group,
+            "퇴실자",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+        )
+        self.client.force_login(self.council)
+        r = self.client.post(
+            self._list_url(),
+            {
+                "direction": RetreatPickup.Direction.DEPARTURE,
+                "name": "퇴실자",
                 "group": self.group.id,
                 "train_time": "2026-08-01T10:00",
                 "boarding_place": "역",
