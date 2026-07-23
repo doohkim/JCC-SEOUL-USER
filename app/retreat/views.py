@@ -7,7 +7,7 @@ from datetime import date, timedelta
 from urllib.parse import urlparse
 
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
@@ -1695,33 +1695,4 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
             else:
                 creatable = base.filter(council_memberships__user=user).distinct()
             ctx["creatable_events"] = list(creatable.order_by("-start_date", "-id"))
-        return ctx
-
-
-class RetreatPlatformGuideView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
-    """수련회 관리 플랫폼 사용 가이드 (회장단·조장·목회자 등)."""
-
-    template_name = "retreat/platform_guide.html"
-    login_url = reverse_lazy("user_login")
-
-    def test_func(self) -> bool:
-        return can_access_retreat_tab(self.request.user)
-
-    def handle_no_permission(self):
-        raise PermissionDenied("이 가이드를 볼 권한이 없습니다.")
-
-    def get_context_data(self, **kwargs):
-        user = self.request.user
-        event = default_retreat_event_for(user)
-
-        ctx = super().get_context_data(**kwargs)
-        ctx["page_title"] = "플랫폼 가이드"
-        ctx["page_subtitle"] = "수련회 인원체크 프로그램 가이드"
-        ctx["event"] = event
-        if event:
-            ctx["can_view_retreat_all"] = can_view_retreat_all(user, event)
-            ctx["is_retreat_staff"] = is_retreat_staff(user, event)
-        else:
-            ctx["can_view_retreat_all"] = False
-            ctx["is_retreat_staff"] = False
         return ctx

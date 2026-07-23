@@ -50,7 +50,6 @@ from retreat.views import (
     RetreatGroupManageListView,
     RetreatGroupManageView,
     RetreatHomeView,
-    RetreatPlatformGuideView,
     RetreatStaffApplyView,
     RetreatStaffApplicationsView,
     RetreatLodgingAssignRedirectView,
@@ -65,11 +64,6 @@ from retreat.views import (
 
 urlpatterns = [
     path("retreat/", RetreatHomeView.as_view(), name="retreat_home"),
-    path(
-        "retreat/platform-guide/",
-        RetreatPlatformGuideView.as_view(),
-        name="retreat_platform_guide",
-    ),
     path(
         "retreat/<int:event_id>/dashboard/",
         RetreatDashboardView.as_view(),
