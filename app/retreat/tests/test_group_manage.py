@@ -446,6 +446,31 @@ class AttendeeEditPermissionTests(_GroupManageFixture):
         self.assertEqual(self.attendee.phone, "010-9999-8888")
         self.assertEqual(self.attendee.memo, "조장메모")
 
+    def test_leader_patch_with_user_key_ignores_link_and_updates_profile(self):
+        """조장은 계정 연동 권한이 없어도 user 키가 있어도 프로필 수정은 된다."""
+        linked = User.objects.create_user(
+            username="link_target_leader_patch", password="x"
+        )
+        self.attendee.user = linked
+        self.attendee.save(update_fields=["user"])
+        other = User.objects.create_user(
+            username="link_other_leader_patch", password="x"
+        )
+        self.client.force_authenticate(self.leader)
+        r = self.client.patch(
+            self.url,
+            {
+                "name": "연동무시수정",
+                "gender": "male",
+                "user": other.id,
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.attendee.refresh_from_db()
+        self.assertEqual(self.attendee.name, "연동무시수정")
+        self.assertEqual(self.attendee.user_id, linked.id)
+
     def test_phone_digits_only_normalized_on_save(self):
         self.client.force_authenticate(self.council_user)
         r = self.client.patch(

@@ -1393,7 +1393,10 @@
           participationInput?.value || "participating";
         payload.memo = (memoInput?.value || "").trim();
         payload.member_role = roleInput?.value || "member";
-        payload.user = linkedUserId ? Number(linkedUserId) : null;
+        // 조장·부조장 등은 계정 연동 권한이 없음 — user 키를내면 403이 나므로 권한이 있을 때만 전송
+        if (ctx.canLinkAttendeeUser) {
+          payload.user = linkedUserId ? Number(linkedUserId) : null;
+        }
         const timestampsLocked =
           modalMode === "edit" &&
           (isProfileLocked(rowEl) || expectedInInput?.disabled);

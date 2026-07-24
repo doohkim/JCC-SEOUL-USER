@@ -18,7 +18,6 @@ from retreat.apis._common import (
     assert_can_change_check_in_status,
     assert_can_delete_attendee,
     assert_can_edit_attendee_details,
-    assert_can_link_attendee_user,
     assert_check_in_status_transition,
     get_group_or_403,
     profile_locked_patch_keys_for,
@@ -271,8 +270,8 @@ class RetreatAttendeeDetailView(APIView):
         raw_keys = set(request.data.keys())
         if raw_keys & _CHECK_IN_STATUS_KEYS:
             assert_can_change_check_in_status(request.user, group)
-        if "user" in raw_keys:
-            assert_can_link_attendee_user(request.user, group)
+        # user 키는 연동 권한이 없으면 sanitize에서 제거하고, 권한 없으면 403 내지 않음
+        # (조장 조원 수정 UI가 user를 실수로내도 프로필 수정은 가능해야 함)
         payload = _sanitize_attendee_payload(request.user, group, request.data)
         keys = set(payload.keys())
         detail_keys = keys & _ATTENDEE_DETAIL_PATCH_KEYS
