@@ -64,6 +64,28 @@ def travel_bucket_key(
     return "__custom__"
 
 
+def travel_display_label(
+    dt,
+    occurs_to_preset: dict[str, RetreatTravelPreset],
+    *,
+    is_custom: bool | None = None,
+    custom_label: str = "자차",
+) -> str:
+    """UI 칩용 짧은 교통 라벨. 시각 없으면 빈 문자열."""
+    bucket = travel_bucket_key(dt, occurs_to_preset, is_custom=is_custom)
+    if bucket == "__unset__":
+        return ""
+    if bucket == "__custom__":
+        return custom_label
+    matched = occurs_to_preset.get(_iso_local(dt))
+    if matched is not None and matched.label:
+        return matched.label
+    for p in occurs_to_preset.values():
+        if p.id == bucket and p.label:
+            return p.label
+    return custom_label
+
+
 def travel_filter_chip_defs(fixed: list[RetreatTravelPreset]) -> list[dict[str, str]]:
     """전체 명단 필터 칩 — value는 str(id) / __custom__ / __unset__."""
     chips: list[dict[str, str]] = [
@@ -96,8 +118,10 @@ def serialize_travel_preset(preset: RetreatTravelPreset) -> dict:
     }
 
 
-def travel_presets_for_group(group: RetreatGroup) -> dict[str, list[dict]]:
-    """조 division(주 + 추가 스코프)에 맞는 활성 프리셋."""
+def travel_preset_models_for_group(
+    group: RetreatGroup,
+) -> dict[str, list[RetreatTravelPreset]]:
+    """조 division(주 + 추가 스코프)에 맞는 활성 프리셋 모델."""
     event = group.event
     division_ids = set()
     if group.division_id:
@@ -111,20 +135,28 @@ def travel_presets_for_group(group: RetreatGroup) -> dict[str, list[dict]]:
         .prefetch_related("divisions")
         .order_by("direction", "sort_order", "id")
     )
-    arrival: list[dict] = []
-    departure: list[dict] = []
+    arrival: list[RetreatTravelPreset] = []
+    departure: list[RetreatTravelPreset] = []
     for preset in qs:
         preset_div_ids = {d.id for d in preset.divisions.all()}
         if preset_div_ids and division_ids and preset_div_ids.isdisjoint(division_ids):
             continue
         if preset_div_ids and not division_ids:
             continue
-        row = serialize_travel_preset(preset)
         if preset.direction == RetreatTravelPreset.Direction.ARRIVAL:
-            arrival.append(row)
+            arrival.append(preset)
         else:
-            departure.append(row)
+            departure.append(preset)
     return {"arrival": arrival, "departure": departure}
+
+
+def travel_presets_for_group(group: RetreatGroup) -> dict[str, list[dict]]:
+    """조 division(주 + 추가 스코프)에 맞는 활성 프리셋."""
+    models = travel_preset_models_for_group(group)
+    return {
+        "arrival": [serialize_travel_preset(p) for p in models["arrival"]],
+        "departure": [serialize_travel_preset(p) for p in models["departure"]],
+    }
 
 
 def travel_presets_for_event(event: RetreatEvent) -> dict[str, list[dict]]:

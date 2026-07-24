@@ -96,6 +96,36 @@
     return window.matchMedia("(max-width: 640px)").matches;
   }
 
+  function computeTravelLabel(input, valueOverride) {
+    if (!input) return "";
+    const val = String(
+      valueOverride != null ? valueOverride : input.value || ""
+    ).slice(0, 16);
+    if (!val) return "";
+    const direction = input.dataset.travelDirection || "";
+    const presets =
+      (direction &&
+        window.RETREAT_CTX &&
+        window.RETREAT_CTX.travelPresets &&
+        window.RETREAT_CTX.travelPresets[direction]) ||
+      [];
+    if (input.dataset.travelIsCustom === "1") return "자차";
+    for (let i = 0; i < presets.length; i++) {
+      const p = presets[i];
+      if (!p || p.manual || !p.occurs_at) continue;
+      if (String(p.occurs_at).slice(0, 16) === val) {
+        return p.label || "자차";
+      }
+    }
+    return "자차";
+  }
+
+  function applyTravelLabelToInput(input, label) {
+    if (!input) return;
+    if (label) input.dataset.travelLabel = label;
+    else delete input.dataset.travelLabel;
+  }
+
   function enhance(input) {
     if (!input || input.__dtpDone) return;
     input.__dtpDone = true;
@@ -108,8 +138,16 @@
     const field = document.createElement("button");
     field.type = "button";
     field.className = "jcc-dtp-field";
+    if (input.dataset.travelDirection) {
+      field.classList.add("jcc-dtp-field--travel");
+    }
     const labelText = input.getAttribute("aria-label");
     if (labelText) field.setAttribute("aria-label", labelText);
+
+    const travelChip = document.createElement("span");
+    travelChip.className = "jcc-dtp-travel";
+    travelChip.hidden = true;
+    travelChip.setAttribute("aria-hidden", "true");
 
     const valSpan = document.createElement("span");
     valSpan.className = "jcc-dtp-val";
@@ -117,10 +155,40 @@
     icon.className = "jcc-dtp-icon";
     icon.setAttribute("aria-hidden", "true");
     icon.textContent = "📅";
+    if (input.dataset.travelDirection) {
+      field.appendChild(travelChip);
+    }
     field.appendChild(valSpan);
     field.appendChild(icon);
 
     input.insertAdjacentElement("afterend", field);
+
+    function refreshTravelChip() {
+      if (!input.dataset.travelDirection) return;
+      let label = input.dataset.travelLabel || "";
+      if (!label && input.value) {
+        label = computeTravelLabel(input);
+        applyTravelLabelToInput(input, label);
+      }
+      if (!input.value) {
+        applyTravelLabelToInput(input, "");
+        label = "";
+      }
+      if (label) {
+        travelChip.textContent = label;
+        travelChip.title = label;
+        travelChip.hidden = false;
+        travelChip.classList.toggle(
+          "jcc-dtp-travel--custom",
+          label === "자차"
+        );
+      } else {
+        travelChip.textContent = "";
+        travelChip.removeAttribute("title");
+        travelChip.hidden = true;
+        travelChip.classList.remove("jcc-dtp-travel--custom");
+      }
+    }
 
     function refresh() {
       if (isYmd24Format(input)) {
@@ -133,6 +201,7 @@
           valSpan.classList.add("muted");
         }
         field.disabled = !!input.disabled;
+        refreshTravelChip();
         return;
       }
       const disp = fmtDisplay(input.value, input);
@@ -144,6 +213,7 @@
         valSpan.classList.add("muted");
       }
       field.disabled = !!input.disabled;
+      refreshTravelChip();
     }
 
     // input.value 접근자 래핑: 외부에서 .value 를 바꿔도 표시 갱신
@@ -191,6 +261,7 @@
       openPicker(input, field, refresh);
     });
 
+    input.__dtpRefresh = refresh;
     refresh();
   }
 
@@ -703,10 +774,14 @@
     function commit(value) {
       if (!value) {
         writeTravelIsCustom(null);
+        applyTravelLabelToInput(input, "");
       } else if (travelPresets.length) {
         // 버스 칩 경로에서 이미 false로 쓴 경우 유지; OK는 sessionIsCustom 반영
         if (sessionIsCustom === true) writeTravelIsCustom(true);
         else if (sessionIsCustom === false) writeTravelIsCustom(false);
+        applyTravelLabelToInput(input, computeTravelLabel(input, value));
+      } else {
+        applyTravelLabelToInput(input, "자차");
       }
       input.value = value; // 래핑된 setter → 표시 갱신
       input.dispatchEvent(new Event("change", { bubbles: true }));
@@ -838,6 +913,8 @@
     enhance: enhance,
     enhanceAll: enhanceAll,
     close: closeOpen,
+    computeTravelLabel: computeTravelLabel,
+    applyTravelLabelToInput: applyTravelLabelToInput,
   };
 
   if (document.readyState === "loading") {

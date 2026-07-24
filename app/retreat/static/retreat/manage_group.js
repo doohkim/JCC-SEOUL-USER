@@ -423,6 +423,30 @@
     else delete input.dataset.travelIsCustom;
   }
 
+  function syncTravelChipOnInput(input) {
+    if (!input) return;
+    const dtp = window.JccDateTimePicker;
+    if (!dtp?.computeTravelLabel) return;
+    const label = input.value ? dtp.computeTravelLabel(input) : "";
+    dtp.applyTravelLabelToInput?.(input, label);
+    if (typeof input.__dtpRefresh === "function") input.__dtpRefresh();
+  }
+
+  function syncReadonlyTravelChip(el, label) {
+    if (!el) return;
+    const text = label || "";
+    el.textContent = text;
+    if (text) {
+      el.title = text;
+      el.hidden = false;
+      el.classList.toggle("jcc-retreat-travelChip--custom", text === "자차");
+    } else {
+      el.removeAttribute("title");
+      el.hidden = true;
+      el.classList.remove("jcc-retreat-travelChip--custom");
+    }
+  }
+
   const STAMP_ORDER_MSG = "퇴실 시각은 입실 시각보다 뒤여야 합니다.";
 
   // 입실·퇴실 둘 다 있을 때만 검사: 퇴실은 입실보다 무조건 커야 한다(같거나 작으면 오류).
@@ -795,6 +819,8 @@
       if ("departure_travel_is_custom" in data) {
         setInputTravelIsCustom(outInput, data.departure_travel_is_custom);
       }
+      syncTravelChipOnInput(inInput);
+      syncTravelChipOnInput(outInput);
       const inLabel = tr.querySelector("[data-expected-in-label]");
       const outLabel = tr.querySelector("[data-expected-out-label]");
       if (inLabel) {
@@ -813,6 +839,18 @@
         }
         outLabel.classList.toggle("muted", !data.expected_check_out_at);
       }
+      syncReadonlyTravelChip(
+        tr.querySelector("[data-expected-in-travel]"),
+        inInput
+          ? window.JccDateTimePicker?.computeTravelLabel?.(inInput) || ""
+          : ""
+      );
+      syncReadonlyTravelChip(
+        tr.querySelector("[data-expected-out-travel]"),
+        outInput
+          ? window.JccDateTimePicker?.computeTravelLabel?.(outInput) || ""
+          : ""
+      );
     }
 
     syncRowExpectedInputs(tr);
@@ -1401,6 +1439,8 @@
       expectedOutInput,
       payload?.departureTravelIsCustom ?? null
     );
+    syncTravelChipOnInput(expectedInInput);
+    syncTravelChipOnInput(expectedOutInput);
     markStampInvalid(expectedInInput, false);
     markStampInvalid(expectedOutInput, false);
     setFieldError(expectedOutInput, "");

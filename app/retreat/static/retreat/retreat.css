@@ -5564,6 +5564,58 @@ dialog.jcc-retreat-modal::backdrop {
   text-align: left;
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
+/* 입·퇴실 교통: 칩 + 시각 세로 스택 (PC·모바일 폭 유지) */
+.jcc-dtp-field--travel {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 2px;
+  padding: 5px 8px;
+}
+.jcc-dtp-field--travel .jcc-dtp-val {
+  width: 100%;
+}
+.jcc-dtp-travel {
+  display: block;
+  max-width: 100%;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--accent, #4a9eff);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jcc-dtp-travel--custom {
+  color: #64748b;
+}
+.jcc-retreat-travelChip {
+  display: block;
+  max-width: 100%;
+  margin-bottom: 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--accent, #4a9eff);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jcc-retreat-travelChip--custom {
+  color: #64748b;
+}
+.jcc-retreat-travelChip[hidden] {
+  display: none;
+}
+.jcc-retreat-attCol-expected .jcc-dtp-travel {
+  font-size: 0.66rem;
+}
+@media (max-width: 640px) {
+  .jcc-dtp-travel,
+  .jcc-retreat-travelChip {
+    font-size: 0.62rem;
+  }
+}
 .jcc-dtp-field:hover:not(:disabled) {
   border-color: var(--accent, #4a9eff);
 }

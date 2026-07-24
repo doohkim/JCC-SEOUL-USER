@@ -22,6 +22,7 @@ from retreat.models import (
 )
 from retreat.services.travel_presets import (
     travel_bucket_key,
+    travel_display_label,
     travel_fixed_and_occurs_map,
     travel_presets_for_group,
 )
@@ -104,6 +105,15 @@ class TravelPresetServiceTests(TestCase):
         )
         self.assertEqual(travel_bucket_key(None, occurs), "__unset__")
         self.assertEqual(travel_bucket_key(None, occurs, is_custom=True), "__unset__")
+
+    def test_travel_display_label(self):
+        _fixed, occurs = travel_fixed_and_occurs_map([self.arrival])
+        wave_at = self.arrival.occurs_at
+        self.assertEqual(travel_display_label(wave_at, occurs), "7/30 본진")
+        self.assertEqual(travel_display_label(wave_at, occurs, is_custom=True), "자차")
+        self.assertEqual(travel_display_label(None, occurs), "")
+        other = timezone.make_aware(datetime(2026, 7, 30, 15, 30))
+        self.assertEqual(travel_display_label(other, occurs), "자차")
 
     def test_own_car_is_manual(self):
         tz = timezone.get_current_timezone()
@@ -242,6 +252,23 @@ class TravelPresetManagePageTests(TestCase):
         self.assertEqual(presets["departure"][0]["label"], "8/1 버스")
         self.assertIn("7/30 본진", ctx["travel_presets_json"])
         self.assertTrue(ctx["can_edit_attendee"])
+
+    def test_manage_page_attendee_travel_labels(self):
+        wave_in = timezone.make_aware(datetime(2026, 7, 30, 10, 0))
+        self.attendee.expected_check_in_at = wave_in
+        self.attendee.arrival_travel_is_custom = None
+        self.attendee.save(
+            update_fields=["expected_check_in_at", "arrival_travel_is_custom"]
+        )
+        ctx = self._manage_context(self.leader, self.group_youth)
+        by_id = {a.id: a for a in ctx["attendees"]}
+        self.assertEqual(by_id[self.attendee.id].arrival_travel_label, "7/30 본진")
+
+        self.attendee.arrival_travel_is_custom = True
+        self.attendee.save(update_fields=["arrival_travel_is_custom"])
+        ctx2 = self._manage_context(self.leader, self.group_youth)
+        by_id2 = {a.id: a for a in ctx2["attendees"]}
+        self.assertEqual(by_id2[self.attendee.id].arrival_travel_label, "자차")
 
     def test_kids_manage_page_has_empty_presets(self):
         ctx = self._manage_context(self.kids_leader, self.group_kids)

@@ -704,15 +704,16 @@ class AttendeeCheckInStatusEditTests(_GroupManageFixture):
 
     def test_council_can_patch_expected_out_when_checked_out(self):
         from django.utils import timezone
+        from datetime import timedelta
 
         now = timezone.now()
-        self.attendee.expected_check_in_at = now
+        self.attendee.expected_check_in_at = now - timedelta(days=1)
         self.attendee.expected_check_out_at = now
         self.attendee.save(
             update_fields=["expected_check_in_at", "expected_check_out_at"]
         )
         self.client.force_authenticate(self.council_user)
-        new_out = "2026-07-03T20:00:00+09:00"
+        new_out = (now + timedelta(days=1)).isoformat()
         r = self.client.patch(
             self.url, {"expected_check_out_at": new_out}, format="json"
         )
@@ -721,11 +722,20 @@ class AttendeeCheckInStatusEditTests(_GroupManageFixture):
         self.assertEqual(self.attendee.check_in_status, "checked_out")
 
     def test_superuser_can_patch_expected_out_when_checked_out(self):
+        from django.utils import timezone
+        from datetime import timedelta
+
+        now = timezone.now()
+        self.attendee.expected_check_in_at = now - timedelta(days=1)
+        self.attendee.expected_check_out_at = now
+        self.attendee.save(
+            update_fields=["expected_check_in_at", "expected_check_out_at"]
+        )
         superuser = User.objects.create_user(
             username="gm_super", password="x", is_superuser=True
         )
         self.client.force_authenticate(superuser)
-        new_out = "2026-07-03T21:00:00+09:00"
+        new_out = (now + timedelta(days=1)).isoformat()
         r = self.client.patch(
             self.url, {"expected_check_out_at": new_out}, format="json"
         )
