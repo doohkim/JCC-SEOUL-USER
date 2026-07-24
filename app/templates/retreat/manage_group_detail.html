@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ group.name }} · 그룹</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260725b" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260725c" />
   </head>
   <body class="has-retreat-bottom-tabs jcc-retreat-detail">
     <div class="jcc-layout">
@@ -321,7 +321,7 @@
                     </div>
                   {% endif %}
                   {% if can_edit_attendee %}
-                    <div class="field" data-modal-edit-only>
+                    <div class="field jcc-retreat-modalField--full" data-modal-edit-only>
                       <label for="retreatAttParticipation">참석 여부</label>
                       <select id="retreatAttParticipation" name="participation_status" data-cselect>
                         {% for code, label in participation_choices %}

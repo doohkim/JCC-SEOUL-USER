@@ -6790,6 +6790,35 @@ body.has-retreat-bottom-tabs main {
   border-radius: 12px;
   padding: 0 0.8rem;
 }
+/* 교통 칩+시각이 세로 스택인데 고정 높이면 겹침 → 모달에서는 한 줄로 정렬 */
+#retreatModalOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field--travel,
+#rosterEditOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field--travel {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  overflow: hidden;
+  padding: 0 0.65rem;
+}
+#retreatModalOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field--travel .jcc-dtp-travel,
+#rosterEditOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field--travel .jcc-dtp-travel {
+  flex: 0 1 auto;
+  max-width: 4.2rem;
+  font-size: 0.72rem;
+  line-height: 1.1;
+}
+#retreatModalOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field--travel .jcc-dtp-val,
+#rosterEditOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field--travel .jcc-dtp-val {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+#retreatModalOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field--travel .jcc-dtp-icon,
+#rosterEditOverlay .jcc-retreat-modalGrid .field .jcc-dtp-field--travel .jcc-dtp-icon {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
 #retreatModalOverlay .jcc-retreat-modal--attendeeEdit textarea,
 #rosterEditOverlay .jcc-retreat-modal--attendeeEdit textarea {
   border-radius: 12px;
