@@ -226,6 +226,24 @@ class AccountManagePostTests(AccountManageFixture):
         profile.refresh_from_db()
         self.assertEqual(profile.phone, "010-4444-2222")
 
+    def test_manager_can_update_gender(self):
+        self.client.force_login(self.staff)
+        r = self._post_row(self.staff, {"gender": UserProfile.Gender.FEMALE})
+        self.assertEqual(r.status_code, 302)
+        profile = ensure_user_profile(self.member)
+        profile.refresh_from_db()
+        self.assertEqual(profile.gender, UserProfile.Gender.FEMALE)
+
+    def test_manager_rejects_invalid_gender(self):
+        self.client.force_login(self.staff)
+        profile = ensure_user_profile(self.member)
+        profile.gender = UserProfile.Gender.MALE
+        profile.save(update_fields=["gender"])
+        r = self._post_row(self.staff, {"gender": "other"})
+        self.assertEqual(r.status_code, 302)
+        profile.refresh_from_db()
+        self.assertEqual(profile.gender, UserProfile.Gender.MALE)
+
     def test_manager_cannot_move_division(self):
         self.client.force_login(self.manager)
         r = self._post_row(

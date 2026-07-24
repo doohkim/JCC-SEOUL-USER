@@ -59,6 +59,16 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # django-cors-headers
 CORS_ALLOW_ALL_ORIGINS = True
+# 브라우저 외부 호출 시 X-Retreat-Token preflight 허용
+CORS_ALLOW_HEADERS = (
+    "accept",
+    "authorization",
+    "content-type",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "x-retreat-token",
+)
 
 # 외부 서버 연동 API (서비스 키 + 선택적 DRF Token 검증)
 INTEGRATION_API_ENABLED = os.environ.get("INTEGRATION_API_ENABLED", "1") not in (

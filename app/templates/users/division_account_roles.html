@@ -1228,6 +1228,15 @@
             <input type="text" id="accountEditRealName" name="real_name" maxlength="50" autocomplete="off">
           </div>
           <div class="jcc-account-editField">
+            <label for="accountEditGender">성별</label>
+            <select id="accountEditGender" name="gender" data-cselect aria-label="성별">
+              <option value="">선택 안 함</option>
+              {% for value, label in gender_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="jcc-account-editField">
             <label for="accountEditPhone">휴대폰 번호</label>
             <input type="tel" id="accountEditPhone" name="phone" maxlength="13" autocomplete="tel" inputmode="numeric" placeholder="010-1234-5678">
           </div>
@@ -2203,6 +2212,10 @@
 
         document.getElementById("accountEditUserId").value = userId;
         document.getElementById("accountEditRealName").value = d.real_name || "";
+        const genderSel = document.getElementById("accountEditGender");
+        if (genderSel) {
+          genderSel.value = d.gender || "";
+        }
         if (phoneInput) {
           phoneInput.value = window.JccPhoneFormat
             ? JccPhoneFormat.formatMobilePhone(d.phone || "")

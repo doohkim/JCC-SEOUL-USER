@@ -903,7 +903,12 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         manage_notices = request.POST.get("can_manage_notices") == "on"
         real_name = (request.POST.get("real_name") or "").strip()
         phone = (request.POST.get("phone") or "").strip()
+        gender = (request.POST.get("gender") or "").strip()
         role_level_id_raw = (request.POST.get("role_level_id") or "").strip()
+        valid_genders = {c.value for c in UserProfile.Gender}
+        if gender and gender not in valid_genders:
+            messages.error(request, "성별 값이 올바르지 않습니다.")
+            return HttpResponseRedirect(redirect_url)
 
         if not user_id.isdigit():
             messages.error(request, "대상 사용자를 선택해 주세요.")
@@ -1358,6 +1363,9 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                 return HttpResponseRedirect(redirect_url)
             profile.phone = normalized
             prof_updates.append("phone")
+        if "gender" in request.POST:
+            profile.gender = gender
+            prof_updates.append("gender")
 
         profile_membership = (
             target_user.division_teams.select_related("division", "team")
@@ -1659,6 +1667,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
                     "display_name": (getattr(prof, "display_name", "") or "").strip()
                     or kakao_nickname_by_user.get(u.id, ""),
                     "real_name": (getattr(prof, "real_name", "") or "").strip(),
+                    "gender": (getattr(prof, "gender", "") or "").strip(),
                     "phone": _phone_for_display(getattr(prof, "phone", "") or ""),
                     "region_id": region_id,
                     "region_name": region_name,
@@ -1718,6 +1727,7 @@ class DivisionAccountRoleManageView(LoginRequiredMixin, TemplateView):
         ctx["role_level_choices"] = list(
             RoleLevel.objects.order_by("-level", "sort_order")
         )
+        ctx["gender_choices"] = list(UserProfile.Gender.choices)
         ctx["account_tab"] = "roles"
         ctx["role_options_api_url"] = reverse_lazy("api_user_assignable_roles")
         ctx["activity_log_url"] = reverse("user_division_account_activity_log")

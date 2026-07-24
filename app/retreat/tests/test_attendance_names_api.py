@@ -86,6 +86,19 @@ class AttendanceNamesApiTests(TestCase):
 
         self.assertEqual(response.status_code, 401)
 
+    def test_cors_preflight_allows_x_retreat_token(self):
+        response = self.client.options(
+            self.url,
+            HTTP_ORIGIN="https://example-external.example",
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET",
+            HTTP_ACCESS_CONTROL_REQUEST_HEADERS="x-retreat-token",
+        )
+        self.assertEqual(response.status_code, 200)
+        allow_headers = response.headers.get("Access-Control-Allow-Headers", "")
+        self.assertIn("x-retreat-token", allow_headers.lower())
+        allow_origin = response.headers.get("Access-Control-Allow-Origin")
+        self.assertIn(allow_origin, ("*", "https://example-external.example"))
+
     def test_request_with_invalid_token_returns_401(self):
         response = self.client.get(self.url, HTTP_X_RETREAT_TOKEN="invalid-token")
 

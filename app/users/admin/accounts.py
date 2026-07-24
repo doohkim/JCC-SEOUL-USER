@@ -51,6 +51,7 @@ class UserProfileInline(admin.StackedInline):
                 "fields": (
                     "display_name",
                     "real_name",
+                    "gender",
                     "phone",
                     "phone_verified",
                     "phone_verified_at",
