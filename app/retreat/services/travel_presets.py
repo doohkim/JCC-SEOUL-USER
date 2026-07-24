@@ -1,6 +1,8 @@
-"""입·퇴실 차량 프리셋 조회·직렬화."""
+"""입·퇴실 차량 프리셋 조회·직렬화·웨이브 버킷 매칭."""
 
 from __future__ import annotations
+
+from typing import Any
 
 from django.utils import timezone
 
@@ -20,6 +22,57 @@ def is_manual_travel_preset(preset: RetreatTravelPreset) -> bool:
     code = (preset.code or "").lower()
     label = preset.label or ""
     return "own_car" in code or "자차" in label
+
+
+def travel_fixed_and_occurs_map(
+    presets: list[RetreatTravelPreset],
+) -> tuple[list[RetreatTravelPreset], dict[str, RetreatTravelPreset]]:
+    """고정 웨이브 프리셋과 분 단위 시각→프리셋 맵."""
+    fixed: list[RetreatTravelPreset] = []
+    occurs_to_preset: dict[str, RetreatTravelPreset] = {}
+    for p in presets:
+        if is_manual_travel_preset(p) or not p.occurs_at:
+            continue
+        key = _iso_local(p.occurs_at)
+        if not key:
+            continue
+        fixed.append(p)
+        # 동일 시각이면 먼저 등록된 프리셋에 귀속
+        occurs_to_preset.setdefault(key, p)
+    return fixed, occurs_to_preset
+
+
+def travel_bucket_key(
+    dt, occurs_to_preset: dict[str, RetreatTravelPreset]
+) -> str | int:
+    """시각을 웨이브 id / __custom__ / __unset__ 버킷으로 분류."""
+    key = _iso_local(dt)
+    if not key:
+        return "__unset__"
+    matched = occurs_to_preset.get(key)
+    if matched is not None:
+        return matched.id
+    return "__custom__"
+
+
+def travel_filter_chip_defs(fixed: list[RetreatTravelPreset]) -> list[dict[str, str]]:
+    """전체 명단 필터 칩 — value는 str(id) / __custom__ / __unset__."""
+    chips: list[dict[str, str]] = [
+        {"value": str(p.id), "label": p.label} for p in fixed
+    ]
+    chips.append({"value": "__custom__", "label": "자차"})
+    chips.append({"value": "__unset__", "label": "미설정"})
+    return chips
+
+
+def travel_column_defs(fixed: list[RetreatTravelPreset]) -> list[dict[str, Any]]:
+    """대시보드 교통 집계 컬럼 정의."""
+    cols: list[dict[str, Any]] = [
+        {"id": p.id, "code": p.code, "label": p.label, "manual": False} for p in fixed
+    ]
+    cols.append({"id": None, "code": "__custom__", "label": "자차", "manual": True})
+    cols.append({"id": None, "code": "__unset__", "label": "미설정", "manual": False})
+    return cols
 
 
 def serialize_travel_preset(preset: RetreatTravelPreset) -> dict:

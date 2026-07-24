@@ -61,6 +61,7 @@ class AutoCheckInTests(TestCase):
             group=self.group,
             name="퇴실대상",
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            expected_check_in_at=now - timedelta(hours=2),
             expected_check_out_at=now - timedelta(minutes=5),
         )
         result = apply_due_auto_transitions(now=now)
@@ -128,3 +129,54 @@ class AutoCheckInTests(TestCase):
         )
         self.assertEqual(other.check_in_status, RetreatAttendee.CheckInStatus.PENDING)
         self.assertEqual(result["checked_in"], 1)
+
+    def test_checked_in_with_future_expected_in_reverts_to_pending(self):
+        """입실 시각을 미래로 고치면 입실 → 입실전으로 되돌린다."""
+        now = timezone.now()
+        a = RetreatAttendee.objects.create(
+            group=self.group,
+            name="시각수정",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            expected_check_in_at=now + timedelta(hours=2),
+            checked_in_at=now - timedelta(minutes=5),
+        )
+        result = apply_due_auto_transitions(now=now)
+        a.refresh_from_db()
+        self.assertEqual(a.check_in_status, RetreatAttendee.CheckInStatus.PENDING)
+        self.assertIsNone(a.checked_in_at)
+        self.assertEqual(result["pending"], 1)
+
+    def test_checked_out_with_future_expected_out_reverts_to_checked_in(self):
+        now = timezone.now()
+        a = RetreatAttendee.objects.create(
+            group=self.group,
+            name="퇴실시각수정",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+            expected_check_in_at=now - timedelta(hours=2),
+            expected_check_out_at=now + timedelta(hours=1),
+            checked_in_at=now - timedelta(hours=2),
+            checked_out_at=now - timedelta(minutes=1),
+        )
+        result = apply_due_auto_transitions(now=now)
+        a.refresh_from_db()
+        self.assertEqual(a.check_in_status, RetreatAttendee.CheckInStatus.CHECKED_IN)
+        self.assertIsNone(a.checked_out_at)
+        self.assertEqual(result["checked_in"], 1)
+
+    def test_checked_out_with_future_expected_in_reverts_to_pending(self):
+        now = timezone.now()
+        a = RetreatAttendee.objects.create(
+            group=self.group,
+            name="입실시각대수정",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+            expected_check_in_at=now + timedelta(hours=1),
+            expected_check_out_at=now + timedelta(hours=3),
+            checked_in_at=now - timedelta(hours=1),
+            checked_out_at=now - timedelta(minutes=1),
+        )
+        result = apply_due_auto_transitions(now=now)
+        a.refresh_from_db()
+        self.assertEqual(a.check_in_status, RetreatAttendee.CheckInStatus.PENDING)
+        self.assertIsNone(a.checked_in_at)
+        self.assertIsNone(a.checked_out_at)
+        self.assertEqual(result["pending"], 1)

@@ -19,6 +19,7 @@ from retreat.models import (
     RetreatSessionAttendee,
     RetreatTravelPreset,
 )
+from retreat.services.auto_check_in import desired_check_in_status
 from retreat.services.lodging_roster import lodging_eligible_filter
 from retreat.services.participation import (
     absent_attendee_keys,
@@ -26,7 +27,11 @@ from retreat.services.participation import (
     pickup_visible_for_participation,
 )
 from retreat.services.account_retired import visible_attendees_for, visible_pickups_for
-from retreat.services.travel_presets import is_manual_travel_preset
+from retreat.services.travel_presets import (
+    travel_bucket_key,
+    travel_column_defs,
+    travel_fixed_and_occurs_map,
+)
 from users.permissions import (
     get_retreat_capabilities,
     visible_retreat_groups_for,
@@ -413,67 +418,9 @@ def _scope_labels_for_group(group: RetreatGroup) -> list[dict[str, Any]]:
 def _effective_check_in_status(check_in_at, check_out_at, now) -> str:
     """입실/퇴실 시각과 현재 시각으로 실시간 입·퇴실 상태를 계산한다.
 
-    - 입실 시각이 없거나 아직 오지 않았으면 → 입실전(pending)
-    - 퇴실 시각이 지났으면 → 퇴실(checked_out)
-    - 그 외(입실 시각 <= now) → 입실(checked_in)
-
-    저장된 check_in_status 가 아니라 시각 필드만으로 판정하므로, 주기 작업 없이도
-    조회 시점 기준으로 항상 실시간 현황을 반영한다.
+    ``desired_check_in_status``(자동 전환과 동일 규칙)의 별칭.
     """
-    S = RetreatAttendee.CheckInStatus
-    if check_in_at is None or check_in_at > now:
-        return S.PENDING
-    if check_out_at is not None and check_out_at <= now:
-        return S.CHECKED_OUT
-    return S.CHECKED_IN
-
-
-def _local_minute_key(dt) -> str:
-    if dt is None:
-        return ""
-    if timezone.is_naive(dt):
-        dt = timezone.make_aware(dt, timezone.get_current_timezone())
-    return timezone.localtime(dt).strftime("%Y-%m-%dT%H:%M")
-
-
-def _travel_fixed_and_occurs_map(
-    presets: list[RetreatTravelPreset],
-) -> tuple[list[RetreatTravelPreset], dict[str, RetreatTravelPreset]]:
-    """고정 웨이브 프리셋과 분 단위 시각→프리셋 맵."""
-    fixed: list[RetreatTravelPreset] = []
-    occurs_to_preset: dict[str, RetreatTravelPreset] = {}
-    for p in presets:
-        if is_manual_travel_preset(p) or not p.occurs_at:
-            continue
-        key = _local_minute_key(p.occurs_at)
-        if not key:
-            continue
-        fixed.append(p)
-        # 동일 시각이면 먼저 등록된 프리셋에 귀속
-        occurs_to_preset.setdefault(key, p)
-    return fixed, occurs_to_preset
-
-
-def _travel_bucket_key(
-    dt, occurs_to_preset: dict[str, RetreatTravelPreset]
-) -> str | int:
-    """시각을 웨이브 id / __custom__ / __unset__ 버킷으로 분류."""
-    key = _local_minute_key(dt)
-    if not key:
-        return "__unset__"
-    matched = occurs_to_preset.get(key)
-    if matched is not None:
-        return matched.id
-    return "__custom__"
-
-
-def _travel_column_defs(fixed: list[RetreatTravelPreset]) -> list[dict[str, Any]]:
-    cols: list[dict[str, Any]] = [
-        {"id": p.id, "code": p.code, "label": p.label, "manual": False} for p in fixed
-    ]
-    cols.append({"id": None, "code": "__custom__", "label": "자차", "manual": True})
-    cols.append({"id": None, "code": "__unset__", "label": "미설정", "manual": False})
-    return cols
+    return desired_check_in_status(check_in_at, check_out_at, now)
 
 
 def _travel_count_for_col(col: dict[str, Any], counts: dict) -> int:
@@ -523,10 +470,10 @@ def build_travel_summary_for_attendee_times(
     departure_presets = [
         p for p in presets if p.direction == RetreatTravelPreset.Direction.DEPARTURE
     ]
-    arrival_fixed, arrival_occurs = _travel_fixed_and_occurs_map(arrival_presets)
-    departure_fixed, departure_occurs = _travel_fixed_and_occurs_map(departure_presets)
-    arrival_columns = _travel_column_defs(arrival_fixed)
-    departure_columns = _travel_column_defs(departure_fixed)
+    arrival_fixed, arrival_occurs = travel_fixed_and_occurs_map(arrival_presets)
+    departure_fixed, departure_occurs = travel_fixed_and_occurs_map(departure_presets)
+    arrival_columns = travel_column_defs(arrival_fixed)
+    departure_columns = travel_column_defs(departure_fixed)
 
     arrival_counts: dict[str | int, int] = defaultdict(int)
     departure_counts: dict[str | int, int] = defaultdict(int)
@@ -537,8 +484,8 @@ def build_travel_summary_for_attendee_times(
         lambda: defaultdict(int)
     )
     for gid, in_at, out_at in time_rows:
-        a_key = _travel_bucket_key(in_at, arrival_occurs)
-        d_key = _travel_bucket_key(out_at, departure_occurs)
+        a_key = travel_bucket_key(in_at, arrival_occurs)
+        d_key = travel_bucket_key(out_at, departure_occurs)
         arrival_counts[a_key] += 1
         departure_counts[d_key] += 1
         if gid is not None:

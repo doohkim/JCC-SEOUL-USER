@@ -1,5 +1,5 @@
 /**
- * 숙소 탭 전체 명단 — 입실·숙소 상태·지역·부서 칩 필터 + 이름 검색 + 요약 프리셋
+ * 숙소 탭 전체 명단 — 칩 필터·이름 검색·컬럼 정렬·페이지네이션(20)
  */
 (function () {
   "use strict";
@@ -10,6 +10,7 @@
   const rows = Array.from(tbody.querySelectorAll("tr[data-attendee-id]"));
   if (rows.length === 0) return;
 
+  const PAGE_SIZE = 20;
   const STORAGE_KEY = "retreatLodgingRosterFilter:" + location.pathname;
   const emptyMsg = document.getElementById("lodgingRosterFilterEmpty");
   const resetBtn = document.getElementById("rosterFilterReset");
@@ -19,12 +20,67 @@
   const divisionsWrap = document.getElementById("rosterFilterDivisions");
   const regionRow = filterBar?.querySelector('[data-filter-row="region"]');
   const divisionRow = filterBar?.querySelector('[data-filter-row="division"]');
+  const paginationBar = document.getElementById("lodgingRosterPagination");
+  const paginationMeta = document.getElementById("lodgingRosterPaginationMeta");
+  const paginationBtns = document.getElementById("lodgingRosterPaginationBtns");
+  const sortHeaders = document.querySelectorAll(
+    "#lodgingRosterTable .jcc-retreat-sortable[data-sort-key]"
+  );
+
+  const STATUS_ORDER = { pending: 0, checked_in: 1, checked_out: 2 };
+  const ROLE_ORDER = {
+    leader: 0,
+    vice_leader: 1,
+    teacher: 2,
+    member: 3,
+  };
 
   const selectedStatus = new Set();
   const selectedLodgingStay = new Set();
+  const selectedArrivalTravel = new Set();
+  const selectedDepartureTravel = new Set();
   const selectedRegions = new Set();
   const selectedDivisions = new Set();
+  const selectedMemo = new Set();
+  const rosterTable = document.getElementById("lodgingRosterTable");
   let nameQuery = "";
+  let sortKey = null;
+  let sortDir = "asc";
+  let currentPage = 1;
+
+  function memoFilterActive() {
+    return selectedMemo.has("1");
+  }
+
+  function truncateMemoForDisplay(memo) {
+    const full = String(memo || "").trim();
+    if (!full) return "";
+    if (memoFilterActive()) return full;
+    return full.length > 5 ? full.slice(0, 5) + "…" : full;
+  }
+
+  function setMemoDisplay(memoEl, memo) {
+    if (!memoEl) return;
+    const full = String(memo || "").trim();
+    memoEl.dataset.memoFull = full;
+    if (full) {
+      memoEl.title = full;
+      memoEl.textContent = truncateMemoForDisplay(full);
+      memoEl.hidden = false;
+    } else {
+      memoEl.removeAttribute("title");
+      memoEl.textContent = "";
+      memoEl.hidden = true;
+    }
+  }
+
+  function syncRosterMemoDisplays() {
+    rosterTable?.classList.toggle("is-memoFilterActive", memoFilterActive());
+    rows.forEach((row) => {
+      const memoEl = row.querySelector("[data-roster-memo]");
+      setMemoDisplay(memoEl, row.dataset.memo || "");
+    });
+  }
 
   function distinctValues(attr) {
     const seen = [];
@@ -56,9 +112,15 @@
         JSON.stringify({
           status: Array.from(selectedStatus),
           lodgingStay: Array.from(selectedLodgingStay),
+          arrivalTravel: Array.from(selectedArrivalTravel),
+          departureTravel: Array.from(selectedDepartureTravel),
           regions: Array.from(selectedRegions),
           divisions: Array.from(selectedDivisions),
+          memo: Array.from(selectedMemo),
           name: nameQuery,
+          sortKey: sortKey,
+          sortDir: sortDir,
+          page: currentPage,
         })
       );
     } catch (e) {}
@@ -70,9 +132,21 @@
     if (selectedLodgingStay.size) {
       params.set("lodgingStay", Array.from(selectedLodgingStay).join(","));
     }
+    if (selectedArrivalTravel.size) {
+      params.set("arrivalTravel", Array.from(selectedArrivalTravel).join(","));
+    }
+    if (selectedDepartureTravel.size) {
+      params.set("departureTravel", Array.from(selectedDepartureTravel).join(","));
+    }
     if (selectedRegions.size) params.set("region", Array.from(selectedRegions).join(","));
     if (selectedDivisions.size) params.set("division", Array.from(selectedDivisions).join(","));
+    if (selectedMemo.size) params.set("memo", Array.from(selectedMemo).join(","));
     if (nameQuery.trim()) params.set("q", nameQuery.trim());
+    if (sortKey) {
+      params.set("sort", sortKey);
+      params.set("dir", sortDir);
+    }
+    if (currentPage > 1) params.set("page", String(currentPage));
     const qs = params.toString();
     const next = qs ? `${location.pathname}?${qs}` : location.pathname;
     window.history.replaceState(null, "", next);
@@ -125,6 +199,8 @@
   function rowMatches(row) {
     const status = row.dataset.checkInStatus || "";
     const lodgingStay = row.dataset.lodgingStayStatus || "";
+    const arrivalTravel = row.dataset.arrivalTravel || "";
+    const departureTravel = row.dataset.departureTravel || "";
     const region = row.dataset.regionName || "";
     const division = row.dataset.divisionName || "";
     const name = (row.dataset.name || "").toLowerCase();
@@ -134,8 +210,24 @@
     if (selectedLodgingStay.size > 0 && !selectedLodgingStay.has(lodgingStay)) {
       return false;
     }
+    if (
+      selectedArrivalTravel.size > 0 &&
+      !selectedArrivalTravel.has(arrivalTravel)
+    ) {
+      return false;
+    }
+    if (
+      selectedDepartureTravel.size > 0 &&
+      !selectedDepartureTravel.has(departureTravel)
+    ) {
+      return false;
+    }
     if (selectedRegions.size > 0 && !selectedRegions.has(region)) return false;
     if (selectedDivisions.size > 0 && !selectedDivisions.has(division)) return false;
+    if (memoFilterActive()) {
+      const memo = (row.dataset.memo || "").trim();
+      if (!memo) return false;
+    }
     if (nameQuery.trim()) {
       const q = nameQuery.trim().toLowerCase();
       const qDigits = phoneDigits(q);
@@ -146,34 +238,177 @@
     return true;
   }
 
-  function renumberVisible() {
-    let n = 0;
-    rows.forEach((row) => {
-      if (row.hidden) return;
-      n += 1;
-      const cell = row.querySelector("[data-row-num]");
-      if (cell) cell.textContent = String(n);
+  function sortValue(row, key) {
+    switch (key) {
+      case "group":
+        return (row.dataset.groupName || "").trim();
+      case "name":
+        return (row.dataset.name || "").trim();
+      case "role":
+        return ROLE_ORDER[row.dataset.memberRole] ?? 99;
+      case "status":
+        return STATUS_ORDER[row.dataset.checkInStatus] ?? 99;
+      case "expectedIn": {
+        const iso = row.dataset.expectedInAt || "";
+        if (!iso) return Number.POSITIVE_INFINITY;
+        const t = new Date(iso).getTime();
+        return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
+      }
+      case "expectedOut": {
+        const iso = row.dataset.expectedOutAt || "";
+        if (!iso) return Number.POSITIVE_INFINITY;
+        const t = new Date(iso).getTime();
+        return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
+      }
+      case "lodging":
+        return (row.dataset.lodgingSort || "").trim();
+      default:
+        return 0;
+    }
+  }
+
+  function compareRows(a, b, key) {
+    const va = sortValue(a, key);
+    const vb = sortValue(b, key);
+    if (typeof va === "number" && typeof vb === "number") {
+      return va - vb;
+    }
+    return String(va).localeCompare(String(vb), "ko", { numeric: true });
+  }
+
+  function sortedMatchedRows() {
+    const matched = rows.filter(rowMatches);
+    if (!sortKey) return matched;
+    const factor = sortDir === "desc" ? -1 : 1;
+    return matched.slice().sort((a, b) => {
+      const c = compareRows(a, b, sortKey);
+      if (c !== 0) return c * factor;
+      const na = (a.dataset.name || "").trim();
+      const nb = (b.dataset.name || "").trim();
+      return na.localeCompare(nb, "ko");
     });
   }
 
-  function applyFilter() {
-    let visible = 0;
-    rows.forEach((row) => {
-      const show = rowMatches(row);
-      row.hidden = !show;
-      if (show) visible += 1;
+  function syncSortHeaderStates() {
+    sortHeaders.forEach((th) => {
+      if (th.dataset.sortKey === sortKey) {
+        th.dataset.sortDir = sortDir;
+        th.setAttribute(
+          "aria-sort",
+          sortDir === "asc" ? "ascending" : "descending"
+        );
+      } else {
+        delete th.dataset.sortDir;
+        th.setAttribute("aria-sort", "none");
+      }
     });
-    renumberVisible();
+  }
+
+  function renderPagination(total, totalPages) {
+    if (!paginationBar || !paginationBtns || !paginationMeta) return;
+    if (total === 0) {
+      paginationBar.hidden = true;
+      paginationBtns.innerHTML = "";
+      paginationMeta.textContent = "";
+      return;
+    }
+    paginationBar.hidden = false;
+    const start = (currentPage - 1) * PAGE_SIZE + 1;
+    const end = Math.min(currentPage * PAGE_SIZE, total);
+    paginationMeta.textContent = `${start}–${end} / 총 ${total}건 · ${PAGE_SIZE}개씩`;
+
+    if (totalPages <= 1) {
+      paginationBtns.innerHTML = "";
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+
+    function addBtn(label, page, opts) {
+      const { disabled, active, arrow } = opts || {};
+      const el = document.createElement(disabled || active ? "span" : "button");
+      el.className = "jcc-notice-pageBtn";
+      if (arrow) el.classList.add("jcc-notice-pageBtn--arrow");
+      if (disabled) el.classList.add("is-disabled");
+      if (active) {
+        el.classList.add("is-active");
+        el.setAttribute("aria-current", "page");
+      }
+      el.textContent = label;
+      if (!disabled && !active) {
+        el.type = "button";
+        el.addEventListener("click", () => {
+          currentPage = page;
+          applyView({ resetPage: false });
+        });
+      }
+      frag.appendChild(el);
+    }
+
+    addBtn("‹", currentPage - 1, {
+      arrow: true,
+      disabled: currentPage <= 1,
+    });
+
+    const windowStart = Math.max(1, currentPage - 2);
+    const windowEnd = Math.min(totalPages, currentPage + 2);
+    for (let n = windowStart; n <= windowEnd; n += 1) {
+      addBtn(String(n), n, { active: n === currentPage });
+    }
+
+    addBtn("›", currentPage + 1, {
+      arrow: true,
+      disabled: currentPage >= totalPages,
+    });
+
+    paginationBtns.innerHTML = "";
+    paginationBtns.appendChild(frag);
+  }
+
+  function applyView({ resetPage = false } = {}) {
+    if (resetPage) currentPage = 1;
+
+    const matched = sortedMatchedRows();
+    matched.forEach((row) => tbody.appendChild(row));
+
+    rows.forEach((row) => {
+      row.hidden = true;
+    });
+
+    const total = matched.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE) || 1);
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIdx = (currentPage - 1) * PAGE_SIZE;
+    const pageRows = matched.slice(startIdx, startIdx + PAGE_SIZE);
+    pageRows.forEach((row, i) => {
+      row.hidden = false;
+      const cell = row.querySelector("[data-row-num]");
+      if (cell) cell.textContent = String(startIdx + i + 1);
+    });
+
+    renderPagination(total, totalPages);
+    syncSortHeaderStates();
+    syncRosterMemoDisplays();
+
     const hasFilter =
       selectedStatus.size > 0 ||
       selectedLodgingStay.size > 0 ||
+      selectedArrivalTravel.size > 0 ||
+      selectedDepartureTravel.size > 0 ||
       selectedRegions.size > 0 ||
       selectedDivisions.size > 0 ||
+      selectedMemo.size > 0 ||
       !!nameQuery.trim();
-    if (resetBtn) resetBtn.disabled = !hasFilter;
-    if (emptyMsg) emptyMsg.hidden = visible > 0 || rows.length === 0;
+    if (resetBtn) resetBtn.disabled = !hasFilter && !sortKey && currentPage === 1;
+    if (emptyMsg) emptyMsg.hidden = total > 0 || rows.length === 0;
     persist();
     syncUrl();
+  }
+
+  function applyFilter() {
+    applyView({ resetPage: true });
   }
 
   function setChipActive(chip, active) {
@@ -184,7 +419,11 @@
   function chipSetForKind(kind) {
     if (kind === "status") return selectedStatus;
     if (kind === "lodgingStay") return selectedLodgingStay;
+    if (kind === "arrivalTravel") return selectedArrivalTravel;
+    if (kind === "departureTravel") return selectedDepartureTravel;
     if (kind === "region") return selectedRegions;
+    if (kind === "division") return selectedDivisions;
+    if (kind === "memo") return selectedMemo;
     return selectedDivisions;
   }
 
@@ -256,15 +495,21 @@
   function applyPreset(preset) {
     selectedStatus.clear();
     selectedLodgingStay.clear();
+    selectedArrivalTravel.clear();
+    selectedDepartureTravel.clear();
     selectedRegions.clear();
     selectedDivisions.clear();
+    selectedMemo.clear();
     nameQuery = "";
+    sortKey = null;
+    sortDir = "asc";
     if (searchInput) searchInput.value = "";
 
     if (preset && preset !== "all") {
       const [kind, value] = preset.split(":");
       if (kind === "status" && value) selectedStatus.add(value);
       if (kind === "lodgingStay" && value) selectedLodgingStay.add(value);
+      if (kind === "memo" && value) selectedMemo.add(value);
       if (kind === "stay" && value === "eligible") {
         selectedLodgingStay.add("active");
         selectedLodgingStay.add("unassigned");
@@ -299,6 +544,31 @@
     resetBtn.addEventListener("click", () => applyPreset("all"));
   }
 
+  sortHeaders.forEach((th) => {
+    th.addEventListener("click", (e) => {
+      e.preventDefault();
+      const key = th.dataset.sortKey;
+      if (!key) return;
+      if (sortKey === key) {
+        sortDir = sortDir === "asc" ? "desc" : "asc";
+      } else {
+        sortKey = key;
+        sortDir = "asc";
+      }
+      applyView({ resetPage: true });
+    });
+  });
+
+  const SORT_KEYS = new Set([
+    "group",
+    "name",
+    "role",
+    "status",
+    "expectedIn",
+    "expectedOut",
+    "lodging",
+  ]);
+
   function initFromUrlOrStorage() {
     const params = new URLSearchParams(location.search);
     const stored = loadStored();
@@ -306,10 +576,18 @@
     const statusParam = params.get("status") || (stored && stored.status?.join(","));
     const lodgingStayParam =
       params.get("lodgingStay") || (stored && stored.lodgingStay?.join(","));
+    const arrivalTravelParam =
+      params.get("arrivalTravel") || (stored && stored.arrivalTravel?.join(","));
+    const departureTravelParam =
+      params.get("departureTravel") || (stored && stored.departureTravel?.join(","));
     const regionParam = params.get("region") || (stored && stored.regions?.join(","));
     const divisionParam =
       params.get("division") || (stored && stored.divisions?.join(","));
+    const memoParam = params.get("memo") || (stored && stored.memo?.join(","));
     const qParam = params.get("q") || (stored && stored.name) || "";
+    const sortParam = params.get("sort") || (stored && stored.sortKey) || "";
+    const dirParam = params.get("dir") || (stored && stored.sortDir) || "asc";
+    const pageParam = params.get("page") || (stored && stored.page) || "1";
 
     if (statusParam) statusParam.split(",").filter(Boolean).forEach((v) => selectedStatus.add(v));
     if (lodgingStayParam) {
@@ -335,16 +613,48 @@
         });
       }
     }
+    if (arrivalTravelParam) {
+      arrivalTravelParam
+        .split(",")
+        .filter(Boolean)
+        .forEach((v) => selectedArrivalTravel.add(v));
+    }
+    if (departureTravelParam) {
+      departureTravelParam
+        .split(",")
+        .filter(Boolean)
+        .forEach((v) => selectedDepartureTravel.add(v));
+    }
     if (regionParam) regionParam.split(",").filter(Boolean).forEach((v) => selectedRegions.add(v));
     if (divisionParam) {
       divisionParam.split(",").filter(Boolean).forEach((v) => selectedDivisions.add(v));
     }
+    if (memoParam) {
+      memoParam.split(",").filter(Boolean).forEach((v) => {
+        if (v === "1") selectedMemo.add("1");
+      });
+    }
     nameQuery = qParam;
     if (searchInput && nameQuery) searchInput.value = nameQuery;
 
+    if (SORT_KEYS.has(sortParam)) {
+      sortKey = sortParam;
+      sortDir = dirParam === "desc" ? "desc" : "asc";
+    }
+    const parsedPage = parseInt(String(pageParam), 10);
+    currentPage = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+
     syncChipStates();
-    applyFilter();
+    applyView({ resetPage: false });
   }
+
+  window.JccRetreatLodgingRosterFilter = {
+    refreshAfterRowEdit() {
+      syncRosterMemoDisplays();
+      applyView({ resetPage: false });
+    },
+    setMemoDisplay,
+  };
 
   initFromUrlOrStorage();
 })();

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from django.contrib.auth import get_user_model
 from django.db.models import Case, IntegerField, QuerySet, Value, When
 
-from retreat.models import RetreatAttendee, RetreatEvent
+from retreat.models import RetreatAttendee, RetreatEvent, RetreatTravelPreset
 from retreat.services.check_in_stamps import (
     is_attendee_profile_locked,
     is_expected_check_in_locked,
@@ -21,6 +21,11 @@ from retreat.services.lodging_stay import (
 )
 from retreat.services.participation import is_participating
 from retreat.services.account_retired import visible_attendees_for
+from retreat.services.travel_presets import (
+    travel_bucket_key,
+    travel_filter_chip_defs,
+    travel_fixed_and_occurs_map,
+)
 from users.permissions import visible_retreat_groups_for
 
 User = get_user_model()
@@ -130,6 +135,25 @@ def build_lodging_roster_context(
             "id",
         )
     )
+    travel_presets = list(
+        RetreatTravelPreset.objects.filter(event=event, is_active=True).order_by(
+            "direction", "sort_order", "id"
+        )
+    )
+    arrival_fixed, arrival_occurs = travel_fixed_and_occurs_map(
+        [
+            p
+            for p in travel_presets
+            if p.direction == RetreatTravelPreset.Direction.ARRIVAL
+        ]
+    )
+    departure_fixed, departure_occurs = travel_fixed_and_occurs_map(
+        [
+            p
+            for p in travel_presets
+            if p.direction == RetreatTravelPreset.Direction.DEPARTURE
+        ]
+    )
     for attendee in attendees:
         attendee.lodging_scope = attendee_lodging_scope(attendee)
         attendee.lodging_eligible_key = attendee_lodging_eligible_key(attendee)
@@ -143,6 +167,12 @@ def build_lodging_roster_context(
         )
         attendee.expected_check_out_locked = is_expected_check_out_locked(
             attendee, user, attendee.group
+        )
+        attendee.arrival_travel_key = str(
+            travel_bucket_key(attendee.expected_check_in_at, arrival_occurs)
+        )
+        attendee.departure_travel_key = str(
+            travel_bucket_key(attendee.expected_check_out_at, departure_occurs)
         )
 
     s = RetreatAttendee.CheckInStatus
@@ -163,6 +193,8 @@ def build_lodging_roster_context(
 
     return {
         "roster_attendees": attendees,
+        "roster_arrival_travel_chips": travel_filter_chip_defs(arrival_fixed),
+        "roster_departure_travel_chips": travel_filter_chip_defs(departure_fixed),
         "roster_summary": LodgingRosterSummary(
             count_total=len(attendees),
             count_participating=len(participating),

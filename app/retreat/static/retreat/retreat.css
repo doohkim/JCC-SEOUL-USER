@@ -2742,6 +2742,31 @@ body.has-retreat-bottom-tabs .jcc-retreat-userLinkUnlink {
 .jcc-retreat-rosterGroupLink:hover {
   text-decoration: underline;
 }
+.jcc-retreat-rosterPaginationBar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.75rem 0.5rem 0.35rem;
+  border-top: 1px solid var(--border, #e9ecef);
+}
+.jcc-retreat-rosterPaginationMeta {
+  font-size: 0.82rem;
+  color: var(--muted, #868e96);
+  font-variant-numeric: tabular-nums;
+}
+.jcc-retreat-rosterPaginationBar .jcc-notice-pagination {
+  padding: 0;
+}
+.jcc-retreat-rosterPaginationBar .jcc-notice-pageBtn {
+  cursor: pointer;
+  font-family: inherit;
+}
+.jcc-retreat-rosterPaginationBar .jcc-notice-pageBtn.is-disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
 .jcc-retreat-rosterHeadLong,
 .jcc-retreat-rosterActionsHead {
   display: none;
@@ -3545,8 +3570,23 @@ body.has-retreat-bottom-tabs .jcc-retreat-userLinkUnlink {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.jcc-retreat-rosterTable .jcc-retreat-attCol-name .jcc-retreat-attMemo {
+  max-width: 12rem;
+}
+.jcc-retreat-rosterTable.is-memoFilterActive .jcc-retreat-attCol-name .jcc-retreat-attMemo {
+  color: var(--text);
+  font-weight: 500;
+  max-width: 22rem;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  word-break: break-word;
+}
 @media (max-width: 900px) {
   .jcc-retreat-attMemo {
+    max-width: 100%;
+  }
+  .jcc-retreat-rosterTable .jcc-retreat-attCol-name .jcc-retreat-attMemo {
     max-width: 100%;
   }
 }

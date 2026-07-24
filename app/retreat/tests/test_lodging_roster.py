@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -18,6 +18,7 @@ from retreat.models import (
     RetreatEvent,
     RetreatGroup,
     RetreatGroupMembership,
+    RetreatTravelPreset,
 )
 from retreat.services.lodging_roster import (
     attendee_lodging_assignment_key,
@@ -31,6 +32,13 @@ from retreat.services.lodging_stats import build_lodging_page_summary
 from users.models import Division, Region, RoleLevel, UserDivisionTeam
 
 User = get_user_model()
+
+_STATICFILES_STORAGE = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 
 class _LodgingRosterFixture(TestCase):
@@ -93,6 +101,7 @@ class _LodgingRosterFixture(TestCase):
             expected_check_in_at=timezone.now(),
             check_in_status=RetreatAttendee.CheckInStatus.PENDING,
             lodging_room=cls.room,
+            memo="알레르기주의필요",
         )
         cls.full_room_attendee = RetreatAttendee.objects.create(
             group=cls.group,
@@ -125,6 +134,7 @@ class _LodgingRosterFixture(TestCase):
             persist_lodging_stay_status(attendee)
 
 
+@override_settings(STORAGES=_STATICFILES_STORAGE)
 class LodgingRosterPageTests(_LodgingRosterFixture):
     def setUp(self):
         self.client = APIClient()
@@ -142,7 +152,7 @@ class LodgingRosterPageTests(_LodgingRosterFixture):
         self.assertContains(r, "배정자")
         self.assertContains(r, 'data-lodging-stay-status="active"')
         self.assertContains(r, 'data-lodging-stay-status="unassigned"')
-        self.assertContains(r, 'data-lodging-stay-status="ended"')
+        self.assertContains(r, 'data-filter-value="ended"')
         self.assertContains(r, "jcc-retreat-lodgingStayBadge--active")
         self.assertContains(r, "jcc-retreat-lodgingStayBadge--unassigned")
         self.assertContains(r, "입실 예정 없음")
@@ -150,6 +160,17 @@ class LodgingRosterPageTests(_LodgingRosterFixture):
         self.assertContains(r, "숙소 상태")
         self.assertContains(r, 'data-filter-kind="lodgingStay"')
         self.assertContains(r, "숙박 관리 대상")
+        self.assertContains(r, 'data-filter-kind="memo"')
+        self.assertContains(r, 'data-filter-value="1"')
+        self.assertContains(r, "data-roster-memo")
+        self.assertContains(r, 'data-memo-full="알레르기주의필요"')
+
+    def test_memo_filter_query_param_page_ok(self):
+        self.client.force_login(self.staff)
+        r = self.client.get(self._url() + "?memo=1")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'data-filter-kind="memo"')
+        self.assertContains(r, "data-roster-memo")
 
     def test_leader_blocked(self):
         self.client.force_login(self.leader)
@@ -215,3 +236,76 @@ class LodgingRosterSummaryTests(_LodgingRosterFixture):
             attendee_lodging_assignment_key(self.unassigned_attendee), "unassigned"
         )
         self.assertEqual(attendee_lodging_scope(self.checked_out_attendee), "na")
+
+
+class LodgingRosterTravelFilterTests(_LodgingRosterFixture):
+    """템플릿 static manifest 이슈를 피하기 위해 context만 검증."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.arrival_main = RetreatTravelPreset.objects.create(
+            event=cls.event,
+            direction=RetreatTravelPreset.Direction.ARRIVAL,
+            code="main",
+            label="7/1 본진",
+            occurs_at=timezone.make_aware(datetime(2026, 7, 1, 10, 0)),
+            sort_order=10,
+        )
+        cls.departure_bus = RetreatTravelPreset.objects.create(
+            event=cls.event,
+            direction=RetreatTravelPreset.Direction.DEPARTURE,
+            code="bus",
+            label="7/3 버스",
+            occurs_at=timezone.make_aware(datetime(2026, 7, 3, 13, 0)),
+            sort_order=10,
+        )
+
+    def test_travel_chips_and_row_keys(self):
+        wave_in = timezone.make_aware(datetime(2026, 7, 1, 10, 0))
+        custom_in = timezone.make_aware(datetime(2026, 7, 1, 15, 30))
+        wave_out = timezone.make_aware(datetime(2026, 7, 3, 13, 0))
+
+        self.assigned_attendee.expected_check_in_at = wave_in
+        self.assigned_attendee.expected_check_out_at = wave_out
+        self.assigned_attendee.save(
+            update_fields=["expected_check_in_at", "expected_check_out_at"]
+        )
+        self.unassigned_attendee.expected_check_in_at = custom_in
+        self.unassigned_attendee.expected_check_out_at = None
+        self.unassigned_attendee.save(
+            update_fields=["expected_check_in_at", "expected_check_out_at"]
+        )
+
+        ctx = build_lodging_roster_context(self.event, self.staff)
+        arrival_values = [c["value"] for c in ctx["roster_arrival_travel_chips"]]
+        departure_values = [c["value"] for c in ctx["roster_departure_travel_chips"]]
+        self.assertIn(str(self.arrival_main.id), arrival_values)
+        self.assertIn("__custom__", arrival_values)
+        self.assertIn("__unset__", arrival_values)
+        self.assertIn(str(self.departure_bus.id), departure_values)
+        self.assertEqual(ctx["roster_arrival_travel_chips"][0]["label"], "7/1 본진")
+        self.assertEqual(ctx["roster_departure_travel_chips"][0]["label"], "7/3 버스")
+
+        by_name = {a.name: a for a in ctx["roster_attendees"]}
+        self.assertEqual(
+            by_name["배정자"].arrival_travel_key, str(self.arrival_main.id)
+        )
+        self.assertEqual(
+            by_name["배정자"].departure_travel_key, str(self.departure_bus.id)
+        )
+        self.assertEqual(by_name["미배정자"].arrival_travel_key, "__custom__")
+        self.assertEqual(by_name["미배정자"].departure_travel_key, "__unset__")
+        self.assertEqual(by_name["당일참석"].arrival_travel_key, "__unset__")
+
+    def test_default_chips_without_presets(self):
+        RetreatTravelPreset.objects.filter(event=self.event).delete()
+        ctx = build_lodging_roster_context(self.event, self.staff)
+        self.assertEqual(
+            [c["value"] for c in ctx["roster_arrival_travel_chips"]],
+            ["__custom__", "__unset__"],
+        )
+        self.assertEqual(
+            [c["value"] for c in ctx["roster_departure_travel_chips"]],
+            ["__custom__", "__unset__"],
+        )

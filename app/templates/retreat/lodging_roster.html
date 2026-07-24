@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ event.name }} · 전체 명단</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260629c" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260724i" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -57,6 +57,28 @@
                 <button type="button" class="jcc-retreat-filterChip" data-filter-kind="lodgingStay" data-filter-value="absent">불참</button>
               </div>
             </div>
+            <div class="jcc-retreat-filterRow" data-filter-row="arrivalTravel">
+              <span class="jcc-retreat-filterLabel">입실 교통</span>
+              <div class="jcc-retreat-filterChips" id="rosterFilterArrivalTravel">
+                {% for chip in roster_arrival_travel_chips %}
+                  <button type="button" class="jcc-retreat-filterChip" data-filter-kind="arrivalTravel" data-filter-value="{{ chip.value }}">{{ chip.label }}</button>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="jcc-retreat-filterRow" data-filter-row="departureTravel">
+              <span class="jcc-retreat-filterLabel">퇴실 교통</span>
+              <div class="jcc-retreat-filterChips" id="rosterFilterDepartureTravel">
+                {% for chip in roster_departure_travel_chips %}
+                  <button type="button" class="jcc-retreat-filterChip" data-filter-kind="departureTravel" data-filter-value="{{ chip.value }}">{{ chip.label }}</button>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="jcc-retreat-filterRow" data-filter-row="memo">
+              <span class="jcc-retreat-filterLabel">메모</span>
+              <div class="jcc-retreat-filterChips" id="rosterFilterMemo">
+                <button type="button" class="jcc-retreat-filterChip" data-filter-kind="memo" data-filter-value="1">있음</button>
+              </div>
+            </div>
             <div class="jcc-retreat-filterRow" data-filter-row="region" hidden>
               <span class="jcc-retreat-filterLabel">지역</span>
               <div class="jcc-retreat-filterChips" id="rosterFilterRegions"></div>
@@ -83,22 +105,36 @@
                   <thead>
                     <tr>
                       <th class="jcc-retreat-attCol-num">NO.</th>
-                      <th class="jcc-retreat-attCol-group">조</th>
+                      <th class="jcc-retreat-attCol-group jcc-retreat-sortable" data-sort-key="group" scope="col" aria-sort="none">
+                        <span class="jcc-retreat-sortLabel">조</span>
+                      </th>
                       <th class="jcc-retreat-attCol-scope">지역 · 부서</th>
-                      <th class="jcc-retreat-attCol-name">이름</th>
-                      <th class="jcc-retreat-attCol-role">역할</th>
-                      <th class="jcc-retreat-attCol-status">입실 상태</th>
-                      <th class="jcc-retreat-attCol-expected-in">
-                        <span class="jcc-retreat-rosterHeadShort">입실</span>
-                        <span class="jcc-retreat-rosterHeadLong">입실 시각</span>
+                      <th class="jcc-retreat-attCol-name jcc-retreat-sortable" data-sort-key="name" scope="col" aria-sort="none">
+                        <span class="jcc-retreat-sortLabel">이름</span>
                       </th>
-                      <th class="jcc-retreat-attCol-expected-out">
-                        <span class="jcc-retreat-rosterHeadShort">퇴실</span>
-                        <span class="jcc-retreat-rosterHeadLong">퇴실 시각</span>
+                      <th class="jcc-retreat-attCol-role jcc-retreat-sortable" data-sort-key="role" scope="col" aria-sort="none">
+                        <span class="jcc-retreat-sortLabel">역할</span>
                       </th>
-                      <th class="jcc-retreat-attCol-lodging">
-                        <span class="jcc-retreat-rosterHeadShort">숙소 · 호수</span>
-                        <span class="jcc-retreat-rosterHeadLong">숙소 호수</span>
+                      <th class="jcc-retreat-attCol-status jcc-retreat-sortable" data-sort-key="status" scope="col" aria-sort="none">
+                        <span class="jcc-retreat-sortLabel">입실 상태</span>
+                      </th>
+                      <th class="jcc-retreat-attCol-expected-in jcc-retreat-sortable" data-sort-key="expectedIn" scope="col" aria-sort="none">
+                        <span class="jcc-retreat-sortLabel">
+                          <span class="jcc-retreat-rosterHeadShort">입실</span>
+                          <span class="jcc-retreat-rosterHeadLong">입실 시각</span>
+                        </span>
+                      </th>
+                      <th class="jcc-retreat-attCol-expected-out jcc-retreat-sortable" data-sort-key="expectedOut" scope="col" aria-sort="none">
+                        <span class="jcc-retreat-sortLabel">
+                          <span class="jcc-retreat-rosterHeadShort">퇴실</span>
+                          <span class="jcc-retreat-rosterHeadLong">퇴실 시각</span>
+                        </span>
+                      </th>
+                      <th class="jcc-retreat-attCol-lodging jcc-retreat-sortable" data-sort-key="lodging" scope="col" aria-sort="none">
+                        <span class="jcc-retreat-sortLabel">
+                          <span class="jcc-retreat-rosterHeadShort">숙소 · 호수</span>
+                          <span class="jcc-retreat-rosterHeadLong">숙소 호수</span>
+                        </span>
                       </th>
                       {% if roster_any_can_edit %}
                         <th class="jcc-retreat-attCol-actions">
@@ -127,9 +163,13 @@
                         data-expected-timestamps-locked="{% if a.expected_timestamps_locked %}true{% else %}false{% endif %}"
                         data-profile-locked="{% if a.profile_locked %}true{% else %}false{% endif %}"
                         data-lodging-stay-status="{{ a.lodging_stay_status }}"
+                        data-arrival-travel="{{ a.arrival_travel_key }}"
+                        data-departure-travel="{{ a.departure_travel_key }}"
                         data-region-name="{{ a.group.region.name }}"
                         data-division-name="{{ a.group.division.name }}"
                         data-name="{{ a.name }}"
+                        data-group-name="{{ a.group.name }}"
+                        data-lodging-sort="{{ a.lodging_stay_display }}"
                         data-phone="{{ a.phone }}"
                         data-user-id="{% if a.user_id %}{{ a.user_id }}{% endif %}"
                         data-user-label="{% if a.user %}{{ a.user.profile.real_name|default:a.user.username }}{% endif %}"
@@ -141,7 +181,14 @@
                           <a class="jcc-retreat-rosterGroupLink" href="{% url 'retreat_group_manage' event.id a.group_id %}">{{ a.group.name }}</a>
                         </td>
                         <td class="jcc-retreat-attCol-scope">{{ a.group.region.name }} · {{ a.group.division.name }}</td>
-                        <td class="jcc-retreat-attCol-name" data-name>{{ a.name }}</td>
+                        <td class="jcc-retreat-attCol-name">
+                          <span class="jcc-retreat-attName" data-name>{{ a.name }}</span>
+                          {% if a.memo %}
+                            <div class="jcc-retreat-attMemo" data-roster-memo data-memo-full="{{ a.memo }}" title="{{ a.memo }}">{{ a.memo }}</div>
+                          {% else %}
+                            <div class="jcc-retreat-attMemo" data-roster-memo data-memo-full="" hidden></div>
+                          {% endif %}
+                        </td>
                         <td class="jcc-retreat-attCol-role">
                           <span class="jcc-retreat-roleTag jcc-retreat-roleTag--{{ a.member_role }}" data-role-tag>{{ a.get_member_role_display }}</span>
                         </td>
@@ -182,6 +229,12 @@
                     {% endfor %}
                   </tbody>
                 </table>
+              </div>
+              <div class="jcc-retreat-rosterPaginationBar" id="lodgingRosterPagination" hidden>
+                <div class="jcc-retreat-rosterPaginationMeta" id="lodgingRosterPaginationMeta"></div>
+                <nav class="jcc-notice-pagination" aria-label="명단 페이지">
+                  <div class="jcc-notice-paginationBtns" id="lodgingRosterPaginationBtns"></div>
+                </nav>
               </div>
             </div>
           {% else %}
@@ -276,7 +329,7 @@
 
     {% include 'includes/retreat_bottom_tabs.html' %}
     <script src="{% static 'retreat/lodging_stay_badge.js' %}?v=20260629c" defer></script>
-    <script src="{% static 'retreat/lodging_roster_filter.js' %}?v=20260629c" defer></script>
+    <script src="{% static 'retreat/lodging_roster_filter.js' %}?v=20260724i" defer></script>
     {% if roster_any_can_edit %}
       <script>
         window.LODGING_ROSTER_CTX = {
@@ -295,7 +348,7 @@
       <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
       <script src="{% static 'retreat/lodging_stay_badge.js' %}?v=20260629c" defer></script>
       <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618a" defer></script>
-      <script src="{% static 'retreat/lodging_roster_edit.js' %}?v=20260629c" defer></script>
+      <script src="{% static 'retreat/lodging_roster_edit.js' %}?v=20260724i" defer></script>
     {% endif %}
   </body>
 </html>

@@ -1,9 +1,15 @@
-"""예상 입·퇴실 시각이 지나면 자동으로 입실/퇴실 상태로 전환한다.
+"""예상 입·퇴실 시각과 현재 시각으로 입실/퇴실 상태를 맞춘다.
 
-- 입실전(pending) & 예상 입실시각 <= now  →  입실(checked_in) + 실제 입실시각 기록
-- 입실(checked_in) & 예상 퇴실시각 <= now  →  퇴실(checked_out) + 실제 퇴실시각 기록
+대시보드 ``_effective_check_in_status`` 와 동일 규칙:
 
-매분 Celery 주기 작업에서 호출한다. 이미 더 진행된 상태(수동 처리 포함)는 건드리지 않는다.
+- 입실 시각이 없거나 아직 오지 않았으면 → 입실전(pending)
+- 퇴실 시각이 지났으면 → 퇴실(checked_out)
+- 그 외(입실 시각 <= now) → 입실(checked_in)
+
+앞으로만 진행하지 않고, 입실 시각을 미래로 고친 경우처럼
+입실 → 입실전 되돌리기도 수행한다.
+
+매분 Celery 주기 작업·대시보드/조 관리 온디맨드에서 호출한다.
 """
 
 from __future__ import annotations
@@ -11,6 +17,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from retreat.models import RetreatAttendee, RetreatChangeLog
@@ -27,11 +34,43 @@ _AUTO_FIELDS = [
 ]
 
 
-def _transition(attendee: RetreatAttendee, *, new_status: str, stamp_field: str, now):
+def desired_check_in_status(check_in_at, check_out_at, now) -> str:
+    """예상 입·퇴실 시각과 현재 시각으로 목표 입·퇴실 상태를 계산한다."""
+    S = RetreatAttendee.CheckInStatus
+    if check_in_at is None or check_in_at > now:
+        return S.PENDING
+    if check_out_at is not None and check_out_at <= now:
+        return S.CHECKED_OUT
+    return S.CHECKED_IN
+
+
+def _apply_status(attendee: RetreatAttendee, *, new_status: str, now) -> None:
     before = serialize_model_fields(attendee, _AUTO_FIELDS)
+    S = RetreatAttendee.CheckInStatus
     attendee.check_in_status = new_status
-    setattr(attendee, stamp_field, now)
-    update_fields = ["check_in_status", stamp_field, "updated_at"]
+    update_fields = ["check_in_status", "updated_at"]
+
+    if new_status == S.PENDING:
+        if attendee.checked_in_at is not None:
+            attendee.checked_in_at = None
+            update_fields.append("checked_in_at")
+        if attendee.checked_out_at is not None:
+            attendee.checked_out_at = None
+            update_fields.append("checked_out_at")
+    elif new_status == S.CHECKED_IN:
+        if attendee.checked_in_at is None:
+            attendee.checked_in_at = now
+            update_fields.append("checked_in_at")
+        if attendee.checked_out_at is not None:
+            attendee.checked_out_at = None
+            update_fields.append("checked_out_at")
+    else:  # CHECKED_OUT
+        if attendee.checked_in_at is None:
+            attendee.checked_in_at = now
+            update_fields.append("checked_in_at")
+        attendee.checked_out_at = now
+        update_fields.append("checked_out_at")
+
     if sync_lodging_stay_status(attendee):
         update_fields.append("lodging_stay_status")
     attendee.save(update_fields=update_fields)
@@ -52,55 +91,47 @@ def apply_due_auto_transitions(
     *,
     event_id: int | None = None,
 ) -> dict:
-    """예상 시각이 지난 조원을 입실/퇴실로 자동 전환한다. 처리 건수를 반환.
+    """예상 시각 기준으로 조원 입·퇴실 상태를 동기화한다. 처리 건수를 반환.
 
     event_id 가 주어지면 해당 집회 조원만 처리한다(대시보드·조 관리 온디맨드).
     생략하면 전체 집회 대상(Celery 매분 작업).
     """
     now = now or timezone.now()
+    S = RetreatAttendee.CheckInStatus
+    to_pending = 0
     checked_in = 0
     checked_out = 0
 
-    # 1) 입실전 & 예상 입실시각 경과 → 입실
-    pending_due = participating_filter(
+    # 입실전이면서 예상 입실이 없는 행은 이미 목표 상태이므로 제외.
+    candidates = participating_filter(
         RetreatAttendee.objects.select_for_update()
         .select_related("group")
         .filter(
-            check_in_status=RetreatAttendee.CheckInStatus.PENDING,
-            expected_check_in_at__isnull=False,
-            expected_check_in_at__lte=now,
+            Q(expected_check_in_at__isnull=False)
+            | Q(check_in_status__in=(S.CHECKED_IN, S.CHECKED_OUT))
         )
     )
     if event_id is not None:
-        pending_due = pending_due.filter(group__event_id=event_id)
-    for attendee in pending_due:
-        _transition(
-            attendee,
-            new_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
-            stamp_field="checked_in_at",
-            now=now,
-        )
-        checked_in += 1
+        candidates = candidates.filter(group__event_id=event_id)
 
-    # 2) 입실 & 예상 퇴실시각 경과 → 퇴실 (방금 자동 입실된 건 포함)
-    in_due = participating_filter(
-        RetreatAttendee.objects.select_for_update()
-        .select_related("group")
-        .filter(
-            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
-            expected_check_out_at__isnull=False,
-            expected_check_out_at__lte=now,
+    for attendee in candidates:
+        desired = desired_check_in_status(
+            attendee.expected_check_in_at,
+            attendee.expected_check_out_at,
+            now,
         )
-    )
-    if event_id is not None:
-        in_due = in_due.filter(group__event_id=event_id)
-    for attendee in in_due:
-        _transition(
-            attendee,
-            new_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
-            stamp_field="checked_out_at",
-            now=now,
-        )
-        checked_out += 1
+        if desired == attendee.check_in_status:
+            continue
+        _apply_status(attendee, new_status=desired, now=now)
+        if desired == S.PENDING:
+            to_pending += 1
+        elif desired == S.CHECKED_IN:
+            checked_in += 1
+        else:
+            checked_out += 1
 
-    return {"checked_in": checked_in, "checked_out": checked_out}
+    return {
+        "pending": to_pending,
+        "checked_in": checked_in,
+        "checked_out": checked_out,
+    }

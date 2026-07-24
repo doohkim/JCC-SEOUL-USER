@@ -418,8 +418,29 @@
       data.lodging_stay_status === "unassigned"
     );
 
-    const nameEl = tr.querySelector("[data-name]");
+    const nameEl = tr.querySelector(".jcc-retreat-attName[data-name]");
     if (nameEl && data.name) nameEl.textContent = data.name;
+
+    const memoEl = tr.querySelector("[data-roster-memo]");
+    if (window.JccRetreatLodgingRosterFilter?.setMemoDisplay) {
+      window.JccRetreatLodgingRosterFilter.setMemoDisplay(
+        memoEl,
+        data.memo || ""
+      );
+    } else if (memoEl) {
+      const full = String(data.memo || "").trim();
+      memoEl.dataset.memoFull = full;
+      if (full) {
+        memoEl.title = full;
+        memoEl.textContent =
+          full.length > 5 ? full.slice(0, 5) + "…" : full;
+        memoEl.hidden = false;
+      } else {
+        memoEl.removeAttribute("title");
+        memoEl.textContent = "";
+        memoEl.hidden = true;
+      }
+    }
 
     const roleTag = tr.querySelector("[data-role-tag]");
     if (roleTag && data.member_role) {
@@ -571,6 +592,7 @@
       const data = await patchAttendee(modalAttendeeId, payload);
       const tr = tbody.querySelector(`tr[data-attendee-id="${modalAttendeeId}"]`);
       updateRowFromData(tr, data);
+      window.JccRetreatLodgingRosterFilter?.refreshAfterRowEdit?.();
       showToast("수정됨", false);
       closeModal();
     } catch (err) {
