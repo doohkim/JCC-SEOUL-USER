@@ -41,7 +41,7 @@ alwaysApply: false
 |------|------|--------|------|
 | 대시보드 | ✓ | — | 전체 조 |
 | 조(그룹) | ✓ | ✓ | 조 추가·수정·조원 CRUD |
-| 픽업 | ✓ (overview/arrival/departure) | ✓ | 전체 조, 입회=`pending`·출회=`checked_in`만 API 허용 |
+| 픽업 | ✓ (overview/arrival/departure) | ✓ | 전체 조, 입회=`pending`·출회=`pending`/`checked_in`(퇴실 제외) |
 | 숙소·명단 | ✓ | ✓ | 호실 CRUD, roster 배정 |
 | 관리(admin) | ✓ | ✓ | 출석부·집회 운영진·타임테이블·changelog |
 | 조원 삭제 | — | ✓ | **퇴실(`checked_out`) 포함** — `event_admin`과 유일한 차이 |
@@ -104,7 +104,7 @@ alwaysApply: false
 ### 픽업 공통 eligibility
 
 - **입회(arrival)**: 조원 명단 + `check_in_status=pending` 만
-- **출회(departure)**: 조원 명단 + `check_in_status=checked_in` 만
+- **출회(departure)**: 조원 명단 + `check_in_status=pending`/`checked_in` (퇴실 `checked_out` 제외). 목록 탭도 동일
 - scope 밖 조 픽업: API POST/PATCH/DELETE → 403 (`_assert_pickup_group_in_scope`)
 
 ## 유저 타입 × 동작 (출처: `app/users/permissions.py` + `staff_capabilities.py`)

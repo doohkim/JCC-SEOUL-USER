@@ -145,6 +145,57 @@ class PickupPageTests(_PickupFixture):
         self.assertTrue(r.context["can_manage_pickup"])
         self.assertContains(r, "출회")
 
+    @override_settings(
+        STORAGES={
+            "default": {
+                "BACKEND": "django.core.files.storage.FileSystemStorage",
+            },
+            "staticfiles": {
+                "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            },
+        }
+    )
+    def test_departure_tab_shows_pending_and_checked_in_hides_checked_out(self):
+        """출회 탭: 입실전·입실 요청 노출, 퇴실 요청 숨김."""
+        self._attendee(
+            self.group,
+            "입실전출회",
+            check_in_status=RetreatAttendee.CheckInStatus.PENDING,
+        )
+        self._attendee(
+            self.group,
+            "입실출회",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+        )
+        self._attendee(
+            self.group,
+            "퇴실출회",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+        )
+        for i, name in enumerate(("입실전출회", "입실출회", "퇴실출회"), start=1):
+            RetreatPickup.objects.create(
+                event=self.event,
+                direction=RetreatPickup.Direction.DEPARTURE,
+                number=i,
+                group=self.group,
+                name=name,
+                train_time=_tt(18),
+                boarding_place="역",
+                contact="010-1111-2222",
+            )
+
+        self.page_client.force_login(self.council)
+        url = (
+            reverse("retreat_pickup", args=[self.event.id])
+            + "?tab=departure&date=2026-08-01"
+        )
+        r = self.page_client.get(url)
+        self.assertEqual(r.status_code, 200)
+        names = {p.name for p in r.context["pickups"]}
+        self.assertIn("입실전출회", names)
+        self.assertIn("입실출회", names)
+        self.assertNotIn("퇴실출회", names)
+
     def test_stranger_forbidden(self):
         self.page_client.force_login(self.stranger)
         r = self.page_client.get(self._url())

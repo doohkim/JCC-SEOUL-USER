@@ -679,7 +679,7 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
 
         # 구분별 입실 상태 필터 (입회/출회 탭에서만 적용):
         # - 입회(arrival): 아직 입실 전(pending/미기록)인 대상만 노출 (입실·퇴실 제외)
-        # - 출회(departure): 입실 상태인 대상만 노출 (입실 전·퇴실 제외)
+        # - 출회(departure): 입실전·입실 노출 (퇴실만 제외) — 등록 eligibility와 동일
         # '전체' 탭은 숨김 없이 모든 픽업을 표시한다.
         def _visible_by_status(p) -> bool:
             att = attendee_map.get((p.group_id, p.name)) if p.group_id else None
@@ -691,7 +691,11 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
             if p.direction == RetreatPickup.Direction.ARRIVAL:
                 return st in ("", RetreatAttendee.CheckInStatus.PENDING)
             if p.direction == RetreatPickup.Direction.DEPARTURE:
-                return st == RetreatAttendee.CheckInStatus.CHECKED_IN
+                return st in (
+                    "",
+                    RetreatAttendee.CheckInStatus.PENDING,
+                    RetreatAttendee.CheckInStatus.CHECKED_IN,
+                )
             return True
 
         if tab != "all":
