@@ -1196,6 +1196,11 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         ]
         ctx["event_rooms"] = event_rooms
         ctx["event_rooms_json"] = json.dumps(event_rooms)
+        from retreat.services.travel_presets import travel_presets_for_group
+
+        travel_presets = travel_presets_for_group(group)
+        ctx["travel_presets"] = travel_presets
+        ctx["travel_presets_json"] = json.dumps(travel_presets, ensure_ascii=False)
         return ctx
 
 

@@ -20,6 +20,7 @@ from retreat.models import (
     RetreatPickup,
     RetreatSession,
     RetreatSessionAttendee,
+    RetreatTravelPreset,
 )
 from users.models import (
     Division,
@@ -98,6 +99,84 @@ class RetreatDashboardApiTests(APITestCase):
         # 1시간 단위 추이에 입실 1건 집계.
         self.assertEqual(len(data["hourly"]), 1)
         self.assertEqual(data["hourly"][0]["checked_in"], 1)
+
+    def test_dashboard_travel_wave_counts(self):
+        """입·퇴실 예정 시각을 교통 프리셋 웨이브에 매칭해 집계한다."""
+        tz = timezone.get_current_timezone()
+        from datetime import datetime
+
+        main_at = timezone.make_aware(datetime(2026, 7, 30, 10, 0), tz)
+        bus_at = timezone.make_aware(datetime(2026, 8, 1, 13, 0), tz)
+        arrival = RetreatTravelPreset.objects.create(
+            event=self.event,
+            direction=RetreatTravelPreset.Direction.ARRIVAL,
+            code="main",
+            label="7/30 본진",
+            occurs_at=main_at,
+            sort_order=10,
+        )
+        arrival.divisions.set([self.div])
+        departure = RetreatTravelPreset.objects.create(
+            event=self.event,
+            direction=RetreatTravelPreset.Direction.DEPARTURE,
+            code="bus_801",
+            label="8/1 버스",
+            occurs_at=bus_at,
+            sort_order=10,
+        )
+        departure.divisions.set([self.div])
+        RetreatTravelPreset.objects.create(
+            event=self.event,
+            direction=RetreatTravelPreset.Direction.ARRIVAL,
+            code="own_car",
+            label="자차",
+            occurs_at=None,
+            sort_order=20,
+        )
+
+        self.attendee.expected_check_in_at = main_at
+        self.attendee.expected_check_out_at = bus_at
+        self.attendee.save(
+            update_fields=["expected_check_in_at", "expected_check_out_at"]
+        )
+        other = RetreatAttendee.objects.create(
+            group=self.group,
+            name="직접입력",
+            expected_check_in_at=timezone.make_aware(datetime(2026, 7, 30, 15, 30), tz),
+        )
+        unset = RetreatAttendee.objects.create(group=self.group, name="미설정")
+
+        self.client.force_authenticate(self.leader)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        data = self.client.get(url).json()
+        travel = data["travel"]
+        self.assertTrue(travel["has_presets"])
+        arrival_by_label = {r["label"]: r["count"] for r in travel["arrival"]}
+        self.assertEqual(arrival_by_label["7/30 본진"], 1)
+        self.assertEqual(arrival_by_label["자차"], 1)
+        self.assertEqual(arrival_by_label["미설정"], 1)
+        departure_by_label = {r["label"]: r["count"] for r in travel["departure"]}
+        self.assertEqual(departure_by_label["8/1 버스"], 1)
+        # 나머지 2명은 퇴실 미설정
+        self.assertEqual(departure_by_label["미설정"], 2)
+
+        by_group = travel["by_group"]
+        self.assertEqual(
+            [c["label"] for c in by_group["arrival_columns"]],
+            ["7/30 본진", "자차", "미설정"],
+        )
+        self.assertEqual(
+            [c["label"] for c in by_group["departure_columns"]],
+            ["8/1 버스", "자차", "미설정"],
+        )
+        self.assertEqual(len(by_group["rows"]), 1)
+        g_row = by_group["rows"][0]
+        self.assertEqual(g_row["group_id"], self.group.id)
+        self.assertEqual(g_row["name"], "1조")
+        self.assertEqual(g_row["arrival"], [1, 1, 1])
+        self.assertEqual(g_row["arrival_total"], 3)
+        self.assertEqual(g_row["departure"], [1, 0, 2])
+        self.assertEqual(g_row["departure_total"], 3)
 
     def test_dashboard_status_is_time_based(self):
         """저장된 check_in_status 와 무관하게 입실/퇴실 시각으로 상태를 계산한다."""

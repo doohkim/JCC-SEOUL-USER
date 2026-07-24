@@ -40,6 +40,7 @@
       renderAttendTotal(data.grand_total || {});
       renderGroups(data.by_group || []);
       renderDivisions(data.by_division || [], data.grand_total || {});
+      renderTravel(data.travel || {});
       if (generatedAtEl) {
         generatedAtEl.textContent = data.generated_at
           ? `· ${formatStamp(data.generated_at)} 기준`
@@ -141,6 +142,118 @@
     setTotal(totalEls.in, grand.checked_in ?? 0);
     setTotal(totalEls.out, grand.checked_out ?? 0);
     setTotal(totalEls.attended, grand.attended ?? 0);
+  }
+
+  function renderTravelRows(tbody, rows) {
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    (rows || []).forEach((row) => {
+      const tr = document.createElement("tr");
+      if (row.manual) tr.classList.add("is-manual");
+      if (row.code === "__unset__") tr.classList.add("is-unset");
+      tr.innerHTML =
+        `<td>${escapeHtml(row.label || "")}</td>` +
+        `<td><strong>${row.count ?? 0}</strong></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderTravelByGroupMatrix(table, columns, rows, countsKey, totalKey) {
+    if (!table) return;
+    const thead = table.querySelector("thead");
+    const tbody = table.querySelector("tbody");
+    if (!thead || !tbody) return;
+    thead.innerHTML = "";
+    tbody.innerHTML = "";
+    const cols = columns || [];
+    const headTr = document.createElement("tr");
+    headTr.innerHTML =
+      "<th>조</th>" +
+      cols
+        .map((c) => {
+          const cls = c.manual
+            ? ' class="is-manual"'
+            : c.code === "__unset__"
+              ? ' class="is-unset"'
+              : "";
+          return `<th${cls}>${escapeHtml(c.label || "")}</th>`;
+        })
+        .join("") +
+      "<th>합계</th>";
+    thead.appendChild(headTr);
+
+    (rows || []).forEach((row) => {
+      const counts = row[countsKey] || [];
+      const tr = document.createElement("tr");
+      const cells = counts
+        .map((n, i) => {
+          const col = cols[i] || {};
+          const cls = col.manual
+            ? ' class="is-manual"'
+            : col.code === "__unset__"
+              ? ' class="is-unset"'
+              : "";
+          return `<td${cls}>${n ?? 0}</td>`;
+        })
+        .join("");
+      const name = escapeHtml(row.name || "");
+      const meta = [row.region, row.division].filter(Boolean).join(" · ");
+      const label = meta
+        ? `${name}<span class="jcc-retreat-travelByGroupMeta">${escapeHtml(meta)}</span>`
+        : name;
+      tr.innerHTML =
+        `<td class="jcc-retreat-travelByGroupName">${label}</td>` +
+        cells +
+        `<td><strong>${row[totalKey] ?? 0}</strong></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderTravel(travel) {
+    const section = document.getElementById("travelDashSection");
+    const byGroupSection = document.getElementById("travelByGroupDashSection");
+    if (!travel || !travel.has_presets) {
+      if (section) section.hidden = true;
+      if (byGroupSection) byGroupSection.hidden = true;
+      return;
+    }
+    if (section) section.hidden = false;
+    document.querySelectorAll("[data-travel-arrival-total]").forEach((el) => {
+      el.textContent = travel.arrival_total ?? 0;
+    });
+    document.querySelectorAll("[data-travel-departure-total]").forEach((el) => {
+      el.textContent = travel.departure_total ?? 0;
+    });
+    renderTravelRows(
+      document.querySelector("#travelArrivalTable tbody"),
+      travel.arrival || []
+    );
+    renderTravelRows(
+      document.querySelector("#travelDepartureTable tbody"),
+      travel.departure || []
+    );
+
+    const byGroup = travel.by_group || {};
+    const byGroupRows = byGroup.rows || [];
+    if (byGroupSection) {
+      byGroupSection.hidden = !byGroupRows.length;
+    }
+    if (byGroupRows.length) {
+      renderTravelByGroupMatrix(
+        document.getElementById("travelByGroupArrivalTable"),
+        byGroup.arrival_columns || [],
+        byGroupRows,
+        "arrival",
+        "arrival_total"
+      );
+      renderTravelByGroupMatrix(
+        document.getElementById("travelByGroupDepartureTable"),
+        byGroup.departure_columns || [],
+        byGroupRows,
+        "departure",
+        "departure_total"
+      );
+    }
   }
 
   function groupRangeStartNumber(groupRange) {

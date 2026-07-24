@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 대시보드 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260715c" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260724h" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -125,6 +125,72 @@
               </div>
             </section>
           </div>
+          <section class="card jcc-retreat-travelDash" id="travelDashSection" hidden>
+            <h2 class="jcc-retreat-sectionTitle">입·퇴실 교통 현황</h2>
+            <div class="jcc-retreat-statPills" id="travelTotalPills">
+              <span class="jcc-retreat-statPill jcc-retreat-statPill--in">입실 총 <strong data-travel-arrival-total>0</strong>명</span>
+              <span class="jcc-retreat-statPill jcc-retreat-statPill--out">퇴실 총 <strong data-travel-departure-total>0</strong>명</span>
+            </div>
+            <p class="jcc-retreat-travelDashHint muted">
+              조원 예정 입·퇴실 시각을 차량 웨이브 프리셋과 맞춰 집계합니다. 예외·직접 입력 시각은 「자차」입니다.
+            </p>
+            <div class="jcc-retreat-travelDashGrid">
+              <div class="jcc-retreat-travelDashCol">
+                <h3 class="jcc-retreat-travelDashSub">입실</h3>
+                <div class="jcc-retreat-tableWrap">
+                  <table class="jcc-table" id="travelArrivalTable">
+                    <thead>
+                      <tr>
+                        <th>교통</th>
+                        <th>인원</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="jcc-retreat-travelDashCol">
+                <h3 class="jcc-retreat-travelDashSub">퇴실</h3>
+                <div class="jcc-retreat-tableWrap">
+                  <table class="jcc-table" id="travelDepartureTable">
+                    <thead>
+                      <tr>
+                        <th>교통</th>
+                        <th>인원</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section class="card jcc-retreat-travelDash jcc-retreat-travelByGroupDash" id="travelByGroupDashSection" hidden>
+            <h2 class="jcc-retreat-sectionTitle">조별 입·퇴실 차량</h2>
+            <p class="jcc-retreat-travelDashHint muted">
+              행은 조, 열은 차량 웨이브입니다. 인원은 조원 예정 입·퇴실 시각 기준입니다.
+            </p>
+            <div class="jcc-retreat-travelDashGrid">
+              <div class="jcc-retreat-travelDashCol">
+                <h3 class="jcc-retreat-travelDashSub">입실</h3>
+                <div class="jcc-retreat-tableWrap">
+                  <table class="jcc-table jcc-retreat-travelByGroupTable" id="travelByGroupArrivalTable">
+                    <thead></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="jcc-retreat-travelDashCol">
+                <h3 class="jcc-retreat-travelDashSub">퇴실</h3>
+                <div class="jcc-retreat-tableWrap">
+                  <table class="jcc-table jcc-retreat-travelByGroupTable" id="travelByGroupDepartureTable">
+                    <thead></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
           </div>
           <div id="dashboardPanelBoard" style="display: none;">
             <div class="card jcc-excel-board-panel">
@@ -162,6 +228,6 @@
       };
     </script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260715a" defer></script>
+    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260724h" defer></script>
   </body>
 </html>

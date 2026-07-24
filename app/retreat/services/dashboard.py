@@ -17,6 +17,7 @@ from retreat.models import (
     RetreatPickup,
     RetreatSession,
     RetreatSessionAttendee,
+    RetreatTravelPreset,
 )
 from retreat.services.lodging_roster import lodging_eligible_filter
 from retreat.services.participation import (
@@ -25,6 +26,7 @@ from retreat.services.participation import (
     pickup_visible_for_participation,
 )
 from retreat.services.account_retired import visible_attendees_for, visible_pickups_for
+from retreat.services.travel_presets import is_manual_travel_preset
 from users.permissions import (
     get_retreat_capabilities,
     visible_retreat_groups_for,
@@ -426,6 +428,161 @@ def _effective_check_in_status(check_in_at, check_out_at, now) -> str:
     return S.CHECKED_IN
 
 
+def _local_minute_key(dt) -> str:
+    if dt is None:
+        return ""
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt, timezone.get_current_timezone())
+    return timezone.localtime(dt).strftime("%Y-%m-%dT%H:%M")
+
+
+def _travel_fixed_and_occurs_map(
+    presets: list[RetreatTravelPreset],
+) -> tuple[list[RetreatTravelPreset], dict[str, RetreatTravelPreset]]:
+    """고정 웨이브 프리셋과 분 단위 시각→프리셋 맵."""
+    fixed: list[RetreatTravelPreset] = []
+    occurs_to_preset: dict[str, RetreatTravelPreset] = {}
+    for p in presets:
+        if is_manual_travel_preset(p) or not p.occurs_at:
+            continue
+        key = _local_minute_key(p.occurs_at)
+        if not key:
+            continue
+        fixed.append(p)
+        # 동일 시각이면 먼저 등록된 프리셋에 귀속
+        occurs_to_preset.setdefault(key, p)
+    return fixed, occurs_to_preset
+
+
+def _travel_bucket_key(
+    dt, occurs_to_preset: dict[str, RetreatTravelPreset]
+) -> str | int:
+    """시각을 웨이브 id / __custom__ / __unset__ 버킷으로 분류."""
+    key = _local_minute_key(dt)
+    if not key:
+        return "__unset__"
+    matched = occurs_to_preset.get(key)
+    if matched is not None:
+        return matched.id
+    return "__custom__"
+
+
+def _travel_column_defs(fixed: list[RetreatTravelPreset]) -> list[dict[str, Any]]:
+    cols: list[dict[str, Any]] = [
+        {"id": p.id, "code": p.code, "label": p.label, "manual": False} for p in fixed
+    ]
+    cols.append({"id": None, "code": "__custom__", "label": "자차", "manual": True})
+    cols.append({"id": None, "code": "__unset__", "label": "미설정", "manual": False})
+    return cols
+
+
+def _travel_count_for_col(col: dict[str, Any], counts: dict) -> int:
+    if col["code"] in ("__custom__", "__unset__"):
+        return int(counts.get(col["code"], 0))
+    return int(counts.get(col["id"], 0))
+
+
+def _travel_rows_from_counts(
+    columns: list[dict[str, Any]], counts: dict
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": col["id"],
+            "code": col["code"],
+            "label": col["label"],
+            "manual": col["manual"],
+            "count": _travel_count_for_col(col, counts),
+        }
+        for col in columns
+    ]
+
+
+def _travel_vector_from_counts(
+    columns: list[dict[str, Any]], counts: dict
+) -> list[int]:
+    return [_travel_count_for_col(col, counts) for col in columns]
+
+
+def build_travel_summary_for_attendee_times(
+    event: RetreatEvent,
+    time_rows: list[tuple],
+    groups: list | None = None,
+) -> dict[str, Any]:
+    """조원 expected 입·퇴실 시각을 집회 프리셋 웨이브에 매칭한 집계.
+
+    ``groups`` 가 있으면 조×웨이브 매트릭스(``by_group``)도 함께 반환한다.
+    """
+    presets = list(
+        RetreatTravelPreset.objects.filter(event=event, is_active=True).order_by(
+            "direction", "sort_order", "id"
+        )
+    )
+    arrival_presets = [
+        p for p in presets if p.direction == RetreatTravelPreset.Direction.ARRIVAL
+    ]
+    departure_presets = [
+        p for p in presets if p.direction == RetreatTravelPreset.Direction.DEPARTURE
+    ]
+    arrival_fixed, arrival_occurs = _travel_fixed_and_occurs_map(arrival_presets)
+    departure_fixed, departure_occurs = _travel_fixed_and_occurs_map(departure_presets)
+    arrival_columns = _travel_column_defs(arrival_fixed)
+    departure_columns = _travel_column_defs(departure_fixed)
+
+    arrival_counts: dict[str | int, int] = defaultdict(int)
+    departure_counts: dict[str | int, int] = defaultdict(int)
+    arrival_by_gid: dict[int, dict[str | int, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
+    departure_by_gid: dict[int, dict[str | int, int]] = defaultdict(
+        lambda: defaultdict(int)
+    )
+    for gid, in_at, out_at in time_rows:
+        a_key = _travel_bucket_key(in_at, arrival_occurs)
+        d_key = _travel_bucket_key(out_at, departure_occurs)
+        arrival_counts[a_key] += 1
+        departure_counts[d_key] += 1
+        if gid is not None:
+            arrival_by_gid[int(gid)][a_key] += 1
+            departure_by_gid[int(gid)][d_key] += 1
+
+    arrival = _travel_rows_from_counts(arrival_columns, arrival_counts)
+    departure = _travel_rows_from_counts(departure_columns, departure_counts)
+
+    by_group_rows: list[dict[str, Any]] = []
+    for g in groups or []:
+        a_vec = _travel_vector_from_counts(
+            arrival_columns, arrival_by_gid.get(g.id, {})
+        )
+        d_vec = _travel_vector_from_counts(
+            departure_columns, departure_by_gid.get(g.id, {})
+        )
+        by_group_rows.append(
+            {
+                "group_id": g.id,
+                "name": g.name,
+                "region": g.region.name,
+                "division": g.division.name,
+                "arrival": a_vec,
+                "departure": d_vec,
+                "arrival_total": sum(a_vec),
+                "departure_total": sum(d_vec),
+            }
+        )
+
+    return {
+        "arrival": arrival,
+        "departure": departure,
+        "arrival_total": sum(r["count"] for r in arrival),
+        "departure_total": sum(r["count"] for r in departure),
+        "has_presets": bool(arrival_presets or departure_presets),
+        "by_group": {
+            "arrival_columns": arrival_columns,
+            "departure_columns": departure_columns,
+            "rows": by_group_rows,
+        },
+    }
+
+
 def build_realtime_dashboard(
     event: RetreatEvent,
     user,
@@ -452,11 +609,13 @@ def build_realtime_dashboard(
     scope_division_id = None if staff_view else caps.scope.division_id
     group_ids = [g.id for g in groups]
 
-    time_rows = participating_filter(
-        visible_attendees_for(
-            user, RetreatAttendee.objects.filter(group_id__in=group_ids)
-        )
-    ).values_list("group_id", "expected_check_in_at", "expected_check_out_at")
+    time_rows = list(
+        participating_filter(
+            visible_attendees_for(
+                user, RetreatAttendee.objects.filter(group_id__in=group_ids)
+            )
+        ).values_list("group_id", "expected_check_in_at", "expected_check_out_at")
+    )
     status_by_group: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for gid, check_in_at, check_out_at in time_rows:
         eff = _effective_check_in_status(check_in_at, check_out_at, now)
@@ -520,6 +679,7 @@ def build_realtime_dashboard(
         attended=grand_attended,
         total=grand_all,
     )
+    travel = build_travel_summary_for_attendee_times(event, time_rows, groups=groups)
 
     return {
         "generated_at": timezone.localtime(now).isoformat(),
@@ -535,6 +695,7 @@ def build_realtime_dashboard(
             "absent": grand_absent,
         },
         "summary": summary,
+        "travel": travel,
     }
 
 

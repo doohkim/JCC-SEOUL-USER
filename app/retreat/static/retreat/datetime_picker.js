@@ -223,6 +223,93 @@
     pop.setAttribute("role", "dialog");
     pop.setAttribute("aria-modal", "true");
 
+    // 교통(입·퇴실) 프리셋 chip — RETREAT_CTX.travelPresets + data-travel-direction
+    const travelDirection = input.dataset.travelDirection || "";
+    const travelPresets =
+      (travelDirection &&
+        window.RETREAT_CTX &&
+        window.RETREAT_CTX.travelPresets &&
+        window.RETREAT_CTX.travelPresets[travelDirection]) ||
+      [];
+    let selectedPresetChip = null;
+    function markPresetSelected(chip) {
+      if (!chipsEl) return;
+      chipsEl.querySelectorAll(".jcc-dtp-preset").forEach(function (el) {
+        el.classList.toggle("is-sel", el === chip);
+      });
+      selectedPresetChip = chip || null;
+    }
+    function applyPresetHintToDraft(occurs) {
+      const parsed = parseValue(occurs);
+      if (!parsed) return;
+      draft.y = parsed.y;
+      draft.mo = parsed.mo;
+      draft.d = parsed.d;
+      draft.hh = parsed.hh;
+      draft.mm = parsed.mm;
+      viewY = draft.y;
+      viewMo = draft.mo;
+      if (typeof renderGrid === "function") renderGrid();
+      if (typeof renderTime === "function") renderTime();
+      if (typeof updateValidity === "function") updateValidity();
+    }
+    let chipsEl = null;
+    if (Array.isArray(travelPresets) && travelPresets.length) {
+      const presetsRow = document.createElement("div");
+      presetsRow.className = "jcc-dtp-presets";
+      presetsRow.setAttribute("role", "group");
+      presetsRow.setAttribute(
+        "aria-label",
+        travelDirection === "departure" ? "퇴실 교통" : "입실 교통"
+      );
+
+      const icon = document.createElement("span");
+      icon.className = "jcc-dtp-presets-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" focusable="false"><path d="M3 13l1.5-4.5A2 2 0 016.4 7h7.2a2 2 0 011.9 1.4L17 13M5 13h12v4H5v-4z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7.5" cy="17.5" r="1.4" fill="currentColor"/><circle cx="14.5" cy="17.5" r="1.4" fill="currentColor"/></svg>';
+      presetsRow.appendChild(icon);
+
+      chipsEl = document.createElement("div");
+      chipsEl.className = "jcc-dtp-presets-chips";
+      const currentVal = String(input.value || "").slice(0, 16);
+      let matchedChip = null;
+      let defaultManualChip = null;
+      travelPresets.forEach(function (p) {
+        if (!p) return;
+        const manual = !!p.manual;
+        if (!manual && !p.occurs_at) return;
+        const occurs = p.occurs_at ? String(p.occurs_at).slice(0, 16) : "";
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "jcc-dtp-preset";
+        if (manual) chip.classList.add("jcc-dtp-preset--manual");
+        chip.textContent = p.label || occurs || "자차";
+        chip.dataset.manual = manual ? "1" : "0";
+        if (occurs) chip.dataset.occursAt = occurs;
+        if (occurs && occurs === currentVal) matchedChip = chip;
+        if (manual && !defaultManualChip) defaultManualChip = chip;
+        chip.addEventListener("click", function () {
+          markPresetSelected(chip);
+          if (manual) {
+            // 자차: 달력에서 직접 선택 — 닫지 않음
+            if (occurs) applyPresetHintToDraft(occurs);
+            return;
+          }
+          commit(occurs);
+        });
+        chipsEl.appendChild(chip);
+      });
+      presetsRow.appendChild(chipsEl);
+      pop.appendChild(presetsRow);
+      // 기본: 값이 없거나 매칭 없으면 자차(수동) 선택
+      const initialChip =
+        matchedChip ||
+        (!currentVal ? defaultManualChip : null) ||
+        defaultManualChip;
+      if (initialChip) markPresetSelected(initialChip);
+    }
+
     // 헤더 (월 이동)
     const head = document.createElement("div");
     head.className = "jcc-dtp-head";

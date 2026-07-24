@@ -28,6 +28,59 @@
   const STAMP_LOCK_MSG =
     "퇴실 상태 조원은 정보를 수정할 수 없습니다.";
 
+  function isMobileMemoLayout() {
+    return window.matchMedia("(max-width: 900px)").matches;
+  }
+
+  function truncateMemoForDisplay(memo, name) {
+    const full = String(memo || "").trim();
+    if (!full) return "";
+    const nameLen = String(name || "").trim().length;
+    // 모바일: 이름 글자 수 기준 / PC: 공간 여유 → 더 길게
+    const limit = isMobileMemoLayout()
+      ? nameLen || full.length
+      : Math.max(nameLen * 3, 32);
+    if (full.length <= limit) return full;
+    return full.slice(0, limit) + "...";
+  }
+
+  function setMemoDisplay(memoEl, memo, name) {
+    if (!memoEl) return;
+    const full = String(memo || "").trim();
+    memoEl.dataset.memoFull = full;
+    if (full) {
+      memoEl.title = full;
+      memoEl.textContent = truncateMemoForDisplay(full, name);
+      memoEl.hidden = false;
+    } else {
+      memoEl.removeAttribute("title");
+      memoEl.textContent = "";
+      memoEl.hidden = true;
+    }
+  }
+
+  function syncAllMemoDisplays() {
+    if (!attBody) return;
+    attBody.querySelectorAll("tr[data-attendee-id]").forEach((tr) => {
+      const memoEl = tr.querySelector("[data-memo]");
+      if (!memoEl) return;
+      const name = tr.querySelector("[data-name]")?.textContent?.trim() || "";
+      setMemoDisplay(
+        memoEl,
+        memoEl.dataset.memoFull || memoEl.textContent || "",
+        name
+      );
+    });
+  }
+
+  function memoFullFromEl(memoEl) {
+    if (!memoEl || memoEl.hidden) return "";
+    if (memoEl.dataset.memoFull != null && memoEl.dataset.memoFull !== "") {
+      return String(memoEl.dataset.memoFull).trim();
+    }
+    return (memoEl.textContent || "").trim();
+  }
+
   function isProfileLocked(source) {
     if (!source) return false;
     if (source instanceof HTMLElement) {
@@ -271,6 +324,14 @@
           syncParticipationRow(tr);
           syncRowProfileIncomplete(tr);
         });
+      syncAllMemoDisplays();
+    }
+    const memoMq = window.matchMedia("(max-width: 900px)");
+    const onMemoLayoutChange = () => syncAllMemoDisplays();
+    if (typeof memoMq.addEventListener === "function") {
+      memoMq.addEventListener("change", onMemoLayoutChange);
+    } else if (typeof memoMq.addListener === "function") {
+      memoMq.addListener(onMemoLayoutChange);
     }
     recomputeSummary();
     bindConfirm();
@@ -683,8 +744,10 @@
 
     const memoEl = tr.querySelector("[data-memo]");
     if (memoEl) {
-      memoEl.textContent = data.memo || "";
-      memoEl.hidden = !data.memo;
+      const nameEl = tr.querySelector("[data-name]");
+      const name =
+        (data.name != null ? String(data.name) : nameEl?.textContent || "").trim();
+      setMemoDisplay(memoEl, data.memo || "", name);
     }
 
     if ("expected_check_in_at" in data || "expected_check_out_at" in data) {
@@ -965,7 +1028,7 @@
     const name = tr.querySelector("[data-name]")?.textContent?.trim() || "";
     const phone = tr.querySelector("[data-phone]")?.textContent?.trim() || "";
     const memoEl = tr.querySelector("[data-memo]");
-    const memo = memoEl && !memoEl.hidden ? memoEl.textContent.trim() : "";
+    const memo = memoFullFromEl(memoEl);
     openModal("edit", {
       id: aid,
       name,
