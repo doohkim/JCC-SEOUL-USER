@@ -90,6 +90,18 @@ class RetreatAttendee(models.Model):
     expected_check_out_at = models.DateTimeField(
         "예상 퇴실 시각", null=True, blank=True
     )
+    arrival_travel_is_custom = models.BooleanField(
+        "입실 자차(수동)",
+        null=True,
+        blank=True,
+        help_text="True면 웨이브 시각과 같아도 자차로 분류. NULL은 시각 자동매칭.",
+    )
+    departure_travel_is_custom = models.BooleanField(
+        "퇴실 자차(수동)",
+        null=True,
+        blank=True,
+        help_text="True면 웨이브 시각과 같아도 자차로 분류. NULL은 시각 자동매칭.",
+    )
     checked_in_at = models.DateTimeField("실제 입실 시각", null=True, blank=True)
     checked_out_at = models.DateTimeField("실제 퇴실 시각", null=True, blank=True)
     source_member = models.ForeignKey(

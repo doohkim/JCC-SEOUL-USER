@@ -232,26 +232,24 @@
         window.RETREAT_CTX.travelPresets[travelDirection]) ||
       [];
     let selectedPresetChip = null;
+    // 명시 자차 의도: dataset "1"/"0"/없음(레거시=자동매칭)
+    let sessionIsCustom =
+      input.dataset.travelIsCustom === "1"
+        ? true
+        : input.dataset.travelIsCustom === "0"
+          ? false
+          : null;
+    function writeTravelIsCustom(flag) {
+      if (flag === true) input.dataset.travelIsCustom = "1";
+      else if (flag === false) input.dataset.travelIsCustom = "0";
+      else delete input.dataset.travelIsCustom;
+    }
     function markPresetSelected(chip) {
       if (!chipsEl) return;
       chipsEl.querySelectorAll(".jcc-dtp-preset").forEach(function (el) {
         el.classList.toggle("is-sel", el === chip);
       });
       selectedPresetChip = chip || null;
-    }
-    function applyPresetHintToDraft(occurs) {
-      const parsed = parseValue(occurs);
-      if (!parsed) return;
-      draft.y = parsed.y;
-      draft.mo = parsed.mo;
-      draft.d = parsed.d;
-      draft.hh = parsed.hh;
-      draft.mm = parsed.mm;
-      viewY = draft.y;
-      viewMo = draft.mo;
-      if (typeof renderGrid === "function") renderGrid();
-      if (typeof renderTime === "function") renderTime();
-      if (typeof updateValidity === "function") updateValidity();
     }
     let chipsEl = null;
     if (Array.isArray(travelPresets) && travelPresets.length) {
@@ -292,22 +290,38 @@
         chip.addEventListener("click", function () {
           markPresetSelected(chip);
           if (manual) {
-            // 자차: 달력에서 직접 선택 — 닫지 않음
-            if (occurs) applyPresetHintToDraft(occurs);
+            // 자차: 달력·시간 유지, 닫지 않음
+            sessionIsCustom = true;
             return;
           }
+          sessionIsCustom = false;
+          writeTravelIsCustom(false);
           commit(occurs);
         });
         chipsEl.appendChild(chip);
       });
       presetsRow.appendChild(chipsEl);
       pop.appendChild(presetsRow);
-      // 기본: 값이 없거나 매칭 없으면 자차(수동) 선택
+      // 명시 자차 우선, 아니면 시각 매칭(편의), 없으면 자차
       const initialChip =
-        matchedChip ||
-        (!currentVal ? defaultManualChip : null) ||
-        defaultManualChip;
-      if (initialChip) markPresetSelected(initialChip);
+        sessionIsCustom === true
+          ? defaultManualChip
+          : matchedChip ||
+            (!currentVal ? defaultManualChip : null) ||
+            defaultManualChip;
+      if (initialChip) {
+        markPresetSelected(initialChip);
+        if (
+          sessionIsCustom === null &&
+          initialChip.dataset.manual === "1" &&
+          !matchedChip
+        ) {
+          // 레거시·미매칭: 피커 세션만 자차로 두고, 저장 전엔 dataset을 건드리지 않음
+          sessionIsCustom = true;
+        } else if (sessionIsCustom === null && matchedChip) {
+          sessionIsCustom = false;
+        }
+      }
     }
 
     // 헤더 (월 이동)
@@ -687,15 +701,26 @@
     });
 
     function commit(value) {
+      if (!value) {
+        writeTravelIsCustom(null);
+      } else if (travelPresets.length) {
+        // 버스 칩 경로에서 이미 false로 쓴 경우 유지; OK는 sessionIsCustom 반영
+        if (sessionIsCustom === true) writeTravelIsCustom(true);
+        else if (sessionIsCustom === false) writeTravelIsCustom(false);
+      }
       input.value = value; // 래핑된 setter → 표시 갱신
       input.dispatchEvent(new Event("change", { bubbles: true }));
       ctrl.close();
     }
 
     okBtn.addEventListener("click", function () {
+      if (travelPresets.length && selectedPresetChip) {
+        sessionIsCustom = selectedPresetChip.dataset.manual === "1";
+      }
       commit(fmtValue(draft));
     });
     clearBtn.addEventListener("click", function () {
+      sessionIsCustom = null;
       commit("");
     });
     nowBtn.addEventListener("click", function () {

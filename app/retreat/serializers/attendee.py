@@ -60,6 +60,8 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
             "check_in_status_display",
             "expected_check_in_at",
             "expected_check_out_at",
+            "arrival_travel_is_custom",
+            "departure_travel_is_custom",
             "checked_in_at",
             "checked_out_at",
             "source_member",
@@ -188,6 +190,13 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"expected_check_out_at": "퇴실 시각은 입실 시각보다 뒤여야 합니다."}
             )
+        # 시각을 비우면 해당 방향 자차 플래그도 null (명시 전송 없을 때만).
+        if "expected_check_in_at" in attrs and not attrs.get("expected_check_in_at"):
+            if "arrival_travel_is_custom" not in attrs:
+                attrs["arrival_travel_is_custom"] = None
+        if "expected_check_out_at" in attrs and not attrs.get("expected_check_out_at"):
+            if "departure_travel_is_custom" not in attrs:
+                attrs["departure_travel_is_custom"] = None
         participation = attrs.get("participation_status")
         if participation is None and self.instance:
             participation = self.instance.participation_status

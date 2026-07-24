@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ event.name }} · 전체 명단</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260724i" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260724k" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -158,6 +158,8 @@
                         data-member-role="{{ a.member_role }}"
                         data-expected-in-at="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'c' }}{% endif %}"
                         data-expected-out-at="{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'c' }}{% endif %}"
+                        data-arrival-travel-is-custom="{% if a.arrival_travel_is_custom is True %}1{% elif a.arrival_travel_is_custom is False %}0{% endif %}"
+                        data-departure-travel-is-custom="{% if a.departure_travel_is_custom is True %}1{% elif a.departure_travel_is_custom is False %}0{% endif %}"
                         data-expected-in-locked="{% if a.expected_check_in_locked %}true{% else %}false{% endif %}"
                         data-expected-out-locked="{% if a.expected_check_out_locked %}true{% else %}false{% endif %}"
                         data-expected-timestamps-locked="{% if a.expected_timestamps_locked %}true{% else %}false{% endif %}"
@@ -299,11 +301,11 @@
                 </div>
                 <div class="field">
                   <label for="rosterEditExpectedIn">입실 시각</label>
-                  <input type="datetime-local" id="rosterEditExpectedIn" name="expected_check_in_at" data-dtp-max-selector="#rosterEditExpectedOut" data-dtp-max-message="입실은 퇴실 시각보다 앞이어야 합니다." autocomplete="off">
+                  <input type="datetime-local" id="rosterEditExpectedIn" name="expected_check_in_at" data-travel-direction="arrival" data-dtp-max-selector="#rosterEditExpectedOut" data-dtp-max-message="입실은 퇴실 시각보다 앞이어야 합니다." autocomplete="off">
                 </div>
                 <div class="field">
                   <label for="rosterEditExpectedOut">퇴실 시각</label>
-                  <input type="datetime-local" id="rosterEditExpectedOut" name="expected_check_out_at" data-dtp-min-selector="#rosterEditExpectedIn" data-dtp-min-message="퇴실은 입실 시각보다 뒤여야 합니다." autocomplete="off">
+                  <input type="datetime-local" id="rosterEditExpectedOut" name="expected_check_out_at" data-travel-direction="departure" data-dtp-min-selector="#rosterEditExpectedIn" data-dtp-min-message="퇴실은 입실 시각보다 뒤여야 합니다." autocomplete="off">
                 </div>
                 <div class="field jcc-retreat-modalField--full">
                   <label for="rosterEditLodging">숙소 배정</label>
@@ -329,14 +331,18 @@
 
     {% include 'includes/retreat_bottom_tabs.html' %}
     <script src="{% static 'retreat/lodging_stay_badge.js' %}?v=20260629c" defer></script>
-    <script src="{% static 'retreat/lodging_roster_filter.js' %}?v=20260724i" defer></script>
+    <script src="{% static 'retreat/lodging_roster_filter.js' %}?v=20260724k" defer></script>
     {% if roster_any_can_edit %}
       <script>
+        window.RETREAT_CTX = Object.assign({}, window.RETREAT_CTX || {}, {
+          travelPresets: {{ travel_presets_json|safe }},
+        });
         window.LODGING_ROSTER_CTX = {
           eventId: {{ event.id }},
           canChangeStatus: {{ can_change_status|yesno:"true,false" }},
           csrfToken: "{{ csrf_token }}",
           groupRooms: {{ roster_group_rooms_json|safe }},
+          travelPresets: {{ travel_presets_json|safe }},
           urls: {
             attendeeDetailTemplate: "/api/v1/retreat/attendees/__id__/",
             userSearchUrl: "{% url 'api_retreat_user_search' %}",
@@ -344,11 +350,11 @@
         };
       </script>
       <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-      <script src="{% static 'retreat/datetime_picker.js' %}?v=20260619a" defer></script>
+      <script src="{% static 'retreat/datetime_picker.js' %}?v=20260724k" defer></script>
       <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
       <script src="{% static 'retreat/lodging_stay_badge.js' %}?v=20260629c" defer></script>
       <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618a" defer></script>
-      <script src="{% static 'retreat/lodging_roster_edit.js' %}?v=20260724i" defer></script>
+      <script src="{% static 'retreat/lodging_roster_edit.js' %}?v=20260724k" defer></script>
     {% endif %}
   </body>
 </html>

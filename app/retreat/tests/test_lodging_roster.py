@@ -298,6 +298,26 @@ class LodgingRosterTravelFilterTests(_LodgingRosterFixture):
         self.assertEqual(by_name["미배정자"].departure_travel_key, "__unset__")
         self.assertEqual(by_name["당일참석"].arrival_travel_key, "__unset__")
 
+    def test_custom_flag_keeps_wave_time_as_own_car(self):
+        wave_in = timezone.make_aware(datetime(2026, 7, 1, 10, 0))
+        wave_out = timezone.make_aware(datetime(2026, 7, 3, 13, 0))
+        self.assigned_attendee.expected_check_in_at = wave_in
+        self.assigned_attendee.expected_check_out_at = wave_out
+        self.assigned_attendee.arrival_travel_is_custom = True
+        self.assigned_attendee.departure_travel_is_custom = True
+        self.assigned_attendee.save(
+            update_fields=[
+                "expected_check_in_at",
+                "expected_check_out_at",
+                "arrival_travel_is_custom",
+                "departure_travel_is_custom",
+            ]
+        )
+        ctx = build_lodging_roster_context(self.event, self.staff)
+        by_name = {a.name: a for a in ctx["roster_attendees"]}
+        self.assertEqual(by_name["배정자"].arrival_travel_key, "__custom__")
+        self.assertEqual(by_name["배정자"].departure_travel_key, "__custom__")
+
     def test_default_chips_without_presets(self):
         RetreatTravelPreset.objects.filter(event=self.event).delete()
         ctx = build_lodging_roster_context(self.event, self.staff)

@@ -20,7 +20,11 @@ from retreat.models import (
     RetreatGroupMembership,
     RetreatTravelPreset,
 )
-from retreat.services.travel_presets import travel_presets_for_group
+from retreat.services.travel_presets import (
+    travel_bucket_key,
+    travel_fixed_and_occurs_map,
+    travel_presets_for_group,
+)
 from users.models import Division, Region, UserDivisionTeam
 
 User = get_user_model()
@@ -83,6 +87,23 @@ class TravelPresetServiceTests(TestCase):
         self.assertEqual(data["arrival"][0]["occurs_at"], "2026-07-30T10:00")
         self.assertEqual(data["departure"][0]["occurs_at"], "2026-08-01T13:00")
         self.assertFalse(data["arrival"][0]["manual"])
+
+    def test_travel_bucket_key_respects_is_custom(self):
+        """자차 명시 시 웨이브와 동일 시각이어도 __custom__."""
+        _fixed, occurs = travel_fixed_and_occurs_map([self.arrival])
+        wave_at = self.arrival.occurs_at
+        self.assertEqual(travel_bucket_key(wave_at, occurs), self.arrival.id)
+        self.assertEqual(
+            travel_bucket_key(wave_at, occurs, is_custom=None), self.arrival.id
+        )
+        self.assertEqual(
+            travel_bucket_key(wave_at, occurs, is_custom=False), self.arrival.id
+        )
+        self.assertEqual(
+            travel_bucket_key(wave_at, occurs, is_custom=True), "__custom__"
+        )
+        self.assertEqual(travel_bucket_key(None, occurs), "__unset__")
+        self.assertEqual(travel_bucket_key(None, occurs, is_custom=True), "__unset__")
 
     def test_own_car_is_manual(self):
         tz = timezone.get_current_timezone()
@@ -240,6 +261,32 @@ class TravelPresetManagePageTests(TestCase):
         self.attendee.refresh_from_db()
         local = timezone.localtime(self.attendee.expected_check_in_at)
         self.assertEqual(local.strftime("%Y-%m-%d %H:%M"), "2026-07-30 10:00")
+
+    def test_patch_arrival_travel_is_custom_round_trip_and_clear(self):
+        self.api.force_authenticate(user=self.leader)
+        url = reverse("api_retreat_attendee_detail", args=[self.attendee.id])
+        r = self.api.patch(
+            url,
+            {
+                "expected_check_in_at": "2026-07-30T10:00:00+09:00",
+                "arrival_travel_is_custom": True,
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertTrue(r.data["arrival_travel_is_custom"])
+        self.attendee.refresh_from_db()
+        self.assertTrue(self.attendee.arrival_travel_is_custom)
+
+        r2 = self.api.patch(
+            url,
+            {"expected_check_in_at": None},
+            format="json",
+        )
+        self.assertEqual(r2.status_code, 200, r2.content)
+        self.attendee.refresh_from_db()
+        self.assertIsNone(self.attendee.expected_check_in_at)
+        self.assertIsNone(self.attendee.arrival_travel_is_custom)
 
     def test_event_admin_gets_same_division_presets(self):
         ctx = self._manage_context(self.admin, self.group_youth)

@@ -483,9 +483,14 @@ def build_travel_summary_for_attendee_times(
     departure_by_gid: dict[int, dict[str | int, int]] = defaultdict(
         lambda: defaultdict(int)
     )
-    for gid, in_at, out_at in time_rows:
-        a_key = travel_bucket_key(in_at, arrival_occurs)
-        d_key = travel_bucket_key(out_at, departure_occurs)
+    for row in time_rows:
+        if len(row) >= 5:
+            gid, in_at, out_at, in_custom, out_custom = row[:5]
+        else:
+            gid, in_at, out_at = row[:3]
+            in_custom = out_custom = None
+        a_key = travel_bucket_key(in_at, arrival_occurs, is_custom=in_custom)
+        d_key = travel_bucket_key(out_at, departure_occurs, is_custom=out_custom)
         arrival_counts[a_key] += 1
         departure_counts[d_key] += 1
         if gid is not None:
@@ -561,10 +566,16 @@ def build_realtime_dashboard(
             visible_attendees_for(
                 user, RetreatAttendee.objects.filter(group_id__in=group_ids)
             )
-        ).values_list("group_id", "expected_check_in_at", "expected_check_out_at")
+        ).values_list(
+            "group_id",
+            "expected_check_in_at",
+            "expected_check_out_at",
+            "arrival_travel_is_custom",
+            "departure_travel_is_custom",
+        )
     )
     status_by_group: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-    for gid, check_in_at, check_out_at in time_rows:
+    for gid, check_in_at, check_out_at, _in_custom, _out_custom in time_rows:
         eff = _effective_check_in_status(check_in_at, check_out_at, now)
         status_by_group[gid][eff] += 1
 

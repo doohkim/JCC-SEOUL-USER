@@ -405,6 +405,24 @@
     return d.toISOString();
   }
 
+  function travelIsCustomFromDataset(val) {
+    if (val === "1" || val === true) return true;
+    if (val === "0" || val === false) return false;
+    return null;
+  }
+
+  function travelIsCustomFromInput(input) {
+    if (!input) return null;
+    return travelIsCustomFromDataset(input.dataset.travelIsCustom);
+  }
+
+  function setInputTravelIsCustom(input, flag) {
+    if (!input) return;
+    if (flag === true) input.dataset.travelIsCustom = "1";
+    else if (flag === false) input.dataset.travelIsCustom = "0";
+    else delete input.dataset.travelIsCustom;
+  }
+
   const STAMP_ORDER_MSG = "퇴실 시각은 입실 시각보다 뒤여야 합니다.";
 
   // 입실·퇴실 둘 다 있을 때만 검사: 퇴실은 입실보다 무조건 커야 한다(같거나 작으면 오류).
@@ -674,6 +692,22 @@
     }
     tr.dataset.expectedInAt = data.expected_check_in_at || "";
     tr.dataset.expectedOutAt = data.expected_check_out_at || "";
+    if ("arrival_travel_is_custom" in data) {
+      tr.dataset.arrivalTravelIsCustom =
+        data.arrival_travel_is_custom === true
+          ? "1"
+          : data.arrival_travel_is_custom === false
+            ? "0"
+            : "";
+    }
+    if ("departure_travel_is_custom" in data) {
+      tr.dataset.departureTravelIsCustom =
+        data.departure_travel_is_custom === true
+          ? "1"
+          : data.departure_travel_is_custom === false
+            ? "0"
+            : "";
+    }
     if ("expected_timestamps_locked" in data || "profile_locked" in data) {
       const locked = !!(data.profile_locked ?? data.expected_timestamps_locked);
       tr.dataset.expectedTimestampsLocked = locked ? "true" : "false";
@@ -755,6 +789,12 @@
       const outInput = tr.querySelector('[data-expected-field="expected_check_out_at"]');
       if (inInput) inInput.value = toDatetimeLocalValue(data.expected_check_in_at);
       if (outInput) outInput.value = toDatetimeLocalValue(data.expected_check_out_at);
+      if ("arrival_travel_is_custom" in data) {
+        setInputTravelIsCustom(inInput, data.arrival_travel_is_custom);
+      }
+      if ("departure_travel_is_custom" in data) {
+        setInputTravelIsCustom(outInput, data.departure_travel_is_custom);
+      }
       const inLabel = tr.querySelector("[data-expected-in-label]");
       const outLabel = tr.querySelector("[data-expected-out-label]");
       if (inLabel) {
@@ -867,9 +907,17 @@
       setRowStampError(tr, false);
 
       const iso = isoFromDatetimeLocal(input.value);
+      const flagKey =
+        field === "expected_check_in_at"
+          ? "arrival_travel_is_custom"
+          : "departure_travel_is_custom";
+      const payload = {
+        [field]: iso,
+        [flagKey]: travelIsCustomFromInput(input),
+      };
       input.disabled = true;
       try {
-        const data = await patchAttendee(aid, { [field]: iso });
+        const data = await patchAttendee(aid, payload);
         updateRowFromData(tr, data);
         showToast("예상 시각 저장됨", false);
       } catch (err) {
@@ -1039,6 +1087,12 @@
       gender: tr.dataset.gender || "",
       expectedIn: tr.dataset.expectedInAt || "",
       expectedOut: tr.dataset.expectedOutAt || "",
+      arrivalTravelIsCustom: travelIsCustomFromDataset(
+        tr.dataset.arrivalTravelIsCustom
+      ),
+      departureTravelIsCustom: travelIsCustomFromDataset(
+        tr.dataset.departureTravelIsCustom
+      ),
       expectedTimestampsLocked: tr.dataset.expectedTimestampsLocked === "true",
       profileLocked: tr.dataset.profileLocked === "true",
       memberRole: tr.dataset.memberRole || "member",
@@ -1339,6 +1393,14 @@
       expectedInInput.value = toDatetimeLocalValue(payload?.expectedIn || "");
     if (expectedOutInput)
       expectedOutInput.value = toDatetimeLocalValue(payload?.expectedOut || "");
+    setInputTravelIsCustom(
+      expectedInInput,
+      payload?.arrivalTravelIsCustom ?? null
+    );
+    setInputTravelIsCustom(
+      expectedOutInput,
+      payload?.departureTravelIsCustom ?? null
+    );
     markStampInvalid(expectedInInput, false);
     markStampInvalid(expectedOutInput, false);
     setFieldError(expectedOutInput, "");
@@ -1427,6 +1489,8 @@
       payload.expected_check_out_at = isoFromDatetimeLocal(
         expectedOutInput?.value || ""
       );
+      payload.departure_travel_is_custom =
+        travelIsCustomFromInput(expectedOutInput);
       markStampInvalid(expectedInInput, false);
       markStampInvalid(expectedOutInput, false);
       setFieldError(expectedOutInput, "");
@@ -1470,6 +1534,10 @@
           payload.expected_check_out_at = isoFromDatetimeLocal(
             expectedOutInput?.value || ""
           );
+          payload.arrival_travel_is_custom =
+            travelIsCustomFromInput(expectedInInput);
+          payload.departure_travel_is_custom =
+            travelIsCustomFromInput(expectedOutInput);
         }
         payload.lodging_room =
           lodgingInput && lodgingInput.value ? Number(lodgingInput.value) : null;

@@ -43,12 +43,21 @@ def travel_fixed_and_occurs_map(
 
 
 def travel_bucket_key(
-    dt, occurs_to_preset: dict[str, RetreatTravelPreset]
+    dt,
+    occurs_to_preset: dict[str, RetreatTravelPreset],
+    *,
+    is_custom: bool | None = None,
 ) -> str | int:
-    """시각을 웨이브 id / __custom__ / __unset__ 버킷으로 분류."""
+    """시각을 웨이브 id / __custom__ / __unset__ 버킷으로 분류.
+
+    ``is_custom=True`` 이면 웨이브 시각과 같아도 자차(``__custom__``).
+    ``False``/``None`` 은 기존처럼 분 단위 자동매칭.
+    """
     key = _iso_local(dt)
     if not key:
         return "__unset__"
+    if is_custom is True:
+        return "__custom__"
     matched = occurs_to_preset.get(key)
     if matched is not None:
         return matched.id

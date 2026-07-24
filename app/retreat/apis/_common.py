@@ -128,12 +128,16 @@ _PROFILE_LOCKED_PATCH_KEYS = frozenset(
         "user",
         "expected_check_in_at",
         "expected_check_out_at",
+        "arrival_travel_is_custom",
+        "departure_travel_is_custom",
         "lodging_room",
         "participation_status",
     }
 )
 
-_COUNCIL_CHECKED_OUT_PATCH_KEYS = frozenset({"expected_check_out_at"})
+_COUNCIL_CHECKED_OUT_PATCH_KEYS = frozenset(
+    {"expected_check_out_at", "departure_travel_is_custom"}
+)
 
 
 def profile_locked_patch_keys_for(user, group: RetreatGroup, attendee) -> frozenset:
@@ -203,6 +207,8 @@ _ATTENDEE_DETAIL_PATCH_KEYS = frozenset(
         "user",
         "expected_check_in_at",
         "expected_check_out_at",
+        "arrival_travel_is_custom",
+        "departure_travel_is_custom",
         "lodging_room",
         "participation_status",
     }

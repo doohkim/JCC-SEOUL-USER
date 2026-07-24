@@ -178,6 +178,33 @@ class RetreatDashboardApiTests(APITestCase):
         self.assertEqual(g_row["departure"], [1, 0, 2])
         self.assertEqual(g_row["departure_total"], 3)
 
+    def test_dashboard_travel_custom_flag_same_wave_time(self):
+        """자차 명시 시 본진과 동일 시각이어도 자차 집계."""
+        tz = timezone.get_current_timezone()
+        from datetime import datetime
+
+        main_at = timezone.make_aware(datetime(2026, 7, 30, 10, 0), tz)
+        arrival = RetreatTravelPreset.objects.create(
+            event=self.event,
+            direction=RetreatTravelPreset.Direction.ARRIVAL,
+            code="main",
+            label="7/30 본진",
+            occurs_at=main_at,
+            sort_order=10,
+        )
+        arrival.divisions.set([self.div])
+        self.attendee.expected_check_in_at = main_at
+        self.attendee.arrival_travel_is_custom = True
+        self.attendee.save(
+            update_fields=["expected_check_in_at", "arrival_travel_is_custom"]
+        )
+        self.client.force_authenticate(self.leader)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        travel = self.client.get(url).json()["travel"]
+        arrival_by_label = {r["label"]: r["count"] for r in travel["arrival"]}
+        self.assertEqual(arrival_by_label.get("7/30 본진", 0), 0)
+        self.assertEqual(arrival_by_label["자차"], 1)
+
     def test_dashboard_status_is_time_based(self):
         """저장된 check_in_status 와 무관하게 입실/퇴실 시각으로 상태를 계산한다."""
         now = timezone.now()

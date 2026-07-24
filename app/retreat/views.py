@@ -1309,6 +1309,10 @@ class RetreatLodgingRosterView(_RetreatEventMixin, TemplateView):
                 ]
         ctx["roster_any_can_edit"] = roster_any_can_edit
         ctx["roster_group_rooms_json"] = json.dumps(group_rooms)
+        ctx["travel_presets_json"] = json.dumps(
+            ctx.get("travel_presets") or {"arrival": [], "departure": []},
+            ensure_ascii=False,
+        )
         ctx["can_change_status"] = can_change_retreat_check_in(user, event)
         ctx["attendee_role_choices"] = RetreatAttendee.MemberRole.choices
         ctx["lodging_subtab"] = "roster"

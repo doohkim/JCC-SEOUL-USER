@@ -25,6 +25,7 @@ from retreat.services.travel_presets import (
     travel_bucket_key,
     travel_filter_chip_defs,
     travel_fixed_and_occurs_map,
+    travel_presets_for_event,
 )
 from users.permissions import visible_retreat_groups_for
 
@@ -169,10 +170,18 @@ def build_lodging_roster_context(
             attendee, user, attendee.group
         )
         attendee.arrival_travel_key = str(
-            travel_bucket_key(attendee.expected_check_in_at, arrival_occurs)
+            travel_bucket_key(
+                attendee.expected_check_in_at,
+                arrival_occurs,
+                is_custom=attendee.arrival_travel_is_custom,
+            )
         )
         attendee.departure_travel_key = str(
-            travel_bucket_key(attendee.expected_check_out_at, departure_occurs)
+            travel_bucket_key(
+                attendee.expected_check_out_at,
+                departure_occurs,
+                is_custom=attendee.departure_travel_is_custom,
+            )
         )
 
     s = RetreatAttendee.CheckInStatus
@@ -195,6 +204,7 @@ def build_lodging_roster_context(
         "roster_attendees": attendees,
         "roster_arrival_travel_chips": travel_filter_chip_defs(arrival_fixed),
         "roster_departure_travel_chips": travel_filter_chip_defs(departure_fixed),
+        "travel_presets": travel_presets_for_event(event),
         "roster_summary": LodgingRosterSummary(
             count_total=len(attendees),
             count_participating=len(participating),

@@ -122,6 +122,42 @@
     return d.toISOString();
   }
 
+  function travelIsCustomFromDataset(val) {
+    if (val === "1" || val === true) return true;
+    if (val === "0" || val === false) return false;
+    return null;
+  }
+
+  function travelIsCustomFromInput(input) {
+    if (!input) return null;
+    return travelIsCustomFromDataset(input.dataset.travelIsCustom);
+  }
+
+  function setInputTravelIsCustom(input, flag) {
+    if (!input) return;
+    if (flag === true) input.dataset.travelIsCustom = "1";
+    else if (flag === false) input.dataset.travelIsCustom = "0";
+    else delete input.dataset.travelIsCustom;
+  }
+
+  function clientTravelBucketKey(iso, direction, isCustom) {
+    if (!iso) return "__unset__";
+    if (isCustom === true) return "__custom__";
+    const local = toDatetimeLocalValue(iso).slice(0, 16);
+    const presets =
+      (ctx.travelPresets && ctx.travelPresets[direction]) ||
+      (window.RETREAT_CTX &&
+        window.RETREAT_CTX.travelPresets &&
+        window.RETREAT_CTX.travelPresets[direction]) ||
+      [];
+    for (let i = 0; i < presets.length; i++) {
+      const p = presets[i];
+      if (!p || p.manual || !p.occurs_at) continue;
+      if (String(p.occurs_at).slice(0, 16) === local) return String(p.id);
+    }
+    return "__custom__";
+  }
+
   function formatStampHtml(iso) {
     if (!iso) return "-";
     const d = new Date(iso);
@@ -359,6 +395,14 @@
       expectedInInput.value = toDatetimeLocalValue(tr.dataset.expectedInAt || "");
     if (expectedOutInput)
       expectedOutInput.value = toDatetimeLocalValue(tr.dataset.expectedOutAt || "");
+    setInputTravelIsCustom(
+      expectedInInput,
+      travelIsCustomFromDataset(tr.dataset.arrivalTravelIsCustom)
+    );
+    setInputTravelIsCustom(
+      expectedOutInput,
+      travelIsCustomFromDataset(tr.dataset.departureTravelIsCustom)
+    );
     applyModalProfileLock(profileLocked, viewOnly, statusOnlyEdit);
     if (roleInput) roleInput.value = tr.dataset.memberRole || "member";
     if (checkInInput) checkInInput.value = checkIn;
@@ -403,6 +447,43 @@
     tr.dataset.phone = data.phone || "";
     tr.dataset.expectedInAt = data.expected_check_in_at || "";
     tr.dataset.expectedOutAt = data.expected_check_out_at || "";
+    if ("arrival_travel_is_custom" in data) {
+      tr.dataset.arrivalTravelIsCustom =
+        data.arrival_travel_is_custom === true
+          ? "1"
+          : data.arrival_travel_is_custom === false
+            ? "0"
+            : "";
+      tr.dataset.arrivalTravel = clientTravelBucketKey(
+        data.expected_check_in_at,
+        "arrival",
+        data.arrival_travel_is_custom
+      );
+    }
+    if ("departure_travel_is_custom" in data) {
+      tr.dataset.departureTravelIsCustom =
+        data.departure_travel_is_custom === true
+          ? "1"
+          : data.departure_travel_is_custom === false
+            ? "0"
+            : "";
+      tr.dataset.departureTravel = clientTravelBucketKey(
+        data.expected_check_out_at,
+        "departure",
+        data.departure_travel_is_custom
+      );
+    } else if ("expected_check_out_at" in data || "expected_check_in_at" in data) {
+      tr.dataset.arrivalTravel = clientTravelBucketKey(
+        data.expected_check_in_at,
+        "arrival",
+        travelIsCustomFromDataset(tr.dataset.arrivalTravelIsCustom)
+      );
+      tr.dataset.departureTravel = clientTravelBucketKey(
+        data.expected_check_out_at,
+        "departure",
+        travelIsCustomFromDataset(tr.dataset.departureTravelIsCustom)
+      );
+    }
     if ("expected_timestamps_locked" in data || "profile_locked" in data) {
       const locked = !!(data.profile_locked ?? data.expected_timestamps_locked);
       tr.dataset.expectedTimestampsLocked = locked ? "true" : "false";
@@ -522,6 +603,8 @@
       payload.expected_check_out_at = isoFromDatetimeLocal(
         expectedOutInput?.value || ""
       );
+      payload.departure_travel_is_custom =
+        travelIsCustomFromInput(expectedOutInput);
       const inVal =
         expectedInInput?.value ||
         (tr?.dataset?.expectedInAt
@@ -549,6 +632,10 @@
         payload.expected_check_out_at = isoFromDatetimeLocal(
           expectedOutInput?.value || ""
         );
+        payload.arrival_travel_is_custom =
+          travelIsCustomFromInput(expectedInInput);
+        payload.departure_travel_is_custom =
+          travelIsCustomFromInput(expectedOutInput);
       }
       payload.lodging_room =
         lodgingInput && lodgingInput.value ? Number(lodgingInput.value) : null;
