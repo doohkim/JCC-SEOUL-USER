@@ -5911,27 +5911,27 @@ dialog.jcc-retreat-modal::backdrop {
   font-weight: 700;
   margin: 0 1px;
 }
-/* 시·분 선택 드롭다운 — 팝업과 동일 톤 */
+/* 시·분 선택 드롭다운 — 팝업 overflow 에 잘리지 않게 fixed(좌표는 JS) */
 .jcc-dtp-dropdown[hidden] {
-  display: none;
+  display: none !important;
 }
 .jcc-dtp-dropdown {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  z-index: 5;
+  position: fixed;
+  z-index: 2300;
   display: flex;
   flex-direction: column;
   gap: 2px;
   max-height: 168px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 4px;
   background: var(--card, #fff);
   border: 1px solid var(--border, #ced4da);
   border-radius: 10px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
   overscroll-behavior: contain;
+  touch-action: pan-y;
+  pointer-events: auto;
 }
 .jcc-dtp-opt {
   flex: 0 0 auto;
@@ -5953,6 +5953,18 @@ dialog.jcc-retreat-modal::backdrop {
 .jcc-dtp-opt.is-sel {
   background: var(--accent, #4a9eff);
   color: #fff;
+}
+.jcc-dtp-opt {
+  touch-action: manipulation;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 시·분 목록 열림(또는 직후 가드) 동안 달력은 터치/클릭 무시 */
+.jcc-dtp-pop--ddOpen .jcc-dtp-grid,
+.jcc-dtp-pop--ddOpen .jcc-dtp-day {
+  pointer-events: none !important;
 }
 .jcc-dtp-foot {
   display: flex;

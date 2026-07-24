@@ -599,15 +599,57 @@
     document.body.appendChild(pop);
 
     let openDd = null;
+    let swallowClickUntil = 0;
+    function clearDropdownPlacement(dd) {
+      dd.style.top = "";
+      dd.style.left = "";
+      dd.style.width = "";
+      dd.style.right = "";
+      dd.style.bottom = "";
+      dd.style.maxHeight = "";
+    }
+    function setDdOpenClass(on) {
+      pop.classList.toggle("jcc-dtp-pop--ddOpen", !!on);
+    }
+    // 시간·분 목록은 항상 박스 위쪽(달력 쪽). 아래로 열리면 바깥 클릭으로 피커가 닫히기 쉬움.
+    function positionDropdown(ctl) {
+      const dd = ctl.dropdown;
+      if (dd.hidden) return;
+      const r = ctl.wrap.getBoundingClientRect();
+      const margin = 8;
+      const maxH = 168;
+      const spaceAbove = Math.max(72, r.top - margin);
+      const h = Math.min(maxH, spaceAbove);
+      dd.style.left = `${Math.round(r.left)}px`;
+      dd.style.width = `${Math.max(Math.round(r.width), 48)}px`;
+      dd.style.right = "auto";
+      dd.style.bottom = "auto";
+      dd.style.maxHeight = `${h}px`;
+      dd.style.top = `${Math.max(margin, Math.round(r.top - h - 6))}px`;
+      const used = Math.min(h, dd.scrollHeight || h);
+      dd.style.top = `${Math.max(margin, Math.round(r.top - used - 6))}px`;
+    }
     function scrollSelIntoView(ctl) {
       if (openDd !== ctl || ctl.dropdown.hidden) return;
       const sel = ctl.dropdown.querySelector(".jcc-dtp-opt.is-sel");
       if (sel) sel.scrollIntoView({ block: "nearest" });
+      positionDropdown(ctl);
     }
     function closeDropdown() {
       if (openDd) {
         openDd.dropdown.hidden = true;
+        clearDropdownPlacement(openDd.dropdown);
         openDd = null;
+      }
+      // 목록이 사라진 직후에도 달력을 잠깐 막아 고스트 click 이 날짜로 안 가게 함.
+      if (Date.now() < swallowClickUntil) {
+        setDdOpenClass(true);
+        const wait = Math.max(0, swallowClickUntil - Date.now()) + 30;
+        setTimeout(function () {
+          if (!openDd) setDdOpenClass(false);
+        }, wait);
+      } else {
+        setDdOpenClass(false);
       }
     }
     function openDropdown(ctl) {
@@ -618,39 +660,70 @@
       closeDropdown();
       ctl.dropdown.hidden = false;
       openDd = ctl;
+      setDdOpenClass(true);
+      positionDropdown(ctl);
       scrollSelIntoView(ctl);
     }
+    // 옵션 탭 직후 목록이 사라지면 같은 좌표 click 이 달력으로 통과(모바일 고스트 클릭).
+    function armGhostClickGuard() {
+      swallowClickUntil = Date.now() + 450;
+    }
     function wireStepper(ctl, setter) {
-      ctl.inp.addEventListener("focus", function () {
+      // 박스 전체(여백·▾ 포함)에서 열리게 — input 좁은 영역만 누르지 않아도 됨.
+      // 숫자 input 을 직접 누를 때만 focus(타이핑/키보드). 그 외에는 목록만 연다.
+      ctl.wrap.addEventListener("pointerdown", function (e) {
+        if (e.target.closest(".jcc-dtp-opt")) return;
+        if (e.target.closest(".jcc-dtp-dropdown")) return;
+        e.preventDefault();
+        const onInp = e.target === ctl.inp;
+        if (openDd === ctl) {
+          if (onInp) {
+            try {
+              ctl.inp.focus({ preventScroll: true });
+            } catch (_err) {
+              ctl.inp.focus();
+            }
+            return;
+          }
+          closeDropdown();
+          return;
+        }
+        if (onInp) {
+          try {
+            ctl.inp.focus({ preventScroll: true });
+          } catch (_err) {
+            ctl.inp.focus();
+          }
+        }
         openDropdown(ctl);
       });
-      ctl.inp.addEventListener("click", function () {
+      ctl.inp.addEventListener("focus", function () {
         openDropdown(ctl);
       });
       ctl.inp.addEventListener("blur", function () {
         setTimeout(function () {
-          if (openDd === ctl && document.activeElement !== ctl.inp) {
-            closeDropdown();
+          if (openDd !== ctl) return;
+          const ae = document.activeElement;
+          if (ae === ctl.inp || ctl.wrap.contains(ae) || ctl.dropdown.contains(ae)) {
+            return;
           }
-        }, 120);
-      });
-      // ▾ 셰브론 클릭: 입력에 포커스 주고 목록 토글
-      ctl.caret.addEventListener("mousedown", function (e) {
-        e.preventDefault();
-        if (openDd === ctl) {
           closeDropdown();
-        } else {
-          ctl.inp.focus();
-          openDropdown(ctl);
-        }
+        }, 150);
       });
-      ctl.dropdown.addEventListener("mousedown", function (e) {
-        const o = e.target.closest(".jcc-dtp-opt");
-        if (!o) return;
-        e.preventDefault(); // 포커스 유지(blur 방지)
-        setter(o.dataset.value);
-        closeDropdown();
-      });
+      // pointerdown: blur 레이스 전에 선택. 닫은 뒤 고스트 click 은 가드로 삼킴.
+      ctl.dropdown.addEventListener(
+        "pointerdown",
+        function (e) {
+          const o = e.target.closest(".jcc-dtp-opt");
+          if (!o) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setter(o.dataset.value);
+          armGhostClickGuard();
+          closeDropdown();
+        },
+        true
+      );
     }
 
     // draft.hh(0~23)/draft.mm 기준으로 시·분 컨트롤 표시 동기화
@@ -710,7 +783,23 @@
         ) {
           cell.classList.add("selected");
         }
-        cell.addEventListener("click", function () {
+        cell.addEventListener(
+          "pointerdown",
+          function (e) {
+            if (openDd || Date.now() < swallowClickUntil) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          },
+          true
+        );
+        cell.addEventListener("click", function (e) {
+          // 시·분 옵션 탭 직후 합성 click 이 날짜로 떨어지지 않게
+          if (openDd || Date.now() < swallowClickUntil) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
           draft.y = d.getFullYear();
           draft.mo = d.getMonth();
           draft.d = d.getDate();
@@ -851,10 +940,17 @@
     position();
 
     function onDocClick(e) {
+      if (Date.now() < swallowClickUntil) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       if (backdrop && e.target === backdrop) {
         ctrl.close();
         return;
       }
+      // fixed 드롭다운 옵션 클릭 잔여 이벤트 — 팝업이 닫히지 않게
+      if (e.target.closest && e.target.closest(".jcc-dtp-dropdown")) return;
       if (pop.contains(e.target) || field.contains(e.target)) return;
       ctrl.close();
     }
@@ -869,10 +965,12 @@
     }
     function onScrollResize() {
       position();
+      if (openDd) positionDropdown(openDd);
     }
 
     const ctrl = {
       close() {
+        closeDropdown();
         document.removeEventListener("click", onDocClick, true);
         document.removeEventListener("keydown", onKey, true);
         window.removeEventListener("resize", onScrollResize, true);

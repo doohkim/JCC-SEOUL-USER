@@ -439,3 +439,229 @@ class GroupMembershipApiTests(APITestCase, _Fixture):
                 role=RetreatGroupMembership.Role.TEACHER,
             ).exists()
         )
+
+
+class GroupMembershipSameNameClaimTests(APITestCase, _Fixture):
+    """조 운영진 추가 시 같은 이름 조원 claim / 새 행 규칙."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.setup_fixture()
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(self.council)
+
+    def _list_url(self):
+        return reverse("api_retreat_group_memberships", args=[self.group.id])
+
+    def _make_user(self, *, username: str, real_name: str, phone: str) -> User:
+        user = User.objects.create_user(username=username, password="x")
+        profile = ensure_user_profile(user)
+        profile.real_name = real_name
+        profile.phone = phone
+        profile.save(update_fields=["real_name", "phone", "updated_at"])
+        return user
+
+    def test_linked_same_user_updates_role_only(self):
+        """A1: 이미 U 연동 행 → 역할만 갱신."""
+        user = self._make_user(
+            username="gm_claim_a1", real_name="김동명", phone="010-1111-0001"
+        )
+        existing = RetreatAttendee.objects.create(
+            group=self.group,
+            user=user,
+            name="김동명",
+            phone="010-1111-0001",
+            member_role=RetreatAttendee.MemberRole.MEMBER,
+        )
+        r = self.client.post(
+            self._list_url(),
+            {"user_id": user.id, "role": "vice_leader"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        existing.refresh_from_db()
+        self.assertEqual(existing.member_role, RetreatAttendee.MemberRole.VICE_LEADER)
+        self.assertEqual(existing.user_id, user.id)
+        self.assertEqual(
+            RetreatAttendee.objects.filter(group=self.group, name="김동명").count(),
+            1,
+        )
+
+    def test_no_same_name_creates_new_row(self):
+        """B0: 같은 이름 없음 → 새 행."""
+        user = self._make_user(
+            username="gm_claim_b0", real_name="이신규", phone="010-2222-0002"
+        )
+        r = self.client.post(
+            self._list_url(),
+            {"user_id": user.id, "role": "leader"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        attendee = RetreatAttendee.objects.get(group=self.group, user=user)
+        self.assertEqual(attendee.name, "이신규")
+        self.assertEqual(attendee.member_role, RetreatAttendee.MemberRole.LEADER)
+        self.assertEqual(attendee.phone, "010-2222-0002")
+
+    def test_unlinked_phone_match_claims_row(self):
+        """B2: 미연결 + 번호 일치 → claim (표기 달라도 normalize)."""
+        user = self._make_user(
+            username="gm_claim_b2", real_name="이다인", phone="010-3333-0003"
+        )
+        other = RetreatAttendee.objects.create(
+            group=self.group,
+            name="이다인",
+            phone="010-9999-9999",
+            member_role=RetreatAttendee.MemberRole.MEMBER,
+        )
+        match = RetreatAttendee.objects.create(
+            group=self.group,
+            name="이다인",
+            phone="01033330003",
+            member_role=RetreatAttendee.MemberRole.MEMBER,
+        )
+        r = self.client.post(
+            self._list_url(),
+            {"user_id": user.id, "role": "vice_leader"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        match.refresh_from_db()
+        other.refresh_from_db()
+        self.assertEqual(match.user_id, user.id)
+        self.assertEqual(match.member_role, RetreatAttendee.MemberRole.VICE_LEADER)
+        self.assertIsNone(other.user_id)
+        self.assertEqual(other.member_role, RetreatAttendee.MemberRole.MEMBER)
+        self.assertEqual(
+            RetreatAttendee.objects.filter(group=self.group, name="이다인").count(),
+            2,
+        )
+
+    def test_unlinked_all_different_phones_creates_new_row(self):
+        """B3: 미연결 전부 번호 있고 U와 다름 → 새 행."""
+        user = self._make_user(
+            username="gm_claim_b3", real_name="박동명", phone="010-4444-0004"
+        )
+        a = RetreatAttendee.objects.create(
+            group=self.group,
+            name="박동명",
+            phone="010-1111-1111",
+            member_role=RetreatAttendee.MemberRole.MEMBER,
+        )
+        b = RetreatAttendee.objects.create(
+            group=self.group,
+            name="박동명",
+            phone="010-2222-2222",
+            member_role=RetreatAttendee.MemberRole.MEMBER,
+        )
+        r = self.client.post(
+            self._list_url(),
+            {"user_id": user.id, "role": "teacher"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        a.refresh_from_db()
+        b.refresh_from_db()
+        self.assertIsNone(a.user_id)
+        self.assertIsNone(b.user_id)
+        created = RetreatAttendee.objects.get(group=self.group, user=user)
+        self.assertEqual(created.member_role, RetreatAttendee.MemberRole.TEACHER)
+        self.assertEqual(
+            RetreatAttendee.objects.filter(group=self.group, name="박동명").count(),
+            3,
+        )
+
+    def test_unlinked_empty_phone_claims_oldest(self):
+        """B4: 미연결·번호 없음 → id 최소 행 claim."""
+        user = self._make_user(
+            username="gm_claim_b4", real_name="최미연", phone="010-5555-0005"
+        )
+        first = RetreatAttendee.objects.create(
+            group=self.group,
+            name="최미연",
+            phone="",
+            member_role=RetreatAttendee.MemberRole.MEMBER,
+        )
+        second = RetreatAttendee.objects.create(
+            group=self.group,
+            name="최미연",
+            phone="",
+            member_role=RetreatAttendee.MemberRole.MEMBER,
+        )
+        r = self.client.post(
+            self._list_url(),
+            {"user_id": user.id, "role": "vice_leader"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(first.user_id, user.id)
+        self.assertEqual(first.member_role, RetreatAttendee.MemberRole.VICE_LEADER)
+        self.assertEqual(first.phone, "010-5555-0005")
+        self.assertIsNone(second.user_id)
+        self.assertEqual(second.member_role, RetreatAttendee.MemberRole.MEMBER)
+
+    def test_all_other_linked_creates_new_row(self):
+        """B1: 같은 이름 전부 타계정 연동 → 새 행."""
+        other = self._make_user(
+            username="gm_claim_b1_other",
+            real_name="한타계",
+            phone="010-6666-0006",
+        )
+        user = self._make_user(
+            username="gm_claim_b1", real_name="한타계", phone="010-7777-0007"
+        )
+        existing = RetreatAttendee.objects.create(
+            group=self.group,
+            user=other,
+            name="한타계",
+            phone="010-6666-0006",
+            member_role=RetreatAttendee.MemberRole.MEMBER,
+        )
+        r = self.client.post(
+            self._list_url(),
+            {"user_id": user.id, "role": "leader"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        existing.refresh_from_db()
+        self.assertEqual(existing.user_id, other.id)
+        self.assertEqual(existing.member_role, RetreatAttendee.MemberRole.MEMBER)
+        created = RetreatAttendee.objects.get(group=self.group, user=user)
+        self.assertEqual(created.member_role, RetreatAttendee.MemberRole.LEADER)
+        self.assertEqual(
+            RetreatAttendee.objects.filter(group=self.group, name="한타계").count(),
+            2,
+        )
+
+    def test_phone_match_preferred_over_empty_phone(self):
+        """번호 일치 행이 있으면 빈 번호 행보다 우선."""
+        user = self._make_user(
+            username="gm_claim_pref", real_name="정우선", phone="010-8888-0008"
+        )
+        empty = RetreatAttendee.objects.create(
+            group=self.group,
+            name="정우선",
+            phone="",
+            member_role=RetreatAttendee.MemberRole.MEMBER,
+        )
+        matched = RetreatAttendee.objects.create(
+            group=self.group,
+            name="정우선",
+            phone="010-8888-0008",
+            member_role=RetreatAttendee.MemberRole.MEMBER,
+        )
+        r = self.client.post(
+            self._list_url(),
+            {"user_id": user.id, "role": "vice_leader"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+        empty.refresh_from_db()
+        matched.refresh_from_db()
+        self.assertIsNone(empty.user_id)
+        self.assertEqual(matched.user_id, user.id)
+        self.assertEqual(matched.member_role, RetreatAttendee.MemberRole.VICE_LEADER)

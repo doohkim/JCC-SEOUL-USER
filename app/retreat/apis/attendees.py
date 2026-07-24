@@ -122,7 +122,11 @@ def _assert_user_home_group_allows(
     group: RetreatGroup,
     exclude_attendee_id: int | None = None,
 ) -> None:
-    """집회당 소속 조는 1개. 다른 조에 이미 있으면 명단 추가/연동을 막는다."""
+    """집회당 계정 ↔ 조원 행은 1:1.
+
+    같은 조·다른 조 모두, 이미 다른 조원 행에 연동된 계정은 추가/연동을 막는다.
+    (조 운영진 권한 ``RetreatGroupMembership`` 복수 배정과는 별개.)
+    """
     if user is None or not getattr(user, "pk", None):
         return
     home = home_attendee_for_user_in_event(user, event_id=group.event_id)
@@ -131,7 +135,14 @@ def _assert_user_home_group_allows(
     if exclude_attendee_id is not None and home.id == exclude_attendee_id:
         return
     if home.group_id == group.id:
-        return
+        raise ValidationError(
+            {
+                "user": (
+                    f"이미 이 집회 명단({home.group.name} · {home.name})에 "
+                    f"연동된 계정입니다. 계정당 조원은 1명만 연결할 수 있습니다."
+                )
+            }
+        )
     raise ValidationError(
         {
             "user": (
@@ -196,7 +207,10 @@ class RetreatGroupAttendeesView(APIView):
             assert_can_edit_attendee_details(request.user, group)
         data = dict(payload)
         data["group"] = group.id
-        ser = RetreatAttendeeSerializer(data=data)
+        ser = RetreatAttendeeSerializer(
+            data=data,
+            context={"user": request.user, "group": group},
+        )
         if not ser.is_valid():
             return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
         linked_user = ser.validated_data.get("user")

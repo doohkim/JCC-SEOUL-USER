@@ -255,6 +255,46 @@ def _delete_group_membership(
     )
 
 
+def _phone_match_key(raw: str) -> str:
+    """조원·프로필 번호 비교용 키. 없거나 비정상이면 빈 문자열."""
+    normalized = normalize_korea_mobile_phone((raw or "").strip())
+    return normalized or ""
+
+
+def _pick_same_name_attendee_to_claim(
+    *,
+    group: RetreatGroup,
+    name: str,
+    user_phone: str,
+) -> RetreatAttendee | None:
+    """같은 이름 미연결 조원 중 claim 대상 선택.
+
+    1. U 번호와 일치하는 미연결 행 (여러 개면 id 최소)
+    2. 번호가 비어 있는 미연결 행 (여러 개면 id 최소)
+    3. 그 외(전부 다른 번호 / 미연결 없음) → None → 새 행
+    """
+    same_name = list(
+        RetreatAttendee.objects.filter(group=group, name=name).order_by("id")
+    )
+    if not same_name:
+        return None
+
+    unlinked = [row for row in same_name if row.user_id is None]
+    if not unlinked:
+        return None
+
+    user_key = _phone_match_key(user_phone)
+    if user_key:
+        for row in unlinked:
+            if _phone_match_key(row.phone) == user_key:
+                return row
+
+    empty_phone = [row for row in unlinked if not _phone_match_key(row.phone)]
+    if empty_phone:
+        return empty_phone[0]
+    return None
+
+
 def _upsert_attendee_in_group(
     *,
     group: RetreatGroup,
@@ -268,13 +308,15 @@ def _upsert_attendee_in_group(
     phone = defaults["phone"]
     gender = defaults["gender"]
 
+    # 1. 이 조에 U 연동 행 → 역할만 갱신 (이름/번호 무시)
     attendee = RetreatAttendee.objects.filter(group=group, user=user).first()
     if attendee is None:
-        by_name = RetreatAttendee.objects.filter(group=group, name=name).first()
-        if by_name is not None and by_name.user_id != user.id:
-            # 계정 연결 해제·다른 계정 연결된 조원 행은 재연결하지 않는다.
-            return by_name
-        attendee = by_name
+        # 2~5. 같은 이름 미연결 claim 또는 새 행
+        attendee = _pick_same_name_attendee_to_claim(
+            group=group,
+            name=name,
+            user_phone=phone,
+        )
     created = attendee is None
     if created:
         attendee = RetreatAttendee(

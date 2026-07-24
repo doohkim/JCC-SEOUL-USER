@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ group.name }} · 그룹</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260724l" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260725b" />
   </head>
   <body class="has-retreat-bottom-tabs jcc-retreat-detail">
     <div class="jcc-layout">
@@ -404,10 +404,10 @@
     {% if can_add_group %}
       <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260618b" defer></script>
     {% endif %}
-    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260724l" defer></script>
+    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260725b" defer></script>
     <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
     <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618b" defer></script>
-    <script src="{% static 'retreat/manage_group.js' %}?v=20260724l" defer></script>
+    <script src="{% static 'retreat/manage_group.js' %}?v=20260725a" defer></script>
     <script>
       // 조원 수정 모달은 열릴 때 select 값을 프로그램으로 채우므로, 표시될 때 커스텀 드롭다운 라벨을 다시 동기화한다.
       document.addEventListener("DOMContentLoaded", function () {

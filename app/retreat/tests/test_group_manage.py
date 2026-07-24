@@ -1069,3 +1069,123 @@ class AttendeeProfileSyncTests(_GroupManageFixture):
         self.assertEqual(attendee.name, "프로필성도")
         self.assertEqual(attendee.gender, "male")
         self.assertEqual(attendee.phone, "010-1111-2222")
+
+
+class AttendeeEventPhoneUniqueApiTests(_GroupManageFixture):
+    """집회 단위 연락처 중복 — API 거절 (빈 번호·탈퇴 제외)."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(self.council_user)
+        self.group2 = RetreatGroup.objects.create(
+            event=self.event,
+            region=self.seoul,
+            division=self.div,
+            name="2조",
+        )
+        self.list_url = reverse("api_retreat_group_attendees", args=[self.group.id])
+        self.list_url_g2 = reverse("api_retreat_group_attendees", args=[self.group2.id])
+
+    def test_create_rejects_same_phone_in_other_group(self):
+        RetreatAttendee.objects.create(
+            group=self.group2,
+            name="기존",
+            phone="010-1234-5678",
+        )
+        r = self.client.post(
+            self.list_url,
+            {"name": "신규", "phone": "01012345678"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("phone", r.json())
+        self.assertIn("2조", r.json()["phone"][0])
+        self.assertFalse(
+            RetreatAttendee.objects.filter(group=self.group, name="신규").exists()
+        )
+
+    def test_create_allows_empty_phone_duplicates(self):
+        RetreatAttendee.objects.create(group=self.group2, name="빈번호1", phone="")
+        r = self.client.post(
+            self.list_url,
+            {"name": "빈번호2", "phone": ""},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+
+    def test_create_allows_same_phone_as_retired(self):
+        from django.utils import timezone
+
+        RetreatAttendee.objects.create(
+            group=self.group2,
+            name="탈퇴자",
+            phone="010-9999-0000",
+            account_retired_at=timezone.now(),
+        )
+        r = self.client.post(
+            self.list_url,
+            {"name": "재등록", "phone": "010-9999-0000"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)
+
+    def test_patch_rejects_duplicate_phone(self):
+        RetreatAttendee.objects.create(
+            group=self.group2,
+            name="기존",
+            phone="010-2222-3333",
+        )
+        target = RetreatAttendee.objects.create(
+            group=self.group,
+            name="수정대상",
+            phone="",
+        )
+        r = self.client.patch(
+            reverse("api_retreat_attendee_detail", args=[target.id]),
+            {"phone": "010-2222-3333"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("phone", r.json())
+        target.refresh_from_db()
+        self.assertEqual(target.phone, "")
+
+    def test_patch_same_phone_on_self_ok(self):
+        target = RetreatAttendee.objects.create(
+            group=self.group,
+            name="본인",
+            phone="010-4444-5555",
+        )
+        r = self.client.patch(
+            reverse("api_retreat_attendee_detail", args=[target.id]),
+            {"phone": "01044445555", "name": "본인수정"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        target.refresh_from_db()
+        self.assertEqual(target.phone, "010-4444-5555")
+        self.assertEqual(target.name, "본인수정")
+
+    def test_other_event_same_phone_ok(self):
+        other_event = RetreatEvent.objects.create(
+            name="다른집회",
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 9, 3),
+        )
+        other_group = RetreatGroup.objects.create(
+            event=other_event,
+            region=self.seoul,
+            division=self.div,
+            name="타집회1조",
+        )
+        RetreatAttendee.objects.create(
+            group=other_group,
+            name="타집회",
+            phone="010-7777-8888",
+        )
+        r = self.client.post(
+            self.list_url,
+            {"name": "이번집회", "phone": "010-7777-8888"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.content)

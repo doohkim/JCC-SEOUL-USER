@@ -100,6 +100,10 @@ class RetreatUserSearchView(APIView):
     ``division`` 은 ``?division=1&division=2`` 처럼 여러 번 넘기면
     대표·추가 지역·부서 소속을 합쳐 조회한다. ``q`` 가 비어 있어도
     부서·지역 필터가 있으면 그 소속 전체 목록을 돌려준다.
+
+    조원 계정 연동 피커는 ``exclude_event_linked=1&event_id=…`` 로
+    이미 해당 집회 명단에 연동된 계정을 제외한다.
+    수정 중인 조원은 ``exclude_attendee_id`` 로 예외(해제 후 재선택)한다.
     """
 
     permission_classes = [IsAuthenticated]
@@ -130,6 +134,13 @@ class RetreatUserSearchView(APIView):
             "true",
             "yes",
         )
+        # 조원 계정 연동 피커: 이미 이 집회 명단에 연동된 계정은 목록에서 제외.
+        exclude_event_linked = (
+            request.query_params.get("exclude_event_linked") or ""
+        ).strip().lower() in ("1", "true", "yes")
+        exclude_attendee_id = self._as_int(
+            request.query_params.get("exclude_attendee_id")
+        )
         max_limit = _ALL_MAX_LIMIT if all_users else _MAX_LIMIT
         if staff_pool and event_id:
             max_limit = max(max_limit, 100)
@@ -146,12 +157,20 @@ class RetreatUserSearchView(APIView):
             if not event_staff_eligible_division_ids(event_id):
                 return Response([])
             qs = staff_pool_users_for_event(event_id, assign_kind=staff_pool_kind)
-        elif event_id:
+        elif event_id and not exclude_event_linked:
             event_user_ids = RetreatAttendee.objects.filter(
                 group__event_id=event_id,
                 user_id__isnull=False,
             ).values_list("user_id", flat=True)
             qs = qs.filter(id__in=event_user_ids)
+        if exclude_event_linked and event_id:
+            linked_qs = RetreatAttendee.objects.filter(
+                group__event_id=event_id,
+                user_id__isnull=False,
+            )
+            if exclude_attendee_id is not None:
+                linked_qs = linked_qs.exclude(pk=exclude_attendee_id)
+            qs = qs.exclude(id__in=linked_qs.values_list("user_id", flat=True))
         valid_sources = {c[0] for c in User.SignupSource.choices}
         if signup_source in valid_sources:
             qs = qs.filter(signup_source=signup_source)

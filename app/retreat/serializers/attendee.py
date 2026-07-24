@@ -14,6 +14,7 @@ from retreat.services.check_in_stamps import (
     is_expected_timestamps_locked,
 )
 from retreat.services.lodging_stay import lodging_stay_display
+from retreat.services.attendee_phone import find_event_phone_duplicate
 from retreat.services.group_sync import apply_attendee_profile_defaults
 from users.validators import normalize_korea_mobile_phone
 
@@ -208,7 +209,45 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"lodging_room": "불참 조원에게는 숙소를 배정할 수 없습니다."}
             )
+        self._validate_event_phone_unique(attrs)
         return attrs
+
+    def _validate_event_phone_unique(self, attrs: dict) -> None:
+        """집회 내 동일 연락처(비어 있지 않음·비탈퇴) 중복 등록 거절."""
+        if "phone" not in attrs:
+            return
+        phone = attrs.get("phone") or ""
+        if not phone:
+            return
+
+        group = self.context.get("group")
+        if group is None:
+            group = attrs.get("group") or getattr(self.instance, "group", None)
+        if group is None:
+            return
+        event_id = getattr(group, "event_id", None) or getattr(
+            getattr(group, "event", None), "id", None
+        )
+        if not event_id:
+            return
+
+        exclude_id = self.instance.pk if self.instance is not None else None
+        conflict = find_event_phone_duplicate(
+            event_id=event_id,
+            phone=phone,
+            exclude_attendee_id=exclude_id,
+        )
+        if conflict is None:
+            return
+        group_name = getattr(conflict.group, "name", "") or "다른 조"
+        raise serializers.ValidationError(
+            {
+                "phone": (
+                    f"이미 {group_name}에 같은 연락처로 등록된 조원이 있습니다 "
+                    f"({conflict.name})."
+                )
+            }
+        )
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

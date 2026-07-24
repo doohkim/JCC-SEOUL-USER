@@ -9,6 +9,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient, APITestCase
 
 from retreat.models import (
+    RetreatAttendee,
     RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
@@ -264,3 +265,44 @@ class UserSearchApiTests(APITestCase):
         self.assertEqual(
             affiliation_division_ids, sorted([div_outside.id, self.div.id, div_univ.id])
         )
+
+    def test_exclude_event_linked_hides_already_linked_users(self):
+        UserDivisionTeam.objects.create(
+            user=self.target_a, division=self.div, is_primary=True
+        )
+        UserDivisionTeam.objects.create(
+            user=self.target_b, division=self.div, is_primary=True
+        )
+        linked = RetreatAttendee.objects.create(
+            group=self.group,
+            user=self.target_a,
+            name="김도오",
+        )
+        self.client.force_authenticate(self.leader)
+        r = self.client.get(
+            reverse("api_retreat_user_search"),
+            {
+                "division": self.div.id,
+                "event_id": self.event.id,
+                "exclude_event_linked": "1",
+                "q": "kakao",
+            },
+        )
+        self.assertEqual(r.status_code, 200)
+        usernames = [u["username"] for u in r.json()]
+        self.assertNotIn(self.target_a.username, usernames)
+        self.assertIn(self.target_b.username, usernames)
+
+        r2 = self.client.get(
+            reverse("api_retreat_user_search"),
+            {
+                "division": self.div.id,
+                "event_id": self.event.id,
+                "exclude_event_linked": "1",
+                "exclude_attendee_id": linked.id,
+                "q": "kakao",
+            },
+        )
+        self.assertEqual(r2.status_code, 200)
+        usernames2 = [u["username"] for u in r2.json()]
+        self.assertIn(self.target_a.username, usernames2)

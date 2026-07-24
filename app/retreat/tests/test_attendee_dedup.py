@@ -282,3 +282,80 @@ class AttendeeDedupMembershipApiTests(_AttendeeDedupFixture):
             ).count(),
             1,
         )
+
+
+class SameGroupUserLinkUniquenessTests(_AttendeeDedupFixture):
+    """집회당 계정↔조원 1:1 — 같은 조 중복 연동도 거부."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(self.council)
+
+    def test_cannot_create_second_attendee_with_same_user_in_same_group(self):
+        target = User.objects.create_user(username="dedup_same_group", password="x")
+        UserProfile.objects.create(user=target, real_name="동일계정")
+        url = reverse("api_retreat_group_attendees", args=[self.group1.id])
+        r1 = self.client.post(
+            url,
+            {"user": target.id, "name": "동일계정", "member_role": "vice_leader"},
+            format="json",
+        )
+        self.assertEqual(r1.status_code, 201, r1.content)
+        r2 = self.client.post(
+            url,
+            {"user": target.id, "name": "동일계정", "member_role": "vice_leader"},
+            format="json",
+        )
+        self.assertEqual(r2.status_code, 400, r2.content)
+        self.assertIn("user", r2.json())
+        self.assertEqual(
+            RetreatAttendee.objects.filter(
+                user=target, group__event=self.event
+            ).count(),
+            1,
+        )
+
+    def test_cannot_patch_other_attendee_to_already_linked_user(self):
+        target = User.objects.create_user(username="dedup_patch_link", password="x")
+        UserProfile.objects.create(user=target, real_name="패치연동")
+        linked = RetreatAttendee.objects.create(
+            group=self.group1,
+            user=target,
+            name="패치연동",
+            member_role=RetreatAttendee.MemberRole.VICE_LEADER,
+        )
+        other = RetreatAttendee.objects.create(
+            group=self.group1,
+            name="미연동행",
+            member_role=RetreatAttendee.MemberRole.VICE_LEADER,
+        )
+        r = self.client.patch(
+            reverse("api_retreat_attendee_detail", args=[other.id]),
+            {"user": target.id},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("user", r.json())
+        other.refresh_from_db()
+        self.assertIsNone(other.user_id)
+        linked.refresh_from_db()
+        self.assertEqual(linked.user_id, target.id)
+
+    def test_can_keep_same_user_on_patch(self):
+        target = User.objects.create_user(username="dedup_keep_link", password="x")
+        UserProfile.objects.create(user=target, real_name="유지연동")
+        attendee = RetreatAttendee.objects.create(
+            group=self.group1,
+            user=target,
+            name="유지연동",
+            member_role=RetreatAttendee.MemberRole.MEMBER,
+        )
+        r = self.client.patch(
+            reverse("api_retreat_attendee_detail", args=[attendee.id]),
+            {"user": target.id, "memo": "ok"},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        attendee.refresh_from_db()
+        self.assertEqual(attendee.user_id, target.id)
+        self.assertEqual(attendee.memo, "ok")

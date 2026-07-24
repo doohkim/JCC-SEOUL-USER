@@ -1832,6 +1832,14 @@
       } else if (ctx.groupRegionId) {
         params.set("region", String(ctx.groupRegionId));
       }
+      // 집회당 계정↔조원 1:1 — 이미 명단 연동된 계정은 검색에서 제외.
+      if (ctx.eventId) {
+        params.set("event_id", String(ctx.eventId));
+        params.set("exclude_event_linked", "1");
+        if (modalAttendeeId) {
+          params.set("exclude_attendee_id", String(modalAttendeeId));
+        }
+      }
       return params;
     }
 
