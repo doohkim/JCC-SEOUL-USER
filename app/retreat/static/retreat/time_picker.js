@@ -117,13 +117,11 @@
     inp.setAttribute("aria-label", ariaLabel);
     inp.setAttribute("role", "combobox");
     inp.setAttribute("aria-haspopup", "listbox");
-    if (opts.readonly) {
-      inp.readOnly = true;
-    } else {
-      inp.setAttribute("inputmode", "numeric");
-      inp.maxLength = 2;
-      inp.size = 2;
-    }
+    inp.readOnly = true;
+    inp.tabIndex = -1;
+    inp.setAttribute("inputmode", "none");
+    inp.setAttribute("aria-readonly", "true");
+    inp.size = 2;
     const caret = document.createElement("span");
     caret.className = "jcc-dtp-caret";
     caret.setAttribute("aria-hidden", "true");
@@ -282,25 +280,9 @@
         if (e.target.closest(".jcc-dtp-opt")) return;
         if (e.target.closest(".jcc-dtp-dropdown")) return;
         e.preventDefault();
-        const onInp = e.target === ctl.inp;
         if (openDd === ctl) {
-          if (onInp) {
-            try {
-              ctl.inp.focus({ preventScroll: true });
-            } catch (_err) {
-              ctl.inp.focus();
-            }
-            return;
-          }
           closeDropdown();
           return;
-        }
-        if (onInp) {
-          try {
-            ctl.inp.focus({ preventScroll: true });
-          } catch (_err) {
-            ctl.inp.focus();
-          }
         }
         openDropdown(ctl);
       });

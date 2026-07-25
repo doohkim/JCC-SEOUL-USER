@@ -432,14 +432,14 @@
     grid.className = "jcc-dtp-grid";
     pop.appendChild(grid);
 
-    // 시간 영역 (시/분 스테퍼 + 직접 입력)
+    // 시간 영역 (시/분 목록 선택 전용)
     const timeRow = document.createElement("div");
     timeRow.className = "jcc-dtp-time";
     const timeLbl = document.createElement("span");
     timeLbl.className = "jcc-dtp-timeLbl";
     timeLbl.textContent = "시간";
 
-    // items: [{ value, label }]. opts.readonly=true 면 직접 입력 불가(목록 선택 전용)
+    // items: [{ value, label }]. 시·분은 직접 입력 없이 목록으로만 선택한다.
     function buildSelect(ariaLabel, items, opts) {
       opts = opts || {};
       const wrap = document.createElement("div");
@@ -451,13 +451,11 @@
       inp.setAttribute("aria-label", ariaLabel);
       inp.setAttribute("role", "combobox");
       inp.setAttribute("aria-haspopup", "listbox");
-      if (opts.readonly) {
-        inp.readOnly = true;
-      } else {
-        inp.setAttribute("inputmode", "numeric");
-        inp.maxLength = 2;
-        inp.size = 2;
-      }
+      inp.readOnly = true;
+      inp.tabIndex = -1;
+      inp.setAttribute("inputmode", "none");
+      inp.setAttribute("aria-readonly", "true");
+      inp.size = 2;
       const caret = document.createElement("span");
       caret.className = "jcc-dtp-caret";
       caret.setAttribute("aria-hidden", "true");
@@ -675,25 +673,9 @@
         if (e.target.closest(".jcc-dtp-opt")) return;
         if (e.target.closest(".jcc-dtp-dropdown")) return;
         e.preventDefault();
-        const onInp = e.target === ctl.inp;
         if (openDd === ctl) {
-          if (onInp) {
-            try {
-              ctl.inp.focus({ preventScroll: true });
-            } catch (_err) {
-              ctl.inp.focus();
-            }
-            return;
-          }
           closeDropdown();
           return;
-        }
-        if (onInp) {
-          try {
-            ctl.inp.focus({ preventScroll: true });
-          } catch (_err) {
-            ctl.inp.focus();
-          }
         }
         openDropdown(ctl);
       });

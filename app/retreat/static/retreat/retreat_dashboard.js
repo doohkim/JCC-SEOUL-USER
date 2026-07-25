@@ -26,6 +26,9 @@
     in: document.querySelectorAll("[data-total-in]"),
     out: document.querySelectorAll("[data-total-out]"),
     attended: document.querySelectorAll("[data-total-attended]"),
+    male: document.querySelectorAll("[data-total-male]"),
+    female: document.querySelectorAll("[data-total-female]"),
+    genderUnknown: document.querySelectorAll("[data-total-gender-unknown]"),
   };
 
   const REFRESH_MS = 60000;
@@ -82,16 +85,17 @@
       .join(" ");
     const count = row.checked_in ?? 0;
     const tr = document.createElement("tr");
+    if (count === 0) tr.classList.add("is-zero");
     tr.innerHTML =
-      `<td>${escapeHtml(row.name)}</td>` +
+      `<td class="jcc-retreat-tablePrimary">${escapeHtml(row.name)}</td>` +
       `<td class="jcc-retreat-divRegionCell"><div class="jcc-retreat-scopeTags">${regionCell}</div></td>` +
-      `<td>${count}</td>`;
+      `<td class="jcc-retreat-numCell"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--in">${count}</strong></td>`;
     return tr;
   }
 
   function buildAttTable(rows) {
     const table = document.createElement("table");
-    table.className = "jcc-table jcc-retreat-attTable";
+    table.className = "jcc-table jcc-retreat-attTable jcc-retreat-dashboardTable";
     table.innerHTML =
       "<thead><tr><th>조</th><th>지역·부서</th><th>참석</th></tr></thead>";
     const tb = document.createElement("tbody");
@@ -124,13 +128,19 @@
       const region = escapeHtml((row.region || "").trim());
       const division = escapeHtml((row.division || "").trim());
       const regionCell = division ? `${region} · ${division}` : region;
+      const pending = row.pending ?? 0;
+      const checkedIn = row.checked_in ?? 0;
+      const checkedOut = row.checked_out ?? 0;
+      const attended = row.attended ?? 0;
       tr.innerHTML = `
-        <td class="jcc-retreat-divRegionCell">${regionCell}</td>
-        <td>${escapeHtml(row.group_range)}</td>
-        <td>${row.pending}</td>
-        <td>${row.checked_in}</td>
-        <td>${row.checked_out}</td>
-        <td>${row.attended}</td>`;
+        <td class="jcc-retreat-divRegionCell jcc-retreat-tablePrimary">${regionCell}</td>
+        <td class="jcc-retreat-tableSecondary">${escapeHtml(row.group_range)}</td>
+        <td class="jcc-retreat-numCell"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--male">${row.male ?? 0}</strong></td>
+        <td class="jcc-retreat-numCell"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--female">${row.female ?? 0}</strong></td>
+        <td class="jcc-retreat-numCell"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--pending">${pending}</strong></td>
+        <td class="jcc-retreat-numCell"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--in">${checkedIn}</strong></td>
+        <td class="jcc-retreat-numCell"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--out">${checkedOut}</strong></td>
+        <td class="jcc-retreat-numCell"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--total">${attended}</strong></td>`;
       divBody.appendChild(tr);
     });
     const setTotal = (nodes, val) => {
@@ -142,6 +152,21 @@
     setTotal(totalEls.in, grand.checked_in ?? 0);
     setTotal(totalEls.out, grand.checked_out ?? 0);
     setTotal(totalEls.attended, grand.attended ?? 0);
+    setTotal(totalEls.male, grand.male ?? 0);
+    setTotal(totalEls.female, grand.female ?? 0);
+    setTotal(totalEls.genderUnknown, grand.gender_unknown ?? 0);
+  }
+
+  function travelKindFromRow(row) {
+    if (!row) return "other";
+    if (row.code === "__unset__") return "unset";
+    if (row.code === "__custom__" || row.manual) return "own";
+    const label = String(row.label || "");
+    if (label.includes("선발")) return "advance";
+    if (label.includes("후발")) return "rear";
+    if (label.includes("본진")) return "main";
+    if (label.includes("조기")) return "early";
+    return "other";
   }
 
   function renderTravelRows(tbody, rows) {
@@ -149,11 +174,19 @@
     tbody.innerHTML = "";
     (rows || []).forEach((row) => {
       const tr = document.createElement("tr");
+      const kind = travelKindFromRow(row);
+      tr.classList.add("jcc-retreat-travelRow", `jcc-retreat-travelRow--${kind}`);
       if (row.manual) tr.classList.add("is-manual");
       if (row.code === "__unset__") tr.classList.add("is-unset");
+      const count = row.count ?? 0;
+      if (count === 0) tr.classList.add("is-zero");
       tr.innerHTML =
-        `<td>${escapeHtml(row.label || "")}</td>` +
-        `<td><strong>${row.count ?? 0}</strong></td>`;
+        `<td class="jcc-retreat-tablePrimary"><span class="jcc-retreat-travelLabel">${escapeHtml(row.label || "")}</span></td>` +
+        `<td class="jcc-retreat-numCell jcc-retreat-travelCountCell">` +
+        `<span class="jcc-retreat-travelCountWrap">` +
+        `<strong class="jcc-retreat-travelCount">${count}</strong>` +
+        `<span class="jcc-retreat-travelCountUnit">명</span>` +
+        `</span></td>`;
       tbody.appendChild(tr);
     });
   }
@@ -166,17 +199,17 @@
     thead.innerHTML = "";
     tbody.innerHTML = "";
     const cols = columns || [];
+    const kinds = cols.map((c) => travelKindFromRow(c));
     const headTr = document.createElement("tr");
     headTr.innerHTML =
       "<th>조</th>" +
       cols
-        .map((c) => {
-          const cls = c.manual
-            ? ' class="is-manual"'
-            : c.code === "__unset__"
-              ? ' class="is-unset"'
-              : "";
-          return `<th${cls}>${escapeHtml(c.label || "")}</th>`;
+        .map((c, i) => {
+          const kind = kinds[i];
+          const classes = [`jcc-retreat-travelKind--${kind}`];
+          if (c.manual) classes.push("is-manual");
+          if (c.code === "__unset__") classes.push("is-unset");
+          return `<th class="${classes.join(" ")}">${escapeHtml(c.label || "")}</th>`;
         })
         .join("") +
       "<th>합계</th>";
@@ -188,12 +221,17 @@
       const cells = counts
         .map((n, i) => {
           const col = cols[i] || {};
-          const cls = col.manual
-            ? ' class="is-manual"'
-            : col.code === "__unset__"
-              ? ' class="is-unset"'
-              : "";
-          return `<td${cls}>${n ?? 0}</td>`;
+          const kind = kinds[i] || "other";
+          const count = n ?? 0;
+          const classes = [
+            "jcc-retreat-travelMatrixCell",
+            `jcc-retreat-travelKind--${kind}`,
+          ];
+          if (col.manual) classes.push("is-manual");
+          if (col.code === "__unset__") classes.push("is-unset");
+          if (count > 0) classes.push("has-value");
+          else classes.push("is-zero");
+          return `<td class="${classes.join(" ")}"><span>${count}</span></td>`;
         })
         .join("");
       const name = escapeHtml(row.name || "");
@@ -204,7 +242,7 @@
       tr.innerHTML =
         `<td class="jcc-retreat-travelByGroupName">${label}</td>` +
         cells +
-        `<td><strong>${row[totalKey] ?? 0}</strong></td>`;
+        `<td class="jcc-retreat-travelMatrixTotal"><strong>${row[totalKey] ?? 0}</strong></td>`;
       tbody.appendChild(tr);
     });
   }

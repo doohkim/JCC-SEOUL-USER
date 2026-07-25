@@ -100,6 +100,51 @@ class RetreatDashboardApiTests(APITestCase):
         self.assertEqual(len(data["hourly"]), 1)
         self.assertEqual(data["hourly"][0]["checked_in"], 1)
 
+    def test_dashboard_gender_counts_by_division(self):
+        """참석자 명단 gender 기준 부서별 남/여/미지정 집계."""
+        self.attendee.gender = RetreatAttendee.Gender.MALE
+        self.attendee.save(update_fields=["gender"])
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="김영희",
+            gender=RetreatAttendee.Gender.FEMALE,
+        )
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="미지정자",
+            gender="",
+        )
+        # 불참은 성별 집계에서 제외
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="불참남",
+            gender=RetreatAttendee.Gender.MALE,
+            participation_status=RetreatAttendee.ParticipationStatus.ABSENT,
+        )
+
+        self.client.force_authenticate(self.leader)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        r = self.client.get(url)
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+
+        self.assertEqual(data["by_group"][0]["male"], 1)
+        self.assertEqual(data["by_group"][0]["female"], 1)
+        self.assertEqual(data["by_group"][0]["gender_unknown"], 1)
+        self.assertEqual(data["by_group"][0]["total"], 3)
+
+        self.assertEqual(len(data["by_division"]), 1)
+        div = data["by_division"][0]
+        self.assertEqual(div["male"], 1)
+        self.assertEqual(div["female"], 1)
+        self.assertEqual(div["gender_unknown"], 1)
+        self.assertEqual(div["total"], 3)
+
+        self.assertEqual(data["grand_total"]["male"], 1)
+        self.assertEqual(data["grand_total"]["female"], 1)
+        self.assertEqual(data["grand_total"]["gender_unknown"], 1)
+        self.assertEqual(data["grand_total"]["total"], 3)
+
     def test_dashboard_travel_wave_counts(self):
         """입·퇴실 예정 시각을 교통 프리셋 웨이브에 매칭해 집계한다."""
         tz = timezone.get_current_timezone()

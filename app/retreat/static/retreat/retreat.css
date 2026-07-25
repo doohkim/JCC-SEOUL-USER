@@ -716,37 +716,281 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   align-items: start;
 }
 .jcc-retreat-travelDashSub {
-  margin: 0 0 0.5rem;
-  font-size: 0.95rem;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.65rem;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+.jcc-retreat-travelDot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #94a3b8;
+  box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.12);
+}
+.jcc-retreat-travelDashCol--arrival .jcc-retreat-travelDashSub {
+  color: #15803d;
+}
+.jcc-retreat-travelDashCol--arrival .jcc-retreat-travelDot {
+  background: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+}
+.jcc-retreat-travelDashCol--departure .jcc-retreat-travelDashSub {
+  color: #c2410c;
+}
+.jcc-retreat-travelDashCol--departure .jcc-retreat-travelDot {
+  background: #ea580c;
+  box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.14);
 }
 .jcc-retreat-travelDashCol .jcc-table td:last-child,
 .jcc-retreat-travelDashCol .jcc-table th:last-child {
   text-align: right;
-  width: 4.5rem;
 }
-.jcc-retreat-travelDashCol tr.is-manual td {
-  color: #475467;
+.jcc-retreat-travelSummaryTable {
+  table-layout: fixed;
+  width: 100%;
 }
-.jcc-retreat-travelDashCol tr.is-unset td {
-  color: #98a2b3;
+.jcc-retreat-travelSummaryTable th:first-child,
+.jcc-retreat-travelSummaryTable td:first-child {
+  width: 62%;
+  min-width: 0;
 }
+.jcc-retreat-travelSummaryTable th:last-child,
+.jcc-retreat-travelSummaryTable td:last-child {
+  width: 38%;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.jcc-retreat-travelLabel {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.14rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.3;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jcc-retreat-travelSummaryTable tbody td {
+  padding-top: 0.72rem;
+  padding-bottom: 0.72rem;
+}
+.jcc-retreat-travelSummaryTable tbody tr.is-zero td {
+  opacity: 0.58;
+}
+.jcc-retreat-travelCountCell {
+  text-align: right !important;
+}
+.jcc-retreat-travelCountWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.22rem;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+}
+.jcc-retreat-travelCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 2.6rem;
+  min-height: 1.7rem;
+  padding: 0.12rem 0.48rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.jcc-retreat-travelCountUnit {
+  flex: 0 0 auto;
+  margin-left: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 교통 종류별 색: 선발대·본진·후발대·조기·자차·미설정·기타 */
+.jcc-retreat-travelRow--advance .jcc-retreat-travelLabel,
+.jcc-retreat-travelKind--advance {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.28);
+}
+.jcc-retreat-travelRow--advance .jcc-retreat-travelCount {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.14);
+}
+.jcc-retreat-travelRow--main .jcc-retreat-travelLabel,
+.jcc-retreat-travelKind--main {
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.28);
+}
+.jcc-retreat-travelRow--main .jcc-retreat-travelCount {
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.14);
+}
+.jcc-retreat-travelRow--rear .jcc-retreat-travelLabel,
+.jcc-retreat-travelKind--rear {
+  color: #6d28d9;
+  background: rgba(139, 92, 246, 0.12);
+  border-color: rgba(139, 92, 246, 0.28);
+}
+.jcc-retreat-travelRow--rear .jcc-retreat-travelCount {
+  color: #6d28d9;
+  background: rgba(139, 92, 246, 0.14);
+}
+.jcc-retreat-travelRow--early .jcc-retreat-travelLabel,
+.jcc-retreat-travelKind--early {
+  color: #0f766e;
+  background: rgba(20, 184, 166, 0.12);
+  border-color: rgba(20, 184, 166, 0.28);
+}
+.jcc-retreat-travelRow--early .jcc-retreat-travelCount {
+  color: #0f766e;
+  background: rgba(20, 184, 166, 0.14);
+}
+.jcc-retreat-travelRow--own .jcc-retreat-travelLabel,
+.jcc-retreat-travelKind--own {
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.16);
+  border-color: rgba(148, 163, 184, 0.32);
+}
+.jcc-retreat-travelRow--own .jcc-retreat-travelCount {
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.18);
+}
+.jcc-retreat-travelRow--unset .jcc-retreat-travelLabel,
+.jcc-retreat-travelKind--unset {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+.jcc-retreat-travelRow--unset .jcc-retreat-travelCount {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.12);
+}
+.jcc-retreat-travelRow--other .jcc-retreat-travelLabel,
+.jcc-retreat-travelKind--other {
+  color: #0369a1;
+  background: rgba(14, 165, 233, 0.12);
+  border-color: rgba(14, 165, 233, 0.28);
+}
+.jcc-retreat-travelRow--other .jcc-retreat-travelCount {
+  color: #0369a1;
+  background: rgba(14, 165, 233, 0.14);
+}
+
+.jcc-retreat-travelMatrixCell.jcc-retreat-travelKind--advance.has-value span {
+  color: #b45309;
+  background: transparent;
+}
+.jcc-retreat-travelMatrixCell.jcc-retreat-travelKind--main.has-value span {
+  color: #1d4ed8;
+  background: transparent;
+}
+.jcc-retreat-travelMatrixCell.jcc-retreat-travelKind--rear.has-value span {
+  color: #6d28d9;
+  background: transparent;
+}
+.jcc-retreat-travelMatrixCell.jcc-retreat-travelKind--early.has-value span {
+  color: #0f766e;
+  background: transparent;
+}
+.jcc-retreat-travelMatrixCell.jcc-retreat-travelKind--own.has-value span {
+  color: #64748b;
+  background: transparent;
+}
+.jcc-retreat-travelMatrixCell.jcc-retreat-travelKind--unset.has-value span {
+  color: #94a3b8;
+  background: transparent;
+}
+.jcc-retreat-travelMatrixCell.jcc-retreat-travelKind--other.has-value span {
+  color: #0369a1;
+  background: transparent;
+}
+
 @media (max-width: 720px) {
   .jcc-retreat-travelDashGrid {
     grid-template-columns: minmax(0, 1fr);
+    gap: 0.85rem;
+  }
+  .jcc-retreat-travelSummaryTable th:first-child,
+  .jcc-retreat-travelSummaryTable td:first-child {
+    width: 58%;
+  }
+  .jcc-retreat-travelSummaryTable th:last-child,
+  .jcc-retreat-travelSummaryTable td:last-child {
+    width: 42%;
+  }
+  .jcc-retreat-travelSummaryTable tbody td {
+    padding-top: 0.62rem;
+    padding-bottom: 0.62rem;
+  }
+  .jcc-retreat-travelLabel {
+    font-size: 0.76rem;
+    padding: 0.12rem 0.45rem;
+  }
+  .jcc-retreat-travelCount {
+    min-width: 2.4rem;
+    min-height: 1.55rem;
+    font-size: 0.84rem;
+    padding: 0.1rem 0.4rem;
+  }
+  .jcc-retreat-travelCountUnit {
+    font-size: 0.68rem;
   }
 }
 .jcc-retreat-travelByGroupDash {
   margin-top: 1rem;
 }
-.jcc-retreat-travelByGroupTable {
-  font-size: 0.85rem;
-  white-space: nowrap;
+.jcc-retreat-travelByGroupDash .jcc-retreat-travelDashGrid {
+  gap: 1.25rem;
 }
-.jcc-retreat-travelByGroupTable th,
-.jcc-retreat-travelByGroupTable td {
-  text-align: right;
-  padding: 0.4rem 0.45rem;
+.jcc-retreat-travelByGroupTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--card, #fff);
+  font-size: 0.84rem;
+}
+.jcc-retreat-travelByGroupTable thead th {
+  padding: 0.62rem 0.4rem;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  color: color-mix(in srgb, var(--text) 72%, var(--muted));
+  background: color-mix(in srgb, var(--surface-2) 70%, var(--card));
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.jcc-retreat-travelByGroupTable tbody td {
+  padding: 0.55rem 0.35rem;
+  text-align: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: var(--card, #fff);
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+.jcc-retreat-travelByGroupTable tbody tr:last-child td {
+  border-bottom: none;
+}
+.jcc-retreat-travelByGroupTable tbody tr:hover td {
+  background: color-mix(in srgb, var(--accent) 5%, var(--card));
 }
 .jcc-retreat-travelByGroupTable th:first-child,
 .jcc-retreat-travelByGroupTable td:first-child {
@@ -754,31 +998,118 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   position: sticky;
   left: 0;
   z-index: 1;
+  min-width: 5.2rem;
+  max-width: 7.5rem;
+  padding-left: 0.75rem;
+  padding-right: 0.55rem;
   background: var(--card, #fff);
-  min-width: 5.5rem;
+  border-right: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
 }
 .jcc-retreat-travelByGroupTable thead th:first-child {
   z-index: 2;
+  background: color-mix(in srgb, var(--surface-2) 70%, var(--card));
+}
+.jcc-retreat-travelByGroupTable tbody tr:hover td:first-child {
+  background: color-mix(in srgb, var(--accent) 5%, var(--card));
 }
 .jcc-retreat-travelByGroupName {
-  font-weight: 600;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.25;
+  white-space: nowrap;
 }
 .jcc-retreat-travelByGroupMeta {
   display: block;
-  font-weight: 400;
-  font-size: 0.72rem;
-  color: #98a2b3;
-  line-height: 1.2;
-  margin-top: 0.1rem;
+  font-weight: 500;
+  font-size: 0.68rem;
+  color: var(--muted);
+  line-height: 1.25;
+  margin-top: 0.12rem;
   white-space: normal;
 }
-.jcc-retreat-travelByGroupTable th.is-manual,
-.jcc-retreat-travelByGroupTable td.is-manual {
-  color: #475467;
+/* 헤더만 교통 종류 색 — 본문은 글자색만 */
+.jcc-retreat-travelByGroupTable thead th.jcc-retreat-travelKind--advance {
+  color: #b45309;
 }
-.jcc-retreat-travelByGroupTable th.is-unset,
-.jcc-retreat-travelByGroupTable td.is-unset {
-  color: #98a2b3;
+.jcc-retreat-travelByGroupTable thead th.jcc-retreat-travelKind--main {
+  color: #1d4ed8;
+}
+.jcc-retreat-travelByGroupTable thead th.jcc-retreat-travelKind--rear {
+  color: #6d28d9;
+}
+.jcc-retreat-travelByGroupTable thead th.jcc-retreat-travelKind--early {
+  color: #0f766e;
+}
+.jcc-retreat-travelByGroupTable thead th.jcc-retreat-travelKind--own {
+  color: #64748b;
+}
+.jcc-retreat-travelByGroupTable thead th.jcc-retreat-travelKind--unset {
+  color: #94a3b8;
+}
+.jcc-retreat-travelByGroupTable thead th.jcc-retreat-travelKind--other {
+  color: #0369a1;
+}
+.jcc-retreat-travelMatrixCell span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.55rem;
+  padding: 0;
+  border-radius: 0;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  background: transparent;
+}
+.jcc-retreat-travelMatrixCell.is-zero span {
+  color: color-mix(in srgb, var(--muted) 55%, transparent);
+  font-weight: 500;
+  background: transparent;
+}
+.jcc-retreat-travelMatrixTotal {
+  padding-right: 0.65rem !important;
+}
+.jcc-retreat-travelMatrixTotal strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.9rem;
+  min-height: 1.55rem;
+  padding: 0.06rem 0.4rem;
+  border-radius: 8px;
+  color: #4338ca;
+  background: rgba(99, 102, 241, 0.1);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 720px) {
+  .jcc-retreat-travelByGroupDash .jcc-retreat-travelDashGrid {
+    gap: 0.85rem;
+  }
+  .jcc-retreat-travelByGroupTable {
+    font-size: 0.78rem;
+  }
+  .jcc-retreat-travelByGroupTable thead th {
+    font-size: 0.66rem;
+    padding: 0.5rem 0.28rem;
+  }
+  .jcc-retreat-travelByGroupTable tbody td {
+    padding: 0.45rem 0.22rem;
+  }
+  .jcc-retreat-travelByGroupTable th:first-child,
+  .jcc-retreat-travelByGroupTable td:first-child {
+    min-width: 4.4rem;
+    max-width: 5.8rem;
+    padding-left: 0.55rem;
+  }
+  .jcc-retreat-travelByGroupMeta {
+    font-size: 0.62rem;
+  }
+  .jcc-retreat-travelMatrixTotal strong {
+    min-width: 1.7rem;
+    min-height: 1.4rem;
+    font-size: 0.78rem;
+  }
 }
 .jcc-retreat-dashFull {
   grid-column: 1 / -1;
@@ -856,6 +1187,11 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   color: #4338ca;
   border-color: rgba(99, 102, 241, 0.3);
 }
+.jcc-retreat-statPill--departure {
+  background: rgba(234, 88, 12, 0.12);
+  color: #c2410c;
+  border-color: rgba(234, 88, 12, 0.28);
+}
 
 /* ── 대시보드 상단 요약 카드(실시간 참석·숙소 배정·차량 지원) ── */
 .jcc-retreat-summaryCards {
@@ -876,7 +1212,7 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   }
   .jcc-retreat-summaryCard-body {
     width: 100%;
-    justify-content: center;
+    justify-content: flex-start;
   }
   .jcc-retreat-summaryCard-body .jcc-retreat-summaryCard-tag {
     position: absolute;
@@ -893,15 +1229,14 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  /* 카드 내용 정중앙 배치(같은 행 카드는 그리드 stretch로 높이가 같아져 세로 중앙도 맞음) */
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  text-align: center;
+  text-align: left;
 }
 .jcc-retreat-summaryCard-head {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.55rem;
 }
 .jcc-retreat-summaryCard-icon {
@@ -937,7 +1272,7 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 .jcc-retreat-summaryCard-body {
   display: flex;
   align-items: baseline;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
@@ -1146,6 +1481,28 @@ body.has-retreat-bottom-tabs .jcc-retreat-staffRosterTable .jcc-retreat-staffSco
   margin: 0 0 0.75rem 0;
   font-size: 1rem;
 }
+.jcc-retreat-dashboardSectionHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+.jcc-retreat-dashboardSectionHead .jcc-retreat-sectionTitle {
+  margin-bottom: 0.2rem;
+  font-size: 1.08rem;
+  letter-spacing: -0.015em;
+}
+.jcc-retreat-sectionDesc {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.jcc-retreat-dashboardCard {
+  padding: 1.25rem;
+  border-radius: 18px;
+}
 
 /* ── 대시보드 통계 표(실시간 참석·지역부서별·시간대별) 토스풍 통일 레이아웃 ── */
 .jcc-retreat-dashGrid table {
@@ -1186,28 +1543,206 @@ body.has-retreat-bottom-tabs .jcc-retreat-staffRosterTable .jcc-retreat-staffSco
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-/* 지역·부서별 표의 입실전/입실/퇴실/참석 숫자는 좌측 정렬(헤더 아래로 정렬) */
-#divisionTable th:nth-child(n + 3),
-#divisionTable td:nth-child(n + 3) {
-  text-align: left;
-  font-variant-numeric: tabular-nums;
-}
+/* 지역·부서별: 텍스트 열은 좌측, 숫자 열은 균등·가운데 정렬로 간격 균형 */
 #divisionTable {
   table-layout: fixed;
   width: 100%;
-  min-width: 48rem;
+  min-width: 52rem;
+}
+#divisionTable th,
+#divisionTable td {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  vertical-align: middle;
 }
 #divisionTable th:first-child,
 #divisionTable td:first-child {
-  width: 24%;
+  width: 19%;
+  padding-left: 0.85rem;
 }
 #divisionTable th:nth-child(2),
 #divisionTable td:nth-child(2) {
-  width: 20%;
+  width: 8%;
+  white-space: nowrap;
 }
-#divisionTable th:nth-child(n + 3),
-#divisionTable td:nth-child(n + 3) {
-  width: 14%;
+/* 남 · 여 · 입실 전 · 입실 · 퇴실 — 동일 비중 */
+#divisionTable th:nth-child(3),
+#divisionTable td:nth-child(3),
+#divisionTable th:nth-child(4),
+#divisionTable td:nth-child(4),
+#divisionTable th:nth-child(5),
+#divisionTable td:nth-child(5),
+#divisionTable th:nth-child(6),
+#divisionTable td:nth-child(6),
+#divisionTable th:nth-child(7),
+#divisionTable td:nth-child(7) {
+  width: 11%;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+#divisionTable th:nth-child(8),
+#divisionTable td:nth-child(8) {
+  width: 18%;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  padding-right: 0.85rem;
+}
+#divisionTable .jcc-retreat-numCell {
+  text-align: center !important;
+}
+#divisionTable thead th.is-total {
+  white-space: normal;
+  line-height: 1.25;
+  font-size: 0.78rem;
+  word-break: keep-all;
+}
+#divisionTable .jcc-retreat-thSub {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  opacity: 0.78;
+}
+
+/* 대시보드 표: 상태와 핵심 숫자의 시각적 우선순위를 분명히 한다. */
+.jcc-retreat-dashboardTable {
+  border-spacing: 0;
+  border-collapse: separate !important;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.jcc-retreat-dashboardTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-top: 0.72rem;
+  padding-bottom: 0.72rem;
+  color: color-mix(in srgb, var(--text) 68%, var(--muted));
+  background: color-mix(in srgb, var(--surface-2) 88%, var(--card));
+  border-bottom-width: 1px;
+}
+.jcc-retreat-dashboardTable thead th.is-pending {
+  color: #b45309;
+}
+.jcc-retreat-dashboardTable thead th.is-in {
+  color: #15803d;
+}
+.jcc-retreat-dashboardTable thead th.is-out {
+  color: #64748b;
+}
+.jcc-retreat-dashboardTable thead th.is-total {
+  color: #4338ca;
+}
+.jcc-retreat-dashboardTable tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--surface-2) 44%, transparent);
+}
+.jcc-retreat-dashboardTable tbody tr:hover td {
+  background: color-mix(in srgb, var(--accent) 9%, var(--card));
+}
+.jcc-retreat-dashboardTable tbody tr.is-zero td {
+  color: var(--muted);
+}
+.jcc-retreat-tablePrimary {
+  font-weight: 750;
+  color: var(--text);
+}
+.jcc-retreat-tableSecondary {
+  color: var(--muted);
+  font-weight: 600;
+}
+.jcc-retreat-numCell {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+.jcc-retreat-numCell--muted {
+  color: var(--muted) !important;
+}
+.jcc-retreat-countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 1.7rem;
+  padding: 0.12rem 0.48rem;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.jcc-retreat-countBadge--pending {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.12);
+}
+.jcc-retreat-countBadge--in {
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.12);
+}
+.jcc-retreat-countBadge--out {
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.16);
+}
+.jcc-retreat-countBadge--total {
+  color: #4338ca;
+  background: rgba(99, 102, 241, 0.12);
+}
+.jcc-retreat-countBadge--male {
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.14);
+}
+.jcc-retreat-countBadge--female {
+  color: #be123c;
+  background: rgba(244, 63, 94, 0.12);
+}
+.jcc-retreat-dashboardTable thead th.is-male {
+  color: #1d4ed8;
+}
+.jcc-retreat-dashboardTable thead th.is-female {
+  color: #be123c;
+}
+.jcc-retreat-statPill--male {
+  background: rgba(59, 130, 246, 0.14);
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+.jcc-retreat-statPill--female {
+  background: rgba(244, 63, 94, 0.12);
+  color: #be123c;
+  border-color: rgba(244, 63, 94, 0.28);
+}
+.jcc-retreat-attendanceCell {
+  min-width: 6.5rem;
+}
+.jcc-retreat-attendanceValue {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-variant-numeric: tabular-nums;
+}
+.jcc-retreat-attendanceValue strong {
+  color: #4338ca;
+  font-size: 0.92rem;
+}
+.jcc-retreat-attendanceValue span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.jcc-retreat-attendanceTrack {
+  display: block;
+  width: 100%;
+  height: 4px;
+  margin-top: 0.3rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+}
+.jcc-retreat-attendanceTrack > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #6366f1;
 }
 /* 실시간 참석 인원 표: 열 너비 고정(모바일 2표 쌓임 시 지역·부서 정렬 일치) */
 .jcc-retreat-attTable {
@@ -1289,22 +1824,71 @@ body.has-retreat-bottom-tabs .jcc-retreat-staffRosterTable .jcc-retreat-staffSco
   }
   #divisionTable {
     min-width: 0;
+    width: 100%;
+  }
+  /* 모바일: 지역·부서 · 조 · 입실 · 퇴실 · 전체 참석만 표시 */
+  #divisionTable th:nth-child(3),
+  #divisionTable td:nth-child(3),
+  #divisionTable th:nth-child(4),
+  #divisionTable td:nth-child(4),
+  #divisionTable th:nth-child(5),
+  #divisionTable td:nth-child(5) {
+    display: none;
   }
   #divisionTable th:first-child,
   #divisionTable td:first-child {
-    width: 27%;
+    width: 34%;
+    padding-left: 0.55rem;
   }
   #divisionTable th:nth-child(2),
   #divisionTable td:nth-child(2) {
-    width: 18%;
-  }
-  #divisionTable th:nth-child(n + 3),
-  #divisionTable td:nth-child(n + 3) {
-    width: 13.75%;
-  }
-  #divisionTable th:nth-child(2),
-  #divisionTable td:nth-child(2) {
+    width: 12%;
     white-space: nowrap;
+  }
+  #divisionTable th:nth-child(6),
+  #divisionTable td:nth-child(6),
+  #divisionTable th:nth-child(7),
+  #divisionTable td:nth-child(7) {
+    width: 15%;
+  }
+  #divisionTable th:nth-child(8),
+  #divisionTable td:nth-child(8) {
+    width: 24%;
+    padding-right: 0.55rem;
+  }
+  #divisionTable thead th {
+    font-size: 0.7rem;
+    padding-left: 0.28rem;
+    padding-right: 0.28rem;
+  }
+  #divisionTable thead th.is-total {
+    font-size: 0.68rem;
+  }
+  #divisionTable .jcc-retreat-thSub {
+    font-size: 0.58rem;
+  }
+  #divisionTable td {
+    padding-left: 0.28rem;
+    padding-right: 0.28rem;
+  }
+  #divisionTable td.jcc-retreat-divRegionCell {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    font-size: 0.76rem;
+    line-height: 1.25;
+  }
+  #divisionTable .jcc-retreat-countBadge {
+    min-width: 1.6rem;
+    min-height: 1.4rem;
+    padding: 0.06rem 0.32rem;
+    font-size: 0.74rem;
+    border-radius: 7px;
+  }
+  #divisionTable .jcc-retreat-tableSecondary {
+    font-size: 0.72rem;
   }
 }
 /* 합계 행 */
@@ -4029,8 +4613,62 @@ dialog.jcc-retreat-modal::backdrop {
   gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
+.jcc-retreat-lodgingToggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0.15rem 0.25rem 0.15rem 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+.jcc-retreat-lodgingToggle:hover {
+  background: color-mix(in srgb, var(--surface-2, #f1f5f9) 70%, transparent);
+}
+.jcc-retreat-lodgingToggle:focus-visible {
+  outline: 2px solid var(--accent, #3182f6);
+  outline-offset: 2px;
+}
+.jcc-retreat-lodgingToggleIcon {
+  flex-shrink: 0;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+.jcc-retreat-lodgingCard.is-collapsed .jcc-retreat-lodgingToggleIcon {
+  transform: rotate(-90deg);
+}
+.jcc-retreat-lodgingToggleMeta {
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.jcc-retreat-lodgingCard.is-collapsed .jcc-retreat-lodgingBody {
+  display: none;
+}
+.jcc-retreat-lodgingCard.is-collapsed .jcc-retreat-lodgingHeader {
+  margin-bottom: 0;
+}
 .jcc-retreat-lodgingHeaderMain {
   min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 .jcc-retreat-lodgingName {
   margin: 0;
@@ -4059,6 +4697,7 @@ dialog.jcc-retreat-modal::backdrop {
   font-weight: 500;
 }
 .jcc-retreat-lodgingMeta {
+  display: block;
   margin: 0.15rem 0 0 0;
   color: var(--muted);
   font-size: 0.82rem;
@@ -4382,6 +5021,17 @@ dialog.jcc-retreat-modal::backdrop {
   .jcc-retreat-lodgingCard {
     padding-left: 0.65rem;
     padding-right: 0.65rem;
+  }
+  .jcc-retreat-lodgingHeader {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .jcc-retreat-lodgingToggle {
+    width: 100%;
+  }
+  .jcc-retreat-lodgingActions {
+    width: 100%;
+    justify-content: flex-end;
   }
   .jcc-retreat-roomTable--manage th,
   .jcc-retreat-roomTable--manage td {
@@ -5891,6 +6541,9 @@ dialog.jcc-retreat-modal::backdrop {
   font-variant-numeric: tabular-nums;
   color: var(--text, #212529);
   cursor: pointer;
+  caret-color: transparent;
+  pointer-events: none;
+  user-select: none;
 }
 .jcc-dtp-select input.jcc-dtp-num:focus {
   outline: none;

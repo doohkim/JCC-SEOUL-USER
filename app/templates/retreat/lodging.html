@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ event.name }} · 숙소</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260618s" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260725a" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -63,23 +63,35 @@
           {% if lodgings %}
             <div class="jcc-retreat-lodgingList">
               {% for lodging in lodgings %}
+                {% with room_count=lodging.rooms.all|length %}
                 <section class="card jcc-retreat-lodgingCard" data-lodging-id="{{ lodging.id }}">
                   <header class="jcc-retreat-lodgingHeader">
-                    <div class="jcc-retreat-lodgingHeaderMain">
-                      <h2 class="jcc-retreat-lodgingName">
-                        <span data-lodging-name>{{ lodging.name }}</span>
-                        <span
-                          class="jcc-retreat-lodgingRegionPill{% if not lodging.region %} jcc-retreat-lodgingRegionPill--global{% endif %}"
-                          data-lodging-region-id="{% if lodging.region_id %}{{ lodging.region_id }}{% endif %}"
-                        >{% if lodging.region %}{{ lodging.region.name }}{% else %}전 지역 공용{% endif %}</span>
-                      </h2>
-                      {% if lodging.address %}
-                        <p class="jcc-retreat-lodgingMeta" data-lodging-address>{{ lodging.address }}</p>
-                      {% endif %}
-                      {% if lodging.memo %}
-                        <p class="jcc-retreat-lodgingMeta" data-lodging-memo>{{ lodging.memo }}</p>
-                      {% endif %}
-                    </div>
+                    <button
+                      type="button"
+                      class="jcc-retreat-lodgingToggle"
+                      data-lodging-toggle
+                      aria-expanded="true"
+                      aria-controls="lodging-body-{{ lodging.id }}"
+                      id="lodging-toggle-{{ lodging.id }}"
+                    >
+                      <span class="jcc-retreat-lodgingToggleIcon" aria-hidden="true">▾</span>
+                      <span class="jcc-retreat-lodgingHeaderMain">
+                        <span class="jcc-retreat-lodgingName">
+                          <span data-lodging-name>{{ lodging.name }}</span>
+                          <span
+                            class="jcc-retreat-lodgingRegionPill{% if not lodging.region %} jcc-retreat-lodgingRegionPill--global{% endif %}"
+                            data-lodging-region-id="{% if lodging.region_id %}{{ lodging.region_id }}{% endif %}"
+                          >{% if lodging.region %}{{ lodging.region.name }}{% else %}전 지역 공용{% endif %}</span>
+                        </span>
+                        {% if lodging.address %}
+                          <span class="jcc-retreat-lodgingMeta" data-lodging-address>{{ lodging.address }}</span>
+                        {% endif %}
+                        {% if lodging.memo %}
+                          <span class="jcc-retreat-lodgingMeta" data-lodging-memo>{{ lodging.memo }}</span>
+                        {% endif %}
+                      </span>
+                      <span class="jcc-retreat-lodgingToggleMeta">{{ room_count }}개 객실</span>
+                    </button>
                     {% if can_manage_lodging %}
                       <div class="jcc-retreat-lodgingActions">
                         <button type="button" class="jcc-pickup-locBtn" data-edit-lodging>수정</button>
@@ -87,97 +99,105 @@
                       </div>
                     {% endif %}
                   </header>
-                  <div class="jcc-retreat-tableWrap">
-                    <table class="jcc-retreat-attendeeTable jcc-retreat-roomTable jcc-retreat-roomTable--manage">
-                      <thead>
-                        <tr>
-                          <th>호수</th>
-                          <th>지역 · 부서</th>
-                          <th>정원</th>
-                          <th>성별</th>
-                          <th>현재 인원</th>
-                          <th class="jcc-retreat-attCol-assignees">배정된 조원</th>
-                          {% if can_manage_lodging %}
-                            <th class="jcc-retreat-attCol-actions">관리</th>
-                          {% endif %}
-                        </tr>
-                      </thead>
-                      <tbody data-rooms>
-                        {% for room in lodging.rooms.all %}
-                          <tr class="jcc-retreat-roomRow--clickable" data-room-id="{{ room.id }}" data-lodging-id="{{ lodging.id }}" data-room-number="{{ room.number }}" data-room-region-id="{% if room.region_id %}{{ room.region_id }}{% endif %}" data-room-division-id="{% if room.division_id %}{{ room.division_id }}{% endif %}" data-room-has-vacancy="{% if room.has_vacancy %}1{% else %}0{% endif %}" role="button" tabindex="0" aria-label="객실 {{ room.number }} 수정">
-                            <td data-room-number>{{ room.number }}</td>
-                            <td data-room-scope>
-                              {% if room.region and room.division %}
-                                <span class="jcc-retreat-roomScope">{{ room.region.name }} · {{ room.division.name }}</span>
-                              {% else %}
-                                <span class="jcc-retreat-roomScope jcc-retreat-roomScope--unassigned">미배정</span>
-                              {% endif %}
-                            </td>
-                            <td data-room-capacity>
-                              {% if room.capacity %}{{ room.capacity }}{% else %}무제한{% endif %}
-                            </td>
-                            <td>
-                              <span class="jcc-retreat-roomGenderPill jcc-retreat-roomGenderPill--{{ room.recommended_gender|default:'unknown' }}" data-room-gender>
-                                {{ room.get_recommended_gender_display|default:"미지정" }}
-                              </span>
-                            </td>
-                            <td>
-                              <span class="jcc-retreat-roomCount{% if room.attendees.all %} jcc-retreat-roomCount--active{% endif %}" data-room-count>{{ room.attendees.all|length }}</span>
-                            </td>
-                            <td class="jcc-retreat-attCol-assignees" data-room-attendees>
-                              {% with attendees=room.attendees.all %}
-                                {% if attendees %}
-                                  <div class="jcc-retreat-roomAssigneeAvatars" aria-label="배정된 조원 {{ attendees|length }}명">
-                                    {% for a in attendees %}
-                                      {% if forloop.counter <= 3 %}
-                                        <span class="jcc-retreat-roomAssigneeAvatar" title="{{ a.name }} ({{ a.group.name }})">{{ a.name|slice:":1" }}</span>
-                                      {% endif %}
-                                    {% endfor %}
-                                    {% if attendees|length > 3 %}
-                                      <span class="jcc-retreat-roomAssigneeMore">+{{ attendees|length|add:"-3" }}</span>
-                                    {% endif %}
-                                  </div>
-                                {% else %}
-                                  <span class="muted">-</span>
-                                {% endif %}
-                              {% endwith %}
-                            </td>
+                  <div
+                    class="jcc-retreat-lodgingBody"
+                    id="lodging-body-{{ lodging.id }}"
+                    role="region"
+                    aria-labelledby="lodging-toggle-{{ lodging.id }}"
+                  >
+                    <div class="jcc-retreat-tableWrap">
+                      <table class="jcc-retreat-attendeeTable jcc-retreat-roomTable jcc-retreat-roomTable--manage">
+                        <thead>
+                          <tr>
+                            <th>호수</th>
+                            <th>지역 · 부서</th>
+                            <th>정원</th>
+                            <th>성별</th>
+                            <th>현재 인원</th>
+                            <th class="jcc-retreat-attCol-assignees">배정된 조원</th>
                             {% if can_manage_lodging %}
-                              <td class="jcc-retreat-attCol-actions">
-                                <div class="jcc-retreat-roomIconActions">
-                                  <button type="button" class="jcc-retreat-rowIconBtn jcc-retreat-rowIconBtn--danger" data-del-room aria-label="객실 삭제" title="삭제">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                      <path d="M3 6h18" />
-                                      <path d="M8 6V4h8v2" />
-                                      <path d="M19 6l-1 14H6L5 6" />
-                                      <path d="M10 11v6" />
-                                      <path d="M14 11v6" />
-                                    </svg>
-                                  </button>
-                                </div>
-                              </td>
+                              <th class="jcc-retreat-attCol-actions">관리</th>
                             {% endif %}
                           </tr>
-                        {% empty %}
-                          <tr><td colspan="{% if can_manage_lodging %}7{% else %}6{% endif %}">
-                            <div class="msg">객실이 없습니다.{% if can_manage_lodging %} 우측 버튼으로 객실을 추가하세요.{% endif %}</div>
-                          </td></tr>
-                        {% endfor %}
-                      </tbody>
-                    </table>
-                  </div>
-                  {% if can_manage_lodging %}
-                    <div class="jcc-retreat-lodgingFooter">
-                      <button type="button" class="jcc-retreat-lodgingAddRoom" data-add-room>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                          <path d="M12 5v14" />
-                          <path d="M5 12h14" />
-                        </svg>
-                        객실 추가
-                      </button>
+                        </thead>
+                        <tbody data-rooms>
+                          {% for room in lodging.rooms.all %}
+                            <tr class="jcc-retreat-roomRow--clickable" data-room-id="{{ room.id }}" data-lodging-id="{{ lodging.id }}" data-room-number="{{ room.number }}" data-room-region-id="{% if room.region_id %}{{ room.region_id }}{% endif %}" data-room-division-id="{% if room.division_id %}{{ room.division_id }}{% endif %}" data-room-has-vacancy="{% if room.has_vacancy %}1{% else %}0{% endif %}" role="button" tabindex="0" aria-label="객실 {{ room.number }} 수정">
+                              <td data-room-number>{{ room.number }}</td>
+                              <td data-room-scope>
+                                {% if room.region and room.division %}
+                                  <span class="jcc-retreat-roomScope">{{ room.region.name }} · {{ room.division.name }}</span>
+                                {% else %}
+                                  <span class="jcc-retreat-roomScope jcc-retreat-roomScope--unassigned">미배정</span>
+                                {% endif %}
+                              </td>
+                              <td data-room-capacity>
+                                {% if room.capacity %}{{ room.capacity }}{% else %}무제한{% endif %}
+                              </td>
+                              <td>
+                                <span class="jcc-retreat-roomGenderPill jcc-retreat-roomGenderPill--{{ room.recommended_gender|default:'unknown' }}" data-room-gender>
+                                  {{ room.get_recommended_gender_display|default:"미지정" }}
+                                </span>
+                              </td>
+                              <td>
+                                <span class="jcc-retreat-roomCount{% if room.attendees.all %} jcc-retreat-roomCount--active{% endif %}" data-room-count>{{ room.attendees.all|length }}</span>
+                              </td>
+                              <td class="jcc-retreat-attCol-assignees" data-room-attendees>
+                                {% with attendees=room.attendees.all %}
+                                  {% if attendees %}
+                                    <div class="jcc-retreat-roomAssigneeAvatars" aria-label="배정된 조원 {{ attendees|length }}명">
+                                      {% for a in attendees %}
+                                        {% if forloop.counter <= 3 %}
+                                          <span class="jcc-retreat-roomAssigneeAvatar" title="{{ a.name }} ({{ a.group.name }})">{{ a.name|slice:":1" }}</span>
+                                        {% endif %}
+                                      {% endfor %}
+                                      {% if attendees|length > 3 %}
+                                        <span class="jcc-retreat-roomAssigneeMore">+{{ attendees|length|add:"-3" }}</span>
+                                      {% endif %}
+                                    </div>
+                                  {% else %}
+                                    <span class="muted">-</span>
+                                  {% endif %}
+                                {% endwith %}
+                              </td>
+                              {% if can_manage_lodging %}
+                                <td class="jcc-retreat-attCol-actions">
+                                  <div class="jcc-retreat-roomIconActions">
+                                    <button type="button" class="jcc-retreat-rowIconBtn jcc-retreat-rowIconBtn--danger" data-del-room aria-label="객실 삭제" title="삭제">
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M3 6h18" />
+                                        <path d="M8 6V4h8v2" />
+                                        <path d="M19 6l-1 14H6L5 6" />
+                                        <path d="M10 11v6" />
+                                        <path d="M14 11v6" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </td>
+                              {% endif %}
+                            </tr>
+                          {% empty %}
+                            <tr><td colspan="{% if can_manage_lodging %}7{% else %}6{% endif %}">
+                              <div class="msg">객실이 없습니다.{% if can_manage_lodging %} 우측 버튼으로 객실을 추가하세요.{% endif %}</div>
+                            </td></tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
                     </div>
-                  {% endif %}
+                    {% if can_manage_lodging %}
+                      <div class="jcc-retreat-lodgingFooter">
+                        <button type="button" class="jcc-retreat-lodgingAddRoom" data-add-room>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 5v14" />
+                            <path d="M5 12h14" />
+                          </svg>
+                          객실 추가
+                        </button>
+                      </div>
+                    {% endif %}
+                  </div>
                 </section>
+                {% endwith %}
               {% endfor %}
             </div>
           {% else %}
@@ -297,7 +317,7 @@
     </script>
     {% include 'includes/retreat_bottom_tabs.html' %}
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/lodging_admin.js' %}?v=20260701a" defer></script>
+    <script src="{% static 'retreat/lodging_admin.js' %}?v=20260725a" defer></script>
     <script src="{% static 'retreat/lodging_manage_filter.js' %}?v=20260701a" defer></script>
   </body>
 </html>

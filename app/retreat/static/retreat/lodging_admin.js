@@ -229,6 +229,55 @@
     };
   }
 
+  const COLLAPSE_STORAGE_KEY =
+    "retreatLodgingCollapsed:" + location.pathname;
+
+  function loadCollapsedIds() {
+    try {
+      const raw = sessionStorage.getItem(COLLAPSE_STORAGE_KEY);
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr.map(String) : []);
+    } catch (e) {
+      return new Set();
+    }
+  }
+
+  function persistCollapsedIds(ids) {
+    try {
+      sessionStorage.setItem(
+        COLLAPSE_STORAGE_KEY,
+        JSON.stringify(Array.from(ids))
+      );
+    } catch (e) {}
+  }
+
+  function setLodgingCollapsed(card, toggle, collapsed, collapsedIds) {
+    card.classList.toggle("is-collapsed", collapsed);
+    toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    const id = String(card.dataset.lodgingId || "");
+    if (!id) return;
+    if (collapsed) collapsedIds.add(id);
+    else collapsedIds.delete(id);
+  }
+
+  /** 숙소 카드 접기/펼치기 (조 참석현황 부서 접기와 동일 UX) */
+  function bindLodgingCollapse() {
+    const collapsedIds = loadCollapsedIds();
+    document.querySelectorAll(".jcc-retreat-lodgingCard").forEach((card) => {
+      const toggle = card.querySelector("[data-lodging-toggle]");
+      if (!toggle) return;
+      const id = String(card.dataset.lodgingId || "");
+      const collapsed = id && collapsedIds.has(id);
+      setLodgingCollapsed(card, toggle, collapsed, collapsedIds);
+      toggle.addEventListener("click", () => {
+        const nowCollapsed = !card.classList.contains("is-collapsed");
+        setLodgingCollapsed(card, toggle, nowCollapsed, collapsedIds);
+        persistCollapsedIds(collapsedIds);
+      });
+    });
+  }
+
   function bindLodgingActions() {
     document.querySelectorAll(".jcc-retreat-lodgingCard").forEach((card) => {
       const lid = Number(card.dataset.lodgingId);
@@ -243,18 +292,22 @@
       const regionEl = card.querySelector("[data-lodging-region-id]");
       const regionId = (regionEl?.dataset?.lodgingRegionId || "").trim();
       if (editLodging) {
-        editLodging.addEventListener("click", () =>
+        editLodging.addEventListener("click", (e) => {
+          e.stopPropagation();
           openLodgingModal("edit", {
             id: lid,
             name,
             region: regionId ? Number(regionId) : "",
             address,
             memo,
-          })
-        );
+          });
+        });
       }
       if (delLodging) {
-        delLodging.addEventListener("click", () => confirmDeleteLodging(lid));
+        delLodging.addEventListener("click", (e) => {
+          e.stopPropagation();
+          confirmDeleteLodging(lid);
+        });
       }
       if (addRoom) {
         addRoom.addEventListener("click", () => openRoomModal("create", lid));
@@ -403,6 +456,7 @@
   }
 
   function init() {
+    bindLodgingCollapse();
     if (!ctx.canManage) return;
     bindLodgingModal();
     bindRoomModal();

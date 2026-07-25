@@ -572,17 +572,33 @@ def build_realtime_dashboard(
             "expected_check_out_at",
             "arrival_travel_is_custom",
             "departure_travel_is_custom",
+            "gender",
         )
     )
     status_by_group: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-    for gid, check_in_at, check_out_at, _in_custom, _out_custom in time_rows:
+    gender_by_group: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    for (
+        gid,
+        check_in_at,
+        check_out_at,
+        _in_custom,
+        _out_custom,
+        gender,
+    ) in time_rows:
         eff = _effective_check_in_status(check_in_at, check_out_at, now)
         status_by_group[gid][eff] += 1
+        if gender == RetreatAttendee.Gender.MALE:
+            gender_by_group[gid]["male"] += 1
+        elif gender == RetreatAttendee.Gender.FEMALE:
+            gender_by_group[gid]["female"] += 1
+        else:
+            gender_by_group[gid]["gender_unknown"] += 1
 
     S = RetreatAttendee.CheckInStatus
     by_group = []
     for g in groups:
         c = status_by_group.get(g.id, {})
+        gc = gender_by_group.get(g.id, {})
         pending = c.get(S.PENDING, 0)
         checked_in = c.get(S.CHECKED_IN, 0)
         checked_out = c.get(S.CHECKED_OUT, 0)
@@ -601,6 +617,9 @@ def build_realtime_dashboard(
                 "checked_out": checked_out,
                 "attended": attended,
                 "total": pending + checked_in + checked_out,
+                "male": gc.get("male", 0),
+                "female": gc.get("female", 0),
+                "gender_unknown": gc.get("gender_unknown", 0),
             }
         )
 
@@ -610,7 +629,16 @@ def build_realtime_dashboard(
         scope_kind=scope_kind,
         scope_region_id=scope_region_id,
         scope_division_id=scope_division_id,
-        count_keys=("pending", "checked_in", "checked_out", "attended", "total"),
+        count_keys=(
+            "pending",
+            "checked_in",
+            "checked_out",
+            "attended",
+            "total",
+            "male",
+            "female",
+            "gender_unknown",
+        ),
         rollup_fn=_rollup_realtime_by_region_division,
     )
     hourly = _hourly_check_in_out(group_ids, now, user=user)
@@ -620,6 +648,9 @@ def build_realtime_dashboard(
     grand_out = sum(r["checked_out"] for r in by_group)
     grand_attended = grand_in + grand_out
     grand_all = grand_pending + grand_in + grand_out
+    grand_male = sum(r["male"] for r in by_group)
+    grand_female = sum(r["female"] for r in by_group)
+    grand_gender_unknown = sum(r["gender_unknown"] for r in by_group)
     grand_absent = visible_attendees_for(
         user,
         RetreatAttendee.objects.filter(
@@ -651,6 +682,9 @@ def build_realtime_dashboard(
             "attended": grand_attended,
             "total": grand_all,
             "absent": grand_absent,
+            "male": grand_male,
+            "female": grand_female,
+            "gender_unknown": grand_gender_unknown,
         },
         "summary": summary,
         "travel": travel,
@@ -844,6 +878,9 @@ def _rollup_realtime_by_region_division(by_group: list[dict]) -> list[dict]:
                 "checked_out": 0,
                 "attended": 0,
                 "total": 0,
+                "male": 0,
+                "female": 0,
+                "gender_unknown": 0,
             }
         item = rd_map[key]
         item["group_names"].append(row["name"])
@@ -852,6 +889,9 @@ def _rollup_realtime_by_region_division(by_group: list[dict]) -> list[dict]:
         item["checked_out"] += row["checked_out"]
         item["attended"] += row["attended"]
         item["total"] += row["total"]
+        item["male"] += row.get("male", 0)
+        item["female"] += row.get("female", 0)
+        item["gender_unknown"] += row.get("gender_unknown", 0)
 
     result = []
     for item in rd_map.values():
