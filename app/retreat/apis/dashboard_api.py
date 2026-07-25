@@ -17,7 +17,6 @@ from retreat.services.dashboard import (
     build_realtime_dashboard,
     build_results_analytics,
 )
-from retreat.services.auto_check_in import apply_due_auto_transitions
 from retreat.services.changelog_query import (
     CHANGELOG_PAGE_SIZE,
     changelog_queryset_for_event,
@@ -45,7 +44,6 @@ class RetreatEventDashboardView(APIView):
         if not can_access_retreat_tab(request.user):
             raise PermissionDenied
         staff = _staff_view(request.user, event)
-        apply_due_auto_transitions(event_id=event.id)
         return Response(build_realtime_dashboard(event, request.user, staff_view=staff))
 
 
@@ -59,7 +57,6 @@ class RetreatEventGroupBoardView(APIView):
         if not can_access_retreat_tab(request.user):
             raise PermissionDenied
         staff = _staff_view(request.user, event)
-        apply_due_auto_transitions(event_id=event.id)
         return Response(
             build_group_attendance_board(event, request.user, staff_view=staff)
         )

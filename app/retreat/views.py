@@ -904,9 +904,6 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
 
         ctx = super().get_context_data(**kwargs)
         event = ctx["event"]
-        from retreat.services.auto_check_in import apply_due_auto_transitions
-
-        apply_due_auto_transitions(event_id=event.id)
         user = self.request.user
         from django.db.models import Prefetch
 
@@ -1052,9 +1049,6 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         user = self.request.user
         event = ctx["event"]
-        from retreat.services.auto_check_in import apply_due_auto_transitions
-
-        apply_due_auto_transitions(event_id=event.id)
         from django.db.models import Prefetch
 
         from retreat.models import RetreatGroupScope
@@ -1247,15 +1241,12 @@ class RetreatLodgingView(_RetreatEventMixin, TemplateView):
 
         from django.db.models import Count, Prefetch
 
-        from retreat.services.auto_check_in import apply_due_auto_transitions
         from retreat.services.lodging import room_has_vacancy
         from retreat.services.lodging_stats import build_lodging_page_summary
         from retreat.services.lodging_stay import (
             active_lodging_occupant_filter,
             active_lodging_occupant_q,
         )
-
-        apply_due_auto_transitions(event_id=event.id)
 
         from users.models import Division, Region
 
@@ -1310,10 +1301,8 @@ class RetreatLodgingRosterView(_RetreatEventMixin, TemplateView):
         if not can_view_retreat_all(user, event):
             raise PermissionDenied("이 집회의 숙소를 볼 권한이 없습니다.")
 
-        from retreat.services.auto_check_in import apply_due_auto_transitions
         from retreat.services.lodging_roster import build_lodging_roster_context
 
-        apply_due_auto_transitions(event_id=event.id)
         ctx.update(build_lodging_roster_context(event, user))
         from retreat.apis._common import user_can_edit_attendee_details
         from retreat.services.lodging import (

@@ -7,7 +7,7 @@ from django.urls import path, include
 # logger = getLogger(__name__)
 
 urlpatterns = []
-if settings.DEBUG:
+if settings.DEBUG and getattr(settings, "ENABLE_DEBUG_TOOLBAR", False):
     try:
         import debug_toolbar
 

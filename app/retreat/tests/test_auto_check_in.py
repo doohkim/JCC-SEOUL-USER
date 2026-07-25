@@ -180,3 +180,65 @@ class AutoCheckInTests(TestCase):
         self.assertIsNone(a.checked_in_at)
         self.assertIsNone(a.checked_out_at)
         self.assertEqual(result["pending"], 1)
+
+    def test_manual_checked_in_is_not_reverted_before_expected_in(self):
+        now = timezone.now()
+        attendee = RetreatAttendee.objects.create(
+            group=self.group,
+            name="수동입실",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            check_in_status_manually_set=True,
+            expected_check_in_at=now + timedelta(hours=1),
+            checked_in_at=now,
+        )
+
+        result = apply_due_auto_transitions(now=now)
+
+        attendee.refresh_from_db()
+        self.assertEqual(
+            attendee.check_in_status, RetreatAttendee.CheckInStatus.CHECKED_IN
+        )
+        self.assertTrue(attendee.check_in_status_manually_set)
+        self.assertEqual(result["pending"], 0)
+
+    def test_manual_checked_in_advances_to_checked_out_when_due(self):
+        now = timezone.now()
+        attendee = RetreatAttendee.objects.create(
+            group=self.group,
+            name="수동입실후퇴실",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            check_in_status_manually_set=True,
+            expected_check_in_at=now - timedelta(hours=2),
+            expected_check_out_at=now - timedelta(minutes=1),
+            checked_in_at=now - timedelta(hours=2),
+        )
+
+        result = apply_due_auto_transitions(now=now)
+
+        attendee.refresh_from_db()
+        self.assertEqual(
+            attendee.check_in_status, RetreatAttendee.CheckInStatus.CHECKED_OUT
+        )
+        self.assertFalse(attendee.check_in_status_manually_set)
+        self.assertEqual(result["checked_out"], 1)
+
+    def test_manual_checked_out_is_not_reverted(self):
+        now = timezone.now()
+        attendee = RetreatAttendee.objects.create(
+            group=self.group,
+            name="수동퇴실",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+            check_in_status_manually_set=True,
+            expected_check_in_at=now + timedelta(hours=1),
+            expected_check_out_at=now + timedelta(hours=2),
+            checked_out_at=now,
+        )
+
+        result = apply_due_auto_transitions(now=now)
+
+        attendee.refresh_from_db()
+        self.assertEqual(
+            attendee.check_in_status, RetreatAttendee.CheckInStatus.CHECKED_OUT
+        )
+        self.assertTrue(attendee.check_in_status_manually_set)
+        self.assertEqual(result["pending"], 0)

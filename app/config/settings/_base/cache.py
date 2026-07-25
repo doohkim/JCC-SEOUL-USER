@@ -1,6 +1,6 @@
 import os
 
-IS_DOCKER = bool(os.environ.get("IS_DOCKER"))
+IS_DOCKER = bool(os.environ.get("DOCKER"))
 REDIS_HOST = "redis" if IS_DOCKER else "127.0.0.1"
 
 __all__ = ("CACHES",)

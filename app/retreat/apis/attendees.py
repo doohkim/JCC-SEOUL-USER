@@ -105,6 +105,7 @@ _ATTENDEE_FIELDS = [
     "gender",
     "memo",
     "check_in_status",
+    "check_in_status_manually_set",
     "expected_check_in_at",
     "expected_check_out_at",
     "checked_in_at",
@@ -225,6 +226,9 @@ class RetreatGroupAttendeesView(APIView):
             assert_room_can_accept(target_room, tmp)
         attendee = ser.save(created_by=request.user)
         stamp_fields = ["updated_at"]
+        if attendee.check_in_status != RetreatAttendee.CheckInStatus.PENDING:
+            attendee.check_in_status_manually_set = True
+            stamp_fields.append("check_in_status_manually_set")
         if attendee.check_in_status == RetreatAttendee.CheckInStatus.CHECKED_IN:
             attendee.checked_in_at = timezone.now()
             stamp_fields.append("checked_in_at")
@@ -346,6 +350,8 @@ class RetreatAttendeeDetailView(APIView):
                 )
                 assert_room_can_accept(target_room, tmp)
         attendee = ser.save()
+        if "check_in_status" in ser.validated_data:
+            attendee.check_in_status_manually_set = True
         if (
             "user" in payload
             and attendee.user_id is None
@@ -386,6 +392,7 @@ class RetreatAttendeeDetailView(APIView):
         attendee.save(
             update_fields=[
                 "check_in_status",
+                "check_in_status_manually_set",
                 "checked_in_at",
                 "checked_out_at",
                 "lodging_stay_status",

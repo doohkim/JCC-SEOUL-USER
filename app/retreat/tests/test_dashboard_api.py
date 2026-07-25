@@ -283,20 +283,22 @@ class RetreatDashboardApiTests(APITestCase):
         self.assertEqual(data["grand_total"]["pending"], 1)
         self.assertEqual(data["grand_total"]["attended"], 0)
 
-    def test_dashboard_persists_due_transitions(self):
-        """대시보드 조회 시 입실 시각이 지난 입실전 조원을 DB에 입실로 저장한다."""
+    def test_dashboard_reports_due_transition_without_writing(self):
+        """대시보드는 유효 상태를 집계하되 조회 요청에서 DB를 변경하지 않는다."""
         now = timezone.now()
         self.attendee.check_in_status = RetreatAttendee.CheckInStatus.PENDING
         self.attendee.expected_check_in_at = now - timedelta(hours=1)
         self.attendee.save(update_fields=["check_in_status", "expected_check_in_at"])
         self.client.force_authenticate(self.leader)
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])
-        self.assertEqual(self.client.get(url).status_code, 200)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["grand_total"]["checked_in"], 1)
         self.attendee.refresh_from_db()
         self.assertEqual(
-            self.attendee.check_in_status, RetreatAttendee.CheckInStatus.CHECKED_IN
+            self.attendee.check_in_status, RetreatAttendee.CheckInStatus.PENDING
         )
-        self.assertIsNotNone(self.attendee.checked_in_at)
+        self.assertIsNone(self.attendee.checked_in_at)
 
     def test_lodging_unassigned_counts_eligible_only(self):
         """미배정 카드는 숙박 대상(입실 예정·퇴실 제외)만 집계한다."""

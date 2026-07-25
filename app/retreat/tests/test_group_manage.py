@@ -637,6 +637,7 @@ class AttendeeCheckInStatusEditTests(_GroupManageFixture):
         self.assertEqual(r.status_code, 200, r.content)
         self.attendee.refresh_from_db()
         self.assertEqual(self.attendee.check_in_status, "checked_in")
+        self.assertTrue(self.attendee.check_in_status_manually_set)
 
     def test_council_can_revert_to_pending(self):
         self.client.force_authenticate(self.council_user)
@@ -644,6 +645,7 @@ class AttendeeCheckInStatusEditTests(_GroupManageFixture):
         self.assertEqual(r.status_code, 200, r.content)
         self.attendee.refresh_from_db()
         self.assertEqual(self.attendee.check_in_status, "pending")
+        self.assertTrue(self.attendee.check_in_status_manually_set)
 
     def test_leader_cannot_change_check_in_status(self):
         self.client.force_authenticate(self.leader)

@@ -86,6 +86,11 @@ class RetreatAttendee(models.Model):
         default=CheckInStatus.PENDING,
         help_text="입실전·퇴실 상태인 조원은 출석부에서 결석이 기본으로 선택됩니다.",
     )
+    check_in_status_manually_set = models.BooleanField(
+        "입·퇴실 상태 수동 설정",
+        default=False,
+        help_text="수동 상태를 자동 작업이 이전 단계로 되돌리지 않도록 구분합니다.",
+    )
     expected_check_in_at = models.DateTimeField("예상 입실 시각", null=True, blank=True)
     expected_check_out_at = models.DateTimeField(
         "예상 퇴실 시각", null=True, blank=True
@@ -150,6 +155,14 @@ class RetreatAttendee(models.Model):
         verbose_name_plural = "수련회 조원"
         # 사전순(checked_in < checked_out < pending)으로 입실→퇴실→입실전 자연 정렬.
         ordering = ["group", "check_in_status", "sort_order", "name", "id"]
+        indexes = [
+            models.Index(
+                fields=["expected_check_in_at"], name="idx_ret_att_expected_in"
+            ),
+            models.Index(
+                fields=["expected_check_out_at"], name="idx_ret_att_expected_out"
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.group.name} · {self.name}"

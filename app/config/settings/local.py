@@ -45,15 +45,13 @@ SUBDOMAIN_URLCONFS = {
 # Notebook
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
-# django-debug-toolbar
-INSTALLED_APPS += [
-    "debug_toolbar",
-]
-INTERNAL_IPS = [
-    "*",
-    "127.0.0.1",
-]
-MIDDLEWARE.append("debug_toolbar.middleware.DebugToolbarMiddleware")
+# 원격 RDS/SSH 터널에서는 패널별 추가 SQL 때문에 요청 시간이 크게 늘어난다.
+# 필요한 경우에만 ENABLE_DEBUG_TOOLBAR=1로 명시해 켠다.
+ENABLE_DEBUG_TOOLBAR = os.environ.get("ENABLE_DEBUG_TOOLBAR", "0") == "1"
+if ENABLE_DEBUG_TOOLBAR:
+    INSTALLED_APPS += ["debug_toolbar"]
+    INTERNAL_IPS = ["*", "127.0.0.1"]
+    MIDDLEWARE.append("debug_toolbar.middleware.DebugToolbarMiddleware")
 
 
 # DATABASES = {
@@ -66,8 +64,8 @@ MIDDLEWARE.append("debug_toolbar.middleware.DebugToolbarMiddleware")
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "HOST": "localhost",
-        "PORT": 5432,
+        "HOST": secrets.RDS_HOST_PRODUCTION,
+        "PORT": 55432,
         "NAME": secrets.RDS_NAME_PRODUCTION,
         "USER": secrets.RDS_USERNAME_PRODUCTION,
         "PASSWORD": secrets.RDS_PASSWORD_PRODUCTION,
