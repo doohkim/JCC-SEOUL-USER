@@ -598,6 +598,9 @@
 
     let openDd = null;
     let swallowClickUntil = 0;
+    let ddTouchMoved = false;
+    let ddPointerStartY = null;
+    const DD_MOVE_PX = 10;
     function clearDropdownPlacement(dd) {
       dd.style.top = "";
       dd.style.left = "";
@@ -610,6 +613,7 @@
       pop.classList.toggle("jcc-dtp-pop--ddOpen", !!on);
     }
     // 시간·분 목록은 항상 박스 위쪽(달력 쪽). 아래로 열리면 바깥 클릭으로 피커가 닫히기 쉬움.
+    // iOS: overflow 시트 안의 position:fixed 는 터치 스크롤이 부모로 새므로 body 로 portal.
     function positionDropdown(ctl) {
       const dd = ctl.dropdown;
       if (dd.hidden) return;
@@ -635,10 +639,17 @@
     }
     function closeDropdown() {
       if (openDd) {
-        openDd.dropdown.hidden = true;
-        clearDropdownPlacement(openDd.dropdown);
+        const dd = openDd.dropdown;
+        dd.hidden = true;
+        clearDropdownPlacement(dd);
+        // wrap 안으로 되돌림 (다음 오픈 시 portal 다시)
+        if (dd.parentNode !== openDd.wrap) {
+          openDd.wrap.appendChild(dd);
+        }
         openDd = null;
       }
+      ddTouchMoved = false;
+      ddPointerStartY = null;
       // 목록이 사라진 직후에도 달력을 잠깐 막아 고스트 click 이 날짜로 안 가게 함.
       if (Date.now() < swallowClickUntil) {
         setDdOpenClass(true);
@@ -656,6 +667,10 @@
         return;
       }
       closeDropdown();
+      // body portal: 시트 overflow 와 터치 스크롤 충돌 방지 (실기기 iOS/안드)
+      if (ctl.dropdown.parentNode !== document.body) {
+        document.body.appendChild(ctl.dropdown);
+      }
       ctl.dropdown.hidden = false;
       openDd = ctl;
       setDdOpenClass(true);
@@ -668,7 +683,6 @@
     }
     function wireStepper(ctl, setter) {
       // 박스 전체(여백·▾ 포함)에서 열리게 — input 좁은 영역만 누르지 않아도 됨.
-      // 숫자 input 을 직접 누를 때만 focus(타이핑/키보드). 그 외에는 목록만 연다.
       ctl.wrap.addEventListener("pointerdown", function (e) {
         if (e.target.closest(".jcc-dtp-opt")) return;
         if (e.target.closest(".jcc-dtp-dropdown")) return;
@@ -692,17 +706,54 @@
           closeDropdown();
         }, 150);
       });
-      // pointerdown: blur 레이스 전에 선택. 닫은 뒤 고스트 click 은 가드로 삼킴.
+
+      // 스크롤과 탭을 구분: pointerdown 즉시 선택하면 실기기에서 스크롤이
+      // 선택·고스트 클릭으로 이어져 피커 전체가 닫힌다.
       ctl.dropdown.addEventListener(
         "pointerdown",
+        function (e) {
+          if (!e.target.closest(".jcc-dtp-opt") && e.target !== ctl.dropdown) return;
+          ddPointerStartY = e.clientY;
+          ddTouchMoved = false;
+          e.stopPropagation();
+        },
+        true
+      );
+      ctl.dropdown.addEventListener(
+        "pointermove",
+        function (e) {
+          if (ddPointerStartY == null) return;
+          if (Math.abs(e.clientY - ddPointerStartY) > DD_MOVE_PX) {
+            ddTouchMoved = true;
+          }
+        },
+        true
+      );
+      ctl.dropdown.addEventListener(
+        "touchmove",
+        function (e) {
+          // 시트/백드롭으로 스크롤 체이닝·바깥 제스처 전달 차단
+          ddTouchMoved = true;
+          e.stopPropagation();
+        },
+        { capture: true, passive: true }
+      );
+      ctl.dropdown.addEventListener(
+        "click",
         function (e) {
           const o = e.target.closest(".jcc-dtp-opt");
           if (!o) return;
           e.preventDefault();
           e.stopPropagation();
+          if (ddTouchMoved) {
+            ddTouchMoved = false;
+            ddPointerStartY = null;
+            return;
+          }
           setter(o.dataset.value);
           armGhostClickGuard();
           closeDropdown();
+          ddPointerStartY = null;
         },
         true
       );

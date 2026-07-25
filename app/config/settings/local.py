@@ -66,8 +66,8 @@ MIDDLEWARE.append("debug_toolbar.middleware.DebugToolbarMiddleware")
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "HOST": secrets.RDS_HOST_PRODUCTION,
-        "PORT": 55432,
+        "HOST": "localhost",
+        "PORT": 5432,
         "NAME": secrets.RDS_NAME_PRODUCTION,
         "USER": secrets.RDS_USERNAME_PRODUCTION,
         "PASSWORD": secrets.RDS_PASSWORD_PRODUCTION,
