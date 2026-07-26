@@ -19,7 +19,7 @@ from retreat.models import (
     RetreatSessionAttendee,
     RetreatTravelPreset,
 )
-from retreat.services.auto_check_in import desired_check_in_status
+from retreat.services.effective_check_in import status_from_expected_times
 from retreat.services.lodging_roster import lodging_eligible_filter
 from retreat.services.participation import (
     absent_attendee_keys,
@@ -415,12 +415,21 @@ def _scope_labels_for_group(group: RetreatGroup) -> list[dict[str, Any]]:
     return labels
 
 
-def _effective_check_in_status(check_in_at, check_out_at, now) -> str:
+def _effective_check_in_status(
+    check_in_at,
+    check_out_at,
+    now,
+    *,
+    manually_set: bool = False,
+    stored_status: str | None = None,
+) -> str:
     """입실/퇴실 시각과 현재 시각으로 실시간 입·퇴실 상태를 계산한다.
 
-    ``desired_check_in_status``(자동 전환과 동일 규칙)의 별칭.
+    수동 예외 상태가 있으면 저장 상태를 우선한다.
     """
-    return desired_check_in_status(check_in_at, check_out_at, now)
+    if manually_set and stored_status:
+        return stored_status
+    return status_from_expected_times(check_in_at, check_out_at, now)
 
 
 def _travel_count_for_col(col: dict[str, Any], counts: dict) -> int:
@@ -573,6 +582,8 @@ def build_realtime_dashboard(
             "arrival_travel_is_custom",
             "departure_travel_is_custom",
             "gender",
+            "check_in_status_manually_set",
+            "check_in_status",
         )
     )
     status_by_group: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -584,8 +595,16 @@ def build_realtime_dashboard(
         _in_custom,
         _out_custom,
         gender,
+        manually_set,
+        stored_status,
     ) in time_rows:
-        eff = _effective_check_in_status(check_in_at, check_out_at, now)
+        eff = _effective_check_in_status(
+            check_in_at,
+            check_out_at,
+            now,
+            manually_set=manually_set,
+            stored_status=stored_status,
+        )
         status_by_group[gid][eff] += 1
         if gender == RetreatAttendee.Gender.MALE:
             gender_by_group[gid]["male"] += 1
@@ -800,12 +819,18 @@ def build_group_attendance_board(
             "gender",
             "expected_check_in_at",
             "expected_check_out_at",
+            "check_in_status_manually_set",
+            "check_in_status",
         )
         .order_by("name", "id")
     )
     for row in attendee_rows:
         eff = _effective_check_in_status(
-            row["expected_check_in_at"], row["expected_check_out_at"], now
+            row["expected_check_in_at"],
+            row["expected_check_out_at"],
+            now,
+            manually_set=row["check_in_status_manually_set"],
+            stored_status=row["check_in_status"],
         )
         members_by_group[row["group_id"]].append(
             {

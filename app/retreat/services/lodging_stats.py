@@ -70,10 +70,15 @@ def build_lodging_page_summary(event: RetreatEvent) -> LodgingPageSummary:
     )
 
     S = RetreatAttendee.CheckInStatus
-    assigned_pending = eligible_qs.filter(
-        lodging_room__isnull=False,
-        check_in_status=S.PENDING,
-    ).count()
+    from retreat.services.effective_check_in import effective_status_q
+
+    assigned_pending = (
+        eligible_qs.filter(
+            lodging_room__isnull=False,
+        )
+        .filter(effective_status_q(S.PENDING))
+        .count()
+    )
 
     facility = LodgingFacilitySummary(
         lodging_count=lodging_count,

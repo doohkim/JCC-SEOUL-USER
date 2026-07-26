@@ -12,7 +12,9 @@ from retreat.models import RetreatAttendee
 
 def is_attendee_profile_locked(attendee: RetreatAttendee) -> bool:
     """퇴실 상태 조원은 프로필·예정 시각 수정 불가 (회장단은 상태만 변경 가능)."""
-    return attendee.check_in_status == RetreatAttendee.CheckInStatus.CHECKED_OUT
+    from retreat.services.effective_check_in import effective_status
+
+    return effective_status(attendee) == RetreatAttendee.CheckInStatus.CHECKED_OUT
 
 
 def is_expected_timestamps_locked(

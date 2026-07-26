@@ -284,13 +284,22 @@ class RetreatAttendeeDetailView(APIView):
 
     def patch(self, request, attendee_id: int):
         attendee = self._get(request, attendee_id)
+        from retreat.services.effective_check_in import effective_status
+
         group = attendee.group
         raw_keys = set(request.data.keys())
-        if raw_keys & _CHECK_IN_STATUS_KEYS:
+        auto_status_requested = request.data.get("check_in_status_auto") in (
+            True,
+            1,
+            "1",
+            "true",
+        )
+        if (raw_keys & _CHECK_IN_STATUS_KEYS) or auto_status_requested:
             assert_can_change_check_in_status(request.user, group)
         # user 키는 연동 권한이 없으면 sanitize에서 제거하고, 권한 없으면 403 내지 않음
         # (조장 조원 수정 UI가 user를 실수로내도 프로필 수정은 가능해야 함)
         payload = _sanitize_attendee_payload(request.user, group, request.data)
+        payload.pop("check_in_status_auto", None)
         keys = set(payload.keys())
         detail_keys = keys & _ATTENDEE_DETAIL_PATCH_KEYS
         profile_keys = keys & profile_locked_patch_keys_for(
@@ -307,12 +316,12 @@ class RetreatAttendeeDetailView(APIView):
             assert_check_in_status_transition(
                 request.user,
                 group,
-                previous=attendee.check_in_status,
+                previous=effective_status(attendee),
                 new=str(payload["check_in_status"]),
             )
 
         before = serialize_model_fields(attendee, _ATTENDEE_FIELDS)
-        previous_status = attendee.check_in_status
+        previous_status = effective_status(attendee)
         previous_participation = attendee.participation_status
         previous_user_id = attendee.user_id
         previous_member_role = attendee.member_role
@@ -350,7 +359,9 @@ class RetreatAttendeeDetailView(APIView):
                 )
                 assert_room_can_accept(target_room, tmp)
         attendee = ser.save()
-        if "check_in_status" in ser.validated_data:
+        if auto_status_requested:
+            attendee.check_in_status_manually_set = False
+        elif "check_in_status" in ser.validated_data:
             attendee.check_in_status_manually_set = True
         if (
             "user" in payload

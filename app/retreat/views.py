@@ -655,12 +655,23 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         pickup_group_ids = {p.group_id for p in pickups if p.group_id}
         attendee_map: dict[tuple[int, str], RetreatAttendee] = {}
         if pickup_group_ids:
+            from retreat.services.effective_check_in import (
+                effective_status,
+                effective_status_label,
+            )
+
             attendee_qs = visible_attendees_for(
                 user,
                 RetreatAttendee.objects.filter(group_id__in=pickup_group_ids),
             )
             for a in attendee_qs.only(
-                "group_id", "name", "check_in_status", "participation_status"
+                "group_id",
+                "name",
+                "check_in_status",
+                "check_in_status_manually_set",
+                "expected_check_in_at",
+                "expected_check_out_at",
+                "participation_status",
             ):
                 attendee_map.setdefault((a.group_id, a.name), a)
         status_rank = {
@@ -670,8 +681,8 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         }
         for p in pickups:
             att = attendee_map.get((p.group_id, p.name))
-            p.check_in_status = att.check_in_status if att else ""
-            p.check_in_status_display = att.get_check_in_status_display() if att else ""
+            p.check_in_status = effective_status(att) if att else ""
+            p.check_in_status_display = effective_status_label(att) if att else ""
             p.account_retired = is_retired_account_row(p)
             p.account_retired_display = (
                 ACCOUNT_RETIRED_DISPLAY if p.account_retired else ""
@@ -761,6 +772,7 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
         members_map: dict[int, list[dict]] = {}
         if group_list:
             from retreat.services.participation import participating_filter
+            from retreat.services.effective_check_in import effective_status
 
             for a in visible_attendees_for(
                 user,
@@ -772,7 +784,7 @@ class RetreatPickupView(_RetreatEventMixin, TemplateView):
                     {
                         "name": a.name,
                         "phone": a.phone or "",
-                        "check_in_status": a.check_in_status or "",
+                        "check_in_status": effective_status(a),
                     }
                 )
         ctx["pickup_group_members_json"] = json.dumps(members_map, ensure_ascii=False)
@@ -958,13 +970,23 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
 
         from retreat.models import RetreatGroupMembership
         from retreat.services.attendee_ordering import resolve_group_card_leader_name
+        from retreat.services.effective_check_in import effective_status_q
 
         leaders_by_group: dict[int, list[RetreatAttendee]] = defaultdict(list)
         leader_attendee_qs = visible_attendees_for(
             user,
             RetreatAttendee.objects.filter(
                 group__in=groups, member_role=RetreatAttendee.MemberRole.LEADER
-            ).only("group_id", "name", "check_in_status", "user_id", "id"),
+            ).only(
+                "group_id",
+                "name",
+                "check_in_status",
+                "check_in_status_manually_set",
+                "expected_check_in_at",
+                "expected_check_out_at",
+                "user_id",
+                "id",
+            ),
         )
         for leader in leader_attendee_qs:
             leaders_by_group[leader.group_id].append(leader)
@@ -1003,17 +1025,17 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
                 count_pending=Count(
                     "id",
                     filter=participating_q
-                    & Q(check_in_status=RetreatAttendee.CheckInStatus.PENDING),
+                    & effective_status_q(RetreatAttendee.CheckInStatus.PENDING),
                 ),
                 count_checked_in=Count(
                     "id",
                     filter=participating_q
-                    & Q(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN),
+                    & effective_status_q(RetreatAttendee.CheckInStatus.CHECKED_IN),
                 ),
                 count_checked_out=Count(
                     "id",
                     filter=participating_q
-                    & Q(check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT),
+                    & effective_status_q(RetreatAttendee.CheckInStatus.CHECKED_OUT),
                 ),
             )
         else:
@@ -1116,8 +1138,12 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
             is_expected_check_out_locked,
             is_expected_timestamps_locked,
         )
-        from retreat.services.lodging_stay import lodging_stay_display
+        from retreat.services.lodging_stay import (
+            lodging_stay_display,
+            resolve_lodging_stay_status,
+        )
         from retreat.services.participation import is_participating
+        from retreat.services.effective_check_in import effective_status
 
         attendees = list(
             order_attendees_for_member_list(
@@ -1130,6 +1156,8 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
             )
         )
         for attendee in attendees:
+            attendee.check_in_status = effective_status(attendee)
+            attendee.lodging_stay_status = resolve_lodging_stay_status(attendee)
             attendee.account_retired = is_retired_account_row(attendee)
             attendee.account_retired_display = (
                 ACCOUNT_RETIRED_DISPLAY if attendee.account_retired else ""

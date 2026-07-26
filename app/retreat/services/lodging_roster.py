@@ -21,6 +21,11 @@ from retreat.services.lodging_stay import (
 )
 from retreat.services.participation import is_participating
 from retreat.services.account_retired import visible_attendees_for
+from retreat.services.effective_check_in import (
+    effective_status,
+    effective_status_expression,
+)
+from retreat.services.lodging_stay import resolve_lodging_stay_status
 from retreat.services.travel_presets import (
     travel_bucket_key,
     travel_filter_chip_defs,
@@ -98,17 +103,10 @@ def build_lodging_roster_context(
         visible_retreat_groups_for(user, event).values_list("id", flat=True)
     )
     check_in_order = Case(
+        When(_effective_status=RetreatAttendee.CheckInStatus.CHECKED_IN, then=Value(0)),
+        When(_effective_status=RetreatAttendee.CheckInStatus.PENDING, then=Value(1)),
         When(
-            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
-            then=Value(0),
-        ),
-        When(
-            check_in_status=RetreatAttendee.CheckInStatus.PENDING,
-            then=Value(1),
-        ),
-        When(
-            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
-            then=Value(2),
+            _effective_status=RetreatAttendee.CheckInStatus.CHECKED_OUT, then=Value(2)
         ),
         default=Value(3),
         output_field=IntegerField(),
@@ -127,6 +125,7 @@ def build_lodging_roster_context(
             "user",
             "user__profile",
         )
+        .annotate(_effective_status=effective_status_expression())
         .order_by(
             check_in_order,
             "group__order",
@@ -156,6 +155,8 @@ def build_lodging_roster_context(
         ]
     )
     for attendee in attendees:
+        attendee.check_in_status = effective_status(attendee)
+        attendee.lodging_stay_status = resolve_lodging_stay_status(attendee)
         attendee.lodging_scope = attendee_lodging_scope(attendee)
         attendee.lodging_eligible_key = attendee_lodging_eligible_key(attendee)
         attendee.lodging_assignment_key = attendee_lodging_assignment_key(attendee)

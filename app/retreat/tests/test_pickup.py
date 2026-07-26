@@ -90,6 +90,11 @@ class _PickupFixture(TestCase):
         )
 
     def _attendee(self, group, name, **kwargs):
+        if kwargs.get("check_in_status") not in (
+            None,
+            RetreatAttendee.CheckInStatus.PENDING,
+        ):
+            kwargs["check_in_status_manually_set"] = True
         return RetreatAttendee.objects.create(group=group, name=name, **kwargs)
 
     def setUp(self):

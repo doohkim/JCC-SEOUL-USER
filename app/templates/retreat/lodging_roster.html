@@ -153,6 +153,7 @@
                         data-group-division-id="{{ a.group.division_id }}"
                         data-check-in-status="{{ a.check_in_status }}"
                         data-check-in="{{ a.check_in_status }}"
+                        data-check-in-manual="{% if a.check_in_status_manually_set %}1{% else %}0{% endif %}"
                         data-gender="{{ a.gender }}"
                         data-memo="{{ a.memo|escapejs }}"
                         data-member-role="{{ a.member_role }}"
@@ -261,6 +262,7 @@
                   <div class="field jcc-retreat-modalField--full">
                     <label for="rosterEditCheckIn">입·퇴실 상태</label>
                     <select id="rosterEditCheckIn" name="check_in_status" data-cselect>
+                      <option value="auto">예정 시각 기준 자동</option>
                       <option value="pending">입실전</option>
                       <option value="checked_in">입실</option>
                       <option value="checked_out">퇴실</option>
@@ -354,7 +356,7 @@
       <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
       <script src="{% static 'retreat/lodging_stay_badge.js' %}?v=20260629c" defer></script>
       <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618a" defer></script>
-      <script src="{% static 'retreat/lodging_roster_edit.js' %}?v=20260724k" defer></script>
+      <script src="{% static 'retreat/lodging_roster_edit.js' %}?v=20260726b" defer></script>
     {% endif %}
   </body>
 </html>

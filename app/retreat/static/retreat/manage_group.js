@@ -14,6 +14,7 @@
   ];
 
   const CHECK_IN_LABELS = {
+    auto: "예정 시각 기준 자동",
     pending: "입실전",
     checked_in: "입실",
     checked_out: "퇴실",
@@ -691,6 +692,7 @@
       syncParticipationRow(tr);
     }
     tr.dataset.checkIn = data.check_in_status || "pending";
+    tr.dataset.checkInManual = data.check_in_status_is_manual ? "1" : "0";
     if (data.check_in_status) {
       const locked = data.check_in_status === "checked_out";
       tr.dataset.profileLocked = locked ? "true" : "false";
@@ -1121,6 +1123,7 @@
       phone,
       memo,
       checkIn: tr.dataset.checkIn || "pending",
+      checkInManual: tr.dataset.checkInManual === "1",
       participation: tr.dataset.participation || "participating",
       gender: tr.dataset.gender || "",
       expectedIn: tr.dataset.expectedInAt || "",
@@ -1401,7 +1404,7 @@
     modalMode = mode;
     modalAttendeeId = payload?.id || null;
     const checkIn = payload?.checkIn || "pending";
-    modalInitialCheckIn = checkIn;
+    modalInitialCheckIn = payload?.checkInManual ? checkIn : "auto";
     const rowEl =
       modalAttendeeId &&
       attBody?.querySelector(`tr[data-attendee-id="${modalAttendeeId}"]`);
@@ -1461,8 +1464,8 @@
     refreshLodgingOptions(payload?.lodgingRoom || "");
     if (roleInput) roleInput.value = payload?.memberRole || "member";
     if (checkInInput) {
-      checkInInput.value = checkIn;
-      syncCheckInSelectOptions(checkIn);
+      checkInInput.value = modalInitialCheckIn;
+      syncCheckInSelectOptions(modalInitialCheckIn);
     }
     if (participationInput) {
       participationInput.value = payload?.participation || "participating";
@@ -1522,8 +1525,13 @@
     const statusOnlyEdit = profileLocked && ctx.canChangeStatus;
     const payload = {};
 
-    if (ctx.canChangeStatus && checkInInput) {
-      payload.check_in_status = newCheckIn;
+    if (
+      ctx.canChangeStatus &&
+      checkInInput &&
+      newCheckIn !== modalInitialCheckIn
+    ) {
+      if (newCheckIn === "auto") payload.check_in_status_auto = true;
+      else payload.check_in_status = newCheckIn;
     }
     if (statusOnlyEdit) {
       payload.expected_check_out_at = isoFromDatetimeLocal(

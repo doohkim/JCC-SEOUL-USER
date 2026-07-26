@@ -101,6 +101,8 @@ class RetreatSessionAttendee(models.Model):
 
     @classmethod
     def from_attendee(cls, *, session: RetreatSession, attendee: RetreatAttendee):
+        from retreat.services.effective_check_in import effective_status
+
         group = attendee.group
         return cls(
             session=session,
@@ -110,7 +112,7 @@ class RetreatSessionAttendee(models.Model):
             phone=attendee.phone,
             gender=attendee.gender,
             memo=attendee.memo,
-            check_in_status=attendee.check_in_status,
+            check_in_status=effective_status(attendee),
             member_role=attendee.member_role,
             group_name=group.name,
             region_id_snapshot=group.region_id,

@@ -603,8 +603,15 @@ class AttendeeExpectedTimeValidationTests(_GroupManageFixture):
 
         now = timezone.now()
         self.attendee.check_in_status = RetreatAttendee.CheckInStatus.CHECKED_OUT
+        self.attendee.check_in_status_manually_set = True
         self.attendee.expected_check_out_at = now + timedelta(hours=2)
-        self.attendee.save(update_fields=["check_in_status", "expected_check_out_at"])
+        self.attendee.save(
+            update_fields=[
+                "check_in_status",
+                "check_in_status_manually_set",
+                "expected_check_out_at",
+            ]
+        )
         r = self.client.patch(
             self.url,
             {
@@ -626,6 +633,7 @@ class AttendeeCheckInStatusEditTests(_GroupManageFixture):
             name="상태수정대상",
             gender="male",
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+            check_in_status_manually_set=True,
         )
         self.url = reverse("api_retreat_attendee_detail", args=[self.attendee.id])
 
@@ -646,6 +654,27 @@ class AttendeeCheckInStatusEditTests(_GroupManageFixture):
         self.attendee.refresh_from_db()
         self.assertEqual(self.attendee.check_in_status, "pending")
         self.assertTrue(self.attendee.check_in_status_manually_set)
+
+    def test_council_can_return_status_to_expected_time_auto_mode(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        now = timezone.now()
+        self.attendee.expected_check_in_at = now - timedelta(hours=2)
+        self.attendee.expected_check_out_at = now + timedelta(hours=2)
+        self.attendee.save(
+            update_fields=["expected_check_in_at", "expected_check_out_at"]
+        )
+        self.client.force_authenticate(self.council_user)
+
+        r = self.client.patch(self.url, {"check_in_status_auto": True}, format="json")
+
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["check_in_status"], "checked_in")
+        self.assertFalse(r.json()["check_in_status_is_manual"])
+        self.attendee.refresh_from_db()
+        self.assertFalse(self.attendee.check_in_status_manually_set)
 
     def test_leader_cannot_change_check_in_status(self):
         self.client.force_authenticate(self.leader)
@@ -754,12 +783,12 @@ class AttendeeCheckInStatusEditTests(_GroupManageFixture):
         )
         self.assertEqual(r.status_code, 403, r.content)
 
-    def test_council_checked_out_future_out_avoids_auto_recheckout(self):
+    def test_council_manual_checked_in_overrides_scheduled_status(self):
         from datetime import timedelta
 
         from django.utils import timezone
 
-        from retreat.services.auto_check_in import apply_due_auto_transitions
+        from retreat.services.effective_check_in import effective_status
 
         now = timezone.now()
         self.attendee.expected_check_in_at = now - timedelta(hours=2)
@@ -778,9 +807,8 @@ class AttendeeCheckInStatusEditTests(_GroupManageFixture):
             format="json",
         )
         self.assertEqual(r.status_code, 200, r.content)
-        apply_due_auto_transitions(now=now)
         self.attendee.refresh_from_db()
-        self.assertEqual(self.attendee.check_in_status, "checked_in")
+        self.assertEqual(effective_status(self.attendee, now), "checked_in")
 
 
 class AttendeeCheckInRevertOverbookingTests(_GroupManageFixture):

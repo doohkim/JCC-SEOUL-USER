@@ -13,6 +13,7 @@
   if (!tbody || !overlay || !form) return;
 
   const CHECK_IN_LABELS = {
+    auto: "예정 시각 기준 자동",
     pending: "입실전",
     checked_in: "입실",
     checked_out: "퇴실",
@@ -373,7 +374,8 @@
     modalGroupRegionId = Number(tr.dataset.groupRegionId) || null;
     modalGroupDivisionId = Number(tr.dataset.groupDivisionId) || null;
     const checkIn = tr.dataset.checkIn || "pending";
-    modalInitialCheckIn = checkIn;
+    modalInitialCheckIn =
+      tr.dataset.checkInManual === "1" ? checkIn : "auto";
     const profileLocked = isProfileLocked(tr);
     const viewOnly = profileLocked && !ctx.canChangeStatus;
     const statusOnlyEdit = profileLocked && ctx.canChangeStatus;
@@ -405,7 +407,7 @@
     );
     applyModalProfileLock(profileLocked, viewOnly, statusOnlyEdit);
     if (roleInput) roleInput.value = tr.dataset.memberRole || "member";
-    if (checkInInput) checkInInput.value = checkIn;
+    if (checkInInput) checkInInput.value = modalInitialCheckIn;
 
     setLodgingOptions(modalGroupId, tr.dataset.lodgingRoom || "", tr.dataset.gender || "");
 
@@ -440,6 +442,7 @@
 
     tr.dataset.checkIn = data.check_in_status || "pending";
     tr.dataset.checkInStatus = data.check_in_status || "pending";
+    tr.dataset.checkInManual = data.check_in_status_is_manual ? "1" : "0";
     tr.dataset.gender = data.gender || "";
     tr.dataset.memo = data.memo || "";
     tr.dataset.memberRole = data.member_role || "member";
@@ -595,8 +598,13 @@
     const newCheckIn = checkInInput?.value || modalInitialCheckIn;
     const payload = {};
 
-    if (ctx.canChangeStatus && checkInInput) {
-      payload.check_in_status = newCheckIn;
+    if (
+      ctx.canChangeStatus &&
+      checkInInput &&
+      newCheckIn !== modalInitialCheckIn
+    ) {
+      if (newCheckIn === "auto") payload.check_in_status_auto = true;
+      else payload.check_in_status = newCheckIn;
     }
 
     if (statusOnlyEdit) {

@@ -51,7 +51,7 @@ class LodgingStatsTests(TestCase):
         cls.room_unlimited = LodgingRoom.objects.create(
             lodging=cls.lodging_b, number="203", capacity=0
         )
-        cls.now = timezone.make_aware(datetime(2026, 7, 1, 18, 0, 0))
+        cls.now = timezone.now()
 
     def _attendee(self, name, *, room=None, status=None, expected_in=None):
         status = status or RetreatAttendee.CheckInStatus.PENDING
@@ -59,6 +59,9 @@ class LodgingStatsTests(TestCase):
             "group": self.group,
             "name": name,
             "check_in_status": status,
+            "check_in_status_manually_set": (
+                status != RetreatAttendee.CheckInStatus.PENDING
+            ),
         }
         if expected_in is not None:
             kwargs["expected_check_in_at"] = expected_in

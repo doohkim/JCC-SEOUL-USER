@@ -87,11 +87,19 @@ class RetreatPickupSerializer(serializers.ModelSerializer):
 
     def get_check_in_status(self, obj) -> str:
         att = self._matched_attendee(obj)
-        return att.check_in_status if att else ""
+        if not att:
+            return ""
+        from retreat.services.effective_check_in import effective_status
+
+        return effective_status(att)
 
     def get_check_in_status_display(self, obj) -> str:
         att = self._matched_attendee(obj)
-        return att.get_check_in_status_display() if att else ""
+        if not att:
+            return ""
+        from retreat.services.effective_check_in import effective_status_label
+
+        return effective_status_label(att)
 
     def get_account_retired(self, obj) -> bool:
         return is_retired_account_row(obj)

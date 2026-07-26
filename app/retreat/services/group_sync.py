@@ -422,6 +422,7 @@ def move_home_attendee_to_group(
         "gender": home.gender,
         "memo": home.memo,
         "check_in_status": home.check_in_status,
+        "check_in_status_manually_set": home.check_in_status_manually_set,
         "expected_check_in_at": home.expected_check_in_at,
         "expected_check_out_at": home.expected_check_out_at,
         "checked_in_at": home.checked_in_at,

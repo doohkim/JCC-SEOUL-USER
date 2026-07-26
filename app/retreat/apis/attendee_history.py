@@ -30,6 +30,7 @@ from retreat.services.changelog_format import (
     _actor_name,
     _is_auto_absent,
 )
+from retreat.services.effective_check_in import effective_status
 
 
 _CHECK_IN_FIELDS = (
@@ -259,9 +260,9 @@ class RetreatAttendeeHistoryView(APIView):
                 "attendee": {
                     "id": attendee.id,
                     "name": attendee.name,
-                    "check_in_status": attendee.check_in_status,
+                    "check_in_status": effective_status(attendee),
                     "check_in_status_label": CHECK_IN_LABELS.get(
-                        attendee.check_in_status, attendee.check_in_status
+                        effective_status(attendee), effective_status(attendee)
                     ),
                     "expected_check_in_at": _format_dt(attendee.expected_check_in_at),
                     "expected_check_out_at": _format_dt(attendee.expected_check_out_at),

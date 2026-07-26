@@ -140,6 +140,8 @@ def snapshot_session_enrollments(
 
 
 def _enrollment_defaults(attendee: RetreatAttendee) -> dict:
+    from retreat.services.effective_check_in import effective_status
+
     group = attendee.group
     return {
         "source_group": group,
@@ -147,7 +149,7 @@ def _enrollment_defaults(attendee: RetreatAttendee) -> dict:
         "phone": attendee.phone,
         "gender": attendee.gender,
         "memo": attendee.memo,
-        "check_in_status": attendee.check_in_status,
+        "check_in_status": effective_status(attendee),
         "member_role": attendee.member_role,
         "group_name": group.name,
         "region_id_snapshot": group.region_id,

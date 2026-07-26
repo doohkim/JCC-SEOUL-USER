@@ -108,6 +108,7 @@ class _LodgingRosterFixture(TestCase):
             name="만실방",
             expected_check_in_at=timezone.now(),
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            check_in_status_manually_set=True,
             lodging_room=cls.room,
         )
         cls.no_lodging_attendee = RetreatAttendee.objects.create(
@@ -120,6 +121,7 @@ class _LodgingRosterFixture(TestCase):
             name="퇴실자",
             expected_check_in_at=timezone.now(),
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+            check_in_status_manually_set=True,
             lodging_room=cls.room,
         )
         from retreat.services.lodging_stay import persist_lodging_stay_status

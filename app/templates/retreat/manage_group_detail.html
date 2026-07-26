@@ -89,6 +89,7 @@
                       data-attendee-id="{{ a.id }}"
                       data-participation="{{ a.participation_status }}"
                       data-check-in="{{ a.check_in_status }}"
+                      data-check-in-manual="{% if a.check_in_status_manually_set %}1{% else %}0{% endif %}"
                       class="{% if a.participation_status == 'absent' %}is-absent{% endif %}"
                       data-gender="{{ a.gender }}"
                       data-checked-in-at="{% if a.checked_in_at %}{{ a.checked_in_at|date:'c' }}{% endif %}"
@@ -257,6 +258,7 @@
                     <div class="field jcc-retreat-modalField--full" data-modal-status-only>
                       <label for="retreatAttCheckIn">입·퇴실 상태</label>
                       <select id="retreatAttCheckIn" name="check_in_status" data-cselect>
+                        <option value="auto">예정 시각 기준 자동</option>
                         <option value="pending">입실전</option>
                         <option value="checked_in">입실</option>
                         <option value="checked_out">퇴실</option>
@@ -407,7 +409,7 @@
     <script src="{% static 'retreat/datetime_picker.js' %}?v=20260726a" defer></script>
     <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
     <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618b" defer></script>
-    <script src="{% static 'retreat/manage_group.js' %}?v=20260725a" defer></script>
+    <script src="{% static 'retreat/manage_group.js' %}?v=20260726b" defer></script>
     <script>
       // 조원 수정 모달은 열릴 때 select 값을 프로그램으로 채우므로, 표시될 때 커스텀 드롭다운 라벨을 다시 동기화한다.
       document.addEventListener("DOMContentLoaded", function () {

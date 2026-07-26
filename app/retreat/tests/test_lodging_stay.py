@@ -51,6 +51,11 @@ class LodgingStayStatusTests(TestCase):
         cls.now = timezone.now()
 
     def _attendee(self, **kwargs) -> RetreatAttendee:
+        if kwargs.get("check_in_status") not in (
+            None,
+            RetreatAttendee.CheckInStatus.PENDING,
+        ):
+            kwargs["check_in_status_manually_set"] = True
         return RetreatAttendee.objects.create(group=self.group, name="테스트", **kwargs)
 
     def test_resolve_absent(self):

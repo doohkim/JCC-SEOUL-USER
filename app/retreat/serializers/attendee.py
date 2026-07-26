@@ -250,7 +250,18 @@ class RetreatAttendeeSerializer(serializers.ModelSerializer):
         )
 
     def to_representation(self, instance):
+        from retreat.services.effective_check_in import (
+            effective_status,
+            effective_status_label,
+        )
+
         data = super().to_representation(instance)
+        data["check_in_status"] = effective_status(instance)
+        data["check_in_status_display"] = effective_status_label(instance)
+        data["check_in_status_is_manual"] = instance.check_in_status_manually_set
+        from retreat.services.lodging_stay import resolve_lodging_stay_status
+
+        data["lodging_stay_status"] = resolve_lodging_stay_status(instance)
         phone = data.get("phone")
         if phone:
             normalized = normalize_korea_mobile_phone(phone)

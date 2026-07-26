@@ -45,13 +45,16 @@ def pickup_name_eligibility_error(
     att = pickup_attendee_for_name(group, name)
     if att is None:
         return None
+    from retreat.services.effective_check_in import effective_status
+
     S = RetreatAttendee.CheckInStatus
+    status = effective_status(att)
     if direction == RetreatPickup.Direction.ARRIVAL:
-        if att.check_in_status != S.PENDING:
+        if status != S.PENDING:
             return "입회 차량 요청은 입실전 상태 조원만 등록할 수 있습니다."
     elif direction == RetreatPickup.Direction.DEPARTURE:
         # 입실전·입실 허용, 퇴실만 거부
-        if att.check_in_status == S.CHECKED_OUT:
+        if status == S.CHECKED_OUT:
             return "출회 차량 요청은 퇴실 상태 조원은 등록할 수 없습니다."
     return None
 

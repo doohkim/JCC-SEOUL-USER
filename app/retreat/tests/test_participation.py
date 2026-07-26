@@ -19,7 +19,7 @@ from retreat.models import (
     RetreatSession,
     RetreatSessionAttendee,
 )
-from retreat.services.auto_check_in import apply_due_auto_transitions
+from retreat.services.effective_check_in import effective_status
 from retreat.services.dashboard import build_realtime_dashboard
 from retreat.services.lodging_roster import (
     attendee_lodging_cell_label,
@@ -92,17 +92,13 @@ class ParticipationTests(TestCase):
         self.assertFalse(is_lodging_eligible(self.absentee))
         self.assertEqual(attendee_lodging_cell_label(self.absentee), "불참")
 
-    def test_auto_check_in_skips_absent(self):
-        result = apply_due_auto_transitions(now=self.now, event_id=self.event.id)
-        self.assertEqual(result["checked_in"], 1)
-        self.participant.refresh_from_db()
-        self.absentee.refresh_from_db()
+    def test_effective_status_is_computed_without_database_write(self):
         self.assertEqual(
-            self.participant.check_in_status,
+            effective_status(self.participant, self.now),
             RetreatAttendee.CheckInStatus.CHECKED_IN,
         )
         self.assertEqual(
-            self.absentee.check_in_status,
+            self.participant.check_in_status,
             RetreatAttendee.CheckInStatus.PENDING,
         )
 

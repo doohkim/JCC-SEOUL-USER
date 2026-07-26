@@ -11,7 +11,7 @@ class RetreatAttendeeAdmin(admin.ModelAdmin):
         "name",
         "phone",
         "gender",
-        "check_in_status",
+        "effective_check_in_status",
         "participation_status",
         "checked_in_at",
         "checked_out_at",
@@ -35,6 +35,7 @@ class RetreatAttendeeAdmin(admin.ModelAdmin):
         "gender",
         "member_role",
         "check_in_status",
+        "check_in_status_manually_set",
         "participation_status",
         "lodging_room",
         "lodging_stay_status",
@@ -63,7 +64,15 @@ class RetreatAttendeeAdmin(admin.ModelAdmin):
         parts = [f"{a.group.name} (조원 #{a.pk})" for a in others]
         return "⚠️ 같은 집회의 다른 조원 행: " + ", ".join(parts)
 
+    @admin.display(description="입·퇴실 상태")
+    def effective_check_in_status(self, obj: RetreatAttendee) -> str:
+        from retreat.services.effective_check_in import effective_status_label
+
+        return effective_status_label(obj)
+
     def save_model(self, request, obj, form, change):
+        if "check_in_status" in form.changed_data:
+            obj.check_in_status_manually_set = True
         super().save_model(request, obj, form, change)
         if not obj.user_id:
             return
