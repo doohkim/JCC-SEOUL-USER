@@ -1,0 +1,13 @@
+{% comment %}그룹 탭 서브탭 — event, group_subtab ('manage' | 'roster'){% endcomment %}
+<nav class="jcc-page-tabs jcc-retreat-groupSubTabs" aria-label="그룹 서브탭">
+  <a
+    class="jcc-page-tab{% if group_subtab == 'manage' %} is-active{% endif %}"
+    href="{% url 'retreat_group_manage_list' event.id %}"
+  >조별 관리</a>
+  {% if can_show_group_roster %}
+    <a
+      class="jcc-page-tab{% if group_subtab == 'roster' %} is-active{% endif %}"
+      href="{% url 'retreat_lodging_roster' event.id %}"
+    >전체 명단</a>
+  {% endif %}
+</nav>

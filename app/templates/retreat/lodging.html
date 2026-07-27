@@ -17,7 +17,6 @@
         <main>
           <div class="jcc-retreat-subTabsRow">
             {% include 'includes/retreat_event_picker.html' %}
-            {% include 'includes/retreat_lodging_subtabs.html' with lodging_subtab='manage' %}
             {% if can_manage_lodging %}
               <div class="jcc-retreat-pickupActions">
                 <button type="button" class="jcc-retreat-pickupAddBtn" id="btnAddLodging" aria-label="숙소 추가">

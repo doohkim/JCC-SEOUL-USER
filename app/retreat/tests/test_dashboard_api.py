@@ -918,6 +918,7 @@ class RetreatDashboardApiTests(APITestCase):
         page = self.client.get(page_url)
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "isStaff: false")
+        self.assertContains(page, "canNavigateGroups: false")
         self.assertNotContains(
             page, f'href="{reverse("retreat_lodging_roster", args=[self.event.id])}'
         )
@@ -931,6 +932,7 @@ class RetreatDashboardApiTests(APITestCase):
         page = self.client.get(page_url)
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, "isStaff: true")
+        self.assertContains(page, "canNavigateGroups: true")
         self.assertContains(
             page, f'href="{reverse("retreat_lodging_roster", args=[self.event.id])}'
         )

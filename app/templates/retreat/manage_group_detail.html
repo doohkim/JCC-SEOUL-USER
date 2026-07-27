@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ group.name }} · 그룹</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260726a" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260728i" />
   </head>
   <body class="has-retreat-bottom-tabs jcc-retreat-detail">
     <div class="jcc-layout">
@@ -59,6 +59,29 @@
                 <span class="muted">읽기 전용</span>
               </div>
             {% endif %}
+          </div>
+
+          <div class="jcc-retreat-groupSearchBar" role="search">
+            <div class="jcc-retreat-rosterSearchWrap">
+              <svg class="jcc-retreat-rosterSearchIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+              <input
+                type="search"
+                class="jcc-retreat-rosterSearch"
+                id="groupAttendeeSearch"
+                placeholder="이름 또는 전화번호로 검색..."
+                autocomplete="off"
+                aria-label="조원 이름 또는 전화번호 검색"
+              />
+              <button type="button" class="jcc-retreat-groupSearchClear" id="groupAttendeeSearchClear" aria-label="검색어 지우기" hidden>
+                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="M6 6l8 8M14 6l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <span class="jcc-retreat-groupSearchCount" id="groupAttendeeSearchCount" aria-live="polite"></span>
           </div>
 
           <div class="card jcc-retreat-rosterCard">
@@ -198,6 +221,7 @@
               </table>
             </div>
           </div>
+          <p class="msg jcc-retreat-filterEmpty" id="groupAttendeeSearchEmpty" hidden>검색 조건에 맞는 조원이 없습니다.</p>
 
           <div class="jcc-retreat-toast" id="retreatToast" role="alert" aria-live="polite" hidden></div>
         </main>
@@ -410,6 +434,7 @@
     <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
     <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618b" defer></script>
     <script src="{% static 'retreat/manage_group.js' %}?v=20260726b" defer></script>
+    <script src="{% static 'retreat/manage_group_search.js' %}?v=20260728a" defer></script>
     <script>
       // 조원 수정 모달은 열릴 때 select 값을 프로그램으로 채우므로, 표시될 때 커스텀 드롭다운 라벨을 다시 동기화한다.
       document.addEventListener("DOMContentLoaded", function () {

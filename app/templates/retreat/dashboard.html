@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 대시보드 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260725q" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260728h" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -54,7 +54,7 @@
               </div>
             </a>
 
-            {% if can_view_retreat_all %}<a class="jcc-retreat-summaryCard jcc-retreat-summaryCard--link" href="{% url 'retreat_lodging_roster' event.id %}?assign=unassigned">{% else %}<div class="jcc-retreat-summaryCard">{% endif %}
+            {% if can_show_group_roster %}<a class="jcc-retreat-summaryCard jcc-retreat-summaryCard--link" href="{% url 'retreat_lodging_roster' event.id %}?assign=unassigned">{% else %}<div class="jcc-retreat-summaryCard">{% endif %}
               <div class="jcc-retreat-summaryCard-head">
                 <span class="jcc-retreat-summaryCard-icon jcc-retreat-summaryCard-icon--bed" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" focusable="false">
@@ -69,7 +69,7 @@
                   <span class="jcc-retreat-summaryCard-unit">명</span>
                 </span>
               </div>
-            {% if can_view_retreat_all %}</a>{% else %}</div>{% endif %}
+            {% if can_show_group_roster %}</a>{% else %}</div>{% endif %}
 
             <a class="jcc-retreat-summaryCard jcc-retreat-summaryCard--link" href="{% url 'retreat_pickup' event.id %}?tab=all">
               <div class="jcc-retreat-summaryCard-head">
@@ -261,10 +261,15 @@
         eventId: {{ event.id }},
         apiDashboard: "{% url 'api_retreat_event_dashboard' event.id %}",
         apiGroupBoard: "{% url 'api_retreat_event_group_board' event.id %}",
-        isStaff: {{ can_view_retreat_all|yesno:"true,false" }}
+        isStaff: {{ can_view_retreat_all|yesno:"true,false" }},
+        canNavigateGroups: {{ can_use_dashboard_group_links|yesno:"true,false" }},
+        canViewGroupRoster: {{ can_show_group_roster|yesno:"true,false" }},
+        groupDetailUrlTemplate: "{% url 'retreat_group_manage' event.id 999999999 %}",
+        groupListUrl: "{% url 'retreat_group_manage_list' event.id %}",
+        groupRosterUrl: "{% url 'retreat_lodging_roster' event.id %}"
       };
     </script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260725h" defer></script>
+    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260728a" defer></script>
   </body>
 </html>

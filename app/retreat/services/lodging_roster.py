@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.db.models import Case, IntegerField, QuerySet, Value, When
+from django.utils import timezone
 
 from retreat.models import RetreatAttendee, RetreatEvent, RetreatTravelPreset
 from retreat.services.check_in_stamps import (
@@ -94,6 +96,27 @@ def attendee_lodging_cell_label(attendee: RetreatAttendee) -> str | None:
     return lodging_stay_display(attendee)
 
 
+def lodging_night_count(attendee: RetreatAttendee) -> int:
+    """예정 체류 구간과 매일 02:00~07:00가 겹치는 날짜 수."""
+    starts_at = attendee.expected_check_in_at
+    ends_at = attendee.expected_check_out_at
+    if starts_at is None or ends_at is None or ends_at <= starts_at:
+        return 0
+
+    local_start = timezone.localtime(starts_at)
+    local_end = timezone.localtime(ends_at)
+    current_date = local_start.date()
+    last_date = local_end.date()
+    nights = 0
+    while current_date <= last_date:
+        window_start = timezone.make_aware(datetime.combine(current_date, time(2, 0)))
+        window_end = timezone.make_aware(datetime.combine(current_date, time(7, 0)))
+        if local_start < window_end and local_end > window_start:
+            nights += 1
+        current_date += timedelta(days=1)
+    return nights
+
+
 def build_lodging_roster_context(
     event: RetreatEvent,
     user: User,
@@ -125,6 +148,10 @@ def build_lodging_roster_context(
             "user",
             "user__profile",
         )
+        .prefetch_related(
+            "group__extra_scopes__region",
+            "group__extra_scopes__division",
+        )
         .annotate(_effective_status=effective_status_expression())
         .order_by(
             check_in_order,
@@ -155,6 +182,23 @@ def build_lodging_roster_context(
         ]
     )
     for attendee in attendees:
+        group_scopes = [
+            (attendee.group.region.name, attendee.group.division.name),
+            *[
+                (scope.region.name, scope.division.name)
+                for scope in attendee.group.extra_scopes.all()
+            ],
+        ]
+        attendee.group_region_names = list(
+            dict.fromkeys(region_name for region_name, _ in group_scopes)
+        )
+        attendee.group_division_names = list(
+            dict.fromkeys(division_name for _, division_name in group_scopes)
+        )
+        attendee.group_scope_labels = [
+            f"{region_name} · {division_name}"
+            for region_name, division_name in dict.fromkeys(group_scopes)
+        ]
         attendee.check_in_status = effective_status(attendee)
         attendee.lodging_stay_status = resolve_lodging_stay_status(attendee)
         attendee.lodging_scope = attendee_lodging_scope(attendee)
@@ -162,6 +206,10 @@ def build_lodging_roster_context(
         attendee.lodging_assignment_key = attendee_lodging_assignment_key(attendee)
         attendee.lodging_cell_label = attendee_lodging_cell_label(attendee)
         attendee.lodging_stay_display = lodging_stay_display(attendee)
+        attendee.lodging_nights = lodging_night_count(attendee)
+        attendee.lodging_nights_label = (
+            f"{attendee.lodging_nights}박" if attendee.lodging_nights > 0 else "숙박 X"
+        )
         attendee.expected_timestamps_locked = is_expected_timestamps_locked(attendee)
         attendee.profile_locked = is_attendee_profile_locked(attendee)
         attendee.expected_check_in_locked = is_expected_check_in_locked(
@@ -200,12 +248,16 @@ def build_lodging_roster_context(
     count_lodging_unassigned = sum(
         1 for a in attendees if a.lodging_scope == "unassigned"
     )
-
     return {
         "roster_attendees": attendees,
         "roster_arrival_travel_chips": travel_filter_chip_defs(arrival_fixed),
         "roster_departure_travel_chips": travel_filter_chip_defs(departure_fixed),
         "travel_presets": travel_presets_for_event(event),
+        "roster_night_chips": [
+            ("0", "숙박 X"),
+            ("1", "1박"),
+            ("2", "2박 이상"),
+        ],
         "roster_summary": LodgingRosterSummary(
             count_total=len(attendees),
             count_participating=len(participating),

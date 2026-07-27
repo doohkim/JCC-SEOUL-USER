@@ -875,6 +875,26 @@ def can_view_retreat_all(user: User, event) -> bool:
     return caps.lodging >= AccessLevel.VIEW and caps.scope.kind == "event"
 
 
+def can_view_retreat_group_roster(user: User, event) -> bool:
+    """그룹 전체 명단 — 슈퍼유저·집회 전체 관리자만."""
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
+        return False
+    caps = effective_capabilities(user, event)
+    return caps.edit_lodging_roster and caps.scope.kind == "event"
+
+
+def can_use_retreat_dashboard_group_links(user: User, event) -> bool:
+    """대시보드 → 그룹 이동 — 그룹 조회 권한이 있는 집회 운영진."""
+    if not user or not getattr(user, "is_authenticated", False) or event is None:
+        return False
+    if user.is_superuser:
+        return True
+    membership = get_staff_membership(user, event)
+    if membership is None:
+        return False
+    return effective_capabilities(user, event).groups >= AccessLevel.VIEW
+
+
 def can_change_retreat_check_in(user: User, event) -> bool:
     """입·퇴실 상태 변경."""
     if not user or not getattr(user, "is_authenticated", False) or event is None:

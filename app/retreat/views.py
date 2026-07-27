@@ -83,6 +83,8 @@ from users.permissions import (
     can_manage_staff,
     can_select_pickup_group,
     can_view_retreat_all,
+    can_view_retreat_group_roster,
+    can_use_retreat_dashboard_group_links,
     can_view_staff,
     can_access_retreat_admin,
     is_retreat_council,
@@ -169,6 +171,7 @@ def _inject_retreat_caps(ctx, user, event) -> None:
     ctx["can_link_attendee_user"] = caps.link_attendee_user
     ctx["can_show_dashboard_tab"] = caps.dashboard >= AccessLevel.VIEW
     ctx["can_show_groups_tab"] = caps.groups >= AccessLevel.VIEW
+    ctx["can_show_group_roster"] = can_view_retreat_group_roster(user, event)
     ctx["can_show_pickup_tab"] = caps.pickup >= AccessLevel.VIEW
     ctx["can_show_lodging_tab"] = can_view_retreat_all(user, event)
     ctx["can_show_admin_tab"] = can_access_retreat_admin(user, event)
@@ -442,6 +445,9 @@ class RetreatDashboardView(_RetreatEventMixin, TemplateView):
             .order_by("-created_at", "-id")
         )
         ctx["sessions"] = sessions
+        ctx["can_use_dashboard_group_links"] = can_use_retreat_dashboard_group_links(
+            user, event
+        )
         ctx["sessions_json"] = json.dumps(
             [
                 {
@@ -920,8 +926,15 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
         from django.db.models import Prefetch
 
         from retreat.models import RetreatGroupScope
+        from retreat.services.effective_check_in import effective_status_q
 
         retired_attendee_q = exclude_retired_attendees_q(prefix="attendees__")
+        attendee_visibility_q = (
+            retired_attendee_q if not can_view_retired_account_data(user) else Q()
+        )
+        group_participating_q = attendee_visibility_q & ~Q(
+            attendees__participation_status=(RetreatAttendee.ParticipationStatus.ABSENT)
+        )
         groups = list(
             visible_retreat_groups_for(user, event)
             .select_related("region", "division")
@@ -936,28 +949,48 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
             .annotate(
                 attendee_count=Count(
                     "attendees",
-                    filter=(
-                        retired_attendee_q
-                        if not can_view_retired_account_data(user)
-                        else Q()
-                    ),
+                    filter=attendee_visibility_q,
                     distinct=True,
                 ),
                 participating_count=Count(
                     "attendees",
-                    filter=(
-                        retired_attendee_q
-                        & ~Q(
-                            attendees__participation_status=(
-                                RetreatAttendee.ParticipationStatus.ABSENT
-                            )
+                    filter=group_participating_q,
+                    distinct=True,
+                ),
+                absent_count=Count(
+                    "attendees",
+                    filter=attendee_visibility_q
+                    & Q(
+                        attendees__participation_status=(
+                            RetreatAttendee.ParticipationStatus.ABSENT
                         )
-                        if not can_view_retired_account_data(user)
-                        else ~Q(
-                            attendees__participation_status=(
-                                RetreatAttendee.ParticipationStatus.ABSENT
-                            )
-                        )
+                    ),
+                    distinct=True,
+                ),
+                pending_count=Count(
+                    "attendees",
+                    filter=group_participating_q
+                    & effective_status_q(
+                        RetreatAttendee.CheckInStatus.PENDING,
+                        prefix="attendees",
+                    ),
+                    distinct=True,
+                ),
+                checked_in_count=Count(
+                    "attendees",
+                    filter=group_participating_q
+                    & effective_status_q(
+                        RetreatAttendee.CheckInStatus.CHECKED_IN,
+                        prefix="attendees",
+                    ),
+                    distinct=True,
+                ),
+                checked_out_count=Count(
+                    "attendees",
+                    filter=group_participating_q
+                    & effective_status_q(
+                        RetreatAttendee.CheckInStatus.CHECKED_OUT,
+                        prefix="attendees",
                     ),
                     distinct=True,
                 ),
@@ -970,7 +1003,6 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
 
         from retreat.models import RetreatGroupMembership
         from retreat.services.attendee_ordering import resolve_group_card_leader_name
-        from retreat.services.effective_check_in import effective_status_q
 
         leaders_by_group: dict[int, list[RetreatAttendee]] = defaultdict(list)
         leader_attendee_qs = visible_attendees_for(
@@ -1304,7 +1336,6 @@ class RetreatLodgingView(_RetreatEventMixin, TemplateView):
         ctx["lodgings"] = lodgings
         ctx["lodging_summary"] = build_lodging_page_summary(event)
         ctx["can_manage_lodging"] = is_retreat_staff(user, event)
-        ctx["lodging_subtab"] = "manage"
         ctx["room_gender_choices"] = LodgingRoom.Gender.choices
         ctx["region_choices"] = list(Region.objects.order_by("sort_order", "name"))
         ctx["division_choices"] = list(
@@ -1326,8 +1357,8 @@ class RetreatLodgingRosterView(_RetreatEventMixin, TemplateView):
         user = self.request.user
         event = ctx["event"]
 
-        if not can_view_retreat_all(user, event):
-            raise PermissionDenied("이 집회의 숙소를 볼 권한이 없습니다.")
+        if not can_view_retreat_group_roster(user, event):
+            raise PermissionDenied("이 집회의 전체 명단을 볼 권한이 없습니다.")
 
         from retreat.services.lodging_roster import build_lodging_roster_context
 
@@ -1359,7 +1390,7 @@ class RetreatLodgingRosterView(_RetreatEventMixin, TemplateView):
         )
         ctx["can_change_status"] = can_change_retreat_check_in(user, event)
         ctx["attendee_role_choices"] = RetreatAttendee.MemberRole.choices
-        ctx["lodging_subtab"] = "roster"
+        ctx["group_subtab"] = "roster"
         ctx["can_manage_lodging"] = is_retreat_staff(user, event)
         return ctx
 

@@ -18,6 +18,7 @@ from retreat.models import (
     RetreatEvent,
     RetreatGroup,
     RetreatGroupMembership,
+    RetreatGroupScope,
     RetreatTravelPreset,
 )
 from retreat.services.lodging_roster import (
@@ -27,6 +28,7 @@ from retreat.services.lodging_roster import (
     attendee_lodging_scope,
     build_lodging_roster_context,
     is_lodging_eligible,
+    lodging_night_count,
 )
 from retreat.services.lodging_stats import build_lodging_page_summary
 from users.models import Division, Region, RoleLevel, UserDivisionTeam
@@ -149,7 +151,8 @@ class LodgingRosterPageTests(_LodgingRosterFixture):
         r = self.client.get(self._url())
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "전체 명단")
-        self.assertContains(r, "숙소·호수 관리")
+        self.assertContains(r, "조별 관리")
+        self.assertContains(r, 'aria-label="그룹 서브탭"')
         self.assertContains(r, "미배정자")
         self.assertContains(r, "배정자")
         self.assertContains(r, 'data-lodging-stay-status="active"')
@@ -166,6 +169,31 @@ class LodgingRosterPageTests(_LodgingRosterFixture):
         self.assertContains(r, 'data-filter-value="1"')
         self.assertContains(r, "data-roster-memo")
         self.assertContains(r, 'data-memo-full="알레르기주의필요"')
+        self.assertContains(r, 'data-filter-kind="gender"')
+        self.assertContains(r, 'id="rosterDateFrom"')
+        self.assertContains(r, 'data-filter-kind="nights"')
+        self.assertContains(r, 'id="rosterFilterRegions"')
+        self.assertContains(r, 'id="rosterFilterDivisions"')
+        self.assertContains(r, 'data-region-names="서울"')
+        self.assertContains(r, 'data-division-names="청년부"')
+        self.assertContains(r, "숙박 X")
+
+    def test_extra_group_scope_is_exposed_to_region_division_filters(self):
+        adult_division = Division.objects.create(
+            region=self.seoul,
+            code="roster_young_adult",
+            name="청장년부",
+        )
+        RetreatGroupScope.objects.create(
+            group=self.group,
+            region=self.seoul,
+            division=adult_division,
+        )
+        self.client.force_login(self.staff)
+        response = self.client.get(self._url())
+        self.assertContains(response, 'data-region-names="서울"')
+        self.assertContains(response, 'data-division-names="청년부|청장년부"')
+        self.assertContains(response, "서울 · 청년부, 서울 · 청장년부")
 
     def test_memo_filter_query_param_page_ok(self):
         self.client.force_login(self.staff)
@@ -194,6 +222,43 @@ class LodgingRosterPageTests(_LodgingRosterFixture):
 
 
 class LodgingRosterSummaryTests(_LodgingRosterFixture):
+    def test_lodging_nights_count_only_0200_to_0700_overlap(self):
+        attendee = self.assigned_attendee
+        attendee.expected_check_in_at = timezone.make_aware(datetime(2026, 7, 1, 23, 0))
+        attendee.expected_check_out_at = timezone.make_aware(
+            datetime(2026, 7, 3, 2, 30)
+        )
+        self.assertEqual(lodging_night_count(attendee), 2)
+
+        attendee.expected_check_in_at = timezone.make_aware(datetime(2026, 7, 1, 7, 0))
+        attendee.expected_check_out_at = timezone.make_aware(
+            datetime(2026, 7, 1, 23, 59)
+        )
+        self.assertEqual(lodging_night_count(attendee), 0)
+
+    def test_context_exposes_night_filter_chips_and_labels(self):
+        self.assigned_attendee.expected_check_in_at = timezone.make_aware(
+            datetime(2026, 7, 1, 1, 0)
+        )
+        self.assigned_attendee.expected_check_out_at = timezone.make_aware(
+            datetime(2026, 7, 2, 8, 0)
+        )
+        self.assigned_attendee.save(
+            update_fields=["expected_check_in_at", "expected_check_out_at"]
+        )
+        ctx = build_lodging_roster_context(self.event, self.staff)
+        by_name = {a.name: a for a in ctx["roster_attendees"]}
+        self.assertEqual(by_name["배정자"].lodging_nights, 2)
+        self.assertEqual(by_name["배정자"].lodging_nights_label, "2박")
+        self.assertEqual(
+            ctx["roster_night_chips"],
+            [
+                ("0", "숙박 X"),
+                ("1", "1박"),
+                ("2", "2박 이상"),
+            ],
+        )
+
     def test_summary_matches_lodging_stats_unassigned(self):
         ctx = build_lodging_roster_context(self.event, self.staff)
         facility = build_lodging_page_summary(self.event).facility

@@ -86,8 +86,14 @@
     const count = row.checked_in ?? 0;
     const tr = document.createElement("tr");
     if (count === 0) tr.classList.add("is-zero");
+    const groupUrl = ctx.groupDetailUrlTemplate
+      ? ctx.groupDetailUrlTemplate.replace("999999999", encodeURIComponent(row.group_id))
+      : "";
+    const groupLabel = groupUrl && ctx.canNavigateGroups
+      ? `<a class="jcc-retreat-dashboardTableLink" href="${escapeHtml(groupUrl)}">${escapeHtml(row.name)}</a>`
+      : escapeHtml(row.name);
     tr.innerHTML =
-      `<td class="jcc-retreat-tablePrimary">${escapeHtml(row.name)}</td>` +
+      `<td class="jcc-retreat-tablePrimary">${groupLabel}</td>` +
       `<td class="jcc-retreat-divRegionCell"><div class="jcc-retreat-scopeTags">${regionCell}</div></td>` +
       `<td class="jcc-retreat-numCell"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--in">${count}</strong></td>`;
     return tr;
@@ -128,12 +134,19 @@
       const region = escapeHtml((row.region || "").trim());
       const division = escapeHtml((row.division || "").trim());
       const regionCell = division ? `${region} · ${division}` : region;
+      const divisionUrl = buildUrl(ctx.groupListUrl, {
+        region: (row.region || "").trim(),
+        division: (row.division || "").trim(),
+      });
       const pending = row.pending ?? 0;
       const checkedIn = row.checked_in ?? 0;
       const checkedOut = row.checked_out ?? 0;
       const attended = row.attended ?? 0;
+      const regionContent = ctx.canNavigateGroups
+        ? `<a class="jcc-retreat-dashboardTableLink" href="${escapeHtml(divisionUrl)}">${regionCell}</a>`
+        : regionCell;
       tr.innerHTML = `
-        <td class="jcc-retreat-divRegionCell jcc-retreat-tablePrimary">${regionCell}</td>
+        <td class="jcc-retreat-divRegionCell jcc-retreat-tablePrimary">${regionContent}</td>
         <td class="jcc-retreat-tableSecondary">${escapeHtml(row.group_range)}</td>
         <td class="jcc-retreat-numCell"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--male">${row.male ?? 0}</strong></td>
         <td class="jcc-retreat-numCell"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--female">${row.female ?? 0}</strong></td>
@@ -169,7 +182,7 @@
     return "other";
   }
 
-  function renderTravelRows(tbody, rows) {
+  function renderTravelRows(tbody, rows, direction) {
     if (!tbody) return;
     tbody.innerHTML = "";
     (rows || []).forEach((row) => {
@@ -179,9 +192,21 @@
       if (row.manual) tr.classList.add("is-manual");
       if (row.code === "__unset__") tr.classList.add("is-unset");
       const count = row.count ?? 0;
+      const filterValue =
+        row.code === "__custom__" || row.code === "__unset__"
+          ? row.code
+          : row.id;
+      const travelUrl = buildUrl(ctx.groupRosterUrl, {
+        [direction === "arrival" ? "arrivalTravel" : "departureTravel"]:
+          filterValue,
+      });
+      const label = escapeHtml(row.label || "");
+      const labelContent = ctx.canViewGroupRoster
+        ? `<a class="jcc-retreat-dashboardTableLink" href="${escapeHtml(travelUrl)}">${label}</a>`
+        : `<span>${label}</span>`;
       if (count === 0) tr.classList.add("is-zero");
       tr.innerHTML =
-        `<td class="jcc-retreat-tablePrimary"><span class="jcc-retreat-travelLabel">${escapeHtml(row.label || "")}</span></td>` +
+        `<td class="jcc-retreat-tablePrimary"><span class="jcc-retreat-travelLabel">${labelContent}</span></td>` +
         `<td class="jcc-retreat-numCell jcc-retreat-travelCountCell">` +
         `<span class="jcc-retreat-travelCountWrap">` +
         `<strong class="jcc-retreat-travelCount">${count}</strong>` +
@@ -264,11 +289,13 @@
     });
     renderTravelRows(
       document.querySelector("#travelArrivalTable tbody"),
-      travel.arrival || []
+      travel.arrival || [],
+      "arrival"
     );
     renderTravelRows(
       document.querySelector("#travelDepartureTable tbody"),
-      travel.departure || []
+      travel.departure || [],
+      "departure"
     );
 
     const byGroup = travel.by_group || {};
@@ -292,6 +319,16 @@
         "departure_total"
       );
     }
+  }
+
+  function buildUrl(baseUrl, params) {
+    const url = new URL(baseUrl || location.pathname, location.origin);
+    Object.entries(params || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && String(value) !== "") {
+        url.searchParams.set(key, String(value));
+      }
+    });
+    return `${url.pathname}${url.search}`;
   }
 
   function groupRangeStartNumber(groupRange) {

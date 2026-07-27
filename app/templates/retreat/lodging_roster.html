@@ -5,46 +5,46 @@
     {% include 'includes/jcc_theme_head.html' %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ event.name }} · 전체 명단</title>
+    <title>{{ event.name }} · 그룹 전체 명단</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260726a" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260728f" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
       {% include 'includes/jcc_left_nav.html' %}
       <div class="jcc-layout-content">
-        {% include 'includes/jcc_page_header.html' with page_title='숙소' tabs_template='includes/retreat_event_tabs.html' retreat_tab='lodging' hide_event_picker=True %}
+        {% include 'includes/jcc_page_header.html' with page_title='그룹' tabs_template='includes/retreat_event_tabs.html' retreat_tab='manage_groups' hide_event_picker=True %}
         <main>
           <div class="jcc-retreat-subTabsRow">
             {% include 'includes/retreat_event_picker.html' with retreat_tab='lodging_roster' %}
-            {% include 'includes/retreat_lodging_subtabs.html' with lodging_subtab='roster' %}
+            {% include 'includes/retreat_group_subtabs.html' with group_subtab='roster' %}
           </div>
 
           {% include 'includes/retreat_lodging_roster_summary_bar.html' %}
 
           <div class="jcc-retreat-filterBar jcc-retreat-filterBar--roster" id="lodgingRosterFilterBar">
-            <div class="jcc-retreat-rosterSearchBlock">
-              <label class="jcc-retreat-rosterSearchWrap" for="rosterNameSearch">
-                <svg class="jcc-retreat-rosterSearchIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/>
-                  <path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                </svg>
-                <input
-                  type="search"
-                  class="jcc-retreat-rosterSearch"
-                  id="rosterNameSearch"
-                  placeholder="이름 또는 전화번호로 검색..."
-                  autocomplete="off"
-                  aria-label="이름 또는 전화번호로 검색"
-                />
-              </label>
-            </div>
             <div class="jcc-retreat-filterRow" data-filter-row="status">
               <span class="jcc-retreat-filterLabel">입실 상태</span>
               <div class="jcc-retreat-filterChips" id="rosterFilterStatus">
                 <button type="button" class="jcc-retreat-filterChip" data-filter-kind="status" data-filter-value="pending">입실전</button>
                 <button type="button" class="jcc-retreat-filterChip" data-filter-kind="status" data-filter-value="checked_in">입실</button>
                 <button type="button" class="jcc-retreat-filterChip" data-filter-kind="status" data-filter-value="checked_out">퇴실</button>
+              </div>
+            </div>
+            <div class="jcc-retreat-filterRow" data-filter-row="gender">
+              <span class="jcc-retreat-filterLabel">성별</span>
+              <div class="jcc-retreat-filterChips" id="rosterFilterGender">
+                <button type="button" class="jcc-retreat-filterChip" data-filter-kind="gender" data-filter-value="male">남성</button>
+                <button type="button" class="jcc-retreat-filterChip" data-filter-kind="gender" data-filter-value="female">여성</button>
+                <button type="button" class="jcc-retreat-filterChip" data-filter-kind="gender" data-filter-value="__unset__">미지정</button>
+              </div>
+            </div>
+            <div class="jcc-retreat-filterRow" data-filter-row="nights">
+              <span class="jcc-retreat-filterLabel">숙박 여부</span>
+              <div class="jcc-retreat-filterChips" id="rosterFilterNights">
+                {% for value, label in roster_night_chips %}
+                  <button type="button" class="jcc-retreat-filterChip" data-filter-kind="nights" data-filter-value="{{ value }}">{{ label }}</button>
+                {% endfor %}
               </div>
             </div>
             <div class="jcc-retreat-filterRow" data-filter-row="lodgingStay">
@@ -98,6 +98,44 @@
             </div>
           </div>
 
+          <div class="jcc-retreat-rosterQueryBar" aria-label="명단 검색 및 날짜 필터">
+            <div class="jcc-retreat-rosterSearchBlock">
+              <label class="jcc-retreat-rosterSearchWrap" for="rosterNameSearch">
+                <svg class="jcc-retreat-rosterSearchIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/>
+                  <path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                <input
+                  type="search"
+                  class="jcc-retreat-rosterSearch"
+                  id="rosterNameSearch"
+                  placeholder="이름 또는 전화번호로 검색..."
+                  autocomplete="off"
+                  aria-label="이름 또는 전화번호로 검색"
+                />
+              </label>
+            </div>
+            <div class="jcc-retreat-rosterDateFilter">
+              <svg class="jcc-retreat-rosterDateIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="3.5" y="5.5" width="17" height="15" rx="3" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M8 3.5v4M16 3.5v4M3.5 10h17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+              <div class="jcc-retreat-rosterDateRange">
+                <label class="jcc-retreat-rosterDateInput">
+                  <span class="sr-only">조회 시작일</span>
+                  <input type="date" id="rosterDateFrom" aria-label="입퇴실 조회 시작일">
+                </label>
+                <svg class="jcc-retreat-rosterDateArrow" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="M4 10h11M11.5 6.5L15 10l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <label class="jcc-retreat-rosterDateInput">
+                  <span class="sr-only">조회 종료일</span>
+                  <input type="date" id="rosterDateTo" aria-label="입퇴실 조회 종료일">
+                </label>
+              </div>
+            </div>
+          </div>
+
           {% if roster_attendees %}
             <div class="card jcc-retreat-rosterCard">
               <div class="jcc-retreat-tableWrap">
@@ -136,6 +174,9 @@
                           <span class="jcc-retreat-rosterHeadLong">숙소 호수</span>
                         </span>
                       </th>
+                      <th class="jcc-retreat-attCol-nights jcc-retreat-sortable" data-sort-key="nights" scope="col">
+                        <span class="jcc-retreat-sortLabel">숙박</span>
+                      </th>
                       {% if roster_any_can_edit %}
                         <th class="jcc-retreat-attCol-actions">
                           <span class="jcc-retreat-rosterActionsHead">관리</span>
@@ -155,6 +196,7 @@
                         data-check-in="{{ a.check_in_status }}"
                         data-check-in-manual="{% if a.check_in_status_manually_set %}1{% else %}0{% endif %}"
                         data-gender="{{ a.gender }}"
+                        data-lodging-nights="{{ a.lodging_nights }}"
                         data-memo="{{ a.memo|escapejs }}"
                         data-member-role="{{ a.member_role }}"
                         data-expected-in-at="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'c' }}{% endif %}"
@@ -168,8 +210,8 @@
                         data-lodging-stay-status="{{ a.lodging_stay_status }}"
                         data-arrival-travel="{{ a.arrival_travel_key }}"
                         data-departure-travel="{{ a.departure_travel_key }}"
-                        data-region-name="{{ a.group.region.name }}"
-                        data-division-name="{{ a.group.division.name }}"
+                        data-region-names="{{ a.group_region_names|join:'|' }}"
+                        data-division-names="{{ a.group_division_names|join:'|' }}"
                         data-name="{{ a.name }}"
                         data-group-name="{{ a.group.name }}"
                         data-lodging-sort="{{ a.lodging_stay_display }}"
@@ -183,7 +225,7 @@
                         <td class="jcc-retreat-attCol-group">
                           <a class="jcc-retreat-rosterGroupLink" href="{% url 'retreat_group_manage' event.id a.group_id %}">{{ a.group.name }}</a>
                         </td>
-                        <td class="jcc-retreat-attCol-scope">{{ a.group.region.name }} · {{ a.group.division.name }}</td>
+                        <td class="jcc-retreat-attCol-scope">{{ a.group_scope_labels|join:", " }}</td>
                         <td class="jcc-retreat-attCol-name">
                           <span class="jcc-retreat-attName" data-name>{{ a.name }}</span>
                           {% if a.memo %}
@@ -216,6 +258,9 @@
                         </td>
                         <td class="jcc-retreat-attCol-lodging" data-lodging-cell>
                           {% include 'includes/retreat_lodging_stay_badge.html' with status=a.lodging_stay_status display=a.lodging_stay_display %}
+                        </td>
+                        <td class="jcc-retreat-attCol-nights">
+                          <span class="jcc-retreat-lodgingNights{% if a.lodging_nights == 0 %} is-none{% endif %}">{{ a.lodging_nights_label }}</span>
                         </td>
                         {% if roster_any_can_edit %}
                           <td class="jcc-retreat-attCol-actions">
@@ -333,7 +378,7 @@
 
     {% include 'includes/retreat_bottom_tabs.html' %}
     <script src="{% static 'retreat/lodging_stay_badge.js' %}?v=20260629c" defer></script>
-    <script src="{% static 'retreat/lodging_roster_filter.js' %}?v=20260724k" defer></script>
+    <script src="{% static 'retreat/lodging_roster_filter.js' %}?v=20260728d" defer></script>
     {% if roster_any_can_edit %}
       <script>
         window.RETREAT_CTX = Object.assign({}, window.RETREAT_CTX || {}, {
@@ -356,7 +401,7 @@
       <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
       <script src="{% static 'retreat/lodging_stay_badge.js' %}?v=20260629c" defer></script>
       <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618a" defer></script>
-      <script src="{% static 'retreat/lodging_roster_edit.js' %}?v=20260726b" defer></script>
+      <script src="{% static 'retreat/lodging_roster_edit.js' %}?v=20260728a" defer></script>
     {% endif %}
   </body>
 </html>

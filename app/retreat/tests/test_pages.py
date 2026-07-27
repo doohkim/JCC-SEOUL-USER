@@ -211,12 +211,30 @@ class RetreatPageAccessTests(_PageFixture):
         r = self.client.get(reverse("retreat_group_manage_list", args=[self.event.id]))
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, "그룹")
+        self.assertContains(r, "조별 관리")
         self.assertContains(r, self.group.name)
+        self.assertContains(r, 'data-summary-total="')
+        self.assertContains(r, 'data-summary-participating="')
+        self.assertContains(r, 'data-summary-pending="')
+        self.assertNotContains(
+            r, reverse("retreat_lodging_roster", args=[self.event.id])
+        )
 
     def test_manage_groups_list_forbidden_for_stranger(self):
         self.client.force_login(self.stranger)
         r = self.client.get(reverse("retreat_group_manage_list", args=[self.event.id]))
         self.assertEqual(r.status_code, 403)
+
+    def test_manage_group_detail_has_attendee_search(self):
+        self.client.force_login(self.leader)
+        response = self.client.get(
+            reverse("retreat_group_manage", args=[self.event.id, self.group.id])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="groupAttendeeSearch"')
+        self.assertContains(response, 'id="groupAttendeeSearchClear"')
+        self.assertContains(response, 'id="groupAttendeeSearchEmpty"')
+        self.assertContains(response, "manage_group_search.js")
 
     def test_manage_group_detail_persists_due_transitions(self):
         """조 관리 상세 진입 시 입실 시각이 지난 입실전 조원을 DB에 입실로 저장한다."""

@@ -57,6 +57,18 @@
     }
   }
 
+  function syncUrl() {
+    const params = new URLSearchParams();
+    if (selectedRegions.size) {
+      params.set("region", Array.from(selectedRegions).join(","));
+    }
+    if (selectedDivisions.size) {
+      params.set("division", Array.from(selectedDivisions).join(","));
+    }
+    const query = params.toString();
+    history.replaceState(null, "", query ? `${location.pathname}?${query}` : location.pathname);
+  }
+
   function valuesFor(card, multiAttr, fallbackAttr) {
     const raw = (card.getAttribute(multiAttr) || "").trim();
     const values = raw
@@ -109,6 +121,7 @@
 
   function applyFilter() {
     let visibleCount = 0;
+    const visibleCards = [];
     cards.forEach((card) => {
       const regions = valuesFor(card, "data-region-names", "data-region-name");
       const divisions = valuesFor(card, "data-division-names", "data-division-name");
@@ -120,11 +133,37 @@
         divisions.some((division) => selectedDivisions.has(division));
       const show = okRegion && okDivision;
       card.hidden = !show;
-      if (show) visibleCount += 1;
+      if (show) {
+        visibleCount += 1;
+        visibleCards.push(card);
+      }
     });
+    updateSummary(visibleCards);
     const hasFilter = selectedRegions.size > 0 || selectedDivisions.size > 0;
     if (resetBtn) resetBtn.hidden = !hasFilter;
     if (emptyMsg) emptyMsg.hidden = visibleCount !== 0;
+    syncUrl();
+  }
+
+  function updateSummary(visibleCards) {
+    const summaryFields = {
+      total: "[data-summary-total]",
+      participating: "[data-summary-participating]",
+      absent: "[data-summary-absent]",
+      pending: "[data-summary-pending]",
+      in: "[data-summary-in]",
+      out: "[data-summary-out]",
+    };
+    Object.entries(summaryFields).forEach(([key, selector]) => {
+      const target = document.querySelector(`#retreatSummaryBar ${selector}`);
+      if (!target) return;
+      const datasetKey = `summary${key[0].toUpperCase()}${key.slice(1)}`;
+      const total = visibleCards.reduce((sum, card) => {
+        const value = Number(card.dataset[datasetKey] || 0);
+        return sum + (Number.isFinite(value) ? value : 0);
+      }, 0);
+      target.textContent = String(total);
+    });
   }
 
   const regionValues = distinctInOrder("data-region-names", "data-region-name");
@@ -135,12 +174,19 @@
 
   // 저장된 선택을 현재 카드에 실제 존재하는 값과 교집합으로 복원(사라진 값 정리).
   const stored = loadStored();
+  const urlParams = new URLSearchParams(location.search);
+  const initialRegions = urlParams.has("region")
+    ? (urlParams.get("region") || "").split(",").filter(Boolean)
+    : stored.regions;
+  const initialDivisions = urlParams.has("division")
+    ? (urlParams.get("division") || "").split(",").filter(Boolean)
+    : stored.divisions;
   const regionSetAll = new Set(regionValues);
   const divisionSetAll = new Set(divisionValues);
-  stored.regions.forEach((v) => {
+  initialRegions.forEach((v) => {
     if (regionSetAll.has(v)) selectedRegions.add(v);
   });
-  stored.divisions.forEach((v) => {
+  initialDivisions.forEach((v) => {
     if (divisionSetAll.has(v)) selectedDivisions.add(v);
   });
 

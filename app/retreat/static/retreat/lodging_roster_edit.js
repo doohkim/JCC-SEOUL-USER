@@ -450,6 +450,17 @@
     tr.dataset.phone = data.phone || "";
     tr.dataset.expectedInAt = data.expected_check_in_at || "";
     tr.dataset.expectedOutAt = data.expected_check_out_at || "";
+    const lodgingNights = countLodgingNights(
+      data.expected_check_in_at,
+      data.expected_check_out_at
+    );
+    tr.dataset.lodgingNights = String(lodgingNights);
+    const lodgingNightsEl = tr.querySelector(".jcc-retreat-lodgingNights");
+    if (lodgingNightsEl) {
+      lodgingNightsEl.textContent =
+        lodgingNights > 0 ? `${lodgingNights}박` : "숙박 X";
+      lodgingNightsEl.classList.toggle("is-none", lodgingNights === 0);
+    }
     if ("arrival_travel_is_custom" in data) {
       tr.dataset.arrivalTravelIsCustom =
         data.arrival_travel_is_custom === true
@@ -561,6 +572,48 @@
 
     const lodgingCell = tr.querySelector("[data-lodging-cell]");
     if (lodgingCell) lodgingCell.innerHTML = lodgingCellHtml(data);
+  }
+
+  function countLodgingNights(startsAtValue, endsAtValue) {
+    const startsAt = startsAtValue ? new Date(startsAtValue) : null;
+    const endsAt = endsAtValue ? new Date(endsAtValue) : null;
+    if (
+      !startsAt ||
+      !endsAt ||
+      Number.isNaN(startsAt.getTime()) ||
+      Number.isNaN(endsAt.getTime()) ||
+      endsAt <= startsAt
+    ) {
+      return 0;
+    }
+    const day = new Date(
+      startsAt.getFullYear(),
+      startsAt.getMonth(),
+      startsAt.getDate()
+    );
+    const lastDay = new Date(
+      endsAt.getFullYear(),
+      endsAt.getMonth(),
+      endsAt.getDate()
+    );
+    let nights = 0;
+    while (day <= lastDay) {
+      const windowStart = new Date(
+        day.getFullYear(),
+        day.getMonth(),
+        day.getDate(),
+        2
+      );
+      const windowEnd = new Date(
+        day.getFullYear(),
+        day.getMonth(),
+        day.getDate(),
+        7
+      );
+      if (startsAt < windowEnd && endsAt > windowStart) nights += 1;
+      day.setDate(day.getDate() + 1);
+    }
+    return nights;
   }
 
   async function patchAttendee(attendeeId, payload) {

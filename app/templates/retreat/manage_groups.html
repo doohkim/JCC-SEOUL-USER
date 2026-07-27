@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>그룹 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260721n" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260728g" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -15,20 +15,23 @@
       <div class="jcc-layout-content">
         {% include 'includes/jcc_page_header.html' with page_title='그룹' tabs_template='includes/retreat_event_tabs.html' retreat_tab='manage_groups' hide_event_picker=True %}
         <main>
-          <div class="jcc-retreat-listTop jcc-retreat-listTop--withPicker">
-            {% include 'includes/retreat_event_picker.html' %}
-            <div class="msg" id="retreatStatus" role="status"></div>
+          <div class="jcc-retreat-subTabsRow">
+            {% include 'includes/retreat_event_picker.html' with retreat_tab='manage_groups' %}
+            {% include 'includes/retreat_group_subtabs.html' with group_subtab='manage' %}
             {% if can_add_group %}
-              <button type="button" class="jcc-retreat-addGroupBtn" id="btnAddGroup" aria-label="조 추가">
-                <svg class="jcc-retreat-addGroupBtn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
-                  <line x1="12" y1="11" x2="12" y2="16" />
-                  <line x1="9.5" y1="13.5" x2="14.5" y2="13.5" />
-                </svg>
-                <span class="jcc-retreat-addGroupBtn-text">조 추가</span>
-              </button>
+              <div class="jcc-retreat-groupActions">
+                <button type="button" class="jcc-retreat-addGroupBtn" id="btnAddGroup" aria-label="조 추가">
+                  <svg class="jcc-retreat-addGroupBtn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+                    <line x1="12" y1="11" x2="12" y2="16" />
+                    <line x1="9.5" y1="13.5" x2="14.5" y2="13.5" />
+                  </svg>
+                  <span class="jcc-retreat-addGroupBtn-text">조 추가</span>
+                </button>
+              </div>
             {% endif %}
           </div>
+          <div class="msg" id="retreatStatus" role="status"></div>
 
           {% include 'includes/retreat_attendance_summary_bar.html' %}
 
@@ -52,6 +55,12 @@
                 data-division-name="{{ g.division.name }}"
                 data-region-names="{{ g.region.name }}{% for scope in g.extra_scopes.all %}|{{ scope.region.name }}{% endfor %}"
                 data-division-names="{{ g.division.name }}{% for scope in g.extra_scopes.all %}|{{ scope.division.name }}{% endfor %}"
+                data-summary-total="{{ g.attendee_count }}"
+                data-summary-participating="{{ g.participating_count }}"
+                data-summary-absent="{{ g.absent_count }}"
+                data-summary-pending="{{ g.pending_count }}"
+                data-summary-in="{{ g.checked_in_count }}"
+                data-summary-out="{{ g.checked_out_count }}"
               >
                 <a
                   class="jcc-retreat-groupCard"
@@ -216,7 +225,7 @@
       </div>
     </div>
     {% include 'includes/retreat_bottom_tabs.html' %}
-    <script src="{% static 'retreat/manage_groups_filter.js' %}?v=20260615a" defer></script>
+    <script src="{% static 'retreat/manage_groups_filter.js' %}?v=20260728a" defer></script>
     {% if can_add_group %}
       <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
       <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260715b" defer></script>

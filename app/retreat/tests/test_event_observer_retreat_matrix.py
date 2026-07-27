@@ -41,11 +41,18 @@ class EventObserverPageTests(CouncilMatrixFixture):
             reverse("retreat_pickup", args=[self.event.id]) + "?tab=departure",
             reverse("retreat_pickup", args=[self.event.id]) + "?tab=all",
             reverse("retreat_lodging", args=[self.event.id]),
-            reverse("retreat_lodging_roster", args=[self.event.id]),
         ]
         for url in pages:
             with self.subTest(url=url):
                 self.assertEqual(self.page.get(url).status_code, 200)
+
+    def test_group_roster_forbidden_and_hidden(self):
+        roster_url = reverse("retreat_lodging_roster", args=[self.event.id])
+        self.assertEqual(self.page.get(roster_url).status_code, 403)
+        group_page = self.page.get(
+            reverse("retreat_group_manage_list", args=[self.event.id])
+        )
+        self.assertNotContains(group_page, roster_url)
 
     def test_admin_pages_forbidden(self):
         pages = [
@@ -60,6 +67,8 @@ class EventObserverPageTests(CouncilMatrixFixture):
     def test_admin_tab_hidden(self):
         r = self.page.get(reverse("retreat_dashboard", args=[self.event.id]))
         self.assertFalse(r.context["can_show_admin_tab"])
+        self.assertTrue(r.context["can_use_dashboard_group_links"])
+        self.assertFalse(r.context["can_show_group_roster"])
 
     def test_group_list_no_add_button(self):
         r = self.page.get(reverse("retreat_group_manage_list", args=[self.event.id]))

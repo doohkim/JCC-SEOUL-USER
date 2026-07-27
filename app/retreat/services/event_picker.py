@@ -103,7 +103,7 @@ _PICKER_TAB_PAGES = {
     "manage_groups": "groups",
     "pickup": "pickup",
     "lodging": "lodging",
-    "lodging_roster": "lodging",
+    "lodging_roster": "groups",
     "admin": "admin",
     "council": "admin",
     "timetable": "admin",
@@ -130,6 +130,11 @@ def default_retreat_landing_url(user: User, event: RetreatEvent) -> str:
 def picker_target_url(user: User, event: RetreatEvent, *, retreat_tab: str) -> str:
     if not has_retreat_operational_access(user, event):
         return reverse("retreat_staff_apply", args=[event.id])
+    if retreat_tab == "lodging_roster":
+        from users.permissions import can_view_retreat_group_roster
+
+        if not can_view_retreat_group_roster(user, event):
+            return default_retreat_landing_url(user, event)
     page = _PICKER_TAB_PAGES.get(retreat_tab or "dashboard", "dashboard")
     if can_access_retreat_page(user, event, page):
         return url_for_retreat_tab(retreat_tab, event.id)

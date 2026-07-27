@@ -452,6 +452,13 @@ class EventAdminLodgingApiPageTests(_EventAdminMatrixFixture):
         self.assertEqual(r.status_code, 200)
         self.assertTrue(r.context["roster_any_can_edit"])
 
+    def test_group_page_shows_full_roster_link(self):
+        roster_url = reverse("retreat_lodging_roster", args=[self.event.id])
+        response = self.page.get(
+            reverse("retreat_group_manage_list", args=[self.event.id])
+        )
+        self.assertContains(response, roster_url)
+
 
 class EventAdminAdminApiPageTests(_EventAdminMatrixFixture):
     def test_council_page_and_group_leader_section(self):
