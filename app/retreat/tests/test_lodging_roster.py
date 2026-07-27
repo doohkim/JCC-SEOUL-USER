@@ -30,6 +30,7 @@ from retreat.services.lodging_roster import (
     is_lodging_eligible,
     lodging_night_count,
 )
+from retreat.services.lodging import room_assignment_options_for_groups
 from retreat.services.lodging_stats import build_lodging_page_summary
 from users.models import Division, Region, RoleLevel, UserDivisionTeam
 
@@ -222,6 +223,15 @@ class LodgingRosterPageTests(_LodgingRosterFixture):
 
 
 class LodgingRosterSummaryTests(_LodgingRosterFixture):
+    def test_room_assignment_options_for_groups_uses_one_room_query(self):
+        group = RetreatGroup.objects.prefetch_related("extra_scopes").get(
+            pk=self.group.pk
+        )
+        with self.assertNumQueries(1):
+            options = room_assignment_options_for_groups(self.event, [group])
+        self.assertEqual([row["id"] for row in options[group.id]], [self.room.id])
+        self.assertEqual(options[group.id][0]["assigned_count"], 2)
+
     def test_lodging_nights_count_only_0200_to_0700_overlap(self):
         attendee = self.assigned_attendee
         attendee.expected_check_in_at = timezone.make_aware(datetime(2026, 7, 1, 23, 0))

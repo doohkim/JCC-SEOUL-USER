@@ -12,9 +12,6 @@ from django.utils import timezone
 from retreat.models import RetreatAttendee, RetreatEvent, RetreatTravelPreset
 from retreat.services.check_in_stamps import (
     is_attendee_profile_locked,
-    is_expected_check_in_locked,
-    is_expected_check_out_locked,
-    is_expected_timestamps_locked,
 )
 from retreat.services.lodging_stay import (
     is_lodging_stay_eligible,
@@ -28,6 +25,7 @@ from retreat.services.effective_check_in import (
     effective_status_expression,
 )
 from retreat.services.lodging_stay import resolve_lodging_stay_status
+from retreat.services.staff_capabilities import effective_capabilities
 from retreat.services.travel_presets import (
     travel_bucket_key,
     travel_filter_chip_defs,
@@ -181,6 +179,9 @@ def build_lodging_roster_context(
             if p.direction == RetreatTravelPreset.Direction.DEPARTURE
         ]
     )
+    can_change_status = (
+        user.is_superuser or effective_capabilities(user, event).change_check_in
+    )
     for attendee in attendees:
         group_scopes = [
             (attendee.group.region.name, attendee.group.division.name),
@@ -210,13 +211,11 @@ def build_lodging_roster_context(
         attendee.lodging_nights_label = (
             f"{attendee.lodging_nights}박" if attendee.lodging_nights > 0 else "숙박 X"
         )
-        attendee.expected_timestamps_locked = is_expected_timestamps_locked(attendee)
         attendee.profile_locked = is_attendee_profile_locked(attendee)
-        attendee.expected_check_in_locked = is_expected_check_in_locked(
-            attendee, user, attendee.group
-        )
-        attendee.expected_check_out_locked = is_expected_check_out_locked(
-            attendee, user, attendee.group
+        attendee.expected_timestamps_locked = attendee.profile_locked
+        attendee.expected_check_in_locked = attendee.profile_locked
+        attendee.expected_check_out_locked = (
+            attendee.profile_locked and not can_change_status
         )
         attendee.arrival_travel_key = str(
             travel_bucket_key(

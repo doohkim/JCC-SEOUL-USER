@@ -439,6 +439,7 @@
       const cell = row.querySelector("[data-row-num]");
       if (cell) cell.textContent = String(startIdx + i + 1);
     });
+    tbody.classList.remove("is-initializing");
 
     renderPagination(total, totalPages);
     syncSortHeaderStates();

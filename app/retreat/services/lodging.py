@@ -134,6 +134,34 @@ def room_assignment_option(room: LodgingRoom) -> dict:
     }
 
 
+def room_assignment_options_for_groups(
+    event: RetreatEvent,
+    groups: Iterable[RetreatGroup],
+) -> dict[int, list[dict]]:
+    """집회 호실을 한 번만 조회해 조별 배정 옵션으로 나눈다."""
+    rooms = list(
+        _base_rooms_qs(event)
+        .filter(region_id__isnull=False, division_id__isnull=False)
+        .annotate(
+            assigned_count=Count(
+                "attendees",
+                filter=active_lodging_occupant_q(prefix="attendees__"),
+            )
+        )
+        .order_by("lodging__sort_order", "lodging__name", "sort_order", "number", "id")
+    )
+    room_options = [(room, room_assignment_option(room)) for room in rooms]
+    result: dict[int, list[dict]] = {}
+    for group in groups:
+        scope_pairs = group.scope_pairs()
+        result[group.id] = [
+            option
+            for room, option in room_options
+            if (room.region_id, room.division_id) in scope_pairs
+        ]
+    return result
+
+
 def room_visible_in_assignment_picker(
     room: LodgingRoom,
     *,

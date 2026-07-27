@@ -1363,26 +1363,21 @@ class RetreatLodgingRosterView(_RetreatEventMixin, TemplateView):
         from retreat.services.lodging_roster import build_lodging_roster_context
 
         ctx.update(build_lodging_roster_context(event, user))
-        from retreat.apis._common import user_can_edit_attendee_details
-        from retreat.services.lodging import (
-            room_assignment_option,
-            rooms_for_group_with_counts,
-        )
+        from retreat.services.lodging import room_assignment_options_for_groups
 
         attendees = ctx["roster_attendees"]
-        group_rooms: dict[int, list[dict]] = {}
-        roster_any_can_edit = False
+        can_edit_all = bool(
+            user.is_superuser or ctx["retreat_caps"].edit_attendee_profile
+        )
+        groups_by_id = {}
         for attendee in attendees:
-            can_edit = user_can_edit_attendee_details(user, attendee.group)
-            attendee.can_edit_roster = can_edit
-            if can_edit:
-                roster_any_can_edit = True
-            if attendee.group_id not in group_rooms:
-                group_rooms[attendee.group_id] = [
-                    room_assignment_option(room)
-                    for room in rooms_for_group_with_counts(attendee.group)
-                ]
-        ctx["roster_any_can_edit"] = roster_any_can_edit
+            attendee.can_edit_roster = can_edit_all
+            groups_by_id.setdefault(attendee.group_id, attendee.group)
+        group_rooms = room_assignment_options_for_groups(
+            event,
+            groups_by_id.values(),
+        )
+        ctx["roster_any_can_edit"] = bool(attendees) and can_edit_all
         ctx["roster_group_rooms_json"] = json.dumps(group_rooms)
         ctx["travel_presets_json"] = json.dumps(
             ctx.get("travel_presets") or {"arrival": [], "departure": []},
