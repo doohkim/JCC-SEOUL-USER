@@ -265,6 +265,41 @@ class LodgingRosterPageTests(_LodgingRosterFixture):
         url = reverse("api_retreat_event_lodging_roster", args=[self.event.id])
         self.assertEqual(self.client.get(url).status_code, 403)
 
+    def test_roster_room_options_are_loaded_lazily_for_one_group(self):
+        self.client.force_login(self.staff)
+        page = self.client.get(self._url())
+        self.assertEqual(page.status_code, 200)
+        self.assertNotContains(page, '"assigned_count"')
+
+        url = reverse(
+            "api_retreat_event_lodging_roster_group_rooms",
+            args=[self.event.id, self.group.id],
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["group_id"], self.group.id)
+        self.assertEqual(
+            [room["id"] for room in response.json()["rooms"]],
+            [self.room.id],
+        )
+
+    def test_night_filter_is_paginated_by_database(self):
+        self.assigned_attendee.expected_check_in_at = timezone.make_aware(
+            datetime(2026, 7, 1, 1, 0)
+        )
+        self.assigned_attendee.expected_check_out_at = timezone.make_aware(
+            datetime(2026, 7, 2, 8, 0)
+        )
+        self.assigned_attendee.save(
+            update_fields=["expected_check_in_at", "expected_check_out_at"]
+        )
+        self.client.force_login(self.staff)
+        url = reverse("api_retreat_event_lodging_roster", args=[self.event.id])
+        response = self.client.get(url, {"nights": "2"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["total"], 1)
+        self.assertIn("배정자", response.json()["rows_html"])
+
 
 class LodgingRosterSummaryTests(_LodgingRosterFixture):
     def test_room_assignment_options_for_groups_uses_one_room_query(self):
@@ -438,6 +473,23 @@ class LodgingRosterTravelFilterTests(_LodgingRosterFixture):
         by_name = {a.name: a for a in ctx["roster_attendees"]}
         self.assertEqual(by_name["배정자"].arrival_travel_key, "__custom__")
         self.assertEqual(by_name["배정자"].departure_travel_key, "__custom__")
+
+    def test_travel_filter_is_paginated_by_database(self):
+        wave_in = timezone.make_aware(datetime(2026, 7, 1, 10, 0))
+        self.assigned_attendee.expected_check_in_at = wave_in
+        self.assigned_attendee.arrival_travel_is_custom = False
+        self.assigned_attendee.save(
+            update_fields=["expected_check_in_at", "arrival_travel_is_custom"]
+        )
+        self.client.force_login(self.staff)
+        url = reverse("api_retreat_event_lodging_roster", args=[self.event.id])
+        response = self.client.get(
+            url,
+            {"arrivalTravel": str(self.arrival_main.id)},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["total"], 1)
+        self.assertIn("배정자", response.json()["rows_html"])
 
     def test_default_chips_without_presets(self):
         RetreatTravelPreset.objects.filter(event=self.event).delete()

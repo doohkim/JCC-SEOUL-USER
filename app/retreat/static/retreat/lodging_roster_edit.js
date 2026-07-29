@@ -238,6 +238,30 @@
     });
   }
 
+  async function ensureLodgingOptions(groupId) {
+    if (!groupId || !ctx.urls.groupRoomsTemplate) return [];
+    const key = String(groupId);
+    if (Object.prototype.hasOwnProperty.call(ctx.groupRooms, key)) {
+      return ctx.groupRooms[key] || [];
+    }
+    const url = ctx.urls.groupRoomsTemplate.replace("__group_id__", key);
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+      credentials: "same-origin",
+    });
+    if (!response.ok) throw new Error("호실 목록을 불러오지 못했습니다.");
+    const data = await response.json();
+    ctx.groupRooms[key] = Array.isArray(data.rooms) ? data.rooms : [];
+    return ctx.groupRooms[key];
+  }
+
+  function setLodgingLoading() {
+    if (!lodgingInput) return;
+    lodgingInput.innerHTML = '<option value="">호실 불러오는 중…</option>';
+    lodgingInput.disabled = true;
+    window.JccCustomSelect?.refresh?.(overlay);
+  }
+
   function createUserPicker(root) {
     if (!root || !ctx.urls.userSearchUrl) return null;
     const input = root.querySelector("[data-user-picker-input]");
@@ -409,7 +433,30 @@
     if (roleInput) roleInput.value = tr.dataset.memberRole || "member";
     if (checkInInput) checkInInput.value = modalInitialCheckIn;
 
-    setLodgingOptions(modalGroupId, tr.dataset.lodgingRoom || "", tr.dataset.gender || "");
+    const selectedRoomId = tr.dataset.lodgingRoom || "";
+    const attendeeGender = tr.dataset.gender || "";
+    const loadingAttendeeId = modalAttendeeId;
+    setLodgingLoading();
+    ensureLodgingOptions(modalGroupId)
+      .then(() => {
+        if (
+          modalAttendeeId !== loadingAttendeeId ||
+          modalGroupId !== Number(tr.dataset.groupId)
+        ) return;
+        setLodgingOptions(modalGroupId, selectedRoomId, attendeeGender);
+        lodgingInput.disabled = profileLocked;
+        window.JccCustomSelect?.refresh?.(overlay);
+      })
+      .catch((error) => {
+        if (
+          modalAttendeeId !== loadingAttendeeId ||
+          modalGroupId !== Number(tr.dataset.groupId)
+        ) return;
+        lodgingInput.disabled = profileLocked;
+        lodgingInput.innerHTML = '<option value="">호실을 불러오지 못했습니다</option>';
+        window.JccCustomSelect?.refresh?.(overlay);
+        showToast(error.message || "호실 목록을 불러오지 못했습니다.", true);
+      });
 
     if (attendeePicker) {
       if (tr.dataset.userId) {

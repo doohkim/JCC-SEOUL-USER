@@ -52,34 +52,6 @@ class LodgingRosterSummary:
 
 
 LODGING_ROSTER_PAGE_SIZE = 20
-LODGING_ROSTER_FILTER_KEYS = frozenset(
-    {
-        "status",
-        "lodgingStay",
-        "stay",
-        "assign",
-        "lodging",
-        "gender",
-        "nights",
-        "arrivalTravel",
-        "departureTravel",
-        "region",
-        "division",
-        "memo",
-        "q",
-        "dateFrom",
-        "dateTo",
-        "sort",
-        "dir",
-    }
-)
-
-
-def lodging_roster_has_filters(params) -> bool:
-    """페이지 번호 외에 명단 결과를 바꾸는 요청값이 있는지 확인한다."""
-    return any(
-        str(params.get(key, "") or "").strip() for key in LODGING_ROSTER_FILTER_KEYS
-    )
 
 
 def _csv_values(params, key: str) -> set[str]:
@@ -196,17 +168,95 @@ def filter_and_sort_lodging_roster(attendees: list[RetreatAttendee], params) -> 
     return filtered
 
 
-def filter_lodging_roster_queryset(qs: QuerySet, params) -> QuerySet | None:
+def _night_count_expression(event: RetreatEvent):
+    """집회 기간의 02:00~07:00 숙박 창과 겹치는 횟수를 계산한다."""
+    expression = Value(0, output_field=IntegerField())
+    current_date = event.start_date
+    while current_date <= event.end_date:
+        window_start = timezone.make_aware(datetime.combine(current_date, time(2, 0)))
+        window_end = timezone.make_aware(datetime.combine(current_date, time(7, 0)))
+        expression = expression + Case(
+            When(
+                expected_check_in_at__lt=window_end,
+                expected_check_out_at__gt=window_start,
+                then=Value(1),
+            ),
+            default=Value(0),
+            output_field=IntegerField(),
+        )
+        current_date += timedelta(days=1)
+    return expression
+
+
+def _travel_filter_q(
+    event: RetreatEvent,
+    values: set[str],
+    *,
+    direction: str,
+) -> Q:
+    """교통 프리셋 ID·자차·미설정을 DB 시각 조건으로 변환한다."""
+    if not values:
+        return Q()
+    presets = list(
+        RetreatTravelPreset.objects.filter(
+            event=event,
+            direction=direction,
+            is_active=True,
+        ).order_by("sort_order", "id")
+    )
+    fixed, occurs_map = travel_fixed_and_occurs_map(presets)
+    winning_ids = {preset.id for preset in occurs_map.values()}
+    datetime_field = (
+        "expected_check_in_at"
+        if direction == RetreatTravelPreset.Direction.ARRIVAL
+        else "expected_check_out_at"
+    )
+    custom_field = (
+        "arrival_travel_is_custom"
+        if direction == RetreatTravelPreset.Direction.ARRIVAL
+        else "departure_travel_is_custom"
+    )
+    automatic_flag = Q(**{custom_field: False}) | Q(**{f"{custom_field}__isnull": True})
+    fixed_time_q = Q(pk__in=[])
+    selected_fixed_q = Q(pk__in=[])
+    for preset in fixed:
+        if preset.id not in winning_ids or preset.occurs_at is None:
+            continue
+        minute_start = preset.occurs_at.replace(second=0, microsecond=0)
+        minute_end = minute_start + timedelta(minutes=1)
+        time_q = Q(
+            **{
+                f"{datetime_field}__gte": minute_start,
+                f"{datetime_field}__lt": minute_end,
+            }
+        )
+        fixed_time_q |= time_q
+        if str(preset.id) in values:
+            selected_fixed_q |= automatic_flag & time_q
+
+    result = selected_fixed_q
+    if "__unset__" in values:
+        result |= Q(**{f"{datetime_field}__isnull": True})
+    if "__custom__" in values:
+        result |= Q(**{f"{datetime_field}__isnull": False}) & (
+            Q(**{custom_field: True}) | (automatic_flag & ~fixed_time_q)
+        )
+    return result
+
+
+def filter_lodging_roster_queryset(
+    qs: QuerySet,
+    params,
+    *,
+    event: RetreatEvent,
+) -> QuerySet | None:
     """DB에서 처리 가능한 명단 필터·정렬을 적용한다.
 
-    숙박 일수와 교통편은 여러 날짜 구간·프리셋 계산이 필요하므로 기존 Python
-    경로로 돌려보낸다. 전화번호 숫자 정규화 검색도 기존 검색 결과를 보존한다.
+    전화번호 숫자 정규화 검색과 숙소 표시명 정렬은 기존 결과를 보존하기 위해
+    Python fallback 경로로 돌려보낸다.
     """
-    nights = _csv_values(params, "nights")
-    arrivals = _csv_values(params, "arrivalTravel")
-    departures = _csv_values(params, "departureTravel")
     sort_key = str(params.get("sort", "") or "")
-    if nights or arrivals or departures or sort_key in {"lodging", "nights"}:
+    if sort_key == "lodging":
         return None
 
     query = str(params.get("q", "") or "").strip()
@@ -215,6 +265,38 @@ def filter_lodging_roster_queryset(qs: QuerySet, params) -> QuerySet | None:
 
     S = RetreatAttendee.CheckInStatus
     P = RetreatAttendee.ParticipationStatus
+    nights = _csv_values(params, "nights")
+    if nights or sort_key == "nights":
+        qs = qs.annotate(_lodging_nights=_night_count_expression(event))
+    if nights:
+        night_q = Q(pk__in=[])
+        if "0" in nights:
+            night_q |= Q(_lodging_nights=0)
+        if "1" in nights:
+            night_q |= Q(_lodging_nights=1)
+        if "2" in nights:
+            night_q |= Q(_lodging_nights__gte=2)
+        qs = qs.filter(night_q)
+
+    arrivals = _csv_values(params, "arrivalTravel")
+    if arrivals:
+        qs = qs.filter(
+            _travel_filter_q(
+                event,
+                arrivals,
+                direction=RetreatTravelPreset.Direction.ARRIVAL,
+            )
+        )
+    departures = _csv_values(params, "departureTravel")
+    if departures:
+        qs = qs.filter(
+            _travel_filter_q(
+                event,
+                departures,
+                direction=RetreatTravelPreset.Direction.DEPARTURE,
+            )
+        )
+
     statuses = _csv_values(params, "status")
     if statuses:
         qs = qs.filter(_effective_status__in=statuses)
@@ -335,6 +417,8 @@ def filter_lodging_roster_queryset(qs: QuerySet, params) -> QuerySet | None:
         qs = qs.annotate(_status_order=status_order).order_by(
             f"{prefix}_status_order", f"{prefix}name", f"{prefix}id"
         )
+    elif sort_key == "nights":
+        qs = qs.order_by(f"{prefix}_lodging_nights", f"{prefix}name", f"{prefix}id")
     elif sort_key in sort_fields:
         qs = qs.order_by(*(f"{prefix}{field}" for field in sort_fields[sort_key]))
     return qs
@@ -563,7 +647,11 @@ def _enrich_lodging_roster_attendees(
         attendee.lodging_assignment_key = attendee_lodging_assignment_key(attendee)
         attendee.lodging_cell_label = attendee_lodging_cell_label(attendee)
         attendee.lodging_stay_display = lodging_stay_display(attendee)
-        attendee.lodging_nights = lodging_night_count(attendee)
+        attendee.lodging_nights = (
+            attendee._lodging_nights
+            if hasattr(attendee, "_lodging_nights")
+            else lodging_night_count(attendee)
+        )
         attendee.lodging_nights_label = (
             f"{attendee.lodging_nights}박" if attendee.lodging_nights > 0 else "숙박 X"
         )
@@ -634,7 +722,7 @@ def build_lodging_roster_page_context(
 
     qs = lodging_roster_queryset(event, user)
     if params is not None:
-        qs = filter_lodging_roster_queryset(qs, params)
+        qs = filter_lodging_roster_queryset(qs, params, event=event)
         if qs is None:
             return None
     summary = lodging_roster_summary_for_queryset(qs)

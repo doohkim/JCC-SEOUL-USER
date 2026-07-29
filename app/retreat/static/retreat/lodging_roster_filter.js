@@ -534,6 +534,70 @@
     return params;
   }
 
+  function serverStateMatchesRenderedUrl() {
+    const current = new URLSearchParams(location.search);
+    if (
+      current.has("stay") ||
+      current.has("assign") ||
+      current.has("lodging")
+    ) {
+      return false;
+    }
+    const requested = serverParams();
+    const keys = [
+      "status",
+      "lodgingStay",
+      "gender",
+      "nights",
+      "arrivalTravel",
+      "departureTravel",
+      "region",
+      "division",
+      "memo",
+      "dateFrom",
+      "dateTo",
+      "q",
+      "sort",
+      "dir",
+      "page",
+    ];
+    return keys.every((key) => {
+      const fallback = key === "page" ? "1" : "";
+      return (requested.get(key) || fallback) === (current.get(key) || fallback);
+    });
+  }
+
+  function useServerRenderedPage() {
+    const total = Number(tbody.dataset.total || rows.length || 0);
+    const totalPages = Number(tbody.dataset.totalPages || 1);
+    currentPage = Number(tbody.dataset.page || currentPage || 1);
+    renderPagination(total, totalPages);
+    syncSortHeaderStates();
+    syncRosterMemoDisplays();
+    if (emptyMsg) emptyMsg.hidden = total > 0;
+    if (resetBtn) {
+      resetBtn.disabled =
+        !nameQuery &&
+        !dateFrom &&
+        !dateTo &&
+        !sortKey &&
+        currentPage === 1 &&
+        [
+          selectedStatus,
+          selectedLodgingStay,
+          selectedGenders,
+          selectedNights,
+          selectedArrivalTravel,
+          selectedDepartureTravel,
+          selectedRegions,
+          selectedDivisions,
+          selectedMemo,
+        ].every((set) => set.size === 0);
+    }
+    tbody.classList.remove("is-initializing");
+    persist();
+  }
+
   function updateSummaryFromData(summary) {
     const setText = (selector, value) => {
       const el = document.querySelector(selector);
@@ -562,13 +626,6 @@
       currentPage = Number(data.page || 1);
       tbody.innerHTML = data.rows_html || "";
       rows = Array.from(tbody.querySelectorAll("tr[data-attendee-id]"));
-      if (window.LODGING_ROSTER_CTX && data.group_rooms) {
-        window.LODGING_ROSTER_CTX.groupRooms = Object.assign(
-          {},
-          window.LODGING_ROSTER_CTX.groupRooms || {},
-          data.group_rooms
-        );
-      }
       renderPagination(Number(data.total || 0), Number(data.total_pages || 1));
       updateSummaryFromData(data.summary || {});
       syncSortHeaderStates();
@@ -918,7 +975,11 @@
     currentPage = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
 
     syncChipStates();
-    applyView({ resetPage: false });
+    if (serverApiUrl && serverStateMatchesRenderedUrl()) {
+      useServerRenderedPage();
+    } else {
+      applyView({ resetPage: false });
+    }
   }
 
   window.JccRetreatLodgingRosterFilter = {

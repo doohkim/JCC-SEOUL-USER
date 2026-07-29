@@ -1431,7 +1431,6 @@ class RetreatLodgingRosterView(_RetreatEventMixin, TemplateView):
         if not can_view_retreat_group_roster(user, event):
             raise PermissionDenied("이 집회의 전체 명단을 볼 권한이 없습니다.")
 
-        from retreat.services.lodging import room_assignment_options_for_groups
         from retreat.services.lodging_roster import (
             LODGING_ROSTER_PAGE_SIZE,
             build_lodging_roster_context,
@@ -1472,19 +1471,16 @@ class RetreatLodgingRosterView(_RetreatEventMixin, TemplateView):
         can_edit_all = bool(
             user.is_superuser or ctx["retreat_caps"].edit_attendee_profile
         )
-        groups_by_id = {}
         for attendee in attendees:
             attendee.can_edit_roster = can_edit_all
-            groups_by_id.setdefault(attendee.group_id, attendee.group)
-        group_rooms = room_assignment_options_for_groups(
-            event,
-            groups_by_id.values(),
-        )
         ctx["roster_any_can_edit"] = bool(attendees) and can_edit_all
-        ctx["roster_group_rooms_json"] = json.dumps(group_rooms)
         ctx["roster_api_url"] = reverse(
             "api_retreat_event_lodging_roster", args=[event.id]
         )
+        ctx["roster_group_rooms_url_template"] = reverse(
+            "api_retreat_event_lodging_roster_group_rooms",
+            args=[event.id, 0],
+        ).replace("/0/rooms/", "/__group_id__/rooms/")
         ctx["travel_presets_json"] = json.dumps(
             ctx.get("travel_presets") or {"arrival": [], "departure": []},
             ensure_ascii=False,
