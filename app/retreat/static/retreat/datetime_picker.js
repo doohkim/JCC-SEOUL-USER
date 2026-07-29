@@ -96,12 +96,12 @@
     return window.matchMedia("(max-width: 640px)").matches;
   }
 
-  function computeTravelLabel(input, valueOverride) {
+  function matchedTravelPreset(input, valueOverride) {
     if (!input) return "";
     const val = String(
       valueOverride != null ? valueOverride : input.value || ""
     ).slice(0, 16);
-    if (!val) return "";
+    if (!val) return null;
     const direction = input.dataset.travelDirection || "";
     const presets =
       (direction &&
@@ -109,15 +109,28 @@
         window.RETREAT_CTX.travelPresets &&
         window.RETREAT_CTX.travelPresets[direction]) ||
       [];
-    if (input.dataset.travelIsCustom === "1") return "자차";
+    const manualPreset = presets.find((preset) => preset && preset.manual) || null;
+    if (input.dataset.travelIsCustom === "1") return manualPreset;
     for (let i = 0; i < presets.length; i++) {
       const p = presets[i];
       if (!p || p.manual || !p.occurs_at) continue;
       if (String(p.occurs_at).slice(0, 16) === val) {
-        return p.label || "자차";
+        return p;
       }
     }
-    return "자차";
+    return manualPreset;
+  }
+
+  function computeTravelLabel(input, valueOverride) {
+    if (!input || !String(valueOverride != null ? valueOverride : input.value || "")) {
+      return "";
+    }
+    const preset = matchedTravelPreset(input, valueOverride);
+    return preset?.label || "자차";
+  }
+
+  function computeTravelColor(input, valueOverride) {
+    return matchedTravelPreset(input, valueOverride)?.color || "";
   }
 
   function applyTravelLabelToInput(input, label) {
@@ -178,6 +191,9 @@
         travelChip.textContent = label;
         travelChip.title = label;
         travelChip.hidden = false;
+        const color = computeTravelColor(input);
+        if (color) travelChip.style.color = color;
+        else travelChip.style.removeProperty("color");
         travelChip.classList.toggle(
           "jcc-dtp-travel--custom",
           label === "자차"
@@ -186,6 +202,7 @@
         travelChip.textContent = "";
         travelChip.removeAttribute("title");
         travelChip.hidden = true;
+        travelChip.style.removeProperty("color");
         travelChip.classList.remove("jcc-dtp-travel--custom");
       }
     }
@@ -1045,6 +1062,7 @@
     enhanceAll: enhanceAll,
     close: closeOpen,
     computeTravelLabel: computeTravelLabel,
+    computeTravelColor: computeTravelColor,
     applyTravelLabelToInput: applyTravelLabelToInput,
   };
 

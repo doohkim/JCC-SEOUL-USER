@@ -448,6 +448,9 @@ class RetreatDashboardView(_RetreatEventMixin, TemplateView):
         ctx["can_use_dashboard_group_links"] = can_use_retreat_dashboard_group_links(
             user, event
         )
+        ctx["can_use_unassigned_group_link"] = visible_retreat_groups_for(
+            user, event
+        ).exists()
         ctx["sessions_json"] = json.dumps(
             [
                 {
@@ -882,6 +885,7 @@ class RetreatRosterCheckView(_RetreatEventMixin, TemplateView):
         ctx["session"] = session
         ctx["group"] = group
         ctx["attendees"] = attendees
+        ctx["summary_clickable"] = True
         ctx["matrix"] = matrix
         ctx["matrix_json"] = json.dumps(matrix, ensure_ascii=False)
         ctx["can_mutate"] = can_mutate
@@ -934,6 +938,17 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
         )
         group_participating_q = attendee_visibility_q & ~Q(
             attendees__participation_status=(RetreatAttendee.ParticipationStatus.ABSENT)
+        )
+        group_lodging_unassigned_q = (
+            group_participating_q
+            & ~effective_status_q(
+                RetreatAttendee.CheckInStatus.CHECKED_OUT,
+                prefix="attendees",
+            )
+            & Q(
+                attendees__expected_check_in_at__isnull=False,
+                attendees__lodging_room__isnull=True,
+            )
         )
         groups = list(
             visible_retreat_groups_for(user, event)
@@ -992,6 +1007,11 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
                         RetreatAttendee.CheckInStatus.CHECKED_OUT,
                         prefix="attendees",
                     ),
+                    distinct=True,
+                ),
+                lodging_unassigned_count=Count(
+                    "attendees",
+                    filter=group_lodging_unassigned_q,
                     distinct=True,
                 ),
             )
@@ -1082,6 +1102,9 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
         ctx.update(status_counts)
 
         ctx["groups"] = groups
+        ctx["filter_lodging_unassigned"] = (
+            self.request.GET.get("lodgingStay") == "unassigned"
+        )
         ctx["can_add_group"] = can_add_retreat_group(user, event)
         ctx["region_choices"] = list(Region.objects.order_by("sort_order", "name"))
         ctx["division_choices"] = list(
@@ -1256,6 +1279,7 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         ctx["event_rooms_json"] = json.dumps(event_rooms)
         from retreat.services.travel_presets import (
             travel_bucket_key,
+            travel_display_color,
             travel_display_label,
             travel_fixed_and_occurs_map,
             travel_preset_models_for_group,
@@ -1292,8 +1316,20 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
                 arrival_occurs,
                 is_custom=attendee.arrival_travel_is_custom,
             )
+            attendee.arrival_travel_color = travel_display_color(
+                attendee.expected_check_in_at,
+                travel_models["arrival"],
+                arrival_occurs,
+                is_custom=attendee.arrival_travel_is_custom,
+            )
             attendee.departure_travel_label = travel_display_label(
                 attendee.expected_check_out_at,
+                departure_occurs,
+                is_custom=attendee.departure_travel_is_custom,
+            )
+            attendee.departure_travel_color = travel_display_color(
+                attendee.expected_check_out_at,
+                travel_models["departure"],
                 departure_occurs,
                 is_custom=attendee.departure_travel_is_custom,
             )

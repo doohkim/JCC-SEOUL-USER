@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.core.validators import RegexValidator
 from django.db import models
 
 from .event import RetreatEvent
@@ -35,6 +36,18 @@ class RetreatTravelPreset(models.Model):
         "표시명",
         max_length=80,
         help_text="엑셀·UI 문구. 예: 7/30 본진, 8/1 버스",
+    )
+    color = models.CharField(
+        "색상",
+        max_length=7,
+        default="#2563EB",
+        validators=[
+            RegexValidator(
+                regex=r"^#[0-9A-Fa-f]{6}$",
+                message="#2563EB 형식의 HEX 색상을 입력하세요.",
+            )
+        ],
+        help_text="Admin 컬러 피커에서 선택하는 프리셋 태그 색상.",
     )
     occurs_at = models.DateTimeField(
         "예정 시각",

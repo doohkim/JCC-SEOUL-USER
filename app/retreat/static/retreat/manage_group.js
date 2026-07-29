@@ -433,17 +433,20 @@
     if (typeof input.__dtpRefresh === "function") input.__dtpRefresh();
   }
 
-  function syncReadonlyTravelChip(el, label) {
+  function syncReadonlyTravelChip(el, label, color) {
     if (!el) return;
     const text = label || "";
     el.textContent = text;
     if (text) {
       el.title = text;
       el.hidden = false;
+      if (color) el.style.color = color;
+      else el.style.removeProperty("color");
       el.classList.toggle("jcc-retreat-travelChip--custom", text === "자차");
     } else {
       el.removeAttribute("title");
       el.hidden = true;
+      el.style.removeProperty("color");
       el.classList.remove("jcc-retreat-travelChip--custom");
     }
   }
@@ -845,12 +848,18 @@
         tr.querySelector("[data-expected-in-travel]"),
         inInput
           ? window.JccDateTimePicker?.computeTravelLabel?.(inInput) || ""
+          : "",
+        inInput
+          ? window.JccDateTimePicker?.computeTravelColor?.(inInput) || ""
           : ""
       );
       syncReadonlyTravelChip(
         tr.querySelector("[data-expected-out-travel]"),
         outInput
           ? window.JccDateTimePicker?.computeTravelLabel?.(outInput) || ""
+          : "",
+        outInput
+          ? window.JccDateTimePicker?.computeTravelColor?.(outInput) || ""
           : ""
       );
     }

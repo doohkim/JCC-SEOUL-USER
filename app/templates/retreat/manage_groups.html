@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>그룹 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260728g" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260729e" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -44,6 +44,12 @@
               <span class="jcc-retreat-filterLabel">부서</span>
               <div class="jcc-retreat-filterChips" id="groupFilterDivisions"></div>
             </div>
+            <div class="jcc-retreat-filterRow" data-filter-row="lodgingStay">
+              <span class="jcc-retreat-filterLabel">숙소 상태</span>
+              <div class="jcc-retreat-filterChips" id="groupFilterLodgingStay">
+                <button type="button" class="jcc-retreat-filterChip" data-filter-kind="lodgingStay" data-filter-value="unassigned">미배정 있음</button>
+              </div>
+            </div>
             <button type="button" class="jcc-retreat-filterReset" id="groupFilterReset" hidden>초기화</button>
           </div>
 
@@ -61,10 +67,11 @@
                 data-summary-pending="{{ g.pending_count }}"
                 data-summary-in="{{ g.checked_in_count }}"
                 data-summary-out="{{ g.checked_out_count }}"
+                data-lodging-unassigned="{{ g.lodging_unassigned_count }}"
               >
                 <a
                   class="jcc-retreat-groupCard"
-                  href="{% url 'retreat_group_manage' event.id g.id %}"
+                  href="{% url 'retreat_group_manage' event.id g.id %}{% if filter_lodging_unassigned %}?lodgingStay=unassigned{% endif %}"
                 >
                   <div class="jcc-retreat-groupRegion">
                     <span class="jcc-retreat-pill jcc-retreat-pill--scopePair">{{ g.region.name }} · {{ g.division.name|slice:":3" }}{% if g.division.name|length > 3 %}...{% endif %}</span>
@@ -78,6 +85,9 @@
                     title="조장 {{ g.leader_names|default:'-' }}"
                   >조장 {{ g.leader_names|default:"-" }}</div>
                   <div class="jcc-retreat-groupMeta">참석 {{ g.participating_count }}명 · 명단 {{ g.attendee_count }}명</div>
+                  {% if g.lodging_unassigned_count %}
+                    <div class="jcc-retreat-groupMeta jcc-retreat-groupMeta--unassigned" data-open-unassigned>미배정 {{ g.lodging_unassigned_count }}명</div>
+                  {% endif %}
                 </a>
                 {% if can_add_group %}
                   <button
@@ -225,7 +235,7 @@
       </div>
     </div>
     {% include 'includes/retreat_bottom_tabs.html' %}
-    <script src="{% static 'retreat/manage_groups_filter.js' %}?v=20260728a" defer></script>
+    <script src="{% static 'retreat/manage_groups_filter.js' %}?v=20260729b" defer></script>
     {% if can_add_group %}
       <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
       <script src="{% static 'retreat/group_edit_modal.js' %}?v=20260715b" defer></script>

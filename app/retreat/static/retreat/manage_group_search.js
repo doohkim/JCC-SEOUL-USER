@@ -15,9 +15,12 @@
   const filterBar = document.getElementById("groupTravelFilterBar");
   const arrivalWrap = document.getElementById("groupFilterArrivalTravel");
   const departureWrap = document.getElementById("groupFilterDepartureTravel");
+  const lodgingWrap = document.getElementById("groupFilterLodgingStay");
   const resetButton = document.getElementById("groupTravelFilterReset");
   const selectedArrival = new Set();
   const selectedDeparture = new Set();
+  const selectedLodgingStay = new Set();
+  let selectedSummaryPreset = "all";
   const STORAGE_KEY = "retreatGroupTravelFilter:" + location.pathname;
   let scheduled = false;
 
@@ -73,6 +76,20 @@
       selectedDeparture.size &&
       !selectedDeparture.has(row.dataset.departureTravel || "__unset__")
     ) return false;
+    if (
+      selectedLodgingStay.size &&
+      !selectedLodgingStay.has(row.dataset.lodgingStayStatus || "")
+    ) return false;
+    if (selectedSummaryPreset !== "all") {
+      const [kind, value] = selectedSummaryPreset.split(":");
+      const participation = row.dataset.participation || "participating";
+      const status = row.dataset.checkIn || "pending";
+      if (kind === "participation" && participation !== value) return false;
+      if (
+        kind === "status" &&
+        (participation === "absent" || status !== value)
+      ) return false;
+    }
     if (!query) return true;
     const name = normalizedText(row.querySelector("[data-name]")?.textContent);
     const phone = row.querySelector("[data-phone]")?.textContent || "";
@@ -102,18 +119,24 @@
     });
     updateSummary(visibleRows);
 
-    const hasTravelFilter = selectedArrival.size > 0 || selectedDeparture.size > 0;
+    const hasTravelFilter =
+      selectedArrival.size > 0 ||
+      selectedDeparture.size > 0 ||
+      selectedLodgingStay.size > 0;
+    const hasSummaryFilter = selectedSummaryPreset !== "all";
     if (clearButton) clearButton.hidden = !query;
     if (resetButton) resetButton.hidden = !hasTravelFilter;
     if (countElement) {
-      countElement.textContent = query || hasTravelFilter
+      countElement.textContent = query || hasTravelFilter || hasSummaryFilter
         ? `${visibleCount} / ${rows.length}명`
         : `총 ${rows.length}명`;
     }
     if (emptyElement) {
-      emptyElement.hidden = (!query && !hasTravelFilter) || visibleCount > 0;
+      emptyElement.hidden =
+        (!query && !hasTravelFilter && !hasSummaryFilter) || visibleCount > 0;
     }
     persist();
+    syncUrl();
   }
 
   function updateSummary(rows) {
@@ -150,8 +173,32 @@
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
         arrival: Array.from(selectedArrival),
         departure: Array.from(selectedDeparture),
+        lodgingStay: Array.from(selectedLodgingStay),
       }));
     } catch (e) {}
+  }
+
+  function syncUrl() {
+    const params = new URLSearchParams(location.search);
+    if (selectedLodgingStay.size) {
+      params.set("lodgingStay", Array.from(selectedLodgingStay).join(","));
+    } else {
+      params.delete("lodgingStay");
+    }
+    if (selectedSummaryPreset === "all") {
+      params.delete("participation");
+      params.delete("status");
+    } else {
+      const [kind, value] = selectedSummaryPreset.split(":");
+      params.delete(kind === "status" ? "participation" : "status");
+      params.set(kind, value);
+    }
+    const query = params.toString();
+    history.replaceState(
+      null,
+      "",
+      query ? `${location.pathname}?${query}` : location.pathname
+    );
   }
 
   function restore() {
@@ -159,6 +206,9 @@
       const value = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "{}");
       (value.arrival || []).forEach((key) => selectedArrival.add(String(key)));
       (value.departure || []).forEach((key) => selectedDeparture.add(String(key)));
+      (value.lodgingStay || []).forEach((key) =>
+        selectedLodgingStay.add(String(key))
+      );
     } catch (e) {}
   }
 
@@ -192,6 +242,25 @@
   }
 
   restore();
+  const urlParams = new URLSearchParams(location.search);
+  if (urlParams.has("lodgingStay")) {
+    selectedLodgingStay.clear();
+    (urlParams.get("lodgingStay") || "")
+      .split(",")
+      .filter(Boolean)
+      .forEach((value) => selectedLodgingStay.add(value));
+  }
+  const participationParam = urlParams.get("participation");
+  const statusParam = urlParams.get("status");
+  if (participationParam === "participating" || participationParam === "absent") {
+    selectedSummaryPreset = `participation:${participationParam}`;
+  } else if (
+    statusParam === "pending" ||
+    statusParam === "checked_in" ||
+    statusParam === "checked_out"
+  ) {
+    selectedSummaryPreset = `status:${statusParam}`;
+  }
   const arrivalOptions = filterOptions("arrival");
   const departureOptions = filterOptions("departure");
   const arrivalValues = new Set(arrivalOptions.map((option) => option.value));
@@ -208,12 +277,56 @@
   const departureRow = departureWrap?.closest("[data-filter-row]");
   if (arrivalRow) arrivalRow.hidden = arrivalOptions.length === 0;
   if (departureRow) departureRow.hidden = departureOptions.length === 0;
-  if (filterBar && (arrivalOptions.length || departureOptions.length)) {
+  const lodgingValues = new Set([
+    "active",
+    "unassigned",
+    "ended",
+    "no_stay",
+    "absent",
+  ]);
+  Array.from(selectedLodgingStay).forEach((value) => {
+    if (!lodgingValues.has(value)) selectedLodgingStay.delete(value);
+  });
+  lodgingWrap?.querySelectorAll("[data-filter-value]").forEach((chip) => {
+    const value = chip.dataset.filterValue;
+    function sync() {
+      const active = selectedLodgingStay.has(value);
+      chip.classList.toggle("is-active", active);
+      chip.setAttribute("aria-pressed", active ? "true" : "false");
+    }
+    chip.addEventListener("click", () => {
+      if (selectedLodgingStay.has(value)) selectedLodgingStay.delete(value);
+      else selectedLodgingStay.add(value);
+      sync();
+      applySearch();
+    });
+    sync();
+  });
+  const summaryButtons = document.querySelectorAll("[data-group-summary-preset]");
+  function syncSummaryButtons() {
+    summaryButtons.forEach((button) => {
+      const active = button.dataset.groupSummaryPreset === selectedSummaryPreset;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+  summaryButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const preset = button.dataset.groupSummaryPreset || "all";
+      selectedSummaryPreset =
+        preset === selectedSummaryPreset && preset !== "all" ? "all" : preset;
+      syncSummaryButtons();
+      applySearch();
+    });
+  });
+  syncSummaryButtons();
+  if (filterBar) {
     filterBar.hidden = false;
   }
   resetButton?.addEventListener("click", () => {
     selectedArrival.clear();
     selectedDeparture.clear();
+    selectedLodgingStay.clear();
     filterBar?.querySelectorAll(".jcc-retreat-filterChip").forEach((chip) => {
       chip.classList.remove("is-active");
       chip.setAttribute("aria-pressed", "false");
@@ -246,6 +359,7 @@
       "data-expected-out-at",
       "data-arrival-travel-is-custom",
       "data-departure-travel-is-custom",
+      "data-lodging-stay-status",
       "data-participation",
       "data-check-in",
     ],

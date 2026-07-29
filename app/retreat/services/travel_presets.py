@@ -86,10 +86,30 @@ def travel_display_label(
     return custom_label
 
 
+def travel_display_color(
+    dt,
+    presets: list[RetreatTravelPreset],
+    occurs_to_preset: dict[str, RetreatTravelPreset],
+    *,
+    is_custom: bool | None = None,
+) -> str:
+    """입력 시각과 매칭된 교통 태그 색상. 미설정이면 빈 문자열."""
+    bucket = travel_bucket_key(dt, occurs_to_preset, is_custom=is_custom)
+    if bucket == "__unset__":
+        return ""
+    if bucket == "__custom__":
+        manual = next(
+            (preset for preset in presets if is_manual_travel_preset(preset)), None
+        )
+        return manual.color if manual is not None else ""
+    matched = next((preset for preset in presets if preset.id == bucket), None)
+    return matched.color if matched is not None else ""
+
+
 def travel_filter_chip_defs(fixed: list[RetreatTravelPreset]) -> list[dict[str, str]]:
     """전체 명단 필터 칩 — value는 str(id) / __custom__ / __unset__."""
     chips: list[dict[str, str]] = [
-        {"value": str(p.id), "label": p.label} for p in fixed
+        {"value": str(p.id), "label": p.label, "color": p.color} for p in fixed
     ]
     chips.append({"value": "__custom__", "label": "자차"})
     chips.append({"value": "__unset__", "label": "미설정"})
@@ -99,7 +119,14 @@ def travel_filter_chip_defs(fixed: list[RetreatTravelPreset]) -> list[dict[str, 
 def travel_column_defs(fixed: list[RetreatTravelPreset]) -> list[dict[str, Any]]:
     """대시보드 교통 집계 컬럼 정의."""
     cols: list[dict[str, Any]] = [
-        {"id": p.id, "code": p.code, "label": p.label, "manual": False} for p in fixed
+        {
+            "id": p.id,
+            "code": p.code,
+            "label": p.label,
+            "color": p.color,
+            "manual": False,
+        }
+        for p in fixed
     ]
     cols.append({"id": None, "code": "__custom__", "label": "자차", "manual": True})
     cols.append({"id": None, "code": "__unset__", "label": "미설정", "manual": False})
@@ -112,6 +139,7 @@ def serialize_travel_preset(preset: RetreatTravelPreset) -> dict:
         "direction": preset.direction,
         "code": preset.code,
         "label": preset.label,
+        "color": preset.color,
         "occurs_at": _iso_local(preset.occurs_at),
         "manual": is_manual_travel_preset(preset),
         "sort_order": preset.sort_order,

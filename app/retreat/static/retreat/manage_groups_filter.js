@@ -16,6 +16,7 @@
 
   const regionsWrap = document.getElementById("groupFilterRegions");
   const divisionsWrap = document.getElementById("groupFilterDivisions");
+  const lodgingWrap = document.getElementById("groupFilterLodgingStay");
   const resetBtn = document.getElementById("groupFilterReset");
   const emptyMsg = document.getElementById("groupFilterEmpty");
 
@@ -24,6 +25,7 @@
 
   const selectedRegions = new Set();
   const selectedDivisions = new Set();
+  const selectedLodgingStay = new Set();
 
   // 선택 상태를 sessionStorage에 저장/복원 (조 생성·수정 시 location.reload() 후에도 유지).
   // 키에 location.pathname(=event_id 포함)을 넣어 집회별로 분리한다.
@@ -32,14 +34,15 @@
   function loadStored() {
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
-      if (!raw) return { regions: [], divisions: [] };
+      if (!raw) return { regions: [], divisions: [], lodgingStay: [] };
       const data = JSON.parse(raw);
       return {
         regions: Array.isArray(data.regions) ? data.regions : [],
         divisions: Array.isArray(data.divisions) ? data.divisions : [],
+        lodgingStay: Array.isArray(data.lodgingStay) ? data.lodgingStay : [],
       };
     } catch (e) {
-      return { regions: [], divisions: [] };
+      return { regions: [], divisions: [], lodgingStay: [] };
     }
   }
 
@@ -50,6 +53,7 @@
         JSON.stringify({
           regions: Array.from(selectedRegions),
           divisions: Array.from(selectedDivisions),
+          lodgingStay: Array.from(selectedLodgingStay),
         })
       );
     } catch (e) {
@@ -64,6 +68,9 @@
     }
     if (selectedDivisions.size) {
       params.set("division", Array.from(selectedDivisions).join(","));
+    }
+    if (selectedLodgingStay.size) {
+      params.set("lodgingStay", Array.from(selectedLodgingStay).join(","));
     }
     const query = params.toString();
     history.replaceState(null, "", query ? `${location.pathname}?${query}` : location.pathname);
@@ -131,7 +138,21 @@
       const okDivision =
         selectedDivisions.size === 0 ||
         divisions.some((division) => selectedDivisions.has(division));
-      const show = okRegion && okDivision;
+      const okLodging =
+        selectedLodgingStay.size === 0 ||
+        (selectedLodgingStay.has("unassigned") &&
+          Number(card.dataset.lodgingUnassigned || 0) > 0);
+      const show = okRegion && okDivision && okLodging;
+      const detailLink = card.querySelector(".jcc-retreat-groupCard");
+      if (detailLink) {
+        const detailUrl = new URL(detailLink.href, location.origin);
+        if (selectedLodgingStay.has("unassigned")) {
+          detailUrl.searchParams.set("lodgingStay", "unassigned");
+        } else {
+          detailUrl.searchParams.delete("lodgingStay");
+        }
+        detailLink.href = `${detailUrl.pathname}${detailUrl.search}`;
+      }
       card.hidden = !show;
       if (show) {
         visibleCount += 1;
@@ -139,7 +160,10 @@
       }
     });
     updateSummary(visibleCards);
-    const hasFilter = selectedRegions.size > 0 || selectedDivisions.size > 0;
+    const hasFilter =
+      selectedRegions.size > 0 ||
+      selectedDivisions.size > 0 ||
+      selectedLodgingStay.size > 0;
     if (resetBtn) resetBtn.hidden = !hasFilter;
     if (emptyMsg) emptyMsg.hidden = visibleCount !== 0;
     syncUrl();
@@ -189,6 +213,12 @@
   initialDivisions.forEach((v) => {
     if (divisionSetAll.has(v)) selectedDivisions.add(v);
   });
+  const initialLodgingStay = urlParams.has("lodgingStay")
+    ? (urlParams.get("lodgingStay") || "").split(",").filter(Boolean)
+    : (stored.lodgingStay || []);
+  initialLodgingStay.forEach((value) => {
+    if (value === "unassigned") selectedLodgingStay.add(value);
+  });
 
   const regionRow = regionsWrap
     ? regionsWrap.closest(".jcc-retreat-filterRow")
@@ -214,8 +244,35 @@
     divisionRow.hidden = true;
   }
 
-  // 지역·부서 모두 선택지가 1개 이하면 필터 바 자체를 숨긴다.
-  if (regionValues.length < 2 && divisionValues.length < 2) return;
+  lodgingWrap?.querySelectorAll("[data-filter-kind='lodgingStay']").forEach((chip) => {
+    const value = chip.dataset.filterValue;
+    const selected = selectedLodgingStay.has(value);
+    chip.classList.toggle("is-active", selected);
+    chip.setAttribute("aria-pressed", selected ? "true" : "false");
+    chip.addEventListener("click", () => {
+      if (selectedLodgingStay.has(value)) selectedLodgingStay.delete(value);
+      else selectedLodgingStay.add(value);
+      const active = selectedLodgingStay.has(value);
+      chip.classList.toggle("is-active", active);
+      chip.setAttribute("aria-pressed", active ? "true" : "false");
+      persist();
+      applyFilter();
+    });
+  });
+
+  cards.forEach((card) => {
+    const trigger = card.querySelector("[data-open-unassigned]");
+    const detailLink = card.querySelector(".jcc-retreat-groupCard");
+    if (!trigger || !detailLink) return;
+    function openUnassigned(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      const detailUrl = new URL(detailLink.href, location.origin);
+      detailUrl.searchParams.set("lodgingStay", "unassigned");
+      location.href = `${detailUrl.pathname}${detailUrl.search}`;
+    }
+    trigger.addEventListener("click", openUnassigned);
+  });
 
   bar.hidden = false;
 
@@ -226,6 +283,7 @@
     resetBtn.addEventListener("click", function () {
       selectedRegions.clear();
       selectedDivisions.clear();
+      selectedLodgingStay.clear();
       bar
         .querySelectorAll(".jcc-retreat-filterChip.is-active")
         .forEach(function (chip) {

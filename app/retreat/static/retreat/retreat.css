@@ -550,7 +550,7 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   color: var(--muted);
 }
 .jcc-retreat-roleTag--leader {
-  background: rgba(74, 158, 255, 0.16);
+  background: rgba(59, 130, 246, 0.18);
   color: #2563eb;
 }
 .jcc-retreat-roleTag--vice_leader {
@@ -2485,6 +2485,11 @@ body.has-retreat-bottom-tabs .jcc-retreat-userLinkUnlink {
   font-weight: 700;
   color: var(--text);
 }
+.jcc-retreat-groupMeta--unassigned {
+  color: #b45309;
+  font-weight: 700;
+  cursor: pointer;
+}
 .jcc-retreat-pickupNameText,
 .jcc-retreat-pickupMemo {
   display: block;
@@ -3897,6 +3902,8 @@ body.has-retreat-bottom-tabs .jcc-retreat-userLinkUnlink {
 }
 .jcc-retreat-groupLeader {
   overflow: hidden;
+  color: #2563eb;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.35;

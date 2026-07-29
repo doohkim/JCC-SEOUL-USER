@@ -3,28 +3,28 @@
 count_pending, count_checked_in, count_checked_out (입·퇴실은 참석 대상만)
 {% endcomment %}
 <div class="jcc-retreat-summaryBar jcc-retreat-summaryBar--participation" id="retreatSummaryBar">
-  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--total">
+  {% if summary_clickable %}<button type="button" class="jcc-retreat-summaryItem jcc-retreat-summaryItem--total jcc-retreat-summaryItem--clickable" data-group-summary-preset="all">{% else %}<div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--total">{% endif %}
     <span class="jcc-retreat-summaryItem-label">명단</span>
     <span class="jcc-retreat-summaryItem-value"><strong data-summary-total>{{ count_total }}</strong> 명</span>
-  </div>
-  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--participating">
+  {% if summary_clickable %}</button>{% else %}</div>{% endif %}
+  {% if summary_clickable %}<button type="button" class="jcc-retreat-summaryItem jcc-retreat-summaryItem--participating jcc-retreat-summaryItem--clickable" data-group-summary-preset="participation:participating">{% else %}<div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--participating">{% endif %}
     <span class="jcc-retreat-summaryItem-label">참석</span>
     <span class="jcc-retreat-summaryItem-value"><strong data-summary-participating>{{ count_participating }}</strong> 명</span>
-  </div>
-  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--absent">
+  {% if summary_clickable %}</button>{% else %}</div>{% endif %}
+  {% if summary_clickable %}<button type="button" class="jcc-retreat-summaryItem jcc-retreat-summaryItem--absent jcc-retreat-summaryItem--clickable" data-group-summary-preset="participation:absent">{% else %}<div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--absent">{% endif %}
     <span class="jcc-retreat-summaryItem-label">불참</span>
     <span class="jcc-retreat-summaryItem-value"><strong data-summary-absent>{{ count_absent }}</strong> 명</span>
-  </div>
-  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending">
+  {% if summary_clickable %}</button>{% else %}</div>{% endif %}
+  {% if summary_clickable %}<button type="button" class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending jcc-retreat-summaryItem--clickable" data-group-summary-preset="status:pending">{% else %}<div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending">{% endif %}
     <span class="jcc-retreat-summaryItem-label">입실전</span>
     <span class="jcc-retreat-summaryItem-value"><strong data-summary-pending>{{ count_pending }}</strong> 명</span>
-  </div>
-  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in">
+  {% if summary_clickable %}</button>{% else %}</div>{% endif %}
+  {% if summary_clickable %}<button type="button" class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in jcc-retreat-summaryItem--clickable" data-group-summary-preset="status:checked_in">{% else %}<div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in">{% endif %}
     <span class="jcc-retreat-summaryItem-label">입실</span>
     <span class="jcc-retreat-summaryItem-value"><strong data-summary-in>{{ count_checked_in }}</strong> 명</span>
-  </div>
-  <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--out">
+  {% if summary_clickable %}</button>{% else %}</div>{% endif %}
+  {% if summary_clickable %}<button type="button" class="jcc-retreat-summaryItem jcc-retreat-summaryItem--out jcc-retreat-summaryItem--clickable" data-group-summary-preset="status:checked_out">{% else %}<div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--out">{% endif %}
     <span class="jcc-retreat-summaryItem-label">퇴실</span>
     <span class="jcc-retreat-summaryItem-value"><strong data-summary-out>{{ count_checked_out }}</strong> 명</span>
-  </div>
+  {% if summary_clickable %}</button>{% else %}</div>{% endif %}
 </div>

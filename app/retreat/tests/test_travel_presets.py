@@ -6,6 +6,7 @@ from datetime import date, datetime
 from io import StringIO
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
@@ -23,6 +24,7 @@ from retreat.models import (
 from retreat.services.travel_presets import (
     travel_bucket_key,
     travel_display_label,
+    travel_display_color,
     travel_fixed_and_occurs_map,
     travel_presets_for_group,
 )
@@ -88,6 +90,15 @@ class TravelPresetServiceTests(TestCase):
         self.assertEqual(data["arrival"][0]["occurs_at"], "2026-07-30T10:00")
         self.assertEqual(data["departure"][0]["occurs_at"], "2026-08-01T13:00")
         self.assertFalse(data["arrival"][0]["manual"])
+        self.assertEqual(data["arrival"][0]["color"], "#2563EB")
+
+    def test_color_requires_six_digit_hex(self):
+        self.arrival.color = "blue"
+        with self.assertRaisesMessage(
+            ValidationError,
+            "#2563EB 형식의 HEX 색상을 입력하세요.",
+        ):
+            self.arrival.full_clean()
 
     def test_travel_bucket_key_respects_is_custom(self):
         """자차 명시 시 웨이브와 동일 시각이어도 __custom__."""
@@ -114,6 +125,14 @@ class TravelPresetServiceTests(TestCase):
         self.assertEqual(travel_display_label(None, occurs), "")
         other = timezone.make_aware(datetime(2026, 7, 30, 15, 30))
         self.assertEqual(travel_display_label(other, occurs), "자차")
+        self.assertEqual(
+            travel_display_color(
+                wave_at,
+                [self.arrival],
+                occurs,
+            ),
+            "#2563EB",
+        )
 
     def test_own_car_is_manual(self):
         tz = timezone.get_current_timezone()
