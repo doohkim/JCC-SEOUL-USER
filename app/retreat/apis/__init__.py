@@ -48,6 +48,7 @@ from .lodging import (
     RetreatLodgingRoomDetailView,
     RetreatLodgingRoomsView,
 )
+from .lodging_roster import RetreatEventLodgingRosterPageView
 from .pickup import RetreatEventPickupListCreateView, RetreatPickupDetailView
 from .pickup_location import (
     RetreatEventPickupLocationListCreateView,
@@ -90,6 +91,7 @@ __all__ = [
     "RetreatLodgingDetailView",
     "RetreatLodgingRoomDetailView",
     "RetreatLodgingRoomsView",
+    "RetreatEventLodgingRosterPageView",
     "RetreatEventPickupListCreateView",
     "RetreatPickupDetailView",
     "RetreatEventPickupLocationListCreateView",

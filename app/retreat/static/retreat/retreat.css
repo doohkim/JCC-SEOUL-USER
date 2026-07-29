@@ -3574,16 +3574,16 @@ body.has-retreat-bottom-tabs .jcc-retreat-userLinkUnlink {
     width: 4%;
   }
   .jcc-retreat-rosterTable .jcc-retreat-attCol-group {
-    width: 7%;
+    width: 6%;
   }
   .jcc-retreat-rosterTable .jcc-retreat-attCol-scope {
-    width: 14%;
+    width: 16%;
   }
   .jcc-retreat-rosterTable .jcc-retreat-attCol-name {
     width: 11%;
   }
   .jcc-retreat-rosterTable .jcc-retreat-attCol-role {
-    width: 7%;
+    width: 6%;
   }
   .jcc-retreat-rosterTable .jcc-retreat-attCol-status {
     width: 8%;
@@ -3629,21 +3629,61 @@ body.has-retreat-bottom-tabs .jcc-retreat-userLinkUnlink {
   border-top: 1px solid var(--border, #e9ecef);
 }
 .jcc-retreat-rosterPaginationMeta {
+  min-width: 22rem;
   font-size: 0.82rem;
   color: var(--muted, #868e96);
   font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 .jcc-retreat-rosterPaginationBar .jcc-notice-pagination {
+  width: 100%;
   padding: 0;
 }
+.jcc-retreat-rosterPaginationBar .jcc-notice-paginationBtns {
+  display: grid;
+  grid-template-columns: repeat(9, 2.25rem);
+  gap: 0.35rem;
+  width: max-content;
+  min-width: 23.05rem;
+  flex-wrap: nowrap;
+}
 .jcc-retreat-rosterPaginationBar .jcc-notice-pageBtn {
+  width: 2.25rem;
+  min-width: 2.25rem;
+  padding: 0;
   cursor: pointer;
   font-family: inherit;
+  font-variant-numeric: tabular-nums;
 }
 .jcc-retreat-rosterPaginationBar .jcc-notice-pageBtn.is-disabled {
   opacity: 0.35;
   cursor: default;
   pointer-events: none;
+}
+.jcc-retreat-rosterPaginationBar .jcc-notice-pageBtn--boundary {
+  color: var(--accent);
+}
+.jcc-retreat-rosterPaginationBar .jcc-notice-pageBtn--placeholder {
+  visibility: hidden;
+  pointer-events: none;
+}
+@media (max-width: 420px) {
+  .jcc-retreat-rosterPaginationMeta {
+    min-width: 0;
+    width: 100%;
+    font-size: 0.75rem;
+  }
+  .jcc-retreat-rosterPaginationBar .jcc-notice-paginationBtns {
+    grid-template-columns: repeat(9, 2rem);
+    gap: 0.2rem;
+    min-width: 19.6rem;
+  }
+  .jcc-retreat-rosterPaginationBar .jcc-notice-pageBtn {
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    font-size: 0.8rem;
+  }
 }
 .jcc-retreat-rosterHeadLong,
 .jcc-retreat-rosterActionsHead {

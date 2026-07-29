@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
+import re
 
 from django.contrib.auth import get_user_model
 from django.db.models import Case, IntegerField, QuerySet, Value, When
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from retreat.models import RetreatAttendee, RetreatEvent, RetreatTravelPreset
 from retreat.services.check_in_stamps import (
@@ -47,6 +49,145 @@ class LodgingRosterSummary:
     count_checked_out: int
     count_lodging_eligible: int
     count_lodging_unassigned: int
+
+
+LODGING_ROSTER_PAGE_SIZE = 20
+
+
+def _csv_values(params, key: str) -> set[str]:
+    return {value for value in str(params.get(key, "") or "").split(",") if value}
+
+
+def _range_datetime(value: str):
+    parsed = parse_datetime(str(value or ""))
+    if parsed is None:
+        return None
+    if timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+    return parsed
+
+
+def filter_and_sort_lodging_roster(attendees: list[RetreatAttendee], params) -> list:
+    """전체 명단 UI의 필터·검색·정렬을 서버에서 동일하게 적용한다."""
+    statuses = _csv_values(params, "status")
+    lodging_stays = _csv_values(params, "lodgingStay")
+    if not lodging_stays:
+        legacy_stay = _csv_values(params, "stay")
+        legacy_assign = _csv_values(params, "assign")
+        legacy_lodging = _csv_values(params, "lodging")
+        if "eligible" in legacy_stay or "eligible" in legacy_lodging:
+            lodging_stays.update({"active", "unassigned"})
+        if legacy_stay.intersection(
+            {"ineligible", "na"}
+        ) or legacy_lodging.intersection({"ineligible", "na"}):
+            lodging_stays.update({"ended", "no_stay", "absent"})
+        if "assigned" in legacy_assign or "assigned" in legacy_lodging:
+            lodging_stays.add("active")
+        if "unassigned" in legacy_assign or "unassigned" in legacy_lodging:
+            lodging_stays.add("unassigned")
+    genders = _csv_values(params, "gender")
+    nights = _csv_values(params, "nights")
+    arrivals = _csv_values(params, "arrivalTravel")
+    departures = _csv_values(params, "departureTravel")
+    regions = _csv_values(params, "region")
+    divisions = _csv_values(params, "division")
+    memo_only = "1" in _csv_values(params, "memo")
+    query = str(params.get("q", "") or "").strip().lower()
+    query_digits = re.sub(r"\D", "", query)
+    date_from = _range_datetime(params.get("dateFrom", ""))
+    date_to = _range_datetime(params.get("dateTo", ""))
+
+    def matches(attendee):
+        gender = attendee.gender or "__unset__"
+        if statuses and attendee.check_in_status not in statuses:
+            return False
+        if lodging_stays and attendee.lodging_stay_status not in lodging_stays:
+            return False
+        if genders and gender not in genders:
+            return False
+        if nights:
+            night_key = str(attendee.lodging_nights)
+            if night_key not in nights and not (
+                "2" in nights and attendee.lodging_nights >= 2
+            ):
+                return False
+        if arrivals and str(attendee.arrival_travel_key) not in arrivals:
+            return False
+        if departures and str(attendee.departure_travel_key) not in departures:
+            return False
+        if regions and not regions.intersection(attendee.group_region_names):
+            return False
+        if divisions and not divisions.intersection(attendee.group_division_names):
+            return False
+        if date_from or date_to:
+            starts_at = attendee.expected_check_in_at
+            ends_at = attendee.expected_check_out_at
+            if starts_at is None or ends_at is None:
+                return False
+            if date_to and starts_at > date_to:
+                return False
+            if date_from and ends_at < date_from:
+                return False
+        if memo_only and not (attendee.memo or "").strip():
+            return False
+        if query:
+            name_match = query in (attendee.name or "").lower()
+            phone_match = bool(
+                query_digits and query_digits in re.sub(r"\D", "", attendee.phone or "")
+            )
+            if not name_match and not phone_match:
+                return False
+        return True
+
+    filtered = [attendee for attendee in attendees if matches(attendee)]
+    sort_key = str(params.get("sort", "") or "")
+    reverse = str(params.get("dir", "asc") or "") == "desc"
+    role_order = {"leader": 0, "vice_leader": 1, "teacher": 2, "member": 3}
+    status_order = {"pending": 0, "checked_in": 1, "checked_out": 2}
+
+    key_functions = {
+        "group": lambda a: (a.group.name or "", a.name or ""),
+        "name": lambda a: (a.name or "", a.id),
+        "role": lambda a: (role_order.get(a.member_role, 99), a.name or ""),
+        "status": lambda a: (status_order.get(a.check_in_status, 99), a.name or ""),
+        "expectedIn": lambda a: (
+            a.expected_check_in_at is None,
+            a.expected_check_in_at or timezone.now(),
+            a.name or "",
+        ),
+        "expectedOut": lambda a: (
+            a.expected_check_out_at is None,
+            a.expected_check_out_at or timezone.now(),
+            a.name or "",
+        ),
+        "lodging": lambda a: (a.lodging_stay_display or "", a.name or ""),
+        "nights": lambda a: (a.lodging_nights, a.name or ""),
+    }
+    if sort_key in key_functions:
+        filtered.sort(key=key_functions[sort_key], reverse=reverse)
+    return filtered
+
+
+def lodging_roster_summary(attendees: list[RetreatAttendee]) -> LodgingRosterSummary:
+    s = RetreatAttendee.CheckInStatus
+    p = RetreatAttendee.ParticipationStatus
+    participating = [a for a in attendees if is_participating(a)]
+    return LodgingRosterSummary(
+        count_total=len(attendees),
+        count_participating=len(participating),
+        count_absent=sum(1 for a in attendees if a.participation_status == p.ABSENT),
+        count_pending=sum(1 for a in participating if a.check_in_status == s.PENDING),
+        count_checked_in=sum(
+            1 for a in participating if a.check_in_status == s.CHECKED_IN
+        ),
+        count_checked_out=sum(
+            1 for a in participating if a.check_in_status == s.CHECKED_OUT
+        ),
+        count_lodging_eligible=sum(1 for a in attendees if is_lodging_eligible(a)),
+        count_lodging_unassigned=sum(
+            1 for a in attendees if a.lodging_scope == "unassigned"
+        ),
+    )
 
 
 def is_lodging_eligible(attendee: RetreatAttendee) -> bool:
@@ -232,21 +373,6 @@ def build_lodging_roster_context(
             )
         )
 
-    s = RetreatAttendee.CheckInStatus
-    p = RetreatAttendee.ParticipationStatus
-    count_absent = sum(1 for a in attendees if a.participation_status == p.ABSENT)
-    participating = [a for a in attendees if is_participating(a)]
-    count_pending = sum(1 for a in participating if a.check_in_status == s.PENDING)
-    count_checked_in = sum(
-        1 for a in participating if a.check_in_status == s.CHECKED_IN
-    )
-    count_checked_out = sum(
-        1 for a in participating if a.check_in_status == s.CHECKED_OUT
-    )
-    count_lodging_eligible = sum(1 for a in attendees if is_lodging_eligible(a))
-    count_lodging_unassigned = sum(
-        1 for a in attendees if a.lodging_scope == "unassigned"
-    )
     return {
         "roster_attendees": attendees,
         "roster_arrival_travel_chips": travel_filter_chip_defs(arrival_fixed),
@@ -257,14 +383,5 @@ def build_lodging_roster_context(
             ("1", "1박"),
             ("2", "2박 이상"),
         ],
-        "roster_summary": LodgingRosterSummary(
-            count_total=len(attendees),
-            count_participating=len(participating),
-            count_absent=count_absent,
-            count_pending=count_pending,
-            count_checked_in=count_checked_in,
-            count_checked_out=count_checked_out,
-            count_lodging_eligible=count_lodging_eligible,
-            count_lodging_unassigned=count_lodging_unassigned,
-        ),
+        "roster_summary": lodging_roster_summary(attendees),
     }

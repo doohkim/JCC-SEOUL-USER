@@ -1,0 +1,90 @@
+{% for a in roster_attendees %}
+  <tr
+    class="jcc-retreat-rosterRow{% if a.lodging_stay_status == 'unassigned' %} jcc-retreat-rosterRow--unassigned{% endif %}"
+    data-attendee-id="{{ a.id }}"
+    data-group-id="{{ a.group_id }}"
+    data-group-region-id="{{ a.group.region_id }}"
+    data-group-division-id="{{ a.group.division_id }}"
+    data-check-in-status="{{ a.check_in_status }}"
+    data-check-in="{{ a.check_in_status }}"
+    data-check-in-manual="{% if a.check_in_status_manually_set %}1{% else %}0{% endif %}"
+    data-gender="{{ a.gender }}"
+    data-lodging-nights="{{ a.lodging_nights }}"
+    data-memo="{{ a.memo|escapejs }}"
+    data-member-role="{{ a.member_role }}"
+    data-expected-in-at="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'c' }}{% endif %}"
+    data-expected-out-at="{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'c' }}{% endif %}"
+    data-arrival-travel-is-custom="{% if a.arrival_travel_is_custom is True %}1{% elif a.arrival_travel_is_custom is False %}0{% endif %}"
+    data-departure-travel-is-custom="{% if a.departure_travel_is_custom is True %}1{% elif a.departure_travel_is_custom is False %}0{% endif %}"
+    data-expected-in-locked="{% if a.expected_check_in_locked %}true{% else %}false{% endif %}"
+    data-expected-out-locked="{% if a.expected_check_out_locked %}true{% else %}false{% endif %}"
+    data-expected-timestamps-locked="{% if a.expected_timestamps_locked %}true{% else %}false{% endif %}"
+    data-profile-locked="{% if a.profile_locked %}true{% else %}false{% endif %}"
+    data-lodging-stay-status="{{ a.lodging_stay_status }}"
+    data-arrival-travel="{{ a.arrival_travel_key }}"
+    data-departure-travel="{{ a.departure_travel_key }}"
+    data-region-names="{{ a.group_region_names|join:'|' }}"
+    data-division-names="{{ a.group_division_names|join:'|' }}"
+    data-name="{{ a.name }}"
+    data-group-name="{{ a.group.name }}"
+    data-lodging-sort="{{ a.lodging_stay_display }}"
+    data-phone="{{ a.phone }}"
+    data-user-id="{% if a.user_id %}{{ a.user_id }}{% endif %}"
+    data-user-label="{% if a.user %}{{ a.user.profile.real_name|default:a.user.username }}{% endif %}"
+    data-lodging-room="{% if a.lodging_room_id %}{{ a.lodging_room_id }}{% endif %}"
+    data-group-url="{% url 'retreat_group_manage' event.id a.group_id %}"
+  >
+    <td class="jcc-retreat-attCol-num" data-row-num>{{ row_offset|default:0|add:forloop.counter }}</td>
+    <td class="jcc-retreat-attCol-group">
+      <a class="jcc-retreat-rosterGroupLink" href="{% url 'retreat_group_manage' event.id a.group_id %}">{{ a.group.name }}</a>
+    </td>
+    <td class="jcc-retreat-attCol-scope">{{ a.group_scope_labels|join:", " }}</td>
+    <td class="jcc-retreat-attCol-name">
+      <span class="jcc-retreat-attName" data-name>{{ a.name }}</span>
+      {% if a.memo %}
+        <div class="jcc-retreat-attMemo" data-roster-memo data-memo-full="{{ a.memo }}" title="{{ a.memo }}">{{ a.memo }}</div>
+      {% else %}
+        <div class="jcc-retreat-attMemo" data-roster-memo data-memo-full="" hidden></div>
+      {% endif %}
+    </td>
+    <td class="jcc-retreat-attCol-role">
+      <span class="jcc-retreat-roleTag jcc-retreat-roleTag--{{ a.member_role }}" data-role-tag>{{ a.get_member_role_display }}</span>
+    </td>
+    <td class="jcc-retreat-attCol-status" data-status-cell>
+      <span class="jcc-retreat-checkInBadge jcc-retreat-checkInBadge--{{ a.check_in_status }}" data-status-badge>{{ a.get_check_in_status_display }}</span>
+    </td>
+    <td class="jcc-retreat-attCol-expected jcc-retreat-attCol-expected-in" data-expected-in-cell>
+      <span class="jcc-retreat-stampLabel{% if not a.expected_check_in_at %} muted{% endif %}" data-expected-in-label>
+        {% if a.expected_check_in_at %}
+          <span class="jcc-stamp-date">{{ a.expected_check_in_at|date:"y-m-d" }}</span>
+          <span class="jcc-stamp-time">{{ a.expected_check_in_at|date:"A g:i" }}</span>
+        {% else %}-{% endif %}
+      </span>
+    </td>
+    <td class="jcc-retreat-attCol-expected jcc-retreat-attCol-expected-out" data-expected-out-cell>
+      <span class="jcc-retreat-stampLabel{% if not a.expected_check_out_at %} muted{% endif %}" data-expected-out-label>
+        {% if a.expected_check_out_at %}
+          <span class="jcc-stamp-date">{{ a.expected_check_out_at|date:"y-m-d" }}</span>
+          <span class="jcc-stamp-time">{{ a.expected_check_out_at|date:"A g:i" }}</span>
+        {% else %}-{% endif %}
+      </span>
+    </td>
+    <td class="jcc-retreat-attCol-lodging" data-lodging-cell>
+      {% include 'includes/retreat_lodging_stay_badge.html' with status=a.lodging_stay_status display=a.lodging_stay_display %}
+    </td>
+    <td class="jcc-retreat-attCol-nights">
+      <span class="jcc-retreat-lodgingNights{% if a.lodging_nights == 0 %} is-none{% endif %}">{{ a.lodging_nights_label }}</span>
+    </td>
+    {% if roster_any_can_edit %}
+      <td class="jcc-retreat-attCol-actions">
+        {% if a.can_edit_roster %}
+          <button type="button" class="jcc-retreat-rowIconBtn" data-roster-edit aria-label="{{ a.name }} {% if a.profile_locked %}보기{% else %}수정{% endif %}" title="{% if a.profile_locked %}보기{% else %}수정{% endif %}">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+            </svg>
+          </button>
+        {% endif %}
+      </td>
+    {% endif %}
+  </tr>
+{% endfor %}

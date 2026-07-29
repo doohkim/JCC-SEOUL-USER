@@ -1415,8 +1415,35 @@ class RetreatLodgingRosterView(_RetreatEventMixin, TemplateView):
 
         ctx.update(build_lodging_roster_context(event, user))
         from retreat.services.lodging import room_assignment_options_for_groups
+        from retreat.services.lodging_roster import (
+            LODGING_ROSTER_PAGE_SIZE,
+            filter_and_sort_lodging_roster,
+            lodging_roster_summary,
+        )
+        from django.core.paginator import Paginator
 
-        attendees = ctx["roster_attendees"]
+        all_attendees = ctx["roster_attendees"]
+        ctx["roster_filter_regions"] = sorted(
+            {name for attendee in all_attendees for name in attendee.group_region_names}
+        )
+        ctx["roster_filter_divisions"] = sorted(
+            {
+                name
+                for attendee in all_attendees
+                for name in attendee.group_division_names
+            }
+        )
+        filtered_attendees = filter_and_sort_lodging_roster(
+            all_attendees, self.request.GET
+        )
+        paginator = Paginator(filtered_attendees, LODGING_ROSTER_PAGE_SIZE)
+        page_obj = paginator.get_page(self.request.GET.get("page") or 1)
+        attendees = list(page_obj.object_list)
+        ctx["roster_attendees"] = attendees
+        ctx["roster_has_attendees"] = bool(all_attendees)
+        ctx["roster_summary"] = lodging_roster_summary(filtered_attendees)
+        ctx["roster_page"] = page_obj
+        ctx["roster_page_size"] = LODGING_ROSTER_PAGE_SIZE
         can_edit_all = bool(
             user.is_superuser or ctx["retreat_caps"].edit_attendee_profile
         )
@@ -1430,6 +1457,9 @@ class RetreatLodgingRosterView(_RetreatEventMixin, TemplateView):
         )
         ctx["roster_any_can_edit"] = bool(attendees) and can_edit_all
         ctx["roster_group_rooms_json"] = json.dumps(group_rooms)
+        ctx["roster_api_url"] = reverse(
+            "api_retreat_event_lodging_roster", args=[event.id]
+        )
         ctx["travel_presets_json"] = json.dumps(
             ctx.get("travel_presets") or {"arrival": [], "departure": []},
             ensure_ascii=False,

@@ -25,6 +25,7 @@ from retreat.apis import (
     RetreatLodgingDetailView,
     RetreatLodgingRoomDetailView,
     RetreatLodgingRoomsView,
+    RetreatEventLodgingRosterPageView,
     RetreatSessionCloseView,
     RetreatSessionDetailView,
     RetreatSessionReopenView,
@@ -158,6 +159,11 @@ urlpatterns = [
         "api/v1/retreat/events/<int:event_id>/groups/",
         RetreatEventGroupListView.as_view(),
         name="api_retreat_event_groups",
+    ),
+    path(
+        "api/v1/retreat/events/<int:event_id>/lodging-roster/",
+        RetreatEventLodgingRosterPageView.as_view(),
+        name="api_retreat_event_lodging_roster",
     ),
     path(
         "api/v1/retreat/events/<int:event_id>/sessions/",

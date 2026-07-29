@@ -221,6 +221,50 @@ class LodgingRosterPageTests(_LodgingRosterFixture):
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'data-filter-value="unassigned"')
 
+    def test_page_renders_only_first_twenty_attendees(self):
+        RetreatAttendee.objects.bulk_create(
+            [
+                RetreatAttendee(group=self.group, name=f"추가조원{i:02d}")
+                for i in range(25)
+            ]
+        )
+        self.client.force_login(self.staff)
+        response = self.client.get(self._url())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content.count(b'data-attendee-id="'), 20)
+        self.assertContains(
+            response,
+            reverse("api_retreat_event_lodging_roster", args=[self.event.id]),
+        )
+
+    def test_roster_api_paginates_and_returns_filtered_summary(self):
+        RetreatAttendee.objects.bulk_create(
+            [
+                RetreatAttendee(group=self.group, name=f"API조원{i:02d}")
+                for i in range(25)
+            ]
+        )
+        self.client.force_login(self.staff)
+        url = reverse("api_retreat_event_lodging_roster", args=[self.event.id])
+        first = self.client.get(url)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(first.json()["page_size"], 20)
+        self.assertEqual(first.json()["total"], 30)
+        self.assertEqual(first.json()["rows_html"].count('data-attendee-id="'), 20)
+
+        filtered = self.client.get(url, {"lodgingStay": "unassigned"})
+        self.assertEqual(filtered.status_code, 200)
+        self.assertEqual(filtered.json()["total"], 1)
+        self.assertEqual(
+            filtered.json()["summary"]["count_lodging_unassigned"],
+            1,
+        )
+
+    def test_roster_api_uses_same_roster_permission(self):
+        self.client.force_login(self.leader)
+        url = reverse("api_retreat_event_lodging_roster", args=[self.event.id])
+        self.assertEqual(self.client.get(url).status_code, 403)
+
 
 class LodgingRosterSummaryTests(_LodgingRosterFixture):
     def test_room_assignment_options_for_groups_uses_one_room_query(self):

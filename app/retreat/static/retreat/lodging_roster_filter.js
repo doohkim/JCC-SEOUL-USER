@@ -7,8 +7,8 @@
   const tbody = document.getElementById("lodgingRosterBody");
   if (!tbody) return;
 
-  const rows = Array.from(tbody.querySelectorAll("tr[data-attendee-id]"));
-  if (rows.length === 0) return;
+  let rows = Array.from(tbody.querySelectorAll("tr[data-attendee-id]"));
+  const serverApiUrl = tbody.dataset.apiUrl || "";
 
   const PAGE_SIZE = 20;
   const STORAGE_KEY = "retreatLodgingRosterFilter:" + location.pathname;
@@ -53,6 +53,7 @@
   let sortKey = null;
   let sortDir = "asc";
   let currentPage = 1;
+  let activeRequest = null;
 
   function memoFilterActive() {
     return selectedMemo.has("1");
@@ -377,19 +378,20 @@
     const end = Math.min(currentPage * PAGE_SIZE, total);
     paginationMeta.textContent = `${start}–${end} / 총 ${total}건 · ${PAGE_SIZE}개씩`;
 
-    if (totalPages <= 1) {
-      paginationBtns.innerHTML = "";
-      return;
-    }
-
     const frag = document.createDocumentFragment();
 
     function addBtn(label, page, opts) {
-      const { disabled, active, arrow } = opts || {};
+      const { disabled, active, arrow, boundary, ariaLabel } = opts || {};
       const el = document.createElement(disabled || active ? "span" : "button");
       el.className = "jcc-notice-pageBtn";
       if (arrow) el.classList.add("jcc-notice-pageBtn--arrow");
+      if (boundary) el.classList.add("jcc-notice-pageBtn--boundary");
       if (disabled) el.classList.add("is-disabled");
+      if (ariaLabel) {
+        el.setAttribute("aria-label", ariaLabel);
+        el.title = ariaLabel;
+      }
+      if (disabled) el.setAttribute("aria-disabled", "true");
       if (active) {
         el.classList.add("is-active");
         el.setAttribute("aria-current", "page");
@@ -405,20 +407,50 @@
       frag.appendChild(el);
     }
 
+    addBtn("«", 1, {
+      arrow: true,
+      boundary: true,
+      disabled: currentPage <= 1,
+      ariaLabel: "첫 페이지",
+    });
     addBtn("‹", currentPage - 1, {
       arrow: true,
       disabled: currentPage <= 1,
+      ariaLabel: "이전 페이지",
     });
 
-    const windowStart = Math.max(1, currentPage - 2);
-    const windowEnd = Math.min(totalPages, currentPage + 2);
-    for (let n = windowStart; n <= windowEnd; n += 1) {
-      addBtn(String(n), n, { active: n === currentPage });
+    const numberSlotCount = 5;
+    const visibleCount = Math.min(numberSlotCount, totalPages);
+    const windowStart = Math.min(
+      Math.max(1, currentPage - 2),
+      Math.max(1, totalPages - visibleCount + 1)
+    );
+    for (let slot = 0; slot < numberSlotCount; slot += 1) {
+      if (slot < visibleCount) {
+        const page = windowStart + slot;
+        addBtn(String(page), page, {
+          active: page === currentPage,
+          ariaLabel: `${page}페이지`,
+        });
+      } else {
+        const placeholder = document.createElement("span");
+        placeholder.className =
+          "jcc-notice-pageBtn jcc-notice-pageBtn--placeholder";
+        placeholder.setAttribute("aria-hidden", "true");
+        frag.appendChild(placeholder);
+      }
     }
 
     addBtn("›", currentPage + 1, {
       arrow: true,
       disabled: currentPage >= totalPages,
+      ariaLabel: "다음 페이지",
+    });
+    addBtn("»", totalPages, {
+      arrow: true,
+      boundary: true,
+      disabled: currentPage >= totalPages,
+      ariaLabel: "마지막 페이지",
     });
 
     paginationBtns.innerHTML = "";
@@ -427,6 +459,10 @@
 
   function applyView({ resetPage = false } = {}) {
     if (resetPage) currentPage = 1;
+    if (serverApiUrl) {
+      fetchServerPage();
+      return;
+    }
 
     const matched = sortedMatchedRows();
     matched.forEach((row) => tbody.appendChild(row));
@@ -471,6 +507,98 @@
     if (emptyMsg) emptyMsg.hidden = total > 0 || rows.length === 0;
     persist();
     syncUrl();
+  }
+
+  function serverParams() {
+    const params = new URLSearchParams();
+    const putSet = (key, set) => {
+      if (set.size) params.set(key, Array.from(set).join(","));
+    };
+    putSet("status", selectedStatus);
+    putSet("lodgingStay", selectedLodgingStay);
+    putSet("gender", selectedGenders);
+    putSet("nights", selectedNights);
+    putSet("arrivalTravel", selectedArrivalTravel);
+    putSet("departureTravel", selectedDepartureTravel);
+    putSet("region", selectedRegions);
+    putSet("division", selectedDivisions);
+    putSet("memo", selectedMemo);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    if (nameQuery.trim()) params.set("q", nameQuery.trim());
+    if (sortKey) {
+      params.set("sort", sortKey);
+      params.set("dir", sortDir);
+    }
+    params.set("page", String(currentPage));
+    return params;
+  }
+
+  function updateSummaryFromData(summary) {
+    const setText = (selector, value) => {
+      const el = document.querySelector(selector);
+      if (el) el.textContent = String(value ?? 0);
+    };
+    setText("[data-summary-total]", summary.count_total);
+    setText("[data-summary-pending]", summary.count_pending);
+    setText("[data-summary-in]", summary.count_checked_in);
+    setText("[data-summary-out]", summary.count_checked_out);
+    setText("[data-summary-eligible]", summary.count_lodging_eligible);
+    setText("[data-summary-unassigned]", summary.count_lodging_unassigned);
+  }
+
+  async function fetchServerPage() {
+    if (activeRequest) activeRequest.abort();
+    activeRequest = new AbortController();
+    tbody.classList.add("is-initializing");
+    try {
+      const response = await fetch(`${serverApiUrl}?${serverParams().toString()}`, {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+        signal: activeRequest.signal,
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      currentPage = Number(data.page || 1);
+      tbody.innerHTML = data.rows_html || "";
+      rows = Array.from(tbody.querySelectorAll("tr[data-attendee-id]"));
+      if (window.LODGING_ROSTER_CTX && data.group_rooms) {
+        window.LODGING_ROSTER_CTX.groupRooms = Object.assign(
+          {},
+          window.LODGING_ROSTER_CTX.groupRooms || {},
+          data.group_rooms
+        );
+      }
+      renderPagination(Number(data.total || 0), Number(data.total_pages || 1));
+      updateSummaryFromData(data.summary || {});
+      syncSortHeaderStates();
+      syncRosterMemoDisplays();
+      if (emptyMsg) emptyMsg.hidden = Number(data.total || 0) > 0;
+      const hasFilter =
+        selectedStatus.size > 0 ||
+        selectedLodgingStay.size > 0 ||
+        selectedGenders.size > 0 ||
+        selectedNights.size > 0 ||
+        selectedArrivalTravel.size > 0 ||
+        selectedDepartureTravel.size > 0 ||
+        selectedRegions.size > 0 ||
+        selectedDivisions.size > 0 ||
+        selectedMemo.size > 0 ||
+        !!dateFrom ||
+        !!dateTo ||
+        !!nameQuery.trim();
+      if (resetBtn) {
+        resetBtn.disabled = !hasFilter && !sortKey && currentPage === 1;
+      }
+      persist();
+      syncUrl();
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        console.error("전체 명단을 불러오지 못했습니다.", error);
+      }
+    } finally {
+      tbody.classList.remove("is-initializing");
+    }
   }
 
   function updateSummary(matched) {
@@ -553,8 +681,23 @@
     wrap.appendChild(chip);
   }
 
-  const regionValues = distinctValues("data-region-names");
-  const divisionValues = distinctValues("data-division-names");
+  function jsonList(id) {
+    const el = document.getElementById(id);
+    if (!el) return [];
+    try {
+      const parsed = JSON.parse(el.textContent || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  const regionValues = serverApiUrl
+    ? jsonList("lodgingRosterRegions")
+    : distinctValues("data-region-names");
+  const divisionValues = serverApiUrl
+    ? jsonList("lodgingRosterDivisions")
+    : distinctValues("data-division-names");
   if (regionsWrap && regionValues.length >= 1) {
     regionValues.forEach((v) => makeDynamicChip(v, selectedRegions, regionsWrap));
     if (regionRow) regionRow.hidden = false;
