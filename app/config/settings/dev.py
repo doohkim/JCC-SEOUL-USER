@@ -15,6 +15,21 @@ STORAGES, _media_url = build_storage_settings(
 if _media_url:
     MEDIA_URL = _media_url
 
+# 개발 배포 도메인은 ``jcc-seoul.com`` 앞에 ``shalom.dev.*`` 구조를 사용한다.
+# 공통 설정의 운영용 키(``shalom.admin`` 등)를 그대로 두면 관리자 호스트도
+# 기본 사용자 URLconf로 처리되어 /login/이 카카오 로그인으로 연결된다.
+SUBDOMAIN_DEFAULT = "shalom.dev"
+SUBDOMAIN_ADMIN = "shalom.dev.admin"
+SUBDOMAIN_API = "shalom.dev.api"
+SUBDOMAIN_DOCS = "shalom.dev.docs"
+
+SUBDOMAIN_URLCONFS = {
+    SUBDOMAIN_DEFAULT: "config.urls.api",
+    SUBDOMAIN_ADMIN: "config.urls.admin",
+    SUBDOMAIN_API: "config.urls.api",
+    SUBDOMAIN_DOCS: "config.urls.api",
+}
+
 # ENV settings
 WSGI_APPLICATION = "config.wsgi.dev.application"
 
