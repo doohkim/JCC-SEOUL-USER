@@ -3226,10 +3226,10 @@ body.has-retreat-bottom-tabs .jcc-retreat-userLinkUnlink {
   flex: 1 1 35rem;
   align-items: center;
   min-width: 30rem;
-  min-height: 3.65rem;
-  padding: 0.4rem;
+  min-height: 2.5rem;
+  padding: 0.2rem 0.35rem;
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  border-radius: 0.65rem;
   background: color-mix(in srgb, var(--card) 96%, var(--surface-muted, #f3f4f6));
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -3361,17 +3361,18 @@ body.has-retreat-bottom-tabs .jcc-retreat-userLinkUnlink {
   flex: 1;
   min-width: 0;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.35rem;
 }
 .jcc-retreat-rosterDateInput {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   flex: 1 1 0;
   min-width: 0;
-  gap: 0.2rem;
-  padding: 0.4rem 0.55rem 0.5rem;
+  gap: 0.55rem;
+  min-height: 2rem;
+  padding: 0.22rem 0.55rem;
   border: 1px solid transparent;
-  border-radius: 0.6rem;
+  border-radius: 0.5rem;
   background: var(--card);
   cursor: pointer;
 }
@@ -3379,15 +3380,18 @@ body.has-retreat-bottom-tabs .jcc-retreat-userLinkUnlink {
   border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
 }
 .jcc-retreat-rosterDateLabel {
+  flex: 0 0 auto;
   color: var(--muted);
   font-size: 0.7rem;
   font-weight: 700;
   line-height: 1;
+  white-space: nowrap;
 }
 .jcc-retreat-rosterDateInput .jcc-dtp-field {
+  flex: 1;
   width: 100%;
   min-width: 0;
-  min-height: 1.6rem;
+  min-height: 1.45rem;
   padding: 0;
   border: 0;
   background: transparent;
@@ -3433,11 +3437,18 @@ body.has-retreat-bottom-tabs .jcc-retreat-userLinkUnlink {
     min-width: 0;
   }
   .jcc-retreat-rosterDateFilter {
-    padding-left: 0.65rem;
+    padding: 0.2rem;
     min-width: 0;
   }
   .jcc-retreat-rosterDateRange {
+    align-items: center;
+    gap: 0.2rem;
+  }
+  .jcc-retreat-rosterDateInput {
+    flex-direction: column;
     align-items: stretch;
+    gap: 0.15rem;
+    padding: 0.3rem 0.4rem;
   }
   .jcc-retreat-rosterDateInput .jcc-dtp-field {
     font-size: 0.76rem;
