@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>픽업 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260726a" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260729b" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -112,7 +112,12 @@
                     >
                       <td class="num">{% if active_pickup_tab == 'all' %}{{ forloop.counter }}{% else %}{{ p.number }}{% endif %}</td>
                       <td><span class="jcc-retreat-dirTag jcc-retreat-dirTag--{{ p.direction }}">{{ p.get_direction_display }}</span></td>
-                      <td class="jcc-retreat-pickupParticipantName">{{ p.name }}</td>
+                      <td class="jcc-retreat-pickupParticipantName">
+                        <span class="jcc-retreat-pickupNameText">{{ p.name }}</span>
+                        {% if p.note %}
+                          <span class="jcc-retreat-pickupMemo" title="{{ p.note }}">{{ p.note }}</span>
+                        {% endif %}
+                      </td>
                       <td class="jcc-retreat-pickupStatusCol">{% if p.account_retired_display %}<span class="jcc-retreat-checkInBadge jcc-retreat-checkInBadge--account_retired">{{ p.account_retired_display }}</span>{% elif p.check_in_status_display %}<span class="jcc-retreat-checkInBadge jcc-retreat-checkInBadge--{{ p.check_in_status }}">{{ p.check_in_status_display }}</span>{% else %}-{% endif %}</td>
                       <td class="jcc-retreat-pickupContactCol">{{ p.contact }}</td>
                       <td>

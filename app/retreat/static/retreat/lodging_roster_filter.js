@@ -264,8 +264,8 @@
       const startsAt = parseIsoTime(row.dataset.expectedInAt);
       const endsAt = parseIsoTime(row.dataset.expectedOutAt);
       if (startsAt === null || endsAt === null) return false;
-      const rangeStart = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : -Infinity;
-      const rangeEnd = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : Infinity;
+      const rangeStart = dateFrom ? new Date(dateFrom).getTime() : -Infinity;
+      const rangeEnd = dateTo ? new Date(dateTo).getTime() : Infinity;
       if (startsAt > rangeEnd || endsAt < rangeStart) return false;
     }
     if (memoFilterActive()) {
@@ -286,6 +286,14 @@
     if (!value) return null;
     const parsed = new Date(value).getTime();
     return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  function normalizeRangeValue(value, endOfDay) {
+    if (!value) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return `${value}T${endOfDay ? "23:59" : "00:00"}`;
+    }
+    return value.slice(0, 16);
   }
 
   function sortValue(row, key) {
@@ -681,8 +689,14 @@
       params.get("division") || (stored && stored.divisions?.join(","));
     const memoParam = params.get("memo") || (stored && stored.memo?.join(","));
     const qParam = params.get("q") || (stored && stored.name) || "";
-    dateFrom = params.get("dateFrom") || (stored && stored.dateFrom) || "";
-    dateTo = params.get("dateTo") || (stored && stored.dateTo) || "";
+    dateFrom = normalizeRangeValue(
+      params.get("dateFrom") || (stored && stored.dateFrom) || "",
+      false
+    );
+    dateTo = normalizeRangeValue(
+      params.get("dateTo") || (stored && stored.dateTo) || "",
+      true
+    );
     const sortParam = params.get("sort") || (stored && stored.sortKey) || "";
     const dirParam = params.get("dir") || (stored && stored.sortDir) || "asc";
     const pageParam = params.get("page") || (stored && stored.page) || "1";

@@ -1255,6 +1255,7 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
         ctx["event_rooms"] = event_rooms
         ctx["event_rooms_json"] = json.dumps(event_rooms)
         from retreat.services.travel_presets import (
+            travel_bucket_key,
             travel_display_label,
             travel_fixed_and_occurs_map,
             travel_preset_models_for_group,
@@ -1272,6 +1273,20 @@ class RetreatGroupManageView(_RetreatEventMixin, TemplateView):
             travel_models["departure"]
         )
         for attendee in attendees:
+            attendee.arrival_travel_key = str(
+                travel_bucket_key(
+                    attendee.expected_check_in_at,
+                    arrival_occurs,
+                    is_custom=attendee.arrival_travel_is_custom,
+                )
+            )
+            attendee.departure_travel_key = str(
+                travel_bucket_key(
+                    attendee.expected_check_out_at,
+                    departure_occurs,
+                    is_custom=attendee.departure_travel_is_custom,
+                )
+            )
             attendee.arrival_travel_label = travel_display_label(
                 attendee.expected_check_in_at,
                 arrival_occurs,

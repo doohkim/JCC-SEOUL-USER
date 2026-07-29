@@ -61,6 +61,20 @@
             {% endif %}
           </div>
 
+          <div class="jcc-retreat-filterBar jcc-retreat-filterBar--roster jcc-retreat-groupTravelFilter" id="groupTravelFilterBar" hidden>
+            <div class="jcc-retreat-filterRow" data-filter-row="arrivalTravel">
+              <span class="jcc-retreat-filterLabel">입실 교통</span>
+              <div class="jcc-retreat-filterChips" id="groupFilterArrivalTravel"></div>
+            </div>
+            <div class="jcc-retreat-filterRow" data-filter-row="departureTravel">
+              <span class="jcc-retreat-filterLabel">퇴실 교통</span>
+              <div class="jcc-retreat-filterChips" id="groupFilterDepartureTravel"></div>
+            </div>
+            <div class="jcc-retreat-filterBarFooter">
+              <button type="button" class="jcc-retreat-filterReset" id="groupTravelFilterReset" hidden>초기화</button>
+            </div>
+          </div>
+
           <div class="jcc-retreat-groupSearchBar" role="search">
             <div class="jcc-retreat-rosterSearchWrap">
               <svg class="jcc-retreat-rosterSearchIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -119,6 +133,8 @@
                       data-checked-out-at="{% if a.checked_out_at %}{{ a.checked_out_at|date:'c' }}{% endif %}"
                       data-expected-in-at="{% if a.expected_check_in_at %}{{ a.expected_check_in_at|date:'c' }}{% endif %}"
                       data-expected-out-at="{% if a.expected_check_out_at %}{{ a.expected_check_out_at|date:'c' }}{% endif %}"
+                      data-arrival-travel="{{ a.arrival_travel_key }}"
+                      data-departure-travel="{{ a.departure_travel_key }}"
                       data-arrival-travel-is-custom="{% if a.arrival_travel_is_custom is True %}1{% elif a.arrival_travel_is_custom is False %}0{% endif %}"
                       data-departure-travel-is-custom="{% if a.departure_travel_is_custom is True %}1{% elif a.departure_travel_is_custom is False %}0{% endif %}"
                       data-expected-timestamps-locked="{% if a.expected_timestamps_locked %}true{% else %}false{% endif %}"
@@ -434,7 +450,7 @@
     <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
     <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618b" defer></script>
     <script src="{% static 'retreat/manage_group.js' %}?v=20260726b" defer></script>
-    <script src="{% static 'retreat/manage_group_search.js' %}?v=20260728a" defer></script>
+    <script src="{% static 'retreat/manage_group_search.js' %}?v=20260729b" defer></script>
     <script>
       // 조원 수정 모달은 열릴 때 select 값을 프로그램으로 채우므로, 표시될 때 커스텀 드롭다운 라벨을 다시 동기화한다.
       document.addEventListener("DOMContentLoaded", function () {

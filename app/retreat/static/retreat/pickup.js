@@ -528,7 +528,14 @@
     return `
       <td class="num">${escapeHtml(item.number)}</td>
       <td><span class="jcc-retreat-dirTag jcc-retreat-dirTag--${escapeHtml(dir)}">${escapeHtml(dirLabel)}</span></td>
-      <td class="jcc-retreat-pickupParticipantName">${escapeHtml(item.name)}</td>
+      <td class="jcc-retreat-pickupParticipantName">
+        <span class="jcc-retreat-pickupNameText">${escapeHtml(item.name)}</span>
+        ${
+          item.note
+            ? `<span class="jcc-retreat-pickupMemo" title="${escapeHtml(item.note)}">${escapeHtml(item.note)}</span>`
+            : ""
+        }
+      </td>
       <td class="jcc-retreat-pickupStatusCol">${
         item.account_retired_display
           ? `<span class="jcc-retreat-checkInBadge jcc-retreat-checkInBadge--account_retired">${escapeHtml(item.account_retired_display)}</span>`
@@ -576,6 +583,18 @@
     tr.dataset.accountRetiredDisplay = item.account_retired_display || "";
     tr.dataset.direction = item.direction || ctx.direction || "";
     tr.innerHTML = rowHtml(item);
+    syncPickupMemoWidth(tr);
+  }
+
+  function syncPickupMemoWidth(root) {
+    if (!window.matchMedia("(max-width: 640px)").matches) return;
+    const scope = root || tbody;
+    scope?.querySelectorAll(".jcc-retreat-pickupParticipantName").forEach((cell) => {
+      const name = cell.querySelector(".jcc-retreat-pickupNameText");
+      const memo = cell.querySelector(".jcc-retreat-pickupMemo");
+      if (!name || !memo) return;
+      memo.style.maxWidth = `${Math.ceil(name.getBoundingClientRect().width)}px`;
+    });
   }
 
   function appendRow(item) {
@@ -596,6 +615,17 @@
   }
 
   if (btnAdd) btnAdd.addEventListener("click", () => openModal());
+  syncPickupMemoWidth();
+  let memoResizeTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(memoResizeTimer);
+    memoResizeTimer = setTimeout(() => {
+      tbody?.querySelectorAll(".jcc-retreat-pickupMemo").forEach((memo) => {
+        memo.style.removeProperty("max-width");
+      });
+      syncPickupMemoWidth();
+    }, 100);
+  });
   if (modalCancel) modalCancel.addEventListener("click", closeModal);
   if (modalOverlay) {
     modalOverlay.addEventListener("click", (e) => {

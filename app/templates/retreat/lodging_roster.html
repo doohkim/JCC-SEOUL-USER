@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ event.name }} · 그룹 전체 명단</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260728j" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260729a" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -115,22 +115,18 @@
                 />
               </label>
             </div>
-            <div class="jcc-retreat-rosterDateFilter">
-              <svg class="jcc-retreat-rosterDateIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <rect x="3.5" y="5.5" width="17" height="15" rx="3" stroke="currentColor" stroke-width="1.6"/>
-                <path d="M8 3.5v4M16 3.5v4M3.5 10h17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-              </svg>
+            <div class="jcc-retreat-rosterDateFilter" role="group" aria-label="입퇴실 조회 기간">
               <div class="jcc-retreat-rosterDateRange">
                 <label class="jcc-retreat-rosterDateInput">
-                  <span class="sr-only">조회 시작일</span>
-                  <input type="date" id="rosterDateFrom" aria-label="입퇴실 조회 시작일">
+                  <span class="jcc-retreat-rosterDateLabel">시작일</span>
+                  <input type="datetime-local" id="rosterDateFrom" data-dtp data-dtp-format="ymd24" aria-label="입퇴실 조회 시작일과 시간" autocomplete="off">
                 </label>
                 <svg class="jcc-retreat-rosterDateArrow" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                   <path d="M4 10h11M11.5 6.5L15 10l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 <label class="jcc-retreat-rosterDateInput">
-                  <span class="sr-only">조회 종료일</span>
-                  <input type="date" id="rosterDateTo" aria-label="입퇴실 조회 종료일">
+                  <span class="jcc-retreat-rosterDateLabel">종료일</span>
+                  <input type="datetime-local" id="rosterDateTo" data-dtp data-dtp-format="ymd24" aria-label="입퇴실 조회 종료일과 시간" autocomplete="off">
                 </label>
               </div>
             </div>
@@ -378,7 +374,8 @@
 
     {% include 'includes/retreat_bottom_tabs.html' %}
     <script src="{% static 'retreat/lodging_stay_badge.js' %}?v=20260629c" defer></script>
-    <script src="{% static 'retreat/lodging_roster_filter.js' %}?v=20260728e" defer></script>
+    <script src="{% static 'retreat/datetime_picker.js' %}?v=20260726a" defer></script>
+    <script src="{% static 'retreat/lodging_roster_filter.js' %}?v=20260729a" defer></script>
     {% if roster_any_can_edit %}
       <script>
         window.RETREAT_CTX = Object.assign({}, window.RETREAT_CTX || {}, {
@@ -397,7 +394,6 @@
         };
       </script>
       <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-      <script src="{% static 'retreat/datetime_picker.js' %}?v=20260726a" defer></script>
       <script src="{% static 'retreat/phone_format.js' %}?v=20260617a" defer></script>
       <script src="{% static 'retreat/lodging_stay_badge.js' %}?v=20260629c" defer></script>
       <script src="{% static 'retreat/lodging_assign_options.js' %}?v=20260618a" defer></script>

@@ -174,7 +174,7 @@ class TravelPresetManagePageTests(TestCase):
             name="중고등1조",
         )
         tz = timezone.get_current_timezone()
-        arrival = RetreatTravelPreset.objects.create(
+        cls.arrival = RetreatTravelPreset.objects.create(
             event=cls.event,
             direction=RetreatTravelPreset.Direction.ARRIVAL,
             code="main",
@@ -182,7 +182,7 @@ class TravelPresetManagePageTests(TestCase):
             occurs_at=timezone.make_aware(datetime(2026, 7, 30, 10, 0), tz),
             sort_order=10,
         )
-        arrival.divisions.set([cls.youth])
+        cls.arrival.divisions.set([cls.youth])
         departure = RetreatTravelPreset.objects.create(
             event=cls.event,
             direction=RetreatTravelPreset.Direction.DEPARTURE,
@@ -263,12 +263,17 @@ class TravelPresetManagePageTests(TestCase):
         ctx = self._manage_context(self.leader, self.group_youth)
         by_id = {a.id: a for a in ctx["attendees"]}
         self.assertEqual(by_id[self.attendee.id].arrival_travel_label, "7/30 본진")
+        self.assertEqual(
+            by_id[self.attendee.id].arrival_travel_key,
+            str(self.arrival.id),
+        )
 
         self.attendee.arrival_travel_is_custom = True
         self.attendee.save(update_fields=["arrival_travel_is_custom"])
         ctx2 = self._manage_context(self.leader, self.group_youth)
         by_id2 = {a.id: a for a in ctx2["attendees"]}
         self.assertEqual(by_id2[self.attendee.id].arrival_travel_label, "자차")
+        self.assertEqual(by_id2[self.attendee.id].arrival_travel_key, "__custom__")
 
     def test_kids_manage_page_has_empty_presets(self):
         ctx = self._manage_context(self.kids_leader, self.group_kids)
