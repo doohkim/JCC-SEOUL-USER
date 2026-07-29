@@ -27,43 +27,95 @@
   const roomTitle = document.getElementById("roomModalTitle");
   const roomSubmit = document.getElementById("roomModalSubmit");
   const roomCancel = document.getElementById("roomModalCancel");
+  const roomClose = document.getElementById("roomModalClose");
   const roomNumberInput = document.getElementById("roomNumberInput");
   const roomCapacityInput = document.getElementById("roomCapacityInput");
-  const roomRegionInput = document.getElementById("roomRegionInput");
   const roomDivisionInput = document.getElementById("roomDivisionInput");
-  const roomGenderInput = document.getElementById("roomGenderInput");
+  const roomGroupInput = document.getElementById("roomGroupInput");
+  const roomGenderInputs = Array.from(
+    document.querySelectorAll('input[name="recommended_gender"]')
+  );
   const roomMemoInput = document.getElementById("roomMemoInput");
 
-  let allDivisions = [];
-  try {
-    const raw = document.getElementById("retreatDivisionList")?.textContent || "[]";
-    allDivisions = JSON.parse(raw);
-  } catch (e) {
-    allDivisions = [];
+  function selectMultiple(select, values) {
+    if (!select) return;
+    const selected = new Set((values || []).map(String));
+    Array.from(select.options).forEach((option) => {
+      option.selected = selected.has(option.value);
+    });
   }
 
-  function refreshDivisionOptions(selectedDivisionId) {
-    if (!roomDivisionInput) return;
-    const regionVal = (roomRegionInput?.value || "").trim();
-    const regionId = regionVal ? Number(regionVal) : null;
-    roomDivisionInput.innerHTML = "";
-    const empty = document.createElement("option");
-    empty.value = "";
-    empty.textContent = "(미배정)";
-    roomDivisionInput.appendChild(empty);
-    if (regionId == null) return;
-    allDivisions
-      .filter((d) => d.region_id === regionId)
-      .forEach((d) => {
-        const opt = document.createElement("option");
-        opt.value = String(d.id);
-        opt.textContent = d.name;
-        roomDivisionInput.appendChild(opt);
-      });
-    if (selectedDivisionId != null) {
-      roomDivisionInput.value = String(selectedDivisionId);
+  function selectedIds(select) {
+    if (!select) return [];
+    return Array.from(select.selectedOptions).map((option) => Number(option.value));
+  }
+
+  function setRoomGender(value) {
+    roomGenderInputs.forEach((input) => {
+      input.checked = input.value === value;
+    });
+  }
+
+  function getRoomGender() {
+    return roomGenderInputs.find((input) => input.checked)?.value || "";
+  }
+
+  function syncTargetCheckboxes() {
+    document.querySelectorAll("[data-room-scope-checkbox]").forEach((checkbox) => {
+      checkbox.checked = Array.from(roomDivisionInput?.selectedOptions || []).some(
+        (option) => option.value === checkbox.value
+      );
+    });
+    document.querySelectorAll("[data-room-group-checkbox]").forEach((checkbox) => {
+      checkbox.checked = Array.from(roomGroupInput?.selectedOptions || []).some(
+        (option) => option.value === checkbox.value
+      );
+    });
+    updateTargetSummary();
+  }
+
+  function syncSelectFromCheckboxes(select, selector) {
+    const values = new Set(
+      Array.from(document.querySelectorAll(selector))
+        .filter((checkbox) => checkbox.checked)
+        .map((checkbox) => checkbox.value)
+    );
+    Array.from(select?.options || []).forEach((option) => {
+      option.selected = values.has(option.value);
+    });
+    updateTargetSummary();
+  }
+
+  function updateTargetSummary() {
+    const divisionCount = document.querySelectorAll(
+      "[data-room-scope-checkbox]:checked"
+    ).length;
+    const groupCount = document.querySelectorAll(
+      "[data-room-group-checkbox]:checked"
+    ).length;
+    document.querySelectorAll("[data-room-target-panel]").forEach((panel) => {
+      const kind = panel.dataset.roomTargetPanel;
+      const count = kind === "division" ? divisionCount : groupCount;
+      const countEl = panel.querySelector("[data-room-target-count]");
+      if (countEl) countEl.textContent = `${count}개 선택`;
+      panel.classList.toggle("has-selection", count > 0);
+    });
+    const summary = document.querySelector("[data-room-target-summary]");
+    const summaryBox = document.getElementById("roomTargetSummary");
+    if (!summary) return;
+    if (divisionCount && groupCount) {
+      summary.textContent = `선택한 지역·부서 ${divisionCount}개와 조 ${groupCount}개의 교집합에만 노출됩니다.`;
+      summaryBox?.classList.add("is-active");
+    } else if (divisionCount) {
+      summary.textContent = `선택한 지역·부서 ${divisionCount}개의 모든 조에 노출됩니다.`;
+      summaryBox?.classList.add("is-active");
+    } else if (groupCount) {
+      summary.textContent = `지역·부서와 관계없이 선택한 조 ${groupCount}개에만 노출됩니다.`;
+      summaryBox?.classList.add("is-active");
+    } else {
+      summary.textContent = "대상을 선택하지 않으면 미배정 객실로 저장됩니다.";
+      summaryBox?.classList.remove("is-active");
     }
-    if (window.JccCustomSelect) window.JccCustomSelect.refresh(document);
   }
 
   let lodgingMode = "create";
@@ -125,11 +177,19 @@
       roomCapacityInput.value =
         payload?.capacity != null ? payload.capacity : capDefault;
     }
-    if (roomRegionInput)
-      roomRegionInput.value = payload?.region != null ? String(payload.region) : "";
-    refreshDivisionOptions(payload?.division != null ? payload.division : null);
-    if (roomGenderInput)
-      roomGenderInput.value = payload?.recommended_gender || "";
+    selectMultiple(roomDivisionInput, payload?.scope_divisions || []);
+    selectMultiple(roomGroupInput, payload?.target_groups || []);
+    syncTargetCheckboxes();
+    document.querySelectorAll("[data-room-target-panel]").forEach((panel) => {
+      const search = panel.querySelector("[data-room-target-search]");
+      if (search) search.value = "";
+      panel.querySelectorAll(".jcc-retreat-roomTargetOption").forEach((option) => {
+        option.hidden = false;
+      });
+      const empty = panel.querySelector("[data-room-target-empty]");
+      if (empty) empty.hidden = true;
+    });
+    setRoomGender(payload?.recommended_gender || "");
     if (roomMemoInput) roomMemoInput.value = payload?.memo || "";
     if (window.JccCustomSelect) window.JccCustomSelect.refresh(document);
     roomOverlay.hidden = false;
@@ -192,11 +252,73 @@
 
   function bindRoomModal() {
     if (roomCancel) roomCancel.addEventListener("click", closeRoomModal);
+    if (roomClose) roomClose.addEventListener("click", closeRoomModal);
     bindOverlayDismiss(roomOverlay, closeRoomModal);
-    if (roomRegionInput) {
-      roomRegionInput.addEventListener("change", () => refreshDivisionOptions());
-    }
+    document.querySelectorAll("[data-room-scope-checkbox]").forEach((checkbox) => {
+      checkbox.addEventListener("change", () => {
+        syncSelectFromCheckboxes(
+          roomDivisionInput,
+          "[data-room-scope-checkbox]"
+        );
+      });
+    });
+    document.querySelectorAll("[data-room-group-checkbox]").forEach((checkbox) => {
+      checkbox.addEventListener("change", () => {
+        syncSelectFromCheckboxes(roomGroupInput, "[data-room-group-checkbox]");
+      });
+    });
+    document.querySelectorAll("[data-room-target-panel]").forEach((panel) => {
+      const search = panel.querySelector("[data-room-target-search]");
+      const options = Array.from(
+        panel.querySelectorAll(".jcc-retreat-roomTargetOption")
+      );
+      const empty = panel.querySelector("[data-room-target-empty]");
+      search?.addEventListener("input", () => {
+        const query = search.value.trim().toLocaleLowerCase();
+        let visible = 0;
+        options.forEach((option) => {
+          const matched = (option.dataset.searchText || "")
+            .toLocaleLowerCase()
+            .includes(query);
+          option.hidden = !matched;
+          if (matched) visible += 1;
+        });
+        if (empty) empty.hidden = visible !== 0;
+      });
+      panel.querySelector("[data-room-target-clear]")?.addEventListener("click", () => {
+        options.forEach((option) => {
+          const checkbox = option.querySelector("input[type='checkbox']");
+          if (checkbox) checkbox.checked = false;
+        });
+        const kind = panel.dataset.roomTargetPanel;
+        syncSelectFromCheckboxes(
+          kind === "division" ? roomDivisionInput : roomGroupInput,
+          kind === "division"
+            ? "[data-room-scope-checkbox]"
+            : "[data-room-group-checkbox]"
+        );
+      });
+      panel
+        .querySelector("[data-room-target-select-visible]")
+        ?.addEventListener("click", () => {
+          options.forEach((option) => {
+            if (option.hidden) return;
+            const checkbox = option.querySelector("input[type='checkbox']");
+            if (checkbox) checkbox.checked = true;
+          });
+          const kind = panel.dataset.roomTargetPanel;
+          syncSelectFromCheckboxes(
+            kind === "division" ? roomDivisionInput : roomGroupInput,
+            kind === "division"
+              ? "[data-room-scope-checkbox]"
+              : "[data-room-group-checkbox]"
+          );
+        });
+    });
     if (roomForm) roomForm.addEventListener("submit", onRoomSubmit);
+    roomOverlay?.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeRoomModal();
+    });
   }
 
   function getRoomPayloadFromRow(tr) {
@@ -213,19 +335,21 @@
         남성: "male",
         여성: "female",
       }[genderText] || "";
-    const roomRegionId = tr.dataset.roomRegionId
-      ? Number(tr.dataset.roomRegionId)
-      : null;
-    const roomDivisionId = tr.dataset.roomDivisionId
-      ? Number(tr.dataset.roomDivisionId)
-      : null;
+    const scopeDivisions = (tr.dataset.roomScopeIds || "")
+      .split(",")
+      .filter(Boolean)
+      .map(Number);
+    const targetGroups = (tr.dataset.roomGroupIds || "")
+      .split(",")
+      .filter(Boolean)
+      .map(Number);
     return {
       id: Number(tr.dataset.roomId),
       number,
       capacity: cap,
       recommended_gender: genderCode,
-      region: roomRegionId,
-      division: roomDivisionId,
+      scope_divisions: scopeDivisions,
+      target_groups: targetGroups,
     };
   }
 
@@ -384,19 +508,22 @@
     e.preventDefault();
     if (!roomSubmit) return;
     roomSubmit.disabled = true;
-    const regionVal = (roomRegionInput?.value || "").trim();
-    const divisionVal = (roomDivisionInput?.value || "").trim();
     const payload = {
       number: (roomNumberInput?.value || "").trim(),
       capacity: Number(roomCapacityInput?.value || 0) || 0,
-      recommended_gender: roomGenderInput?.value || "",
-      region: regionVal ? Number(regionVal) : null,
-      division: divisionVal ? Number(divisionVal) : null,
+      recommended_gender: getRoomGender(),
+      scope_divisions: selectedIds(roomDivisionInput),
+      target_groups: selectedIds(roomGroupInput),
       memo: (roomMemoInput?.value || "").trim(),
     };
     if (!payload.number) {
       roomSubmit.disabled = false;
       showToast("호수는 필수입니다.", true);
+      return;
+    }
+    if (!payload.recommended_gender) {
+      roomSubmit.disabled = false;
+      showToast("호실 성별을 선택하세요.", true);
       return;
     }
     try {

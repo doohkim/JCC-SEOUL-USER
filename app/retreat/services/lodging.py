@@ -1,7 +1,8 @@
 """숙소 호실 배정 검증 및 필터링.
 
-`LodgingRoom.region` 과 `LodgingRoom.division` 은 호실 단위 진실의 원천이며,
-둘 중 하나라도 비어있으면 미배정 호실로 간주되어 어떤 조에도 노출되지 않는다.
+호실의 지역·부서 범위와 지정 조를 각각 선택적으로 적용한다. 두 조건이 모두
+있으면 교집합(AND), 하나만 있으면 해당 조건만 적용한다. 둘 다 없으면 미배정이다.
+기존 단일 ``region/division`` 데이터는 마이그레이션 호환용으로 계속 읽는다.
 """
 
 from __future__ import annotations
@@ -42,21 +43,11 @@ def assert_room_can_accept(room: LodgingRoom, attendee: RetreatAttendee) -> None
             {"lodging_room": "이 호실은 조원이 속한 집회의 숙소가 아닙니다."}
         )
 
-    if room.region_id is None or room.division_id is None:
+    if not _room_matches_group(room, attendee.group):
         raise ValidationError(
             {
                 "lodging_room": (
-                    "이 호실은 지역·부서가 지정되지 않아 배정할 수 없습니다."
-                )
-            }
-        )
-
-    room_pair = (room.region_id, room.division_id)
-    if room_pair not in attendee.group.scope_pairs():
-        raise ValidationError(
-            {
-                "lodging_room": (
-                    "이 호실은 조원이 속한 조의 지역·부서 범위에 포함되지 않습니다."
+                    "이 호실의 지역·부서 및 지정 조 조건에 포함되지 않습니다."
                 )
             }
         )
@@ -74,38 +65,83 @@ def assert_room_can_accept(room: LodgingRoom, attendee: RetreatAttendee) -> None
             )
 
     rg = room.recommended_gender or ""
-    if rg in (LodgingRoom.Gender.MALE, LodgingRoom.Gender.FEMALE):
-        if attendee.gender != rg:
-            raise ValidationError(
-                {
-                    "lodging_room": (
-                        "이 호실의 권장 성별과 조원 성별이 일치하지 않습니다."
-                    )
-                }
-            )
+    if rg not in (LodgingRoom.Gender.MALE, LodgingRoom.Gender.FEMALE):
+        raise ValidationError(
+            {"lodging_room": "이 호실은 성별이 지정되지 않아 배정할 수 없습니다."}
+        )
+    if attendee.gender != rg:
+        raise ValidationError(
+            {"lodging_room": "호실 성별과 조원 성별이 일치하지 않습니다."}
+        )
 
 
 def _base_rooms_qs(event: RetreatEvent) -> QuerySet[LodgingRoom]:
-    return LodgingRoom.objects.filter(lodging__event=event).select_related(
-        "lodging",
-        "lodging__region",
-        "region",
-        "division",
+    return (
+        LodgingRoom.objects.filter(lodging__event=event)
+        .select_related(
+            "lodging",
+            "lodging__region",
+            "region",
+            "division",
+        )
+        .prefetch_related(
+            "scopes__division__region",
+            "group_targets__group",
+        )
     )
 
 
+def _room_matches_group(room: LodgingRoom, group: RetreatGroup) -> bool:
+    """지역·부서 조건과 조 조건을 각각 OR, 두 축 사이를 AND로 판정."""
+    group_pairs = group.scope_pairs()
+    room_scopes = list(room.scopes.all())
+    group_targets = list(room.group_targets.all())
+
+    if room_scopes:
+        scope_matches = any(
+            (scope.division.region_id, scope.division_id) in group_pairs
+            for scope in room_scopes
+        )
+    elif group_targets:
+        scope_matches = True
+    else:
+        scope_matches = (
+            room.region_id is not None
+            and room.division_id is not None
+            and (room.region_id, room.division_id) in group_pairs
+        )
+
+    group_matches = not group_targets or any(
+        target.group_id == group.id for target in group_targets
+    )
+    has_any_target = bool(room_scopes or group_targets) or (
+        room.region_id is not None and room.division_id is not None
+    )
+    return has_any_target and scope_matches and group_matches
+
+
 def rooms_for_group(group: RetreatGroup) -> QuerySet[LodgingRoom]:
-    """조의 대표·보조 (지역, 부서) 범위에 해당하는 호실 queryset."""
+    """지역·부서와 지정 조 조건을 만족하는 호실 queryset."""
 
     pairs = group.scope_pairs()
-    if not pairs:
-        return LodgingRoom.objects.none()
     scope_q = Q()
     for region_id, division_id in pairs:
-        scope_q |= Q(region_id=region_id, division_id=division_id)
+        scope_q |= Q(
+            scopes__division_id=division_id,
+            scopes__division__region_id=region_id,
+        )
+    legacy_q = Q()
+    for region_id, division_id in pairs:
+        legacy_q |= Q(region_id=region_id, division_id=division_id)
+
+    matching_scope = Q(scopes__isnull=False) & scope_q
+    group_only = Q(scopes__isnull=True, group_targets__group_id=group.id)
+    legacy_only = Q(scopes__isnull=True, group_targets__isnull=True) & legacy_q
+    matching_group = Q(group_targets__isnull=True) | Q(group_targets__group_id=group.id)
     return (
         _base_rooms_qs(group.event)
-        .filter(scope_q)
+        .filter((matching_scope | group_only | legacy_only) & matching_group)
+        .distinct()
         .order_by("lodging__sort_order", "lodging__name", "sort_order", "number", "id")
     )
 
@@ -141,7 +177,6 @@ def room_assignment_options_for_groups(
     """집회 호실을 한 번만 조회해 조별 배정 옵션으로 나눈다."""
     rooms = list(
         _base_rooms_qs(event)
-        .filter(region_id__isnull=False, division_id__isnull=False)
         .annotate(
             assigned_count=Count(
                 "attendees",
@@ -153,11 +188,8 @@ def room_assignment_options_for_groups(
     room_options = [(room, room_assignment_option(room)) for room in rooms]
     result: dict[int, list[dict]] = {}
     for group in groups:
-        scope_pairs = group.scope_pairs()
         result[group.id] = [
-            option
-            for room, option in room_options
-            if (room.region_id, room.division_id) in scope_pairs
+            option for room, option in room_options if _room_matches_group(room, group)
         ]
     return result
 
@@ -170,9 +202,10 @@ def room_visible_in_assignment_picker(
 ) -> bool:
     """배정 드롭다운 노출 여부 — 만실·성별 불일치 호실 제외 (현재 배정 호실은 유지)."""
     rg = room.recommended_gender or ""
-    if rg in (LodgingRoom.Gender.MALE, LodgingRoom.Gender.FEMALE):
-        if gender != rg:
-            return False
+    if rg not in (LodgingRoom.Gender.MALE, LodgingRoom.Gender.FEMALE):
+        return False
+    if gender != rg:
+        return False
 
     capacity = int(room.capacity or 0)
     if capacity == 0:

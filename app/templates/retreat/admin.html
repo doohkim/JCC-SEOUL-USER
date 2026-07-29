@@ -239,8 +239,8 @@
                         <td>{{ entry.log.changed_at|date:"m/d H:i" }}</td>
                         <td>{{ entry.actor }}</td>
                         <td>
-                          <span class="jcc-retreat-pill jcc-retreat-pill--scopeReadonly">{{ entry.log.get_target_type_display }}</span>
-                          <span class="muted jcc-retreat-changelogActionLabel">{{ entry.log.get_action_display }}</span>
+                          <span class="jcc-retreat-pill jcc-retreat-pill--scopeReadonly">{{ entry.target_label }}</span>
+                          <span class="muted jcc-retreat-changelogActionLabel">{{ entry.action_label }}</span>
                         </td>
                         <td>{{ entry.summary }}</td>
                         <td class="jcc-retreat-logPayload">

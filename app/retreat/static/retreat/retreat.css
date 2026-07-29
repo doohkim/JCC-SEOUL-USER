@@ -4896,6 +4896,514 @@ dialog.jcc-retreat-modal::backdrop {
 .jcc-retreat-modal--lodging .jcc-retreat-modalFooter {
   margin-top: 1.15rem;
 }
+
+/* 객실 추가·수정 — 대상 조건을 빠르게 이해하고 선택하는 전용 편집기 */
+.jcc-retreat-modalOverlay .jcc-retreat-roomEditor {
+  width: min(760px, calc(100vw - 1.5rem));
+  max-width: 760px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+}
+.jcc-retreat-roomEditorHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.35rem 1.05rem;
+  border-bottom: 1px solid var(--border);
+  background:
+    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--accent, #4a9eff) 12%, transparent), transparent 40%),
+    var(--card);
+}
+.jcc-retreat-roomEditorTitleWrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.8rem;
+}
+.jcc-retreat-roomEditorIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2.65rem;
+  height: 2.65rem;
+  color: var(--accent, #4a9eff);
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--accent, #4a9eff) 13%, transparent);
+}
+.jcc-retreat-roomEditorIcon svg {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+.jcc-retreat-roomEditorHeader .jcc-retreat-modalTitle {
+  margin: 0;
+  font-size: 1.08rem;
+}
+.jcc-retreat-roomEditorHeader p {
+  margin: 0.22rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.jcc-retreat-roomEditorClose {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.5rem;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+}
+.jcc-retreat-roomEditorClose:hover,
+.jcc-retreat-roomEditorClose:focus-visible {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  outline: none;
+}
+.jcc-retreat-roomEditorBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  max-height: min(68vh, 660px);
+  padding: 1rem 1.35rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.jcc-retreat-roomEditorSection {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--card) 94%, var(--text) 2%);
+}
+.jcc-retreat-roomEditorSectionHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-bottom: 0.9rem;
+}
+.jcc-retreat-roomEditorStep {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 50%;
+  color: var(--accent, #4a9eff);
+  background: color-mix(in srgb, var(--accent, #4a9eff) 14%, transparent);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.jcc-retreat-roomEditorSectionHead h3 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.jcc-retreat-roomEditorSectionHead p {
+  margin: 0.18rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.jcc-retreat-roomEditorBasic {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 0.75rem;
+}
+.jcc-retreat-roomEditor .field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.32rem;
+}
+.jcc-retreat-roomEditor .field label,
+.jcc-retreat-roomGender legend {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+.jcc-retreat-roomEditor .field label > span,
+.jcc-retreat-roomGender legend > span {
+  color: #f04452;
+}
+.jcc-retreat-roomEditor .field input {
+  width: 100%;
+  min-width: 0;
+  height: 2.55rem;
+  box-sizing: border-box;
+  padding: 0 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.88rem;
+}
+.jcc-retreat-roomEditor .field input:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent, #4a9eff) 70%, transparent);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+.jcc-retreat-roomEditor .field small {
+  color: var(--muted);
+  font-size: 0.66rem;
+}
+.jcc-retreat-roomEditorCapacity {
+  position: relative;
+}
+.jcc-retreat-roomEditorCapacity input {
+  padding-right: 2rem !important;
+}
+.jcc-retreat-roomEditorCapacity span {
+  position: absolute;
+  top: 50%;
+  right: 0.72rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.jcc-retreat-roomGender {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-content: start;
+  min-width: 0;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.jcc-retreat-roomGender legend {
+  grid-column: 1 / -1;
+  margin-bottom: 0.02rem;
+}
+.jcc-retreat-roomGenderOption {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.55rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.jcc-retreat-roomGenderOption input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.jcc-retreat-roomGenderOption:has(input:focus-visible) {
+  outline: 2px solid var(--accent, #4a9eff);
+  outline-offset: 2px;
+}
+.jcc-retreat-roomGenderOption--male:has(input:checked) {
+  color: #4a9eff;
+  border-color: color-mix(in srgb, #4a9eff 55%, transparent);
+  background: color-mix(in srgb, #4a9eff 12%, transparent);
+}
+.jcc-retreat-roomGenderOption--female:has(input:checked) {
+  color: #f472b6;
+  border-color: color-mix(in srgb, #f472b6 55%, transparent);
+  background: color-mix(in srgb, #f472b6 12%, transparent);
+}
+.jcc-retreat-roomTargetGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+.jcc-retreat-roomTargetPanel {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  transition: border-color 0.15s ease;
+}
+.jcc-retreat-roomTargetPanel.has-selection {
+  border-color: color-mix(in srgb, var(--accent, #4a9eff) 42%, var(--border));
+}
+.jcc-retreat-roomTargetHead,
+.jcc-retreat-roomTargetHead > div:first-child {
+  display: flex;
+  align-items: center;
+}
+.jcc-retreat-roomTargetHead {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+.jcc-retreat-roomTargetHead > div:first-child {
+  min-width: 0;
+  gap: 0.4rem;
+}
+.jcc-retreat-roomTargetHead strong {
+  font-size: 0.78rem;
+}
+.jcc-retreat-roomTargetCount {
+  padding: 0.12rem 0.38rem;
+  border-radius: 999px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  font-size: 0.62rem;
+  white-space: nowrap;
+}
+.jcc-retreat-roomTargetActions {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.jcc-retreat-roomTargetActions button {
+  appearance: none;
+  padding: 0.2rem 0.3rem;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.6rem;
+  cursor: pointer;
+}
+.jcc-retreat-roomTargetActions button:hover {
+  color: var(--accent, #4a9eff);
+  background: color-mix(in srgb, var(--accent, #4a9eff) 8%, transparent);
+}
+.jcc-retreat-roomTargetSearch {
+  position: relative;
+  display: block;
+  margin-bottom: 0.45rem;
+}
+.jcc-retreat-roomTargetSearch svg {
+  position: absolute;
+  top: 50%;
+  left: 0.62rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  color: var(--muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.jcc-retreat-roomTargetSearch input {
+  width: 100%;
+  height: 2.15rem;
+  box-sizing: border-box;
+  padding: 0 0.6rem 0 1.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--card) 90%, var(--text) 3%);
+  color: var(--text);
+  font-size: 0.72rem;
+}
+.jcc-retreat-roomTargetSearch input:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent, #4a9eff) 60%, transparent);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+.jcc-retreat-roomTargetOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  height: 9.2rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.jcc-retreat-roomTargetOption {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.jcc-retreat-roomTargetOption:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.jcc-retreat-roomTargetOption:has(input:checked) {
+  background: color-mix(in srgb, var(--accent, #4a9eff) 10%, transparent);
+}
+.jcc-retreat-roomTargetOption[hidden] {
+  display: none;
+}
+.jcc-retreat-roomTargetOption input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.jcc-retreat-roomTargetCheck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1.05rem;
+  height: 1.05rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: transparent;
+  background: var(--card);
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+.jcc-retreat-roomTargetOption:has(input:checked) .jcc-retreat-roomTargetCheck {
+  color: #fff;
+  border-color: var(--accent, #4a9eff);
+  background: var(--accent, #4a9eff);
+}
+.jcc-retreat-roomTargetOption:has(input:focus-visible) {
+  outline: 2px solid var(--accent, #4a9eff);
+  outline-offset: -2px;
+}
+.jcc-retreat-roomTargetOption > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.jcc-retreat-roomTargetOption strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.74rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jcc-retreat-roomTargetOption strong i {
+  margin: 0 0.14rem;
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 500;
+}
+.jcc-retreat-roomTargetOption small {
+  overflow: hidden;
+  margin-top: 0.06rem;
+  color: var(--muted);
+  font-size: 0.62rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jcc-retreat-roomTargetEmpty {
+  margin: auto;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.jcc-retreat-roomTargetEmpty--static {
+  padding: 1rem;
+  text-align: center;
+}
+.jcc-retreat-roomTargetSummary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.3rem;
+  box-sizing: border-box;
+  margin-top: 0.7rem;
+  padding: 0.48rem 0.65rem;
+  border-radius: 9px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  font-size: 0.7rem;
+}
+.jcc-retreat-roomTargetSummary.is-active {
+  color: var(--accent, #4a9eff);
+  background: color-mix(in srgb, var(--accent, #4a9eff) 10%, transparent);
+}
+.jcc-retreat-roomTargetSummaryIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+.jcc-retreat-roomEditorSection--memo {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.jcc-retreat-roomEditorSection--memo .field label {
+  color: var(--text);
+}
+.jcc-retreat-roomEditorSection--memo .field label small {
+  margin-left: 0.25rem;
+  font-weight: 400;
+}
+.jcc-retreat-roomEditorFooter {
+  margin: 0;
+  padding: 0.9rem 1.35rem max(0.9rem, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--card);
+}
+.jcc-retreat-roomEditorFooter button {
+  min-width: 5.5rem;
+  height: 2.45rem;
+  border-radius: 9px;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  #roomModalOverlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .jcc-retreat-modalOverlay .jcc-retreat-roomEditor {
+    width: 100%;
+    max-width: none;
+    margin: auto 0 0;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 20px 20px 0 0;
+  }
+  .jcc-retreat-roomEditorHeader {
+    padding: 1rem;
+  }
+  .jcc-retreat-roomEditorIcon {
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+  .jcc-retreat-roomEditorBody {
+    max-height: calc(100dvh - 10.5rem);
+    padding: 0.8rem;
+  }
+  .jcc-retreat-roomEditorSection {
+    padding: 0.85rem;
+  }
+  .jcc-retreat-roomEditorBasic {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .jcc-retreat-roomGender {
+    grid-column: 1 / -1;
+  }
+  .jcc-retreat-roomTargetGrid {
+    grid-template-columns: 1fr;
+  }
+  .jcc-retreat-roomTargetOptions {
+    height: 7.5rem;
+  }
+  .jcc-retreat-roomEditorFooter {
+    padding-right: 0.8rem;
+    padding-left: 0.8rem;
+  }
+  .jcc-retreat-roomEditorFooter button {
+    flex: 1;
+  }
+}
 .jcc-retreat-regionSection {
   margin: 0 0 1rem 0;
   padding: 0.9rem 1rem;

@@ -14,11 +14,14 @@ from rest_framework.test import APIClient
 from retreat.models import (
     Lodging,
     LodgingRoom,
+    LodgingRoomGroupTarget,
+    LodgingRoomScope,
     RetreatAttendee,
     RetreatCouncilMembership,
     RetreatEvent,
     RetreatGroup,
     RetreatGroupMembership,
+    RetreatGroupScope,
 )
 from users.models import Division, Region, RoleLevel, UserDivisionTeam
 
@@ -142,6 +145,7 @@ class LodgingRoomAssignmentTests(_LodgingFixture):
             lodging=cls.lodging,
             number="101",
             capacity=2,
+            recommended_gender=LodgingRoom.Gender.MALE,
             region=cls.seoul,
             division=cls.div,
         )
@@ -385,6 +389,7 @@ class LodgingRoomScopeTests(_LodgingFixture):
             lodging=cls.lodging,
             number="101",
             capacity=4,
+            recommended_gender=LodgingRoom.Gender.MALE,
             region=cls.seoul,
             division=cls.div,
         )
@@ -410,6 +415,7 @@ class LodgingRoomScopeTests(_LodgingFixture):
         cls.attendee = RetreatAttendee.objects.create(
             group=cls.group,
             name="서울 청년",
+            gender=RetreatAttendee.Gender.MALE,
             check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
         )
 
@@ -452,6 +458,74 @@ class LodgingRoomScopeTests(_LodgingFixture):
             format="json",
         )
         self.assertEqual(r.status_code, 400, r.content)
+
+    def test_gender_unset_room_rejected(self):
+        room = LodgingRoom.objects.create(
+            lodging=self.lodging,
+            number="501",
+            region=self.seoul,
+            division=self.div,
+        )
+        r = self.client.patch(
+            self._detail(self.attendee),
+            {"lodging_room": room.id},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+        self.assertIn("성별이 지정되지 않아", r.content.decode())
+
+
+class LodgingRoomTargetRuleTests(_LodgingFixture):
+    """지역·부서와 지정 조의 선택적 교집합 규칙."""
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.other_group = RetreatGroup.objects.create(
+            event=cls.event,
+            region=cls.seoul,
+            division=cls.div,
+            name="일반조",
+        )
+        cls.lodging = Lodging.objects.create(event=cls.event, name="회장단 숙소")
+
+    def _room(self, number):
+        return LodgingRoom.objects.create(lodging=self.lodging, number=number)
+
+    def test_division_only_is_visible_to_all_matching_groups(self):
+        from retreat.services.lodging import rooms_for_group
+
+        room = self._room("101")
+        LodgingRoomScope.objects.create(room=room, division=self.div)
+
+        self.assertTrue(rooms_for_group(self.group).filter(pk=room.pk).exists())
+        self.assertTrue(rooms_for_group(self.other_group).filter(pk=room.pk).exists())
+
+    def test_division_and_group_are_intersection(self):
+        from retreat.services.lodging import rooms_for_group
+
+        room = self._room("102")
+        LodgingRoomScope.objects.create(room=room, division=self.div)
+        LodgingRoomGroupTarget.objects.create(room=room, group=self.group)
+
+        self.assertTrue(rooms_for_group(self.group).filter(pk=room.pk).exists())
+        self.assertFalse(rooms_for_group(self.other_group).filter(pk=room.pk).exists())
+
+    def test_group_only_ignores_division(self):
+        from retreat.services.lodging import rooms_for_group
+
+        room = self._room("103")
+        LodgingRoomGroupTarget.objects.create(room=room, group=self.group)
+
+        self.assertTrue(rooms_for_group(self.group).filter(pk=room.pk).exists())
+        self.assertFalse(rooms_for_group(self.other_group).filter(pk=room.pk).exists())
+
+    def test_no_scope_or_group_is_unassigned(self):
+        from retreat.services.lodging import rooms_for_group
+
+        room = self._room("104")
+
+        self.assertFalse(rooms_for_group(self.group).filter(pk=room.pk).exists())
 
 
 class ManageGroupRoomOptionsTests(_LodgingFixture):
@@ -664,6 +738,96 @@ class LodgingRoomMappingApiTests(_LodgingFixture):
         )
         self.assertEqual(r.status_code, 403)
 
+    def test_staff_can_set_multiple_scopes_and_target_group(self):
+        self.client.force_authenticate(self.staff)
+        room_detail = reverse("api_retreat_lodging_room_detail", args=[self.room.id])
+        r = self.client.patch(
+            room_detail,
+            {
+                "scope_divisions": [self.div.id, self.other_div.id],
+                "target_groups": [self.group.id],
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(
+            set(self.room.scopes.values_list("division_id", flat=True)),
+            {self.div.id, self.other_div.id},
+        )
+        self.assertEqual(
+            list(self.room.group_targets.values_list("group_id", flat=True)),
+            [self.group.id],
+        )
+
+    def test_group_from_another_event_is_rejected(self):
+        other_event = RetreatEvent.objects.create(
+            name="다른 집회",
+            start_date=date(2026, 8, 1),
+            end_date=date(2026, 8, 2),
+        )
+        other_group = RetreatGroup.objects.create(
+            event=other_event,
+            region=self.seoul,
+            division=self.div,
+            name="외부 조",
+        )
+        self.client.force_authenticate(self.staff)
+        room_detail = reverse("api_retreat_lodging_room_detail", args=[self.room.id])
+        r = self.client.patch(
+            room_detail,
+            {"target_groups": [other_group.id]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+
+    def test_group_only_room_remains_visible_after_save(self):
+        from retreat.services.lodging import (
+            room_assignment_options_for_groups,
+            rooms_for_group,
+        )
+
+        self.client.force_authenticate(self.staff)
+        room_detail = reverse("api_retreat_lodging_room_detail", args=[self.room.id])
+        r = self.client.patch(
+            room_detail,
+            {
+                "scope_divisions": [],
+                "target_groups": [self.group.id],
+                "recommended_gender": "male",
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.content)
+        self.room.refresh_from_db()
+        self.assertIsNone(self.room.region_id)
+        self.assertIsNone(self.room.division_id)
+        self.assertEqual(
+            list(self.room.group_targets.values_list("group_id", flat=True)),
+            [self.group.id],
+        )
+        self.assertTrue(rooms_for_group(self.group).filter(pk=self.room.id).exists())
+        options = room_assignment_options_for_groups(self.event, [self.group])
+        self.assertIn(
+            self.room.id,
+            {option["id"] for option in options[self.group.id]},
+        )
+
+        self.client.force_login(self.staff)
+        page = self.client.get(reverse("retreat_lodging", args=[self.event.id]))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, f'data-room-id="{self.room.id}"')
+        self.assertContains(page, f'data-room-group-ids="{self.group.id}"')
+
+    def test_room_gender_cannot_be_cleared(self):
+        self.client.force_authenticate(self.staff)
+        room_detail = reverse("api_retreat_lodging_room_detail", args=[self.room.id])
+        r = self.client.patch(
+            room_detail,
+            {"recommended_gender": ""},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.content)
+
 
 class LodgingCrudPageRedirectTests(_LodgingFixture):
     """기존 `/lodgings/` 페이지가 staff/leader/outsider 에게 어떻게 응답하는지."""
@@ -678,6 +842,31 @@ class LodgingCrudPageRedirectTests(_LodgingFixture):
         self.client.force_login(self.staff)
         r = self.client.get(self._url())
         self.assertEqual(r.status_code, 200)
+
+    def test_room_scope_choices_are_limited_to_event_group_scopes(self):
+        included_division = Division.objects.create(
+            region=self.seoul,
+            code="lodging_event_extra",
+            name="집회 추가 부서",
+        )
+        excluded_division = Division.objects.create(
+            region=self.seoul,
+            code="lodging_event_excluded",
+            name="집회 미배정 부서",
+        )
+        RetreatGroupScope.objects.create(
+            group=self.group,
+            region=self.seoul,
+            division=included_division,
+        )
+        self.client.force_login(self.staff)
+
+        r = self.client.get(self._url())
+
+        self.assertEqual(r.status_code, 200)
+        choice_ids = {division.id for division in r.context["division_choices"]}
+        self.assertEqual(choice_ids, {self.div.id, included_division.id})
+        self.assertNotIn(excluded_division.id, choice_ids)
         self.assertTrue(r.context["can_manage_lodging"])
         self.assertNotContains(r, "방배정")
 

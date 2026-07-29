@@ -15,6 +15,8 @@ class RetreatChangeLog(models.Model):
         CREATE = "create", "생성"
         UPDATE = "update", "수정"
         DELETE = "delete", "삭제"
+        APPROVE = "approve", "승인"
+        REJECT = "reject", "반려"
 
     class TargetType(models.TextChoices):
         SESSION = "session", "출석부"
@@ -26,6 +28,7 @@ class RetreatChangeLog(models.Model):
         PICKUP = "pickup", "픽업"
         PICKUP_LOCATION = "pickup_location", "탑승장소"
         TIMETABLE = "timetable", "타임테이블"
+        STAFF_APPLICATION = "staff_application", "운영진 신청"
 
     event = models.ForeignKey(
         RetreatEvent,

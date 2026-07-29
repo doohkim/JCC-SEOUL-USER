@@ -410,10 +410,15 @@ class GroupExtraScopeBehaviorTests(_GroupManageFixture):
         room = LodgingRoom.objects.create(
             lodging=lodging,
             number="301",
+            recommended_gender=LodgingRoom.Gender.MALE,
             region=incheon,
             division=incheon_div,
         )
-        attendee = RetreatAttendee.objects.create(group=group, name="테스트")
+        attendee = RetreatAttendee.objects.create(
+            group=group,
+            name="테스트",
+            gender=RetreatAttendee.Gender.MALE,
+        )
         assert_room_can_accept(room, attendee)
 
 

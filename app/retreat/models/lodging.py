@@ -86,11 +86,12 @@ class LodgingRoom(models.Model):
         help_text="0 = 정원 무제한",
     )
     recommended_gender = models.CharField(
-        "권장 성별",
+        "성별",
         max_length=10,
         choices=Gender.choices,
         blank=True,
         default="",
+        help_text="남성 또는 여성을 반드시 지정합니다. 빈 값은 기존 미설정 호실 호환용입니다.",
     )
     memo = models.CharField("메모", max_length=200, blank=True, default="")
     sort_order = models.PositiveSmallIntegerField("정렬 순서", default=0)
@@ -114,3 +115,66 @@ class LodgingRoom(models.Model):
     @property
     def label(self) -> str:
         return f"{self.lodging.name} {self.number}".strip()
+
+
+class LodgingRoomScope(models.Model):
+    """호실을 사용할 수 있는 지역·부서 범위."""
+
+    room = models.ForeignKey(
+        LodgingRoom,
+        on_delete=models.CASCADE,
+        related_name="scopes",
+        verbose_name="호실",
+    )
+    division = models.ForeignKey(
+        "users.Division",
+        on_delete=models.PROTECT,
+        related_name="retreat_lodging_room_scopes",
+        verbose_name="부서",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "수련회 호실 지역·부서 범위"
+        verbose_name_plural = "수련회 호실 지역·부서 범위"
+        ordering = [
+            "room",
+            "division__region__sort_order",
+            "division__sort_order",
+            "id",
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["room", "division"],
+                name="uniq_lodging_room_scope_room_division",
+            )
+        ]
+
+
+class LodgingRoomGroupTarget(models.Model):
+    """호실을 사용할 수 있는 특정 조."""
+
+    room = models.ForeignKey(
+        LodgingRoom,
+        on_delete=models.CASCADE,
+        related_name="group_targets",
+        verbose_name="호실",
+    )
+    group = models.ForeignKey(
+        "retreat.RetreatGroup",
+        on_delete=models.CASCADE,
+        related_name="lodging_room_targets",
+        verbose_name="조",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "수련회 호실 지정 조"
+        verbose_name_plural = "수련회 호실 지정 조"
+        ordering = ["room", "group__order", "group__id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["room", "group"],
+                name="uniq_lodging_room_group_target",
+            )
+        ]

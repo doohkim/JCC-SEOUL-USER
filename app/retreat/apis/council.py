@@ -212,6 +212,21 @@ class RetreatEventCouncilListCreateView(APIView):
                 assert_can_assign_event_staff(target, event, kind="council")
             except ValueError as exc:
                 raise ValidationError({"user": str(exc)}) from exc
+        existing = RetreatCouncilMembership.objects.filter(
+            event=event, user=target
+        ).first()
+        payload_before = (
+            {
+                "staff": True,
+                "user_id": target.id,
+                "role": existing.role,
+                "region_id": existing.region_id,
+                "division_id": existing.division_id,
+                "note": existing.note,
+            }
+            if existing
+            else None
+        )
         membership, created = RetreatCouncilMembership.objects.update_or_create(
             event=event,
             user=target,
@@ -235,6 +250,7 @@ class RetreatEventCouncilListCreateView(APIView):
             ),
             target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
             target_id=membership.id,
+            payload_before=payload_before,
             payload_after={
                 "staff": True,
                 "user_id": target.id,
@@ -288,6 +304,14 @@ class RetreatCouncilMembershipDetailView(APIView):
             region_id=region_id,
             division_id=division_id,
         )
+        before = {
+            "staff": True,
+            "user_id": m.user_id,
+            "role": m.role,
+            "region_id": m.region_id,
+            "division_id": m.division_id,
+            "note": m.note,
+        }
         m.role = role
         m.note = note
         m.region_id = region_id
@@ -299,8 +323,10 @@ class RetreatCouncilMembershipDetailView(APIView):
             action=RetreatChangeLog.Action.UPDATE,
             target_type=RetreatChangeLog.TargetType.GROUP_MEMBERSHIP,
             target_id=m.id,
+            payload_before=before,
             payload_after={
                 "staff": True,
+                "user_id": m.user_id,
                 "role": role,
                 "region_id": region_id,
                 "division_id": division_id,

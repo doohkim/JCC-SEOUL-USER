@@ -2,7 +2,12 @@
 
 from .event import RetreatEvent, RetreatSession
 from .group import RetreatGroup, RetreatGroupMembership, RetreatGroupScope
-from .lodging import Lodging, LodgingRoom
+from .lodging import (
+    Lodging,
+    LodgingRoom,
+    LodgingRoomGroupTarget,
+    LodgingRoomScope,
+)
 from .attendee import RetreatAttendee
 from .enrollment import RetreatSessionAttendee
 from .attendance import RetreatAttendance
@@ -21,6 +26,8 @@ __all__ = [
     "RetreatGroupMembership",
     "Lodging",
     "LodgingRoom",
+    "LodgingRoomGroupTarget",
+    "LodgingRoomScope",
     "RetreatAttendee",
     "RetreatSessionAttendee",
     "RetreatAttendance",

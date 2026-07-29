@@ -438,6 +438,7 @@ def apply_staff_application(
                 "group",
                 "group_role",
                 "approved_council_role",
+                "user",
             ],
         )
         if resolved_group is not None:
@@ -478,6 +479,8 @@ def apply_staff_application(
                     "approved_council_role",
                     "reviewed_by",
                     "reviewed_at",
+                    "user",
+                    "application_track",
                 ],
             ),
         )
@@ -492,7 +495,10 @@ def reject_staff_application(
 ) -> RetreatStaffApplication:
     if application.status != RetreatStaffApplication.Status.PENDING:
         raise ValueError("검토 중인 신청만 반려할 수 있습니다.")
-    before = serialize_model_fields(application, ["status", "rejection_reason"])
+    before = serialize_model_fields(
+        application,
+        ["status", "rejection_reason", "user", "application_track"],
+    )
     application.status = RetreatStaffApplication.Status.REJECTED
     application.rejection_reason = (reason or "").strip()[:500]
     application.reviewed_by = reviewer
@@ -515,7 +521,14 @@ def reject_staff_application(
         payload_before=before,
         payload_after=serialize_model_fields(
             application,
-            ["status", "rejection_reason", "reviewed_by", "reviewed_at"],
+            [
+                "status",
+                "rejection_reason",
+                "reviewed_by",
+                "reviewed_at",
+                "user",
+                "application_track",
+            ],
         ),
     )
     return application

@@ -1371,7 +1371,11 @@ class RetreatLodgingView(_RetreatEventMixin, TemplateView):
                     "attendees", filter=active_lodging_occupant_q(prefix="attendees__")
                 )
             )
-            .prefetch_related(Prefetch("attendees", queryset=active_attendees_qs))
+            .prefetch_related(
+                Prefetch("attendees", queryset=active_attendees_qs),
+                "scopes__division__region",
+                "group_targets__group",
+            )
             .order_by("sort_order", "number", "id")
         )
         lodgings = list(
@@ -1383,17 +1387,33 @@ class RetreatLodgingView(_RetreatEventMixin, TemplateView):
         for lodging in lodgings:
             for room in lodging.rooms.all():
                 room.has_vacancy = room_has_vacancy(room)
+                room.scope_divisions = list(room.scopes.all())
+                room.target_groups = list(room.group_targets.all())
 
         ctx["lodgings"] = lodgings
         ctx["lodging_summary"] = build_lodging_page_summary(event)
         ctx["can_manage_lodging"] = is_retreat_staff(user, event)
         ctx["room_gender_choices"] = LodgingRoom.Gender.choices
         ctx["region_choices"] = list(Region.objects.order_by("sort_order", "name"))
-        ctx["division_choices"] = list(
-            Division.objects.select_related("region").order_by(
-                "region__sort_order", "sort_order", "name"
+        group_choices = list(
+            event.groups.select_related("region", "division")
+            .prefetch_related(
+                "extra_scopes__region",
+                "extra_scopes__division",
             )
+            .order_by("order", "id")
         )
+        event_division_ids = {group.division_id for group in group_choices}
+        for group in group_choices:
+            event_division_ids.update(
+                scope.division_id for scope in group.extra_scopes.all()
+            )
+        ctx["division_choices"] = list(
+            Division.objects.filter(id__in=event_division_ids)
+            .select_related("region")
+            .order_by("region__sort_order", "sort_order", "name")
+        )
+        ctx["group_choices"] = group_choices
         return ctx
 
 
