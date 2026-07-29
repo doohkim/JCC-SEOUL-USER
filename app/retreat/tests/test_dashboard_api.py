@@ -473,6 +473,11 @@ class RetreatDashboardApiTests(APITestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["group_range"], "9~10조")
         self.assertEqual(rows[0]["pending"], 2)
+        self.assertEqual(rows[0]["filter_regions"], ["인천"])
+        self.assertEqual(
+            set(rows[0]["filter_divisions"]),
+            {"청년부", "대학부"},
+        )
         self.assertEqual(rows[0]["region"], "인천 · 청년부·대학부")
         self.assertEqual(rows[0].get("division") or "", "")
 

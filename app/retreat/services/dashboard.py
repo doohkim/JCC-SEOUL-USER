@@ -291,6 +291,12 @@ def _build_division_rows_without_scope_duplication(
                 "region_id": scopes[0]["region_id"],
                 "division": "",
                 "division_id": scopes[0]["division_id"],
+                "filter_regions": list(
+                    dict.fromkeys(scope["region"] for scope in scopes)
+                ),
+                "filter_divisions": list(
+                    dict.fromkeys(scope["division"] for scope in scopes)
+                ),
                 "group_names": [row["name"]],
                 **counts,
             }

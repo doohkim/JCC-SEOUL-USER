@@ -152,9 +152,17 @@
       const region = escapeHtml((row.region || "").trim());
       const division = escapeHtml((row.division || "").trim());
       const regionCell = division ? `${region} · ${division}` : region;
+      const filterRegions =
+        Array.isArray(row.filter_regions) && row.filter_regions.length
+          ? row.filter_regions
+          : [(row.region || "").trim()].filter(Boolean);
+      const filterDivisions =
+        Array.isArray(row.filter_divisions) && row.filter_divisions.length
+          ? row.filter_divisions
+          : [(row.division || "").trim()].filter(Boolean);
       const divisionUrl = buildUrl(ctx.groupListUrl, {
-        region: (row.region || "").trim(),
-        division: (row.division || "").trim(),
+        region: filterRegions.join(","),
+        division: filterDivisions.join(","),
       });
       const pending = row.pending ?? 0;
       const checkedIn = row.checked_in ?? 0;
