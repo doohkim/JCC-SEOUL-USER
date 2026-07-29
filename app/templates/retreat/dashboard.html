@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 대시보드 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260729d" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260730h" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -273,11 +273,11 @@
                 </div>
               </div>
               <div class="jcc-retreat-filterRow" id="groupBoardArrivalTravelRow" hidden>
-                <span class="jcc-retreat-filterLabel">입회 교통</span>
+                <span class="jcc-retreat-filterLabel">입회</span>
                 <div class="jcc-retreat-filterChips" id="groupBoardArrivalTravelFilters"></div>
               </div>
               <div class="jcc-retreat-filterRow" id="groupBoardDepartureTravelRow" hidden>
-                <span class="jcc-retreat-filterLabel">출회 교통</span>
+                <span class="jcc-retreat-filterLabel">출회</span>
                 <div class="jcc-retreat-filterChips" id="groupBoardDepartureTravelFilters"></div>
               </div>
               <button type="button" class="jcc-retreat-filterReset" id="groupBoardFilterReset" hidden>초기화</button>
@@ -322,6 +322,6 @@
       };
     </script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260730f" defer></script>
+    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260730g" defer></script>
   </body>
 </html>

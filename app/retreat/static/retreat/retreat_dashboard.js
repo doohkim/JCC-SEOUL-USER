@@ -38,6 +38,8 @@
   let activeTab = "stats";
   let lastBoardGroups = [];
   let lastBoardGrand = {};
+  let boardArrivalTravelOptions = new Map();
+  let boardDepartureTravelOptions = new Map();
   // 합계 값은 상단 요약 알약([data-total-*])에 표시되므로 모두 갱신한다.
   const totalEls = {
     pending: document.querySelectorAll("[data-total-pending]"),
@@ -520,7 +522,26 @@
       const mark = document.createElement("span");
       const muted = m.status === "pending";
       mark.className = "jcc-excel-mark" + (muted ? " jcc-excel-mark--muted" : "");
-      mark.textContent = m.status_label || "";
+      const status = document.createElement("span");
+      status.className = "jcc-board-member-status";
+      status.textContent = m.status_label || "";
+      const travel = document.createElement("span");
+      travel.className = "jcc-board-member-travel";
+      [
+        ["입", boardArrivalTravelOptions.get(m.arrival_travel)],
+        ["출", boardDepartureTravelOptions.get(m.departure_travel)],
+      ].forEach(([direction, option]) => {
+        if (!option) return;
+        const item = document.createElement("span");
+        item.className = "jcc-board-member-travel-item";
+        if (option.color) item.style.setProperty("--travel-color", option.color);
+        item.innerHTML =
+          `<span class="jcc-board-member-travel-direction">${direction}</span>` +
+          `<span class="jcc-board-member-travel-label">${escapeHtml(option.label)}</span>`;
+        travel.appendChild(item);
+      });
+      mark.appendChild(status);
+      mark.appendChild(travel);
       row.appendChild(name);
       row.appendChild(mark);
       body.appendChild(row);
@@ -544,7 +565,6 @@
       chip.dataset.boardFilterKind = kind;
       chip.dataset.boardFilterValue = String(option.value);
       chip.textContent = option.label || option.value;
-      if (option.color) chip.style.borderColor = option.color;
       const active = selected.has(String(option.value));
       chip.classList.toggle("is-active", active);
       chip.setAttribute("aria-pressed", active ? "true" : "false");
@@ -554,6 +574,12 @@
   }
 
   function renderBoardTravelFilters(filters) {
+    boardArrivalTravelOptions = new Map(
+      (filters.arrival || []).map((option) => [String(option.value), option])
+    );
+    boardDepartureTravelOptions = new Map(
+      (filters.departure || []).map((option) => [String(option.value), option])
+    );
     renderBoardTravelFilterGroup(
       boardArrivalTravelFilters,
       boardArrivalTravelRow,

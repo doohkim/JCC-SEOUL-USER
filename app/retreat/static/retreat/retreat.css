@@ -10710,3 +10710,46 @@ body.jcc-retreat-staffApplyPage header.app-header.jcc-pageHeader {
     grid-template-columns: 1fr;
   }
 }
+.jcc-board-member-status {
+  display: block;
+}
+
+.jcc-board-member-travel {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.28rem;
+  margin-top: 0.14rem;
+  color: var(--muted);
+  font-size: 0.55rem;
+  font-weight: 650;
+}
+
+.jcc-board-member-travel-item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.jcc-board-member-travel-item::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 0.34rem;
+  height: 0.34rem;
+  margin-right: 0.16rem;
+  border-radius: 50%;
+  background: var(--travel-color, var(--muted));
+}
+
+.jcc-board-member-travel-direction {
+  margin-right: 0.12rem;
+  color: var(--muted);
+  font-size: 0.5rem;
+}
+
+.jcc-board-member-travel-label {
+  max-width: 3.6rem;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+}
