@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -534,6 +534,49 @@ class RetreatDashboardApiTests(APITestCase):
         self.assertEqual(group["absent"], 1)
         self.assertEqual(group["roster_total"], group["participating"] + 1)
         self.assertEqual(data["grand_total"]["absent"], 1)
+
+    def test_group_board_includes_arrival_and_departure_travel_filters(self):
+        """조별 현황의 입회·출회 교통 필터 선택지와 조원 분류값을 제공한다."""
+        tz = timezone.get_current_timezone()
+        arrival_at = timezone.make_aware(datetime(2026, 6, 1, 10, 0), tz)
+        departure_at = timezone.make_aware(datetime(2026, 6, 3, 13, 0), tz)
+        arrival = RetreatTravelPreset.objects.create(
+            event=self.event,
+            direction=RetreatTravelPreset.Direction.ARRIVAL,
+            code="board_main",
+            label="본진",
+            occurs_at=arrival_at,
+        )
+        departure = RetreatTravelPreset.objects.create(
+            event=self.event,
+            direction=RetreatTravelPreset.Direction.DEPARTURE,
+            code="board_bus",
+            label="버스",
+            occurs_at=departure_at,
+        )
+        self.attendee.expected_check_in_at = arrival_at
+        self.attendee.expected_check_out_at = departure_at
+        self.attendee.save(
+            update_fields=["expected_check_in_at", "expected_check_out_at"]
+        )
+
+        self.client.force_authenticate(self.leader)
+        url = reverse("api_retreat_event_group_board", args=[self.event.id])
+        data = self.client.get(url).json()
+        self.assertEqual(
+            [row["value"] for row in data["travel_filters"]["arrival"]],
+            [str(arrival.id), "__custom__", "__unset__"],
+        )
+        self.assertEqual(
+            [row["value"] for row in data["travel_filters"]["departure"]],
+            [str(departure.id), "__custom__", "__unset__"],
+        )
+        group = next(row for row in data["groups"] if row["group_id"] == self.group.id)
+        member = next(
+            row for row in group["members"] if row["name"] == self.attendee.name
+        )
+        self.assertEqual(member["arrival_travel"], str(arrival.id))
+        self.assertEqual(member["departure_travel"], str(departure.id))
 
     def test_group_board_shows_all_regions_for_staff(self):
         """수련회 회장단은 전체 지역 조를 본다."""

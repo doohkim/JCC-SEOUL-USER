@@ -804,6 +804,42 @@ def build_group_attendance_board(
     status_labels = dict(S.choices)
     role_labels = dict(RetreatAttendee.MemberRole.choices)
     status_order = {S.CHECKED_IN: 0, S.CHECKED_OUT: 1, S.PENDING: 2}
+    travel_presets = list(
+        RetreatTravelPreset.objects.filter(event=event, is_active=True).order_by(
+            "direction", "sort_order", "id"
+        )
+    )
+    arrival_fixed, arrival_occurs = travel_fixed_and_occurs_map(
+        [
+            preset
+            for preset in travel_presets
+            if preset.direction == RetreatTravelPreset.Direction.ARRIVAL
+        ]
+    )
+    departure_fixed, departure_occurs = travel_fixed_and_occurs_map(
+        [
+            preset
+            for preset in travel_presets
+            if preset.direction == RetreatTravelPreset.Direction.DEPARTURE
+        ]
+    )
+    arrival_columns = travel_column_defs(arrival_fixed)
+    departure_columns = travel_column_defs(departure_fixed)
+
+    def filter_options(columns):
+        return [
+            {
+                "value": str(
+                    column["code"]
+                    if column["code"] in ("__custom__", "__unset__")
+                    else column["id"]
+                ),
+                "label": column["label"],
+                "color": column.get("color") or "",
+                "manual": bool(column.get("manual")),
+            }
+            for column in columns
+        ]
 
     members_by_group: dict[int, list[dict]] = defaultdict(list)
     attendee_rows = (
@@ -818,6 +854,8 @@ def build_group_attendance_board(
             "gender",
             "expected_check_in_at",
             "expected_check_out_at",
+            "arrival_travel_is_custom",
+            "departure_travel_is_custom",
             "check_in_status_manually_set",
             "check_in_status",
         )
@@ -850,6 +888,20 @@ def build_group_attendance_board(
                     row["member_role"], row["member_role"]
                 ),
                 "gender": row["gender"],
+                "arrival_travel": str(
+                    travel_bucket_key(
+                        row["expected_check_in_at"],
+                        arrival_occurs,
+                        is_custom=row["arrival_travel_is_custom"],
+                    )
+                ),
+                "departure_travel": str(
+                    travel_bucket_key(
+                        row["expected_check_out_at"],
+                        departure_occurs,
+                        is_custom=row["departure_travel_is_custom"],
+                    )
+                ),
             }
         )
 
@@ -903,6 +955,10 @@ def build_group_attendance_board(
         "generated_at": timezone.localtime(now).isoformat(),
         "groups": groups_out,
         "grand_total": grand,
+        "travel_filters": {
+            "arrival": filter_options(arrival_columns),
+            "departure": filter_options(departure_columns),
+        },
     }
 
 

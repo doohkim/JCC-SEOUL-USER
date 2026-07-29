@@ -272,6 +272,14 @@
                   <button type="button" class="jcc-retreat-filterChip" data-board-filter-kind="status" data-board-filter-value="checked_out">퇴실</button>
                 </div>
               </div>
+              <div class="jcc-retreat-filterRow" id="groupBoardArrivalTravelRow" hidden>
+                <span class="jcc-retreat-filterLabel">입회 교통</span>
+                <div class="jcc-retreat-filterChips" id="groupBoardArrivalTravelFilters"></div>
+              </div>
+              <div class="jcc-retreat-filterRow" id="groupBoardDepartureTravelRow" hidden>
+                <span class="jcc-retreat-filterLabel">출회 교통</span>
+                <div class="jcc-retreat-filterChips" id="groupBoardDepartureTravelFilters"></div>
+              </div>
               <button type="button" class="jcc-retreat-filterReset" id="groupBoardFilterReset" hidden>초기화</button>
             </div>
             <div class="card jcc-excel-board-panel">
@@ -314,6 +322,6 @@
       };
     </script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260729b" defer></script>
+    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260730a" defer></script>
   </body>
 </html>

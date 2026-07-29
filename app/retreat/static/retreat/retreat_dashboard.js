@@ -18,8 +18,22 @@
   const boardRegionFilter = document.getElementById("boardRegionFilter");
   const boardFilterBar = document.getElementById("groupBoardFilterBar");
   const boardFilterReset = document.getElementById("groupBoardFilterReset");
+  const boardArrivalTravelRow = document.getElementById(
+    "groupBoardArrivalTravelRow"
+  );
+  const boardDepartureTravelRow = document.getElementById(
+    "groupBoardDepartureTravelRow"
+  );
+  const boardArrivalTravelFilters = document.getElementById(
+    "groupBoardArrivalTravelFilters"
+  );
+  const boardDepartureTravelFilters = document.getElementById(
+    "groupBoardDepartureTravelFilters"
+  );
   const selectedBoardParticipation = new Set();
   const selectedBoardStatus = new Set();
+  const selectedBoardArrivalTravel = new Set();
+  const selectedBoardDepartureTravel = new Set();
 
   let activeTab = "stats";
   let lastBoardGroups = [];
@@ -365,6 +379,7 @@
       const data = await r.json();
       lastBoardGroups = data.groups || [];
       lastBoardGrand = data.grand_total || {};
+      renderBoardTravelFilters(data.travel_filters || {});
       populateRegionFilter(lastBoardGroups);
       applyBoardFilters();
       if (generatedAtEl) {
@@ -506,6 +521,47 @@
     return col;
   }
 
+  function renderBoardTravelFilterGroup(wrap, row, options, selected, kind) {
+    if (!wrap || !row) return;
+    const rows = Array.isArray(options) ? options : [];
+    const values = new Set(rows.map((option) => String(option.value)));
+    Array.from(selected).forEach((value) => {
+      if (!values.has(value)) selected.delete(value);
+    });
+    wrap.innerHTML = "";
+    rows.forEach((option) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "jcc-retreat-filterChip";
+      chip.dataset.boardFilterKind = kind;
+      chip.dataset.boardFilterValue = String(option.value);
+      chip.textContent = option.label || option.value;
+      if (option.color) chip.style.borderColor = option.color;
+      const active = selected.has(String(option.value));
+      chip.classList.toggle("is-active", active);
+      chip.setAttribute("aria-pressed", active ? "true" : "false");
+      wrap.appendChild(chip);
+    });
+    row.hidden = rows.length === 0;
+  }
+
+  function renderBoardTravelFilters(filters) {
+    renderBoardTravelFilterGroup(
+      boardArrivalTravelFilters,
+      boardArrivalTravelRow,
+      filters.arrival,
+      selectedBoardArrivalTravel,
+      "arrivalTravel"
+    );
+    renderBoardTravelFilterGroup(
+      boardDepartureTravelFilters,
+      boardDepartureTravelRow,
+      filters.departure,
+      selectedBoardDepartureTravel,
+      "departureTravel"
+    );
+  }
+
   function memberMatchesBoardFilters(member) {
     const participation = member.participation_status || "participating";
     if (
@@ -515,6 +571,18 @@
       return false;
     }
     if (selectedBoardStatus.size && !selectedBoardStatus.has(member.status || "")) {
+      return false;
+    }
+    if (
+      selectedBoardArrivalTravel.size &&
+      !selectedBoardArrivalTravel.has(member.arrival_travel || "__unset__")
+    ) {
+      return false;
+    }
+    if (
+      selectedBoardDepartureTravel.size &&
+      !selectedBoardDepartureTravel.has(member.departure_travel || "__unset__")
+    ) {
       return false;
     }
     return true;
@@ -585,7 +653,10 @@
 
   function applyBoardFilters() {
     const hasFilter =
-      selectedBoardParticipation.size > 0 || selectedBoardStatus.size > 0;
+      selectedBoardParticipation.size > 0 ||
+      selectedBoardStatus.size > 0 ||
+      selectedBoardArrivalTravel.size > 0 ||
+      selectedBoardDepartureTravel.size > 0;
     const filtered = lastBoardGroups
       .map((group) => ({
         ...group,
@@ -761,24 +832,30 @@
       applyBoardFilters();
     });
   }
-  boardFilterBar?.querySelectorAll("[data-board-filter-kind]").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      const selected =
-        chip.dataset.boardFilterKind === "participation"
-          ? selectedBoardParticipation
-          : selectedBoardStatus;
-      const value = chip.dataset.boardFilterValue;
-      if (selected.has(value)) selected.delete(value);
-      else selected.add(value);
-      const active = selected.has(value);
-      chip.classList.toggle("is-active", active);
-      chip.setAttribute("aria-pressed", active ? "true" : "false");
-      applyBoardFilters();
-    });
+  boardFilterBar?.addEventListener("click", (event) => {
+    const chip = event.target.closest("[data-board-filter-kind]");
+    if (!chip || !boardFilterBar.contains(chip)) return;
+    const selectedByKind = {
+      participation: selectedBoardParticipation,
+      status: selectedBoardStatus,
+      arrivalTravel: selectedBoardArrivalTravel,
+      departureTravel: selectedBoardDepartureTravel,
+    };
+    const selected = selectedByKind[chip.dataset.boardFilterKind];
+    if (!selected) return;
+    const value = chip.dataset.boardFilterValue;
+    if (selected.has(value)) selected.delete(value);
+    else selected.add(value);
+    const active = selected.has(value);
+    chip.classList.toggle("is-active", active);
+    chip.setAttribute("aria-pressed", active ? "true" : "false");
+    applyBoardFilters();
   });
   boardFilterReset?.addEventListener("click", () => {
     selectedBoardParticipation.clear();
     selectedBoardStatus.clear();
+    selectedBoardArrivalTravel.clear();
+    selectedBoardDepartureTravel.clear();
     boardFilterBar
       ?.querySelectorAll("[data-board-filter-kind]")
       .forEach((chip) => {
