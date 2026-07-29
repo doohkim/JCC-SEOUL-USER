@@ -1431,39 +1431,44 @@ class RetreatLodgingRosterView(_RetreatEventMixin, TemplateView):
         if not can_view_retreat_group_roster(user, event):
             raise PermissionDenied("이 집회의 전체 명단을 볼 권한이 없습니다.")
 
-        from retreat.services.lodging_roster import build_lodging_roster_context
-
-        ctx.update(build_lodging_roster_context(event, user))
         from retreat.services.lodging import room_assignment_options_for_groups
         from retreat.services.lodging_roster import (
             LODGING_ROSTER_PAGE_SIZE,
+            build_lodging_roster_context,
+            build_lodging_roster_page_context,
             filter_and_sort_lodging_roster,
             lodging_roster_summary,
         )
         from django.core.paginator import Paginator
 
+        page_context = build_lodging_roster_page_context(
+            event,
+            user,
+            page_number=self.request.GET.get("page") or 1,
+            params=self.request.GET,
+        )
+        uses_python_filters = page_context is None
+        if uses_python_filters:
+            ctx.update(build_lodging_roster_context(event, user))
+        else:
+            ctx.update(page_context)
+
         all_attendees = ctx["roster_attendees"]
-        ctx["roster_filter_regions"] = sorted(
-            {name for attendee in all_attendees for name in attendee.group_region_names}
-        )
-        ctx["roster_filter_divisions"] = sorted(
-            {
-                name
-                for attendee in all_attendees
-                for name in attendee.group_division_names
-            }
-        )
-        filtered_attendees = filter_and_sort_lodging_roster(
-            all_attendees, self.request.GET
-        )
-        paginator = Paginator(filtered_attendees, LODGING_ROSTER_PAGE_SIZE)
-        page_obj = paginator.get_page(self.request.GET.get("page") or 1)
-        attendees = list(page_obj.object_list)
-        ctx["roster_attendees"] = attendees
-        ctx["roster_has_attendees"] = bool(all_attendees)
-        ctx["roster_summary"] = lodging_roster_summary(filtered_attendees)
-        ctx["roster_page"] = page_obj
-        ctx["roster_page_size"] = LODGING_ROSTER_PAGE_SIZE
+        if uses_python_filters:
+            filtered_attendees = filter_and_sort_lodging_roster(
+                all_attendees, self.request.GET
+            )
+            paginator = Paginator(filtered_attendees, LODGING_ROSTER_PAGE_SIZE)
+            page_obj = paginator.get_page(self.request.GET.get("page") or 1)
+            attendees = list(page_obj.object_list)
+            ctx["roster_attendees"] = attendees
+            ctx["roster_has_attendees"] = bool(all_attendees)
+            ctx["roster_summary"] = lodging_roster_summary(filtered_attendees)
+            ctx["roster_page"] = page_obj
+            ctx["roster_page_size"] = LODGING_ROSTER_PAGE_SIZE
+        else:
+            page_obj = ctx["roster_page"]
+            attendees = ctx["roster_attendees"]
         can_edit_all = bool(
             user.is_superuser or ctx["retreat_caps"].edit_attendee_profile
         )
@@ -1764,13 +1769,17 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
         total_session_count = len(visible_sessions)
         ctx["total_sessions"] = total_session_count
 
-        all_present = RetreatAttendance.objects.filter(
-            enrollment__session_id__in=visible_session_ids,
-            status=RetreatAttendance.Status.PRESENT,
-        ).count()
-        all_possible = RetreatSessionAttendee.objects.filter(
-            session_id__in=visible_session_ids,
-        ).count()
+        attendance_totals = RetreatSessionAttendee.objects.filter(
+            session_id__in=visible_session_ids
+        ).aggregate(
+            possible=Count("id"),
+            present=Count(
+                "id",
+                filter=Q(attendance__status=RetreatAttendance.Status.PRESENT),
+            ),
+        )
+        all_possible = attendance_totals["possible"]
+        all_present = attendance_totals["present"]
         ctx["overall_rate"] = (
             round((all_present / all_possible) * 100, 1) if all_possible else None
         )
@@ -1779,24 +1788,37 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
             groups_qs = (
                 visible_retreat_groups_for(user, event)
                 .select_related("region", "division")
-                .prefetch_related("memberships__user", "attendees")
-                .annotate(attendee_count=Count("attendees", distinct=True))
+                .prefetch_related(
+                    "memberships__user",
+                    "memberships__user__profile",
+                )
+                .annotate(
+                    attendee_count=Count("attendees", distinct=True),
+                    attendance_possible_count=Count(
+                        "session_enrollments",
+                        filter=Q(
+                            session_enrollments__session_id__in=visible_session_ids
+                        ),
+                        distinct=True,
+                    ),
+                    attendance_present_count=Count(
+                        "session_enrollments",
+                        filter=Q(
+                            session_enrollments__session_id__in=visible_session_ids,
+                            session_enrollments__attendance__status=(
+                                RetreatAttendance.Status.PRESENT
+                            ),
+                        ),
+                        distinct=True,
+                    ),
+                )
                 .order_by("order", "id")
             )
             rows = []
             for g in groups_qs:
                 leaders = list(g.memberships.all())
-                possible = RetreatSessionAttendee.objects.filter(
-                    source_group=g,
-                    session_id__in=visible_session_ids,
-                ).count()
-                present_count = 0
-                if possible:
-                    present_count = RetreatAttendance.objects.filter(
-                        enrollment__source_group=g,
-                        enrollment__session_id__in=visible_session_ids,
-                        status=RetreatAttendance.Status.PRESENT,
-                    ).count()
+                possible = g.attendance_possible_count
+                present_count = g.attendance_present_count
                 attendance_rate = (
                     round((present_count / possible) * 100, 1) if possible else None
                 )

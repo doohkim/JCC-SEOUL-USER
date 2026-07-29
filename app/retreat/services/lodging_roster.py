@@ -7,7 +7,7 @@ from datetime import datetime, time, timedelta
 import re
 
 from django.contrib.auth import get_user_model
-from django.db.models import Case, IntegerField, QuerySet, Value, When
+from django.db.models import Case, Count, IntegerField, Q, QuerySet, Value, When
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
@@ -52,6 +52,34 @@ class LodgingRosterSummary:
 
 
 LODGING_ROSTER_PAGE_SIZE = 20
+LODGING_ROSTER_FILTER_KEYS = frozenset(
+    {
+        "status",
+        "lodgingStay",
+        "stay",
+        "assign",
+        "lodging",
+        "gender",
+        "nights",
+        "arrivalTravel",
+        "departureTravel",
+        "region",
+        "division",
+        "memo",
+        "q",
+        "dateFrom",
+        "dateTo",
+        "sort",
+        "dir",
+    }
+)
+
+
+def lodging_roster_has_filters(params) -> bool:
+    """페이지 번호 외에 명단 결과를 바꾸는 요청값이 있는지 확인한다."""
+    return any(
+        str(params.get(key, "") or "").strip() for key in LODGING_ROSTER_FILTER_KEYS
+    )
 
 
 def _csv_values(params, key: str) -> set[str]:
@@ -168,6 +196,150 @@ def filter_and_sort_lodging_roster(attendees: list[RetreatAttendee], params) -> 
     return filtered
 
 
+def filter_lodging_roster_queryset(qs: QuerySet, params) -> QuerySet | None:
+    """DB에서 처리 가능한 명단 필터·정렬을 적용한다.
+
+    숙박 일수와 교통편은 여러 날짜 구간·프리셋 계산이 필요하므로 기존 Python
+    경로로 돌려보낸다. 전화번호 숫자 정규화 검색도 기존 검색 결과를 보존한다.
+    """
+    nights = _csv_values(params, "nights")
+    arrivals = _csv_values(params, "arrivalTravel")
+    departures = _csv_values(params, "departureTravel")
+    sort_key = str(params.get("sort", "") or "")
+    if nights or arrivals or departures or sort_key in {"lodging", "nights"}:
+        return None
+
+    query = str(params.get("q", "") or "").strip()
+    if query and re.search(r"\d", query):
+        return None
+
+    S = RetreatAttendee.CheckInStatus
+    P = RetreatAttendee.ParticipationStatus
+    statuses = _csv_values(params, "status")
+    if statuses:
+        qs = qs.filter(_effective_status__in=statuses)
+
+    lodging_stays = _csv_values(params, "lodgingStay")
+    if not lodging_stays:
+        legacy_stay = _csv_values(params, "stay")
+        legacy_assign = _csv_values(params, "assign")
+        legacy_lodging = _csv_values(params, "lodging")
+        if "eligible" in legacy_stay or "eligible" in legacy_lodging:
+            lodging_stays.update({"active", "unassigned"})
+        if legacy_stay.intersection(
+            {"ineligible", "na"}
+        ) or legacy_lodging.intersection({"ineligible", "na"}):
+            lodging_stays.update({"ended", "no_stay", "absent"})
+        if "assigned" in legacy_assign or "assigned" in legacy_lodging:
+            lodging_stays.add("active")
+        if "unassigned" in legacy_assign or "unassigned" in legacy_lodging:
+            lodging_stays.add("unassigned")
+    if lodging_stays:
+        participating = Q(participation_status=P.PARTICIPATING)
+        not_checked_out = ~Q(_effective_status=S.CHECKED_OUT)
+        lodging_q = Q(pk__in=[])
+        if "active" in lodging_stays:
+            lodging_q |= (
+                participating
+                & not_checked_out
+                & Q(
+                    expected_check_in_at__isnull=False,
+                    lodging_room__isnull=False,
+                )
+            )
+        if "unassigned" in lodging_stays:
+            lodging_q |= (
+                participating
+                & not_checked_out
+                & Q(
+                    expected_check_in_at__isnull=False,
+                    lodging_room__isnull=True,
+                )
+            )
+        if "ended" in lodging_stays:
+            lodging_q |= participating & Q(_effective_status=S.CHECKED_OUT)
+        if "no_stay" in lodging_stays:
+            lodging_q |= (
+                participating & not_checked_out & Q(expected_check_in_at__isnull=True)
+            )
+        if "absent" in lodging_stays:
+            lodging_q |= Q(participation_status=P.ABSENT)
+        qs = qs.filter(lodging_q)
+
+    genders = _csv_values(params, "gender")
+    if genders:
+        qs = qs.filter(
+            gender__in=["" if value == "__unset__" else value for value in genders]
+        )
+
+    regions = _csv_values(params, "region")
+    if regions:
+        qs = qs.filter(
+            Q(group__region__name__in=regions)
+            | Q(group__extra_scopes__region__name__in=regions)
+        )
+    divisions = _csv_values(params, "division")
+    if divisions:
+        qs = qs.filter(
+            Q(group__division__name__in=divisions)
+            | Q(group__extra_scopes__division__name__in=divisions)
+        )
+    if regions or divisions:
+        qs = qs.distinct()
+
+    if "1" in _csv_values(params, "memo"):
+        qs = qs.exclude(memo="")
+    if query:
+        qs = qs.filter(name__icontains=query)
+
+    date_from = _range_datetime(params.get("dateFrom", ""))
+    date_to = _range_datetime(params.get("dateTo", ""))
+    if date_from or date_to:
+        qs = qs.filter(
+            expected_check_in_at__isnull=False,
+            expected_check_out_at__isnull=False,
+        )
+        if date_from:
+            qs = qs.filter(expected_check_out_at__gte=date_from)
+        if date_to:
+            qs = qs.filter(expected_check_in_at__lte=date_to)
+
+    reverse = str(params.get("dir", "asc") or "") == "desc"
+    prefix = "-" if reverse else ""
+    role_order = Case(
+        When(member_role=RetreatAttendee.MemberRole.LEADER, then=Value(0)),
+        When(member_role=RetreatAttendee.MemberRole.VICE_LEADER, then=Value(1)),
+        When(member_role=RetreatAttendee.MemberRole.TEACHER, then=Value(2)),
+        When(member_role=RetreatAttendee.MemberRole.MEMBER, then=Value(3)),
+        default=Value(99),
+        output_field=IntegerField(),
+    )
+    status_order = Case(
+        When(_effective_status=S.PENDING, then=Value(0)),
+        When(_effective_status=S.CHECKED_IN, then=Value(1)),
+        When(_effective_status=S.CHECKED_OUT, then=Value(2)),
+        default=Value(99),
+        output_field=IntegerField(),
+    )
+    sort_fields = {
+        "group": ("group__name", "name", "id"),
+        "name": ("name", "id"),
+        "expectedIn": ("expected_check_in_at", "name", "id"),
+        "expectedOut": ("expected_check_out_at", "name", "id"),
+    }
+    if sort_key == "role":
+        qs = qs.annotate(_role_order=role_order).order_by(
+            f"{prefix}_role_order", f"{prefix}name", f"{prefix}id"
+        )
+    elif sort_key == "status":
+        qs = qs.annotate(_status_order=status_order).order_by(
+            f"{prefix}_status_order", f"{prefix}name", f"{prefix}id"
+        )
+    elif sort_key in sort_fields:
+        qs = qs.order_by(*(f"{prefix}{field}" for field in sort_fields[sort_key]))
+    return qs
+
+
 def lodging_roster_summary(attendees: list[RetreatAttendee]) -> LodgingRosterSummary:
     s = RetreatAttendee.CheckInStatus
     p = RetreatAttendee.ParticipationStatus
@@ -256,11 +428,11 @@ def lodging_night_count(attendee: RetreatAttendee) -> int:
     return nights
 
 
-def build_lodging_roster_context(
-    event: RetreatEvent,
-    user: User,
-) -> dict:
-    """전체 명단 페이지 컨텍스트 — visible 조 범위 내 조원만."""
+def lodging_roster_queryset(event: RetreatEvent, user: User) -> QuerySet:
+    """권한 범위 명단의 공통 QuerySet.
+
+    QuerySet 상태로 반환해 Paginator가 SQL LIMIT/OFFSET을 적용할 수 있게 한다.
+    """
     visible_group_ids = list(
         visible_retreat_groups_for(user, event).values_list("id", flat=True)
     )
@@ -273,7 +445,7 @@ def build_lodging_roster_context(
         default=Value(3),
         output_field=IntegerField(),
     )
-    attendees = list(
+    return (
         visible_attendees_for(
             user,
             RetreatAttendee.objects.filter(group_id__in=visible_group_ids),
@@ -301,11 +473,54 @@ def build_lodging_roster_context(
             "id",
         )
     )
-    travel_presets = list(
-        RetreatTravelPreset.objects.filter(event=event, is_active=True).order_by(
-            "direction", "sort_order", "id"
-        )
+
+
+def lodging_roster_summary_for_queryset(qs: QuerySet) -> LodgingRosterSummary:
+    """전체 객체를 만들지 않고 DB 집계로 명단 요약을 계산한다."""
+    S = RetreatAttendee.CheckInStatus
+    P = RetreatAttendee.ParticipationStatus
+    participating = Q(participation_status=P.PARTICIPATING)
+    eligible = (
+        participating
+        & ~Q(_effective_status=S.CHECKED_OUT)
+        & Q(expected_check_in_at__isnull=False)
     )
+    counts = qs.aggregate(
+        count_total=Count("id"),
+        count_participating=Count("id", filter=participating),
+        count_absent=Count("id", filter=Q(participation_status=P.ABSENT)),
+        count_pending=Count(
+            "id", filter=participating & Q(_effective_status=S.PENDING)
+        ),
+        count_checked_in=Count(
+            "id", filter=participating & Q(_effective_status=S.CHECKED_IN)
+        ),
+        count_checked_out=Count(
+            "id", filter=participating & Q(_effective_status=S.CHECKED_OUT)
+        ),
+        count_lodging_eligible=Count("id", filter=eligible),
+        count_lodging_unassigned=Count(
+            "id", filter=eligible & Q(lodging_room__isnull=True)
+        ),
+    )
+    return LodgingRosterSummary(**counts)
+
+
+def _enrich_lodging_roster_attendees(
+    attendees: list[RetreatAttendee],
+    event: RetreatEvent,
+    user: User,
+    *,
+    travel_presets: list[RetreatTravelPreset] | None = None,
+) -> dict:
+    """조회된 현재 페이지 조원에 화면 표시용 계산값을 붙인다."""
+    if travel_presets is None:
+        travel_presets = list(
+            RetreatTravelPreset.objects.filter(event=event, is_active=True).order_by(
+                "direction", "sort_order", "id"
+            )
+        )
+    travel_presets = list(travel_presets)
     arrival_fixed, arrival_occurs = travel_fixed_and_occurs_map(
         [
             p
@@ -383,5 +598,73 @@ def build_lodging_roster_context(
             ("1", "1박"),
             ("2", "2박 이상"),
         ],
-        "roster_summary": lodging_roster_summary(attendees),
     }
+
+
+def lodging_roster_scope_choices(event: RetreatEvent, user: User) -> tuple[list, list]:
+    """명단 필터의 지역·부서 선택지를 조 개수 수준의 조회로 만든다."""
+    groups = (
+        visible_retreat_groups_for(user, event)
+        .select_related("region", "division")
+        .prefetch_related(
+            "extra_scopes__region",
+            "extra_scopes__division",
+        )
+    )
+    regions: set[str] = set()
+    divisions: set[str] = set()
+    for group in groups:
+        regions.add(group.region.name)
+        divisions.add(group.division.name)
+        for scope in group.extra_scopes.all():
+            regions.add(scope.region.name)
+            divisions.add(scope.division.name)
+    return sorted(regions), sorted(divisions)
+
+
+def build_lodging_roster_page_context(
+    event: RetreatEvent,
+    user: User,
+    *,
+    page_number=1,
+    params=None,
+) -> dict | None:
+    """DB에서 처리 가능한 전체 명단 한 페이지를 직접 조회한다."""
+    from django.core.paginator import Paginator
+
+    qs = lodging_roster_queryset(event, user)
+    if params is not None:
+        qs = filter_lodging_roster_queryset(qs, params)
+        if qs is None:
+            return None
+    summary = lodging_roster_summary_for_queryset(qs)
+    paginator = Paginator(qs, LODGING_ROSTER_PAGE_SIZE)
+    page_obj = paginator.get_page(page_number)
+    attendees = list(page_obj.object_list)
+    context = _enrich_lodging_roster_attendees(attendees, event, user)
+    filter_regions, filter_divisions = lodging_roster_scope_choices(event, user)
+    context.update(
+        {
+            "roster_summary": summary,
+            "roster_page": page_obj,
+            "roster_page_size": LODGING_ROSTER_PAGE_SIZE,
+            "roster_has_attendees": summary.count_total > 0,
+            "roster_filter_regions": filter_regions,
+            "roster_filter_divisions": filter_divisions,
+        }
+    )
+    return context
+
+
+def build_lodging_roster_context(
+    event: RetreatEvent,
+    user: User,
+) -> dict:
+    """필터 계산이 필요한 전체 명단 컨텍스트."""
+    attendees = list(lodging_roster_queryset(event, user))
+    context = _enrich_lodging_roster_attendees(attendees, event, user)
+    filter_regions, filter_divisions = lodging_roster_scope_choices(event, user)
+    context["roster_summary"] = lodging_roster_summary(attendees)
+    context["roster_filter_regions"] = filter_regions
+    context["roster_filter_divisions"] = filter_divisions
+    return context

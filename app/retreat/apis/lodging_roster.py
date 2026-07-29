@@ -17,6 +17,7 @@ from retreat.services.lodging import room_assignment_options_for_groups
 from retreat.services.lodging_roster import (
     LODGING_ROSTER_PAGE_SIZE,
     build_lodging_roster_context,
+    build_lodging_roster_page_context,
     filter_and_sort_lodging_roster,
     lodging_roster_summary,
 )
@@ -34,13 +35,26 @@ class RetreatEventLodgingRosterPageView(APIView):
         if not can_view_retreat_group_roster(request.user, event):
             raise PermissionDenied("이 집회의 전체 명단을 볼 권한이 없습니다.")
 
-        context = build_lodging_roster_context(event, request.user)
-        filtered = filter_and_sort_lodging_roster(
-            context["roster_attendees"], request.query_params
+        context = build_lodging_roster_page_context(
+            event,
+            request.user,
+            page_number=request.query_params.get("page") or 1,
+            params=request.query_params,
         )
-        paginator = Paginator(filtered, LODGING_ROSTER_PAGE_SIZE)
-        page_obj = paginator.get_page(request.query_params.get("page") or 1)
-        attendees = list(page_obj.object_list)
+        if context is None:
+            context = build_lodging_roster_context(event, request.user)
+            filtered = filter_and_sort_lodging_roster(
+                context["roster_attendees"], request.query_params
+            )
+            paginator = Paginator(filtered, LODGING_ROSTER_PAGE_SIZE)
+            page_obj = paginator.get_page(request.query_params.get("page") or 1)
+            attendees = list(page_obj.object_list)
+            summary = lodging_roster_summary(filtered)
+        else:
+            page_obj = context["roster_page"]
+            paginator = page_obj.paginator
+            attendees = context["roster_attendees"]
+            summary = context["roster_summary"]
         can_edit = bool(
             request.user.is_superuser
             or effective_capabilities(request.user, event).edit_attendee_profile
@@ -69,7 +83,7 @@ class RetreatEventLodgingRosterPageView(APIView):
                 "total_pages": paginator.num_pages,
                 "start": page_obj.start_index() if paginator.count else 0,
                 "end": page_obj.end_index() if paginator.count else 0,
-                "summary": asdict(lodging_roster_summary(filtered)),
+                "summary": asdict(summary),
                 "group_rooms": (
                     room_assignment_options_for_groups(event, groups_by_id.values())
                     if can_edit and groups_by_id
