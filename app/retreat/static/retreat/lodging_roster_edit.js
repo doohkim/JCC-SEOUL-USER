@@ -241,9 +241,6 @@
   async function ensureLodgingOptions(groupId) {
     if (!groupId || !ctx.urls.groupRoomsTemplate) return [];
     const key = String(groupId);
-    if (Object.prototype.hasOwnProperty.call(ctx.groupRooms, key)) {
-      return ctx.groupRooms[key] || [];
-    }
     const url = ctx.urls.groupRoomsTemplate.replace("__group_id__", key);
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
