@@ -6,6 +6,25 @@
 # from django.http import HttpResponseRedirect
 
 
+class RetreatCapabilityCacheMiddleware:
+    """수련회 capability를 동일 HTTP 요청 안에서만 재사용한다."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from retreat.services.staff_capabilities import (
+            begin_capability_request_cache,
+            end_capability_request_cache,
+        )
+
+        token = begin_capability_request_cache()
+        try:
+            return self.get_response(request)
+        finally:
+            end_capability_request_cache(token)
+
+
 # class SubdomainRoutingMiddleware:
 #     """
 #     Enforce host-to-path boundaries when subdomain routing is enabled.

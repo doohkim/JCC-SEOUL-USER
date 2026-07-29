@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -19,6 +21,8 @@ from retreat.models import (
 )
 from retreat.services.staff_capabilities import (
     AccessLevel,
+    begin_capability_request_cache,
+    end_capability_request_cache,
     effective_capabilities,
     pickup_tab_access_level,
 )
@@ -69,6 +73,25 @@ class _StaffRbacFixture(TestCase):
 
 
 class StaffCapabilitiesUnitTests(_StaffRbacFixture):
+    def test_effective_capabilities_cached_only_within_request_scope(self):
+        admin = self._staff(
+            "rbac_request_cache",
+            RetreatCouncilMembership.Role.EVENT_ADMIN,
+        )
+        token = begin_capability_request_cache()
+        try:
+            with CaptureQueriesContext(connection) as queries:
+                first = effective_capabilities(admin, self.event)
+                second = effective_capabilities(admin, self.event)
+            self.assertIs(first, second)
+            self.assertEqual(len(queries), 2)
+        finally:
+            end_capability_request_cache(token)
+
+        with CaptureQueriesContext(connection) as queries:
+            effective_capabilities(admin, self.event)
+        self.assertEqual(len(queries), 2)
+
     def test_event_admin_caps(self):
         admin = self._staff("rbac_admin", RetreatCouncilMembership.Role.EVENT_ADMIN)
         caps = effective_capabilities(admin, self.event)

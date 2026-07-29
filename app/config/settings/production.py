@@ -48,6 +48,11 @@ elif DB_TARGET == "rds":
 else:
     print("Invalid DB_TARGET")
 
+if DB_TARGET in {"onprem", "rds"}:
+    # 원격 PostgreSQL 연결을 요청마다 다시 맺지 않고 worker별로 재사용한다.
+    DATABASES["default"]["CONN_MAX_AGE"] = 60
+    DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
+
 SOCIAL_AUTH_KAKAO_REDIRECT_URI = "https://shalom.jcc-seoul.com/auth/complete/kakao/"
 
 CSRF_COOKIE_DOMAIN = ".jcc-seoul.com"

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from contextvars import ContextVar, Token
 from dataclasses import dataclass, replace
 from enum import Enum
 from typing import TYPE_CHECKING, Callable
@@ -15,6 +16,20 @@ if TYPE_CHECKING:
     from users.models import User
 
     from retreat.models import RetreatCouncilMembership, RetreatEvent
+
+
+_capability_request_cache: ContextVar[
+    dict[tuple[int, int, int], "RetreatCapabilities"] | None
+] = ContextVar("retreat_capability_request_cache", default=None)
+
+
+def begin_capability_request_cache() -> Token:
+    """한 HTTP 요청 동안 capability 계산 결과를 재사용한다."""
+    return _capability_request_cache.set({})
+
+
+def end_capability_request_cache(token: Token) -> None:
+    _capability_request_cache.reset(token)
 
 
 class AccessLevel(Enum):
@@ -360,11 +375,29 @@ def leader_capabilities(user: User, event: RetreatEvent | None) -> RetreatCapabi
 def effective_capabilities(
     user: User, event: RetreatEvent | None
 ) -> RetreatCapabilities:
+    cache = _capability_request_cache.get()
+    cache_key = None
+    if (
+        cache is not None
+        and user
+        and getattr(user, "is_authenticated", False)
+        and getattr(user, "pk", None) is not None
+        and event is not None
+        and getattr(event, "pk", None) is not None
+    ):
+        # 테스트 클라이언트/DRF는 한 요청 안에서도 같은 PK의 서로 다른 User
+        # 인스턴스를 사용할 수 있으므로 객체 identity까지 포함한다.
+        cache_key = (id(user), int(user.pk), int(event.pk))
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
     staff = staff_capabilities(user, event)
     leader = leader_capabilities(user, event)
-    if staff is None:
-        return leader
-    return staff.merge(leader)
+    result = leader if staff is None else staff.merge(leader)
+    if cache is not None and cache_key is not None:
+        cache[cache_key] = result
+    return result
 
 
 def get_staff_membership(user: User, event: RetreatEvent | None):

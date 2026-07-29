@@ -1057,48 +1057,15 @@ class RetreatGroupManageListView(_RetreatEventMixin, TemplateView):
                 leaders_by_group.get(g.id, []),
                 memberships_by_group.get(g.id, []),
             )
-        group_ids = [g.id for g in groups]
-        participating_q = ~Q(
-            participation_status=RetreatAttendee.ParticipationStatus.ABSENT
-        )
-        if group_ids:
-            status_counts = visible_attendees_for(
-                user,
-                RetreatAttendee.objects.filter(group_id__in=group_ids),
-            ).aggregate(
-                count_total=Count("id"),
-                count_participating=Count("id", filter=participating_q),
-                count_absent=Count(
-                    "id",
-                    filter=Q(
-                        participation_status=RetreatAttendee.ParticipationStatus.ABSENT
-                    ),
-                ),
-                count_pending=Count(
-                    "id",
-                    filter=participating_q
-                    & effective_status_q(RetreatAttendee.CheckInStatus.PENDING),
-                ),
-                count_checked_in=Count(
-                    "id",
-                    filter=participating_q
-                    & effective_status_q(RetreatAttendee.CheckInStatus.CHECKED_IN),
-                ),
-                count_checked_out=Count(
-                    "id",
-                    filter=participating_q
-                    & effective_status_q(RetreatAttendee.CheckInStatus.CHECKED_OUT),
-                ),
-            )
-        else:
-            status_counts = {
-                "count_total": 0,
-                "count_participating": 0,
-                "count_absent": 0,
-                "count_pending": 0,
-                "count_checked_in": 0,
-                "count_checked_out": 0,
-            }
+        # 조별 annotate 결과는 동일한 권한·탈퇴 필터를 사용하므로 전체 합계로 재사용한다.
+        status_counts = {
+            "count_total": sum(g.attendee_count for g in groups),
+            "count_participating": sum(g.participating_count for g in groups),
+            "count_absent": sum(g.absent_count for g in groups),
+            "count_pending": sum(g.pending_count for g in groups),
+            "count_checked_in": sum(g.checked_in_count for g in groups),
+            "count_checked_out": sum(g.checked_out_count for g in groups),
+        }
         ctx.update(status_counts)
 
         ctx["groups"] = groups

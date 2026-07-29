@@ -1,7 +1,7 @@
 daemon = False
 chdir = "/srv/app"
 bind = "0.0.0.0:8000"
-workers = 1
+workers = 3
 threads = 1
 timeout = 60
 capture_output = True

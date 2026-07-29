@@ -29,10 +29,10 @@ from retreat.services.effective_check_in import (
 from retreat.services.lodging_stay import resolve_lodging_stay_status
 from retreat.services.staff_capabilities import effective_capabilities
 from retreat.services.travel_presets import (
+    serialize_travel_preset,
     travel_bucket_key,
     travel_filter_chip_defs,
     travel_fixed_and_occurs_map,
-    travel_presets_for_event,
 )
 from users.permissions import visible_retreat_groups_for
 
@@ -680,7 +680,18 @@ def _enrich_lodging_roster_attendees(
         "roster_attendees": attendees,
         "roster_arrival_travel_chips": travel_filter_chip_defs(arrival_fixed),
         "roster_departure_travel_chips": travel_filter_chip_defs(departure_fixed),
-        "travel_presets": travel_presets_for_event(event),
+        "travel_presets": {
+            "arrival": [
+                serialize_travel_preset(p)
+                for p in travel_presets
+                if p.direction == RetreatTravelPreset.Direction.ARRIVAL
+            ],
+            "departure": [
+                serialize_travel_preset(p)
+                for p in travel_presets
+                if p.direction == RetreatTravelPreset.Direction.DEPARTURE
+            ],
+        },
         "roster_night_chips": [
             ("0", "숙박 X"),
             ("1", "1박"),
@@ -727,6 +738,8 @@ def build_lodging_roster_page_context(
             return None
     summary = lodging_roster_summary_for_queryset(qs)
     paginator = Paginator(qs, LODGING_ROSTER_PAGE_SIZE)
+    # summary가 동일 queryset의 전체 건수를 이미 계산했으므로 COUNT(*)를 반복하지 않는다.
+    paginator.__dict__["count"] = summary.count_total
     page_obj = paginator.get_page(page_number)
     attendees = list(page_obj.object_list)
     context = _enrich_lodging_roster_attendees(attendees, event, user)
