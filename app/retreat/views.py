@@ -1765,17 +1765,21 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
         total_session_count = len(visible_sessions)
         ctx["total_sessions"] = total_session_count
 
-        attendance_totals = RetreatSessionAttendee.objects.filter(
-            session_id__in=visible_session_ids
-        ).aggregate(
-            possible=Count("id"),
-            present=Count(
-                "id",
-                filter=Q(attendance__status=RetreatAttendance.Status.PRESENT),
-            ),
-        )
-        all_possible = attendance_totals["possible"]
-        all_present = attendance_totals["present"]
+        if visible_session_ids:
+            attendance_totals = RetreatSessionAttendee.objects.filter(
+                session_id__in=visible_session_ids
+            ).aggregate(
+                possible=Count("id"),
+                present=Count(
+                    "id",
+                    filter=Q(attendance__status=RetreatAttendance.Status.PRESENT),
+                ),
+            )
+            all_possible = attendance_totals["possible"]
+            all_present = attendance_totals["present"]
+        else:
+            all_possible = 0
+            all_present = 0
         ctx["overall_rate"] = (
             round((all_present / all_possible) * 100, 1) if all_possible else None
         )
@@ -1788,8 +1792,10 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
                     "memberships__user",
                     "memberships__user__profile",
                 )
-                .annotate(
-                    attendee_count=Count("attendees", distinct=True),
+                .annotate(attendee_count=Count("attendees", distinct=True))
+            )
+            if visible_session_ids:
+                groups_qs = groups_qs.annotate(
                     attendance_possible_count=Count(
                         "session_enrollments",
                         filter=Q(
@@ -1808,13 +1814,12 @@ class RetreatAdminView(_RetreatEventMixin, TemplateView):
                         distinct=True,
                     ),
                 )
-                .order_by("order", "id")
-            )
+            groups_qs = groups_qs.order_by("order", "id")
             rows = []
             for g in groups_qs:
                 leaders = list(g.memberships.all())
-                possible = g.attendance_possible_count
-                present_count = g.attendance_present_count
+                possible = g.attendance_possible_count if visible_session_ids else 0
+                present_count = g.attendance_present_count if visible_session_ids else 0
                 attendance_rate = (
                     round((present_count / possible) * 100, 1) if possible else None
                 )

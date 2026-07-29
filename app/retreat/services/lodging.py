@@ -91,33 +91,53 @@ def _base_rooms_qs(event: RetreatEvent) -> QuerySet[LodgingRoom]:
     )
 
 
-def _room_matches_group(room: LodgingRoom, group: RetreatGroup) -> bool:
-    """지역·부서 조건과 조 조건을 각각 OR, 두 축 사이를 AND로 판정."""
-    group_pairs = group.scope_pairs()
-    room_scopes = list(room.scopes.all())
-    group_targets = list(room.group_targets.all())
+def _room_match_data(room: LodgingRoom) -> dict:
+    """여러 조와 비교할 때 재사용할 호실 범위 데이터를 한 번만 만든다."""
+    room_scopes = tuple(
+        (scope.division.region_id, scope.division_id) for scope in room.scopes.all()
+    )
+    group_target_ids = frozenset(target.group_id for target in room.group_targets.all())
+    legacy_pair = (
+        (room.region_id, room.division_id)
+        if room.region_id is not None and room.division_id is not None
+        else None
+    )
+    return {
+        "scope_pairs": frozenset(room_scopes),
+        "group_target_ids": group_target_ids,
+        "legacy_pair": legacy_pair,
+    }
 
-    if room_scopes:
-        scope_matches = any(
-            (scope.division.region_id, scope.division_id) in group_pairs
-            for scope in room_scopes
-        )
-    elif group_targets:
+
+def _room_matches_precomputed(
+    room_data: dict,
+    group_pairs: set[tuple[int, int]],
+    group_id: int,
+) -> bool:
+    """사전 계산된 호실·조 범위를 비교한다."""
+    room_scope_pairs = room_data["scope_pairs"]
+    group_target_ids = room_data["group_target_ids"]
+    legacy_pair = room_data["legacy_pair"]
+
+    if room_scope_pairs:
+        scope_matches = not room_scope_pairs.isdisjoint(group_pairs)
+    elif group_target_ids:
         scope_matches = True
     else:
-        scope_matches = (
-            room.region_id is not None
-            and room.division_id is not None
-            and (room.region_id, room.division_id) in group_pairs
-        )
+        scope_matches = legacy_pair is not None and legacy_pair in group_pairs
 
-    group_matches = not group_targets or any(
-        target.group_id == group.id for target in group_targets
-    )
-    has_any_target = bool(room_scopes or group_targets) or (
-        room.region_id is not None and room.division_id is not None
-    )
+    group_matches = not group_target_ids or group_id in group_target_ids
+    has_any_target = bool(room_scope_pairs or group_target_ids or legacy_pair)
     return has_any_target and scope_matches and group_matches
+
+
+def _room_matches_group(room: LodgingRoom, group: RetreatGroup) -> bool:
+    """지역·부서 조건과 조 조건을 각각 OR, 두 축 사이를 AND로 판정."""
+    return _room_matches_precomputed(
+        _room_match_data(room),
+        set(group.scope_pairs()),
+        group.id,
+    )
 
 
 def rooms_for_group(group: RetreatGroup) -> QuerySet[LodgingRoom]:
@@ -185,11 +205,16 @@ def room_assignment_options_for_groups(
         )
         .order_by("lodging__sort_order", "lodging__name", "sort_order", "number", "id")
     )
-    room_options = [(room, room_assignment_option(room)) for room in rooms]
+    room_options = [
+        (_room_match_data(room), room_assignment_option(room)) for room in rooms
+    ]
     result: dict[int, list[dict]] = {}
     for group in groups:
+        group_pairs = set(group.scope_pairs())
         result[group.id] = [
-            option for room, option in room_options if _room_matches_group(room, group)
+            option
+            for room_data, option in room_options
+            if _room_matches_precomputed(room_data, group_pairs, group.id)
         ]
     return result
 

@@ -306,7 +306,8 @@ class LodgingRosterSummaryTests(_LodgingRosterFixture):
         group = RetreatGroup.objects.prefetch_related("extra_scopes").get(
             pk=self.group.pk
         )
-        with self.assertNumQueries(1):
+        # 호실 본 쿼리 + 지역·부서 범위 + 지정 조 prefetch.
+        with self.assertNumQueries(3):
             options = room_assignment_options_for_groups(self.event, [group])
         self.assertEqual([row["id"] for row in options[group.id]], [self.room.id])
         self.assertEqual(options[group.id][0]["assigned_count"], 2)
