@@ -16,6 +16,10 @@
   const boardHost = document.getElementById("retreatGroupBoard");
   const boardTotalEl = document.getElementById("groupBoardTotal");
   const boardRegionFilter = document.getElementById("boardRegionFilter");
+  const boardFilterBar = document.getElementById("groupBoardFilterBar");
+  const boardFilterReset = document.getElementById("groupBoardFilterReset");
+  const selectedBoardParticipation = new Set();
+  const selectedBoardStatus = new Set();
 
   let activeTab = "stats";
   let lastBoardGroups = [];
@@ -362,7 +366,7 @@
       lastBoardGroups = data.groups || [];
       lastBoardGrand = data.grand_total || {};
       populateRegionFilter(lastBoardGroups);
-      renderGroupBoard(lastBoardGroups, lastBoardGrand);
+      applyBoardFilters();
       if (generatedAtEl) {
         generatedAtEl.textContent = data.generated_at
           ? `· ${formatStamp(data.generated_at)} 기준`
@@ -432,8 +436,11 @@
     });
   }
 
-  // 부서 접힘 상태 (region + division 키). 재렌더링·새로고침에도 유지.
+  // 부서 접힘 상태 (region + division 키).
+  // 처음 나타난 부서는 접힌 상태로 시작하고, 같은 페이지 안의 재렌더링에는
+  // 사용자가 펼치거나 접은 상태를 유지한다.
   const collapsedDivisions = new Set();
+  const knownDivisionKeys = new Set();
   function divisionKey(region, division) {
     return region + "\u0000" + division;
   }
@@ -441,7 +448,7 @@
   function sumRegionTotals(regionGroups) {
     return regionGroups.reduce(
       (acc, g) => {
-        acc.attended += g.attended ?? 0;
+        acc.attended += g.participating ?? g.attended ?? 0;
         acc.pending += g.pending ?? 0;
         return acc;
       },
@@ -476,7 +483,7 @@
     head.textContent = g.name || "조";
     const sub = document.createElement("div");
     sub.className = "jcc-excel-col-sub";
-    sub.textContent = `참석 ${g.attended ?? 0}`;
+    sub.textContent = `참석 ${g.participating ?? g.attended ?? 0}`;
     col.appendChild(head);
     col.appendChild(sub);
     const body = document.createElement("div");
@@ -497,6 +504,98 @@
     });
     col.appendChild(body);
     return col;
+  }
+
+  function memberMatchesBoardFilters(member) {
+    const participation = member.participation_status || "participating";
+    if (
+      selectedBoardParticipation.size &&
+      !selectedBoardParticipation.has(participation)
+    ) {
+      return false;
+    }
+    if (selectedBoardStatus.size && !selectedBoardStatus.has(member.status || "")) {
+      return false;
+    }
+    return true;
+  }
+
+  function summarizeBoardGroups(groups) {
+    const totals = {
+      roster_total: 0,
+      participating: 0,
+      absent: 0,
+      pending: 0,
+      checked_in: 0,
+      checked_out: 0,
+      attended: 0,
+      total: 0,
+    };
+    groups.forEach((group) => {
+      const members = group.members || [];
+      const participating = members.filter(
+        (member) => (member.participation_status || "participating") !== "absent"
+      ).length;
+      const absent = members.length - participating;
+      const pending = members.filter((member) => member.status === "pending").length;
+      const checkedIn = members.filter(
+        (member) => member.status === "checked_in"
+      ).length;
+      const checkedOut = members.filter(
+        (member) => member.status === "checked_out"
+      ).length;
+      group.roster_total = members.length;
+      group.participating = participating;
+      group.absent = absent;
+      group.pending = pending;
+      group.checked_in = checkedIn;
+      group.checked_out = checkedOut;
+      group.attended = checkedIn + checkedOut;
+      group.total = participating;
+      totals.roster_total += members.length;
+      totals.participating += participating;
+      totals.absent += absent;
+      totals.pending += pending;
+      totals.checked_in += checkedIn;
+      totals.checked_out += checkedOut;
+      totals.attended += checkedIn + checkedOut;
+      totals.total += participating;
+    });
+    return totals;
+  }
+
+  function updateBoardSummary(groups) {
+    const selectedRegion = boardRegionFilter?.value || "";
+    const summaryGroups = selectedRegion
+      ? groups.filter((group) => regionLabel(group) === selectedRegion)
+      : groups;
+    const totals = summarizeBoardGroups(
+      summaryGroups.map((group) => ({
+        ...group,
+        members: (group.members || []).slice(),
+      }))
+    );
+    setText("boardSummaryTotal", totals.roster_total);
+    setText("boardSummaryParticipating", totals.participating);
+    setText("boardSummaryAbsent", totals.absent);
+    setText("boardSummaryPending", totals.pending);
+    setText("boardSummaryIn", totals.checked_in);
+    setText("boardSummaryOut", totals.checked_out);
+  }
+
+  function applyBoardFilters() {
+    const hasFilter =
+      selectedBoardParticipation.size > 0 || selectedBoardStatus.size > 0;
+    const filtered = lastBoardGroups
+      .map((group) => ({
+        ...group,
+        members: (group.members || []).filter(memberMatchesBoardFilters),
+      }))
+      .filter((group) => !hasFilter || group.members.length > 0);
+    const totals = summarizeBoardGroups(filtered);
+    updateBoardSummary(filtered);
+    renderGroupBoard(filtered, totals);
+    if (boardFilterReset) boardFilterReset.hidden = !hasFilter;
   }
 
   function renderGroupBoard(groups, grand) {
@@ -542,6 +641,10 @@
         block.className = "jcc-board-division";
 
         const key = divisionKey(regionName, divisionName);
+        if (!knownDivisionKeys.has(key)) {
+          knownDivisionKeys.add(key);
+          collapsedDivisions.add(key);
+        }
         const collapsed = collapsedDivisions.has(key);
 
         const head = document.createElement("button");
@@ -584,7 +687,7 @@
         const filteredTotals = sumRegionTotals(filtered);
         strong.textContent = `${selectedRegion} · 참석 ${filteredTotals.attended} · 입실전 ${filteredTotals.pending}`;
       } else {
-        strong.textContent = `전체 참석 ${grand.attended ?? 0} · 입실전 ${grand.pending ?? 0}`;
+        strong.textContent = `전체 참석 ${grand.participating ?? grand.attended ?? 0} · 입실전 ${grand.pending ?? 0}`;
       }
       boardTotalEl.appendChild(strong);
     }
@@ -655,9 +758,35 @@
   if (btnRefresh) btnRefresh.addEventListener("click", refreshActive);
   if (boardRegionFilter) {
     boardRegionFilter.addEventListener("change", () => {
-      renderGroupBoard(lastBoardGroups, lastBoardGrand);
+      applyBoardFilters();
     });
   }
+  boardFilterBar?.querySelectorAll("[data-board-filter-kind]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const selected =
+        chip.dataset.boardFilterKind === "participation"
+          ? selectedBoardParticipation
+          : selectedBoardStatus;
+      const value = chip.dataset.boardFilterValue;
+      if (selected.has(value)) selected.delete(value);
+      else selected.add(value);
+      const active = selected.has(value);
+      chip.classList.toggle("is-active", active);
+      chip.setAttribute("aria-pressed", active ? "true" : "false");
+      applyBoardFilters();
+    });
+  });
+  boardFilterReset?.addEventListener("click", () => {
+    selectedBoardParticipation.clear();
+    selectedBoardStatus.clear();
+    boardFilterBar
+      ?.querySelectorAll("[data-board-filter-kind]")
+      .forEach((chip) => {
+        chip.classList.remove("is-active");
+        chip.setAttribute("aria-pressed", "false");
+      });
+    applyBoardFilters();
+  });
   if (innerTabs) {
     innerTabs.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-dashboard-tab]");

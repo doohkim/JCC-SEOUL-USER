@@ -514,6 +514,27 @@ class RetreatDashboardApiTests(APITestCase):
         self.assertEqual(regions, {self.seoul.name})
         self.assertNotIn(busan.name, regions)
 
+    def test_group_board_includes_participation_and_absent_for_filtering(self):
+        """조 참석현황 필터용 참석·불참 상태와 6종 요약 집계를 제공한다."""
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="보드불참자",
+            participation_status=RetreatAttendee.ParticipationStatus.ABSENT,
+        )
+        self.client.force_authenticate(self.leader)
+        url = reverse("api_retreat_event_group_board", args=[self.event.id])
+        data = self.client.get(url).json()
+        group = next(row for row in data["groups"] if row["group_id"] == self.group.id)
+        absent = next(
+            member for member in group["members"] if member["name"] == "보드불참자"
+        )
+        self.assertEqual(absent["participation_status"], "absent")
+        self.assertEqual(absent["participation_label"], "불참")
+        self.assertEqual(absent["status"], "absent")
+        self.assertEqual(group["absent"], 1)
+        self.assertEqual(group["roster_total"], group["participating"] + 1)
+        self.assertEqual(data["grand_total"]["absent"], 1)
+
     def test_group_board_shows_all_regions_for_staff(self):
         """수련회 회장단은 전체 지역 조를 본다."""
         busan = Region.objects.create(code="busan_staff", name="부산", sort_order=99)

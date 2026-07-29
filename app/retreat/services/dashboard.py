@@ -807,14 +807,13 @@ def build_group_attendance_board(
 
     members_by_group: dict[int, list[dict]] = defaultdict(list)
     attendee_rows = (
-        participating_filter(
-            visible_attendees_for(
-                user, RetreatAttendee.objects.filter(group_id__in=group_ids)
-            )
+        visible_attendees_for(
+            user, RetreatAttendee.objects.filter(group_id__in=group_ids)
         )
         .values(
             "group_id",
             "name",
+            "participation_status",
             "member_role",
             "gender",
             "expected_check_in_at",
@@ -825,18 +824,27 @@ def build_group_attendance_board(
         .order_by("name", "id")
     )
     for row in attendee_rows:
-        eff = _effective_check_in_status(
-            row["expected_check_in_at"],
-            row["expected_check_out_at"],
-            now,
-            manually_set=row["check_in_status_manually_set"],
-            stored_status=row["check_in_status"],
+        is_absent = (
+            row["participation_status"] == RetreatAttendee.ParticipationStatus.ABSENT
+        )
+        eff = (
+            "absent"
+            if is_absent
+            else _effective_check_in_status(
+                row["expected_check_in_at"],
+                row["expected_check_out_at"],
+                now,
+                manually_set=row["check_in_status_manually_set"],
+                stored_status=row["check_in_status"],
+            )
         )
         members_by_group[row["group_id"]].append(
             {
                 "name": row["name"],
                 "status": eff,
-                "status_label": status_labels.get(eff, eff),
+                "status_label": "불참" if is_absent else status_labels.get(eff, eff),
+                "participation_status": row["participation_status"],
+                "participation_label": "불참" if is_absent else "참석",
                 "member_role": row["member_role"],
                 "member_role_label": role_labels.get(
                     row["member_role"], row["member_role"]
@@ -847,6 +855,9 @@ def build_group_attendance_board(
 
     groups_out: list[dict] = []
     grand = {
+        "roster_total": 0,
+        "participating": 0,
+        "absent": 0,
         "pending": 0,
         "checked_in": 0,
         "checked_out": 0,
@@ -856,6 +867,8 @@ def build_group_attendance_board(
     for g in groups:
         members = members_by_group.get(g.id, [])
         members.sort(key=lambda m: (status_order.get(m["status"], 9), m["name"]))
+        participating = sum(1 for m in members if m["participation_status"] != "absent")
+        absent = len(members) - participating
         pending = sum(1 for m in members if m["status"] == S.PENDING)
         checked_in = sum(1 for m in members if m["status"] == S.CHECKED_IN)
         checked_out = sum(1 for m in members if m["status"] == S.CHECKED_OUT)
@@ -867,18 +880,24 @@ def build_group_attendance_board(
                 "region": g.region.name,
                 "division": g.division.name,
                 "pending": pending,
+                "participating": participating,
+                "absent": absent,
+                "roster_total": len(members),
                 "checked_in": checked_in,
                 "checked_out": checked_out,
                 "attended": attended,
-                "total": len(members),
+                "total": participating,
                 "members": members,
             }
         )
         grand["pending"] += pending
+        grand["participating"] += participating
+        grand["absent"] += absent
+        grand["roster_total"] += len(members)
         grand["checked_in"] += checked_in
         grand["checked_out"] += checked_out
         grand["attended"] += attended
-        grand["total"] += len(members)
+        grand["total"] += participating
 
     return {
         "generated_at": timezone.localtime(now).isoformat(),

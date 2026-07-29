@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 대시보드 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260729c" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260729d" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -230,6 +230,50 @@
           </section>
           </div>
           <div id="dashboardPanelBoard" style="display: none;">
+            <div class="jcc-retreat-summaryBar jcc-retreat-summaryBar--participation jcc-board-summaryBar" id="groupBoardSummaryBar">
+              <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--total">
+                <span class="jcc-retreat-summaryItem-label">명단</span>
+                <span class="jcc-retreat-summaryItem-value"><strong id="boardSummaryTotal">0</strong> 명</span>
+              </div>
+              <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--participating">
+                <span class="jcc-retreat-summaryItem-label">참석</span>
+                <span class="jcc-retreat-summaryItem-value"><strong id="boardSummaryParticipating">0</strong> 명</span>
+              </div>
+              <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--absent">
+                <span class="jcc-retreat-summaryItem-label">불참</span>
+                <span class="jcc-retreat-summaryItem-value"><strong id="boardSummaryAbsent">0</strong> 명</span>
+              </div>
+              <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--pending">
+                <span class="jcc-retreat-summaryItem-label">입실전</span>
+                <span class="jcc-retreat-summaryItem-value"><strong id="boardSummaryPending">0</strong> 명</span>
+              </div>
+              <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--in">
+                <span class="jcc-retreat-summaryItem-label">입실</span>
+                <span class="jcc-retreat-summaryItem-value"><strong id="boardSummaryIn">0</strong> 명</span>
+              </div>
+              <div class="jcc-retreat-summaryItem jcc-retreat-summaryItem--out">
+                <span class="jcc-retreat-summaryItem-label">퇴실</span>
+                <span class="jcc-retreat-summaryItem-value"><strong id="boardSummaryOut">0</strong> 명</span>
+              </div>
+            </div>
+            <div class="jcc-retreat-filterBar jcc-board-filterBar" id="groupBoardFilterBar">
+              <div class="jcc-retreat-filterRow">
+                <span class="jcc-retreat-filterLabel">참여 상태</span>
+                <div class="jcc-retreat-filterChips">
+                  <button type="button" class="jcc-retreat-filterChip" data-board-filter-kind="participation" data-board-filter-value="participating">참석</button>
+                  <button type="button" class="jcc-retreat-filterChip" data-board-filter-kind="participation" data-board-filter-value="absent">불참</button>
+                </div>
+              </div>
+              <div class="jcc-retreat-filterRow">
+                <span class="jcc-retreat-filterLabel">입·퇴실</span>
+                <div class="jcc-retreat-filterChips">
+                  <button type="button" class="jcc-retreat-filterChip" data-board-filter-kind="status" data-board-filter-value="pending">입실전</button>
+                  <button type="button" class="jcc-retreat-filterChip" data-board-filter-kind="status" data-board-filter-value="checked_in">입실</button>
+                  <button type="button" class="jcc-retreat-filterChip" data-board-filter-kind="status" data-board-filter-value="checked_out">퇴실</button>
+                </div>
+              </div>
+              <button type="button" class="jcc-retreat-filterReset" id="groupBoardFilterReset" hidden>초기화</button>
+            </div>
             <div class="card jcc-excel-board-panel">
               <div class="jcc-board-toolbar">
                 <label for="boardRegionFilter">지역</label>
@@ -270,6 +314,6 @@
       };
     </script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260728a" defer></script>
+    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260729b" defer></script>
   </body>
 </html>

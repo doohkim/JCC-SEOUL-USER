@@ -379,6 +379,27 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
   min-width: 10rem;
   max-width: 16rem;
 }
+.jcc-board-summaryBar {
+  margin-bottom: 0.85rem;
+}
+.jcc-board-filterBar {
+  margin-bottom: 0.85rem;
+  padding: 0.75rem 1rem;
+}
+.jcc-board-filterBar .jcc-retreat-filterRow {
+  align-items: center;
+}
+.jcc-board-filterBar .jcc-retreat-filterLabel {
+  flex: 0 0 4.5rem;
+  min-width: 4.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+@media (max-width: 640px) {
+  .jcc-board-filterBar .jcc-retreat-filterRow {
+    align-items: flex-start;
+  }
+}
 
 .jcc-cselect:has(> .jcc-retreat-lodgingSelect),
 .jcc-cselect:has(> .council-role-select) {
