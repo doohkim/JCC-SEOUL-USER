@@ -22,6 +22,7 @@ from retreat.models import (
     RetreatSession,
     RetreatSessionAttendee,
 )
+from retreat.services.effective_check_in import effective_status_q
 from retreat.services.enrollment import assert_session_mutable
 from retreat.services.audit import log_retreat_change
 from retreat.serializers import (
@@ -243,10 +244,8 @@ class RetreatEventAttendanceNamesView(APIView):
 
         event = get_object_or_404(RetreatEvent, pk=event_id)
         rows = (
-            RetreatAttendee.objects.filter(
-                group__event=event,
-                check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
-            )
+            RetreatAttendee.objects.filter(group__event=event)
+            .filter(effective_status_q(RetreatAttendee.CheckInStatus.CHECKED_IN))
             .select_related("group")
             .values("group__name", "name")
         )

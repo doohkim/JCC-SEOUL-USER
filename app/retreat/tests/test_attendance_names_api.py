@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from unittest import mock
 
 from django.conf import settings
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from retreat.models import RetreatAttendee, RetreatEvent, RetreatGroup, RetreatSession
@@ -42,35 +43,44 @@ class AttendanceNamesApiTests(TestCase):
             name="1조",
         )
 
+        now = timezone.now()
+        past = now - timedelta(hours=2)
+        future = now + timedelta(hours=2)
+        checkout_past = now - timedelta(hours=1)
+
+        # 입실: 예상 입실 경과 & 퇴실 전
         cls.attendee_present = RetreatAttendee.objects.create(
             group=cls.group,
             name="참석자",
-            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            expected_check_in_at=past,
         )
         cls.attendee_absent = RetreatAttendee.objects.create(
             group=cls.group,
             name="결석자",
-            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            expected_check_in_at=past,
         )
         cls.attendee_other_session = RetreatAttendee.objects.create(
             group=cls.group,
             name="다른세션참석자",
-            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            expected_check_in_at=past,
         )
+        # 입실전: 예상 입실이 아직 안 됨
         cls.attendee_pending = RetreatAttendee.objects.create(
             group=cls.group,
             name="입실전",
-            check_in_status=RetreatAttendee.CheckInStatus.PENDING,
+            expected_check_in_at=future,
         )
+        # 퇴실: 입실·퇴실 예상 시각 모두 경과
         cls.attendee_checked_out = RetreatAttendee.objects.create(
             group=cls.group,
             name="퇴실자",
-            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_OUT,
+            expected_check_in_at=past,
+            expected_check_out_at=checkout_past,
         )
         cls.attendee_not_participating = RetreatAttendee.objects.create(
             group=cls.group,
             name="불참자",
-            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            expected_check_in_at=past,
             participation_status=RetreatAttendee.ParticipationStatus.ABSENT,
         )
 
@@ -171,3 +181,19 @@ class AttendanceNamesApiTests(TestCase):
                 "attendees": [],
             },
         )
+
+    def test_manual_checked_in_is_included_without_expected_times(self):
+        """수동 입실 예외는 예상 시각 없이도 포함된다."""
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="수동입실",
+            check_in_status=RetreatAttendee.CheckInStatus.CHECKED_IN,
+            check_in_status_manually_set=True,
+        )
+        response = self.client.get(
+            self.url,
+            HTTP_X_RETREAT_TOKEN=settings.RETREAT,
+        )
+        self.assertEqual(response.status_code, 200)
+        names = [row["name"] for row in response.json()["attendees"]]
+        self.assertIn("수동입실", names)
