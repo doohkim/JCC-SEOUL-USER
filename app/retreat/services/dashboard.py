@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import timedelta
 from typing import Any
 
 from django.db.models import Count
-from django.db.models.functions import TruncHour
 from django.utils import timezone
 
 from retreat.models import (
@@ -564,7 +564,7 @@ def build_realtime_dashboard(
 
     - 조별 참석 인원(현재 입실 상태 = 입실 시각 경과 & 퇴실 전)
     - 지역·부서별 입실전/입실/퇴실/참석(입실+퇴실) 인원
-    - 1시간 단위 입실·퇴실 추이(입실/퇴실 시각 기준, 현재 시각까지 경과분만)
+    - 당일 1시간 단위 입·퇴실 전환수와 실시간·전체 참석 스냅샷
     """
     now = now or timezone.now()
     restrict = not staff_view
@@ -1008,59 +1008,71 @@ def _rollup_realtime_by_region_division(by_group: list[dict]) -> list[dict]:
 
 
 def _hourly_check_in_out(group_ids: list[int], now, *, user) -> list[dict]:
-    """1시간 단위 입실·퇴실 건수 추이.
+    """당일 1시간 단위 입·퇴실 전환수와 상태 스냅샷.
 
-    입실/퇴실 시각 필드 기준으로, 현재 시각까지 경과한 건만 집계한다(미래 예정 제외).
+    - 입실 전환수(``check_in_delta``): ``expected_check_in_at`` ∈ ``[H, H+1)``
+    - 퇴실 전환수(``check_out_delta``): ``expected_check_out_at`` ∈ ``[H, H+1)``
+    - 실시간 참석(``live``): 구간 종료 ``H+1`` 시점 ``checked_in`` 인원
+    - 전체 참석(``attended``): 동일 시점 ``checked_in + checked_out``
     """
-    buckets: dict[Any, dict[str, int]] = defaultdict(
-        lambda: {"checked_in": 0, "checked_out": 0}
-    )
+    local_now = timezone.localtime(now)
+    day_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    in_rows = (
+    rows = list(
         participating_filter(
             visible_attendees_for(
                 user,
-                RetreatAttendee.objects.filter(
-                    group_id__in=group_ids,
-                    expected_check_in_at__isnull=False,
-                    expected_check_in_at__lte=now,
-                ),
+                RetreatAttendee.objects.filter(group_id__in=group_ids),
             )
+        ).values_list(
+            "expected_check_in_at",
+            "expected_check_out_at",
+            "check_in_status_manually_set",
+            "check_in_status",
         )
-        .annotate(h=TruncHour("expected_check_in_at"))
-        .values("h")
-        .annotate(c=Count("id"))
     )
-    for row in in_rows:
-        buckets[row["h"]]["checked_in"] = row["c"]
 
-    out_rows = (
-        participating_filter(
-            visible_attendees_for(
-                user,
-                RetreatAttendee.objects.filter(
-                    group_id__in=group_ids,
-                    expected_check_out_at__isnull=False,
-                    expected_check_out_at__lte=now,
-                ),
+    S = RetreatAttendee.CheckInStatus
+    result: list[dict] = []
+    for hour in range(24):
+        hour_start = day_start + timedelta(hours=hour)
+        hour_end = hour_start + timedelta(hours=1)
+        label_end = "24:00" if hour == 23 else hour_end.strftime("%H:%M")
+        label = f"{hour_start.strftime('%H:%M')} ~ {label_end}"
+
+        check_in_delta = 0
+        check_out_delta = 0
+        live = 0
+        checked_out = 0
+        for check_in_at, check_out_at, manually_set, stored_status in rows:
+            if check_in_at is not None:
+                local_in = timezone.localtime(check_in_at)
+                if hour_start <= local_in < hour_end:
+                    check_in_delta += 1
+            if check_out_at is not None:
+                local_out = timezone.localtime(check_out_at)
+                if hour_start <= local_out < hour_end:
+                    check_out_delta += 1
+            eff = _effective_check_in_status(
+                check_in_at,
+                check_out_at,
+                hour_end,
+                manually_set=manually_set,
+                stored_status=stored_status,
             )
-        )
-        .annotate(h=TruncHour("expected_check_out_at"))
-        .values("h")
-        .annotate(c=Count("id"))
-    )
-    for row in out_rows:
-        buckets[row["h"]]["checked_out"] = row["c"]
+            if eff == S.CHECKED_IN:
+                live += 1
+            elif eff == S.CHECKED_OUT:
+                checked_out += 1
 
-    result = []
-    for hour in sorted(buckets.keys()):
-        local = timezone.localtime(hour)
         result.append(
             {
-                "hour": local.isoformat(),
-                "label": local.strftime("%m/%d %H:00"),
-                "checked_in": buckets[hour]["checked_in"],
-                "checked_out": buckets[hour]["checked_out"],
+                "hour": hour_start.isoformat(),
+                "label": label,
+                "check_in_delta": check_in_delta,
+                "check_out_delta": check_out_delta,
+                "live": live,
+                "attended": live + checked_out,
             }
         )
     return result

@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 대시보드 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260730h" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260731e" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -140,6 +140,28 @@
               </div>
             </section>
           </div>
+          <section class="card jcc-retreat-dashboardCard" id="hourlyDashSection">
+            <div class="jcc-retreat-dashboardSectionHead">
+              <div>
+                <h2 class="jcc-retreat-sectionTitle">당일 시간대별 현황</h2>
+                <p class="jcc-retreat-sectionDesc">전환수는 해당 1시간 상태 변경, 실시간·전체 참석은 구간 종료 시점 기준입니다.</p>
+              </div>
+            </div>
+            <div class="jcc-retreat-tableWrap jcc-retreat-hourlyTableWrap">
+              <table class="jcc-table jcc-retreat-dashboardTable" id="hourlyTable">
+                <thead>
+                  <tr>
+                    <th scope="col">시간</th>
+                    <th scope="col" class="is-delta-in jcc-retreat-hourlyCol--pcOnly">입실 전환수</th>
+                    <th scope="col" class="is-out jcc-retreat-hourlyCol--pcOnly">퇴실 전환수</th>
+                    <th scope="col" class="is-in">실시간 참석</th>
+                    <th scope="col" class="is-total jcc-retreat-hourlyCol--pcOnly">전체 참석<br /><span class="jcc-retreat-thSub">(입실+퇴실)</span></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
           <section class="card jcc-retreat-travelDash jcc-retreat-dashboardCard" id="travelDashSection" hidden>
             <div class="jcc-retreat-dashboardSectionHead">
               <div>
@@ -322,6 +344,6 @@
       };
     </script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260730g" defer></script>
+    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260731e" defer></script>
   </body>
 </html>

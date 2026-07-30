@@ -7,6 +7,7 @@
   const attendTotalEl = document.getElementById("attendTotal");
   const groupGrid = document.getElementById("groupGrid");
   const divBody = document.querySelector("#divisionTable tbody");
+  const hourlyBody = document.querySelector("#hourlyTable tbody");
   const generatedAtEl = document.getElementById("dashGeneratedAt");
   const btnRefresh = document.getElementById("btnRefresh");
   const innerTabs = document.getElementById("dashboardInnerTabs");
@@ -63,6 +64,7 @@
       renderAttendTotal(data.grand_total || {});
       renderGroups(data.by_group || []);
       renderDivisions(data.by_division || [], data.grand_total || {});
+      renderHourly(data.hourly || [], data.generated_at);
       renderTravel(data.travel || {});
       if (generatedAtEl) {
         generatedAtEl.textContent = data.generated_at
@@ -196,6 +198,33 @@
     setTotal(totalEls.male, grand.male ?? 0);
     setTotal(totalEls.female, grand.female ?? 0);
     setTotal(totalEls.genderUnknown, grand.gender_unknown ?? 0);
+  }
+
+  function currentHourIndex(generatedAt) {
+    const stamp = generatedAt ? new Date(generatedAt) : new Date();
+    if (Number.isNaN(stamp.getTime())) return new Date().getHours();
+    return stamp.getHours();
+  }
+
+  function renderHourly(rows, generatedAt) {
+    if (!hourlyBody) return;
+    hourlyBody.innerHTML = "";
+    const currentHour = currentHourIndex(generatedAt);
+    (rows || []).forEach((row, index) => {
+      const tr = document.createElement("tr");
+      if (index === currentHour) tr.classList.add("is-current");
+      const checkInDelta = row.check_in_delta ?? 0;
+      const checkOutDelta = row.check_out_delta ?? 0;
+      const live = row.live ?? 0;
+      const attended = row.attended ?? 0;
+      tr.innerHTML = `
+        <td class="jcc-retreat-tablePrimary">${escapeHtml(row.label || "")}</td>
+        <td class="jcc-retreat-numCell jcc-retreat-hourlyCol--pcOnly"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--delta-in">${checkInDelta}</strong></td>
+        <td class="jcc-retreat-numCell jcc-retreat-hourlyCol--pcOnly"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--out">${checkOutDelta}</strong></td>
+        <td class="jcc-retreat-numCell"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--in">${live}</strong></td>
+        <td class="jcc-retreat-numCell jcc-retreat-hourlyCol--pcOnly"><strong class="jcc-retreat-countBadge jcc-retreat-countBadge--total">${attended}</strong></td>`;
+      hourlyBody.appendChild(tr);
+    });
   }
 
   function travelKindFromRow(row) {

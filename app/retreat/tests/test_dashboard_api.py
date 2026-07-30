@@ -84,7 +84,8 @@ class RetreatDashboardApiTests(APITestCase):
 
     def test_dashboard_realtime_counts(self):
         # 입실 시각이 지나고 퇴실 시각은 미설정 → 현재 입실 상태로 집계.
-        self.attendee.expected_check_in_at = timezone.now() - timedelta(minutes=10)
+        check_in_at = timezone.now() - timedelta(minutes=10)
+        self.attendee.expected_check_in_at = check_in_at
         self.attendee.save(update_fields=["expected_check_in_at"])
         self.client.force_authenticate(self.leader)
         url = reverse("api_retreat_event_dashboard", args=[self.event.id])
@@ -96,9 +97,71 @@ class RetreatDashboardApiTests(APITestCase):
         self.assertEqual(data["by_group"][0]["attended"], 1)
         self.assertEqual(data["grand_total"]["attended"], 1)
         self.assertEqual(data["grand_total"]["checked_in"], 1)
-        # 1시간 단위 추이에 입실 1건 집계.
-        self.assertEqual(len(data["hourly"]), 1)
-        self.assertEqual(data["hourly"][0]["checked_in"], 1)
+        # 당일 24시간 행; 입실 시각이 속한 시에 전환수 1, 이후 시 live 1.
+        self.assertEqual(len(data["hourly"]), 24)
+        local_in = timezone.localtime(check_in_at)
+        hour_row = data["hourly"][local_in.hour]
+        self.assertEqual(hour_row["check_in_delta"], 1)
+        self.assertEqual(hour_row["live"], 1)
+        self.assertEqual(hour_row["attended"], 1)
+        if local_in.hour > 0:
+            self.assertEqual(data["hourly"][local_in.hour - 1]["live"], 0)
+
+    def test_dashboard_hourly_status_snapshot(self):
+        """당일 hourly: 전환수·실시간 참석·전체 참석."""
+        local_now = timezone.localtime()
+        day_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        # 당일 10시에 입실, 18시에 퇴실 (현재 시각과 무관하게 고정).
+        check_in_at = day_start + timedelta(hours=10, minutes=15)
+        check_out_at = day_start + timedelta(hours=18, minutes=30)
+        self.attendee.expected_check_in_at = check_in_at
+        self.attendee.expected_check_out_at = check_out_at
+        self.attendee.save(
+            update_fields=["expected_check_in_at", "expected_check_out_at"]
+        )
+
+        # 미래 입실 예정 조원 (당일 20시).
+        RetreatAttendee.objects.create(
+            group=self.group,
+            name="미래입실",
+            expected_check_in_at=day_start + timedelta(hours=20, minutes=5),
+        )
+
+        self.client.force_authenticate(self.leader)
+        url = reverse("api_retreat_event_dashboard", args=[self.event.id])
+        r = self.client.get(url)
+        self.assertEqual(r.status_code, 200)
+        hourly = r.json()["hourly"]
+        self.assertEqual(len(hourly), 24)
+        self.assertEqual(hourly[0]["label"], "00:00 ~ 01:00")
+        self.assertEqual(hourly[23]["label"], "23:00 ~ 24:00")
+
+        # 09:00~10:00: 전환·재실 없음
+        self.assertEqual(hourly[9]["check_in_delta"], 0)
+        self.assertEqual(hourly[9]["check_out_delta"], 0)
+        self.assertEqual(hourly[9]["live"], 0)
+        self.assertEqual(hourly[9]["attended"], 0)
+
+        # 10:00~11:00: 입실 전환 1, 실시간 1
+        self.assertEqual(hourly[10]["check_in_delta"], 1)
+        self.assertEqual(hourly[10]["check_out_delta"], 0)
+        self.assertEqual(hourly[10]["live"], 1)
+        self.assertEqual(hourly[10]["attended"], 1)
+
+        # 17:00~18:00: 아직 퇴실 전 → live 1
+        self.assertEqual(hourly[17]["check_in_delta"], 0)
+        self.assertEqual(hourly[17]["live"], 1)
+        self.assertEqual(hourly[17]["attended"], 1)
+
+        # 18:00~19:00: 퇴실 전환 1, live 0, attended 1
+        self.assertEqual(hourly[18]["check_out_delta"], 1)
+        self.assertEqual(hourly[18]["live"], 0)
+        self.assertEqual(hourly[18]["attended"], 1)
+
+        # 20:00~21:00: 추가 입실 전환 1 → live 1, attended 2
+        self.assertEqual(hourly[20]["check_in_delta"], 1)
+        self.assertEqual(hourly[20]["live"], 1)
+        self.assertEqual(hourly[20]["attended"], 2)
 
     def test_dashboard_gender_counts_by_division(self):
         """참석자 명단 gender 기준 부서별 남/여/미지정 집계."""
