@@ -828,7 +828,7 @@
   }
   }
 
-  // --- 전체 탭: 컬럼 헤더 클릭 정렬 ----------------------------------------
+  // --- 컬럼 헤더 클릭 정렬 (전체/입회/출회) --------------------------------
   const pickupSortTbody = document.getElementById("pickupTbody");
   const PICKUP_STATUS_ORDER = { pending: 0, checked_in: 1, checked_out: 2 };
   let pickupSortKey = null;
@@ -863,6 +863,7 @@
   }
 
   function renumberPickupRows() {
+    // 전체 탭만 표시용 순번. 입회/출회는 등록번호(p.number)를 유지한다.
     if (!pickupSortTbody || ctx.direction !== "all") return;
     let n = 0;
     pickupSortTbody.querySelectorAll("tr[data-pickup-id]").forEach((tr) => {
@@ -873,7 +874,7 @@
   }
 
   function applyPickupSort() {
-    if (!pickupSortTbody || !pickupSortKey || ctx.direction !== "all") return;
+    if (!pickupSortTbody || !pickupSortKey) return;
     const rows = Array.from(
       pickupSortTbody.querySelectorAll("tr[data-pickup-id]")
     );
@@ -891,7 +892,6 @@
   }
 
   function bindPickupSorting() {
-    if (ctx.direction !== "all") return;
     const headers = document.querySelectorAll(
       "#pickupTable .jcc-retreat-sortable[data-sort-key]"
     );

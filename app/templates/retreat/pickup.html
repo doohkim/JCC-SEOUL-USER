@@ -82,13 +82,8 @@
                     <th class="jcc-retreat-pickupStatusCol">상태</th>
                     {% endif %}
                     <th class="jcc-retreat-pickupContactCol">연락처</th>
-                    {% if active_pickup_tab == 'all' %}
                     <th class="jcc-retreat-sortable" data-sort-key="train_time" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">열차 시각</span></th>
                     <th class="jcc-retreat-sortable" data-sort-key="boarding_place" scope="col" aria-sort="none"><span class="jcc-retreat-sortLabel">탑승장소</span></th>
-                    {% else %}
-                    <th>열차 시각</th>
-                    <th>탑승장소</th>
-                    {% endif %}
                     {% if can_manage_pickup or can_delete_pickup %}<th class="jcc-retreat-pickupManageCol">ACTION</th>{% endif %}
                   </tr>
                 </thead>
@@ -323,6 +318,6 @@
     <script src="{% static 'retreat/datetime_picker.js' %}?v=20260726a" defer></script>
     <script src="{% static 'retreat/date_filter.js' %}?v=20260615a" defer></script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/pickup.js' %}?v=20260723a" defer></script>
+    <script src="{% static 'retreat/pickup.js' %}?v=20260731a" defer></script>
   </body>
 </html>
