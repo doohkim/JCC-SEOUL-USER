@@ -666,7 +666,7 @@ def build_realtime_dashboard(
         ),
         rollup_fn=_rollup_realtime_by_region_division,
     )
-    hourly = _hourly_check_in_out(group_ids, now, user=user)
+    hourly = _hourly_check_in_out_from_rows(time_rows, now)
 
     grand_pending = sum(r["pending"] for r in by_group)
     grand_in = sum(r["checked_in"] for r in by_group)
@@ -692,6 +692,7 @@ def build_realtime_dashboard(
         checked_in=grand_in,
         attended=grand_attended,
         total=grand_all,
+        scope_group_ids=group_ids,
     )
     travel = build_travel_summary_for_attendee_times(event, time_rows, groups=groups)
 
@@ -725,6 +726,7 @@ def _build_dashboard_summary(
     checked_in: int,
     attended: int,
     total: int,
+    scope_group_ids: list[int] | None = None,
 ) -> dict[str, Any]:
     """상단 요약 카드용 집계.
 
@@ -740,7 +742,8 @@ def _build_dashboard_summary(
     """
     attend_percent = round(checked_in / total * 100) if total else 0
 
-    scope_group_ids = _summary_scope_group_ids(event, user, staff_view=staff_view)
+    if scope_group_ids is None:
+        scope_group_ids = _summary_scope_group_ids(event, user, staff_view=staff_view)
 
     lodging_unassigned = lodging_eligible_filter(
         visible_attendees_for(
@@ -757,9 +760,7 @@ def _build_dashboard_summary(
     )
     if not staff_view:
         pickups = pickups.filter(group_id__in=scope_group_ids)
-    absent_keys = absent_attendee_keys(
-        _event_group_ids(event) if staff_view else scope_group_ids
-    )
+    absent_keys = absent_attendee_keys(scope_group_ids)
     car_today = sum(
         1
         for p in pickups
@@ -1007,72 +1008,93 @@ def _rollup_realtime_by_region_division(by_group: list[dict]) -> list[dict]:
     return sorted(result, key=lambda x: (x["region"], x["division"]))
 
 
-def _hourly_check_in_out(group_ids: list[int], now, *, user) -> list[dict]:
-    """당일 1시간 단위 입·퇴실 전환수와 상태 스냅샷.
+def _first_hour_index_at_or_after(ts, day_start, day_end) -> int | None:
+    """``day_start+(h+1) >= ts`` 인 첫 h (0..23). 당일 버킷에 없으면 None."""
+    if ts >= day_end:
+        return None
+    if ts <= day_start:
+        return 0
+    for hour in range(24):
+        if ts <= day_start + timedelta(hours=hour + 1):
+            return hour
+    return None
 
-    - 입실 전환수(``check_in_delta``): ``expected_check_in_at`` ∈ ``[H, H+1)``
-    - 퇴실 전환수(``check_out_delta``): ``expected_check_out_at`` ∈ ``[H, H+1)``
-    - 실시간 참석(``live``): 구간 종료 ``H+1`` 시점 ``checked_in`` 인원
-    - 전체 참석(``attended``): 동일 시점 ``checked_in + checked_out``
+
+def _hourly_check_in_out_from_rows(time_rows: list, now) -> list[dict]:
+    """이미 로드된 조원 시각 행으로 당일 1시간 단위 집계.
+
+    ``time_rows`` 튜플: (group_id, expected_check_in_at, expected_check_out_at,
+    arrival_travel_is_custom, departure_travel_is_custom, gender,
+    check_in_status_manually_set, check_in_status)
     """
     local_now = timezone.localtime(now)
     day_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_end = day_start + timedelta(days=1)
 
-    rows = list(
-        participating_filter(
-            visible_attendees_for(
-                user,
-                RetreatAttendee.objects.filter(group_id__in=group_ids),
-            )
-        ).values_list(
-            "expected_check_in_at",
-            "expected_check_out_at",
-            "check_in_status_manually_set",
-            "check_in_status",
-        )
-    )
-
+    check_in_delta = [0] * 24
+    check_out_delta = [0] * 24
+    live = [0] * 24
+    checked_out_stock = [0] * 24
     S = RetreatAttendee.CheckInStatus
+
+    for row in time_rows:
+        check_in_at = row[1]
+        check_out_at = row[2]
+        manually_set = row[6]
+        stored_status = row[7]
+
+        if check_in_at is not None:
+            local_in = timezone.localtime(check_in_at)
+            if day_start <= local_in < day_end:
+                check_in_delta[local_in.hour] += 1
+        if check_out_at is not None:
+            local_out = timezone.localtime(check_out_at)
+            if day_start <= local_out < day_end:
+                check_out_delta[local_out.hour] += 1
+
+        if manually_set and stored_status:
+            if stored_status == S.CHECKED_IN:
+                for hour in range(24):
+                    live[hour] += 1
+            elif stored_status == S.CHECKED_OUT:
+                for hour in range(24):
+                    checked_out_stock[hour] += 1
+            continue
+
+        if check_in_at is None:
+            continue
+
+        start_h = _first_hour_index_at_or_after(check_in_at, day_start, day_end)
+        if start_h is None:
+            continue
+
+        end_h = 24
+        if check_out_at is not None:
+            if check_out_at <= day_start:
+                for hour in range(24):
+                    checked_out_stock[hour] += 1
+                continue
+            out_h = _first_hour_index_at_or_after(check_out_at, day_start, day_end)
+            end_h = 24 if out_h is None else out_h
+
+        for hour in range(start_h, end_h):
+            live[hour] += 1
+        for hour in range(end_h, 24):
+            checked_out_stock[hour] += 1
+
     result: list[dict] = []
     for hour in range(24):
         hour_start = day_start + timedelta(hours=hour)
         hour_end = hour_start + timedelta(hours=1)
         label_end = "24:00" if hour == 23 else hour_end.strftime("%H:%M")
-        label = f"{hour_start.strftime('%H:%M')} ~ {label_end}"
-
-        check_in_delta = 0
-        check_out_delta = 0
-        live = 0
-        checked_out = 0
-        for check_in_at, check_out_at, manually_set, stored_status in rows:
-            if check_in_at is not None:
-                local_in = timezone.localtime(check_in_at)
-                if hour_start <= local_in < hour_end:
-                    check_in_delta += 1
-            if check_out_at is not None:
-                local_out = timezone.localtime(check_out_at)
-                if hour_start <= local_out < hour_end:
-                    check_out_delta += 1
-            eff = _effective_check_in_status(
-                check_in_at,
-                check_out_at,
-                hour_end,
-                manually_set=manually_set,
-                stored_status=stored_status,
-            )
-            if eff == S.CHECKED_IN:
-                live += 1
-            elif eff == S.CHECKED_OUT:
-                checked_out += 1
-
         result.append(
             {
                 "hour": hour_start.isoformat(),
-                "label": label,
-                "check_in_delta": check_in_delta,
-                "check_out_delta": check_out_delta,
-                "live": live,
-                "attended": live + checked_out,
+                "label": f"{hour_start.strftime('%H:%M')} ~ {label_end}",
+                "check_in_delta": check_in_delta[hour],
+                "check_out_delta": check_out_delta[hour],
+                "live": live[hour],
+                "attended": live[hour] + checked_out_stock[hour],
             }
         )
     return result

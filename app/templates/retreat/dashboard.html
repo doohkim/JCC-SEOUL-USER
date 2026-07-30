@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>수련회 대시보드 · {{ event.name }}</title>
     <link rel="stylesheet" href="{% static 'attendance/app.css' %}?v=20260722b" />
-    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260731e" />
+    <link rel="stylesheet" href="{% static 'retreat/retreat.css' %}?v=20260731j" />
   </head>
   <body class="has-retreat-bottom-tabs">
     <div class="jcc-layout">
@@ -93,159 +93,214 @@
           <div id="dashboardStatus" class="msg" role="status"></div>
           <div id="dashboardPanelStats">
           <div class="jcc-retreat-dashGrid">
-            <section class="card jcc-retreat-dashboardCard">
+            <section class="card jcc-retreat-dashboardCard" data-dash-collapse>
               <div class="jcc-retreat-dashboardSectionHead">
                 <div>
                   <h2 class="jcc-retreat-sectionTitle">조별 현재 참석</h2>
                   <p class="jcc-retreat-sectionDesc">현재 입실 상태인 인원입니다.</p>
                 </div>
+                <button
+                  type="button"
+                  class="jcc-retreat-dashCollapseToggle"
+                  aria-expanded="true"
+                  aria-controls="dashCollapseGroups"
+                >
+                  <span class="jcc-retreat-dashCollapseIcon" aria-hidden="true">▾</span>
+                  <span class="jcc-retreat-dashCollapseMeta">접기</span>
+                </button>
               </div>
-              <div class="jcc-retreat-statPills">
-                <span class="jcc-retreat-statPill jcc-retreat-statPill--in">현재 참석 <strong id="attendTotal">0</strong>명</span>
+              <div class="jcc-retreat-dashCollapseBody" id="dashCollapseGroups">
+                <div class="jcc-retreat-statPills">
+                  <span class="jcc-retreat-statPill jcc-retreat-statPill--in">현재 참석 <strong id="attendTotal">0</strong>명</span>
+                </div>
+                <div id="groupGrid"></div>
               </div>
-              <div id="groupGrid"></div>
             </section>
-            <section class="card jcc-retreat-dashboardCard">
+            <section class="card jcc-retreat-dashboardCard" data-dash-collapse>
               <div class="jcc-retreat-dashboardSectionHead">
                 <div>
                   <h2 class="jcc-retreat-sectionTitle">지역·부서별 참석 현황</h2>
                   <p class="jcc-retreat-sectionDesc">입실 흐름과 성별 인원을 한눈에 확인하세요.</p>
                 </div>
+                <button
+                  type="button"
+                  class="jcc-retreat-dashCollapseToggle"
+                  aria-expanded="true"
+                  aria-controls="dashCollapseDivisions"
+                >
+                  <span class="jcc-retreat-dashCollapseIcon" aria-hidden="true">▾</span>
+                  <span class="jcc-retreat-dashCollapseMeta">접기</span>
+                </button>
               </div>
-              <div class="jcc-retreat-statPills" id="divisionTotalPills">
-                <span class="jcc-retreat-statPill jcc-retreat-statPill--pending">입실전 <strong data-total-pending>0</strong>명</span>
-                <span class="jcc-retreat-statPill jcc-retreat-statPill--in">입실 <strong data-total-in>0</strong>명</span>
-                <span class="jcc-retreat-statPill jcc-retreat-statPill--out">퇴실 <strong data-total-out>0</strong>명</span>
-                <span class="jcc-retreat-statPill jcc-retreat-statPill--total">총 <strong data-total-attended>0</strong>명</span>
-                <span class="jcc-retreat-statPill jcc-retreat-statPill--male">남 <strong data-total-male>0</strong>명</span>
-                <span class="jcc-retreat-statPill jcc-retreat-statPill--female">여 <strong data-total-female>0</strong>명</span>
-                <span class="jcc-retreat-statPill">미지정 <strong data-total-gender-unknown>0</strong>명</span>
-              </div>
-              <div class="jcc-retreat-tableWrap">
-                <table class="jcc-table jcc-retreat-dashboardTable" id="divisionTable">
-                  <thead>
-                    <tr>
-                      <th scope="col">지역·부서</th>
-                      <th scope="col">조</th>
-                      <th scope="col" class="is-male">남</th>
-                      <th scope="col" class="is-female">여</th>
-                      <th scope="col" class="is-pending">입실 전</th>
-                      <th scope="col" class="is-in">입실</th>
-                      <th scope="col" class="is-out">퇴실</th>
-                      <th scope="col" class="is-total">전체 참석<br /><span class="jcc-retreat-thSub">(입실+퇴실)</span></th>
-                    </tr>
-                  </thead>
-                  <tbody></tbody>
-                </table>
+              <div class="jcc-retreat-dashCollapseBody" id="dashCollapseDivisions">
+                <div class="jcc-retreat-statPills" id="divisionTotalPills">
+                  <span class="jcc-retreat-statPill jcc-retreat-statPill--pending">입실전 <strong data-total-pending>0</strong>명</span>
+                  <span class="jcc-retreat-statPill jcc-retreat-statPill--in">입실 <strong data-total-in>0</strong>명</span>
+                  <span class="jcc-retreat-statPill jcc-retreat-statPill--out">퇴실 <strong data-total-out>0</strong>명</span>
+                  <span class="jcc-retreat-statPill jcc-retreat-statPill--total">총 <strong data-total-attended>0</strong>명</span>
+                  <span class="jcc-retreat-statPill jcc-retreat-statPill--male">남 <strong data-total-male>0</strong>명</span>
+                  <span class="jcc-retreat-statPill jcc-retreat-statPill--female">여 <strong data-total-female>0</strong>명</span>
+                  <span class="jcc-retreat-statPill">미지정 <strong data-total-gender-unknown>0</strong>명</span>
+                </div>
+                <div class="jcc-retreat-tableWrap">
+                  <table class="jcc-table jcc-retreat-dashboardTable" id="divisionTable">
+                    <thead>
+                      <tr>
+                        <th scope="col">지역·부서</th>
+                        <th scope="col">조</th>
+                        <th scope="col" class="is-male">남</th>
+                        <th scope="col" class="is-female">여</th>
+                        <th scope="col" class="is-pending">입실 전</th>
+                        <th scope="col" class="is-in">입실</th>
+                        <th scope="col" class="is-out">퇴실</th>
+                        <th scope="col" class="is-total">전체 참석<br /><span class="jcc-retreat-thSub">(입실+퇴실)</span></th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
               </div>
             </section>
           </div>
-          <section class="card jcc-retreat-dashboardCard" id="hourlyDashSection">
+          <section class="card jcc-retreat-dashboardCard" id="hourlyDashSection" data-dash-collapse>
             <div class="jcc-retreat-dashboardSectionHead">
               <div>
                 <h2 class="jcc-retreat-sectionTitle">당일 시간대별 현황</h2>
                 <p class="jcc-retreat-sectionDesc">전환수는 해당 1시간 상태 변경, 실시간·전체 참석은 구간 종료 시점 기준입니다.</p>
               </div>
+              <button
+                type="button"
+                class="jcc-retreat-dashCollapseToggle"
+                aria-expanded="true"
+                aria-controls="dashCollapseHourly"
+              >
+                <span class="jcc-retreat-dashCollapseIcon" aria-hidden="true">▾</span>
+                <span class="jcc-retreat-dashCollapseMeta">접기</span>
+              </button>
             </div>
-            <div class="jcc-retreat-tableWrap jcc-retreat-hourlyTableWrap">
-              <table class="jcc-table jcc-retreat-dashboardTable" id="hourlyTable">
-                <thead>
-                  <tr>
-                    <th scope="col">시간</th>
-                    <th scope="col" class="is-delta-in jcc-retreat-hourlyCol--pcOnly">입실 전환수</th>
-                    <th scope="col" class="is-out jcc-retreat-hourlyCol--pcOnly">퇴실 전환수</th>
-                    <th scope="col" class="is-in">실시간 참석</th>
-                    <th scope="col" class="is-total jcc-retreat-hourlyCol--pcOnly">전체 참석<br /><span class="jcc-retreat-thSub">(입실+퇴실)</span></th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
+            <div class="jcc-retreat-dashCollapseBody" id="dashCollapseHourly">
+              <div class="jcc-retreat-tableWrap jcc-retreat-hourlyTableWrap">
+                <table class="jcc-table jcc-retreat-dashboardTable jcc-retreat-hourlyTable" id="hourlyTable">
+                  <thead>
+                    <tr>
+                      <th scope="col">시간</th>
+                      <th scope="col" class="is-delta-in jcc-retreat-hourlyCol--pcOnly">입실 전환수</th>
+                      <th scope="col" class="is-out jcc-retreat-hourlyCol--pcOnly">퇴실 전환수</th>
+                      <th scope="col" class="is-in">실시간 참석</th>
+                      <th scope="col" class="is-total jcc-retreat-hourlyCol--pcOnly">전체 참석<br /><span class="jcc-retreat-thSub">(입실+퇴실)</span></th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
           </section>
-          <section class="card jcc-retreat-travelDash jcc-retreat-dashboardCard" id="travelDashSection" hidden>
+          <section class="card jcc-retreat-travelDash jcc-retreat-dashboardCard" id="travelDashSection" hidden data-dash-collapse>
             <div class="jcc-retreat-dashboardSectionHead">
               <div>
                 <h2 class="jcc-retreat-sectionTitle">입·퇴실 교통 현황</h2>
                 <p class="jcc-retreat-sectionDesc">차량 웨이브별 예정 인원을 확인하세요.</p>
               </div>
+              <button
+                type="button"
+                class="jcc-retreat-dashCollapseToggle"
+                aria-expanded="true"
+                aria-controls="dashCollapseTravel"
+              >
+                <span class="jcc-retreat-dashCollapseIcon" aria-hidden="true">▾</span>
+                <span class="jcc-retreat-dashCollapseMeta">접기</span>
+              </button>
             </div>
-            <div class="jcc-retreat-statPills" id="travelTotalPills">
-              <span class="jcc-retreat-statPill jcc-retreat-statPill--in">입실 총 <strong data-travel-arrival-total>0</strong>명</span>
-              <span class="jcc-retreat-statPill jcc-retreat-statPill--departure">퇴실 총 <strong data-travel-departure-total>0</strong>명</span>
-            </div>
-            <p class="jcc-retreat-travelDashHint muted">
-              조원 예정 입·퇴실 시각을 차량 웨이브 프리셋과 맞춰 집계합니다. 예외·직접 입력 시각은 「자차」입니다.
-            </p>
-            <div class="jcc-retreat-travelDashGrid">
-              <div class="jcc-retreat-travelDashCol jcc-retreat-travelDashCol--arrival">
-                <h3 class="jcc-retreat-travelDashSub">
-                  <span class="jcc-retreat-travelDot" aria-hidden="true"></span>
-                  입실
-                </h3>
-                <div class="jcc-retreat-tableWrap">
-                  <table class="jcc-table jcc-retreat-dashboardTable jcc-retreat-travelSummaryTable" id="travelArrivalTable">
-                    <thead>
-                      <tr>
-                        <th>교통</th>
-                        <th>인원</th>
-                      </tr>
-                    </thead>
-                    <tbody></tbody>
-                  </table>
-                </div>
+            <div class="jcc-retreat-dashCollapseBody" id="dashCollapseTravel">
+              <div class="jcc-retreat-statPills" id="travelTotalPills">
+                <span class="jcc-retreat-statPill jcc-retreat-statPill--in">입실 총 <strong data-travel-arrival-total>0</strong>명</span>
+                <span class="jcc-retreat-statPill jcc-retreat-statPill--departure">퇴실 총 <strong data-travel-departure-total>0</strong>명</span>
               </div>
-              <div class="jcc-retreat-travelDashCol jcc-retreat-travelDashCol--departure">
-                <h3 class="jcc-retreat-travelDashSub">
-                  <span class="jcc-retreat-travelDot" aria-hidden="true"></span>
-                  퇴실
-                </h3>
-                <div class="jcc-retreat-tableWrap">
-                  <table class="jcc-table jcc-retreat-dashboardTable jcc-retreat-travelSummaryTable" id="travelDepartureTable">
-                    <thead>
-                      <tr>
-                        <th>교통</th>
-                        <th>인원</th>
-                      </tr>
-                    </thead>
-                    <tbody></tbody>
-                  </table>
+              <p class="jcc-retreat-travelDashHint muted">
+                조원 예정 입·퇴실 시각을 차량 웨이브 프리셋과 맞춰 집계합니다. 예외·직접 입력 시각은 「자차」입니다.
+              </p>
+              <div class="jcc-retreat-travelDashGrid">
+                <div class="jcc-retreat-travelDashCol jcc-retreat-travelDashCol--arrival">
+                  <h3 class="jcc-retreat-travelDashSub">
+                    <span class="jcc-retreat-travelDot" aria-hidden="true"></span>
+                    입실
+                  </h3>
+                  <div class="jcc-retreat-tableWrap">
+                    <table class="jcc-table jcc-retreat-dashboardTable jcc-retreat-travelSummaryTable" id="travelArrivalTable">
+                      <thead>
+                        <tr>
+                          <th>교통</th>
+                          <th>인원</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
+                </div>
+                <div class="jcc-retreat-travelDashCol jcc-retreat-travelDashCol--departure">
+                  <h3 class="jcc-retreat-travelDashSub">
+                    <span class="jcc-retreat-travelDot" aria-hidden="true"></span>
+                    퇴실
+                  </h3>
+                  <div class="jcc-retreat-tableWrap">
+                    <table class="jcc-table jcc-retreat-dashboardTable jcc-retreat-travelSummaryTable" id="travelDepartureTable">
+                      <thead>
+                        <tr>
+                          <th>교통</th>
+                          <th>인원</th>
+                        </tr>
+                      </thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
           </section>
-          <section class="card jcc-retreat-travelDash jcc-retreat-travelByGroupDash jcc-retreat-dashboardCard" id="travelByGroupDashSection" hidden>
+          <section class="card jcc-retreat-travelDash jcc-retreat-travelByGroupDash jcc-retreat-dashboardCard" id="travelByGroupDashSection" hidden data-dash-collapse>
             <div class="jcc-retreat-dashboardSectionHead">
               <div>
                 <h2 class="jcc-retreat-sectionTitle">조별 입·퇴실 차량</h2>
                 <p class="jcc-retreat-sectionDesc">조별 차량 분포를 웨이브 단위로 비교하세요.</p>
               </div>
+              <button
+                type="button"
+                class="jcc-retreat-dashCollapseToggle"
+                aria-expanded="true"
+                aria-controls="dashCollapseTravelByGroup"
+              >
+                <span class="jcc-retreat-dashCollapseIcon" aria-hidden="true">▾</span>
+                <span class="jcc-retreat-dashCollapseMeta">접기</span>
+              </button>
             </div>
-            <p class="jcc-retreat-travelDashHint muted">
-              행은 조, 열은 차량 웨이브입니다. 인원은 조원 예정 입·퇴실 시각 기준입니다.
-            </p>
-            <div class="jcc-retreat-travelDashGrid">
-              <div class="jcc-retreat-travelDashCol jcc-retreat-travelDashCol--arrival">
-                <h3 class="jcc-retreat-travelDashSub">
-                  <span class="jcc-retreat-travelDot" aria-hidden="true"></span>
-                  입실
-                </h3>
-                <div class="jcc-retreat-tableWrap">
-                  <table class="jcc-table jcc-retreat-travelByGroupTable" id="travelByGroupArrivalTable">
-                    <thead></thead>
-                    <tbody></tbody>
-                  </table>
+            <div class="jcc-retreat-dashCollapseBody" id="dashCollapseTravelByGroup">
+              <p class="jcc-retreat-travelDashHint muted">
+                행은 조, 열은 차량 웨이브입니다. 인원은 조원 예정 입·퇴실 시각 기준입니다.
+              </p>
+              <div class="jcc-retreat-travelDashGrid">
+                <div class="jcc-retreat-travelDashCol jcc-retreat-travelDashCol--arrival">
+                  <h3 class="jcc-retreat-travelDashSub">
+                    <span class="jcc-retreat-travelDot" aria-hidden="true"></span>
+                    입실
+                  </h3>
+                  <div class="jcc-retreat-tableWrap">
+                    <table class="jcc-table jcc-retreat-travelByGroupTable" id="travelByGroupArrivalTable">
+                      <thead></thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-              <div class="jcc-retreat-travelDashCol jcc-retreat-travelDashCol--departure">
-                <h3 class="jcc-retreat-travelDashSub">
-                  <span class="jcc-retreat-travelDot" aria-hidden="true"></span>
-                  퇴실
-                </h3>
-                <div class="jcc-retreat-tableWrap">
-                  <table class="jcc-table jcc-retreat-travelByGroupTable" id="travelByGroupDepartureTable">
-                    <thead></thead>
-                    <tbody></tbody>
-                  </table>
+                <div class="jcc-retreat-travelDashCol jcc-retreat-travelDashCol--departure">
+                  <h3 class="jcc-retreat-travelDashSub">
+                    <span class="jcc-retreat-travelDot" aria-hidden="true"></span>
+                    퇴실
+                  </h3>
+                  <div class="jcc-retreat-tableWrap">
+                    <table class="jcc-table jcc-retreat-travelByGroupTable" id="travelByGroupDepartureTable">
+                      <thead></thead>
+                      <tbody></tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -344,6 +399,6 @@
       };
     </script>
     <script src="{% static 'retreat/select_dropdown.js' %}?v=20260613c" defer></script>
-    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260731e" defer></script>
+    <script src="{% static 'retreat/retreat_dashboard.js' %}?v=20260731j" defer></script>
   </body>
 </html>

@@ -132,20 +132,39 @@
     return table;
   }
 
+  let lastGroupRows = [];
+  let groupLayoutIsMobile = null;
+
+  function isAttGridMobile() {
+    return window.matchMedia("(max-width: 900px)").matches;
+  }
+
   function renderGroups(rows) {
     if (!groupGrid) return;
+    lastGroupRows = Array.isArray(rows) ? rows : [];
+    groupLayoutIsMobile = isAttGridMobile();
     groupGrid.innerHTML = "";
     // 지역·부서별 인원체크 표와 동일한 테이블 UI (순서: 조 · 지역·부서 · 참석).
-    // PC: 2열 그리드(두 개의 표), 모바일: 두 번째 표 헤더를 숨겨 단일 연속 표.
+    // PC: 2열 그리드(두 개의 표), 모바일: 단일 표로 자연스럽게 이어짐.
     const grid = document.createElement("div");
     grid.className = "jcc-retreat-attGrid";
-    const mid = Math.ceil(rows.length / 2);
-    grid.appendChild(buildAttTable(rows.slice(0, mid)));
-    if (rows.length > mid) {
-      grid.appendChild(buildAttTable(rows.slice(mid)));
+    if (groupLayoutIsMobile || lastGroupRows.length <= 1) {
+      grid.appendChild(buildAttTable(lastGroupRows));
+    } else {
+      const mid = Math.ceil(lastGroupRows.length / 2);
+      grid.appendChild(buildAttTable(lastGroupRows.slice(0, mid)));
+      if (lastGroupRows.length > mid) {
+        grid.appendChild(buildAttTable(lastGroupRows.slice(mid)));
+      }
     }
     groupGrid.appendChild(grid);
   }
+
+  window.matchMedia("(max-width: 900px)").addEventListener("change", () => {
+    if (!lastGroupRows.length) return;
+    if (groupLayoutIsMobile === isAttGridMobile()) return;
+    renderGroups(lastGroupRows);
+  });
 
   function renderDivisions(rows, grand) {
     if (!divBody) return;
@@ -934,6 +953,24 @@
       setTab(btn.getAttribute("data-dashboard-tab"));
     });
   }
+
+  function bindDashCollapse() {
+    document.querySelectorAll("[data-dash-collapse]").forEach((section) => {
+      const btn = section.querySelector(".jcc-retreat-dashCollapseToggle");
+      if (!btn || btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
+      const meta = btn.querySelector(".jcc-retreat-dashCollapseMeta");
+      btn.addEventListener("click", () => {
+        const expanded = btn.getAttribute("aria-expanded") !== "false";
+        const next = !expanded;
+        btn.setAttribute("aria-expanded", next ? "true" : "false");
+        section.classList.toggle("is-collapsed", !next);
+        if (meta) meta.textContent = next ? "접기" : "펼치기";
+      });
+    });
+  }
+
+  bindDashCollapse();
   applyTab();
   load();
   setInterval(refreshActive, REFRESH_MS);

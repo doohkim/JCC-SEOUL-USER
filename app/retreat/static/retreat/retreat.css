@@ -722,6 +722,9 @@ body:not(.has-retreat-bottom-tabs) .jcc-retreatBottomTabs {
 .jcc-retreat-dashGrid > .card {
   min-width: 0;
 }
+#hourlyDashSection {
+  margin-top: 1rem;
+}
 .jcc-retreat-travelDash {
   margin-top: 1rem;
 }
@@ -1524,6 +1527,49 @@ body.has-retreat-bottom-tabs .jcc-retreat-staffRosterTable .jcc-retreat-staffSco
   padding: 1.25rem;
   border-radius: 18px;
 }
+.jcc-retreat-dashCollapseToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.jcc-retreat-dashCollapseToggle:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
+  color: var(--text);
+}
+.jcc-retreat-dashCollapseToggle:focus-visible {
+  outline: 2px solid var(--accent, #3182f6);
+  outline-offset: 2px;
+}
+.jcc-retreat-dashCollapseIcon {
+  font-size: 0.75rem;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+.jcc-retreat-dashCollapseMeta {
+  white-space: nowrap;
+}
+.jcc-retreat-dashboardCard.is-collapsed .jcc-retreat-dashCollapseIcon {
+  transform: rotate(-90deg);
+}
+.jcc-retreat-dashboardCard.is-collapsed > .jcc-retreat-dashboardSectionHead {
+  margin-bottom: 0;
+}
+.jcc-retreat-dashboardCard.is-collapsed > .jcc-retreat-dashCollapseBody {
+  display: none;
+}
 
 /* ── 대시보드 통계 표(실시간 참석·지역부서별·시간대별) 토스풍 통일 레이아웃 ── */
 .jcc-retreat-dashGrid table {
@@ -1557,33 +1603,33 @@ body.has-retreat-bottom-tabs .jcc-retreat-staffRosterTable .jcc-retreat-staffSco
   background: color-mix(in srgb, #1d64d8 8%, transparent);
 }
 /* 숫자 컬럼 등폭 숫자: 시간대별·미니표는 우측 정렬 유지 */
-#hourlyTable {
+.jcc-retreat-hourlyTable {
   table-layout: fixed;
   width: 100%;
 }
-#hourlyTable th:nth-child(1),
-#hourlyTable td:nth-child(1) {
+.jcc-retreat-hourlyTable th:nth-child(1),
+.jcc-retreat-hourlyTable td:nth-child(1) {
   width: 23.6%;
 }
-#hourlyTable th:nth-child(2),
-#hourlyTable td:nth-child(2),
-#hourlyTable th:nth-child(3),
-#hourlyTable td:nth-child(3) {
+.jcc-retreat-hourlyTable th:nth-child(2),
+.jcc-retreat-hourlyTable td:nth-child(2),
+.jcc-retreat-hourlyTable th:nth-child(3),
+.jcc-retreat-hourlyTable td:nth-child(3) {
   width: 14.6%;
 }
-#hourlyTable th:nth-child(4),
-#hourlyTable td:nth-child(4),
-#hourlyTable th:nth-child(5),
-#hourlyTable td:nth-child(5) {
+.jcc-retreat-hourlyTable th:nth-child(4),
+.jcc-retreat-hourlyTable td:nth-child(4),
+.jcc-retreat-hourlyTable th:nth-child(5),
+.jcc-retreat-hourlyTable td:nth-child(5) {
   width: 23.6%;
 }
-#hourlyTable thead th {
+.jcc-retreat-hourlyTable thead th {
   white-space: normal;
   line-height: 1.35;
   vertical-align: bottom;
 }
-#hourlyTable th:nth-child(n + 2),
-#hourlyTable td:nth-child(n + 2),
+.jcc-retreat-hourlyTable th:nth-child(n + 2),
+.jcc-retreat-hourlyTable td:nth-child(n + 2),
 .jcc-retreat-miniTable th:last-child,
 .jcc-retreat-miniTable td:last-child {
   text-align: right;
@@ -1593,22 +1639,22 @@ body.has-retreat-bottom-tabs .jcc-retreat-staffRosterTable .jcc-retreat-staffSco
   background: color-mix(in srgb, #1d64d8 12%, transparent);
   font-weight: 600;
 }
-#hourlyDashSection .jcc-retreat-hourlyTableWrap {
+.jcc-retreat-hourlyTableWrap {
   overflow-x: visible;
 }
 @media (max-width: 640px) {
-  #hourlyDashSection .jcc-retreat-hourlyTableWrap {
+  .jcc-retreat-hourlyTableWrap {
     overflow-x: hidden;
   }
-  #hourlyTable .jcc-retreat-hourlyCol--pcOnly {
+  .jcc-retreat-hourlyTable .jcc-retreat-hourlyCol--pcOnly {
     display: none;
   }
-  #hourlyTable th:nth-child(1),
-  #hourlyTable td:nth-child(1) {
+  .jcc-retreat-hourlyTable th:nth-child(1),
+  .jcc-retreat-hourlyTable td:nth-child(1) {
     width: 38%;
   }
-  #hourlyTable th:nth-child(4),
-  #hourlyTable td:nth-child(4) {
+  .jcc-retreat-hourlyTable th:nth-child(4),
+  .jcc-retreat-hourlyTable td:nth-child(4) {
     width: 62%;
   }
 }
@@ -1864,11 +1910,25 @@ body.has-retreat-bottom-tabs .jcc-retreat-staffRosterTable .jcc-retreat-staffSco
   }
 }
 @media (max-width: 900px) {
-  /* 두 번째 표 헤더 숨기고 첫 표 마지막 행 구분선을 살려 하나의 표처럼 이어 보이게 */
+  /* 모바일은 단일 표(JS). 혹시 두 표가 남아도 하나의 박스로 이어 보이게 */
+  .jcc-retreat-attGrid {
+    gap: 0;
+    row-gap: 0;
+  }
   .jcc-retreat-attGrid > table:nth-child(2) thead {
     display: none;
   }
-  .jcc-retreat-attGrid > table:first-child tbody tr:last-child td {
+  .jcc-retreat-attGrid > table:first-child:not(:only-child) {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom: none;
+  }
+  .jcc-retreat-attGrid > table:nth-child(2) {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-top: none;
+  }
+  .jcc-retreat-attGrid > table:first-child:not(:only-child) tbody tr:last-child td {
     border-bottom: 1px solid var(--border);
   }
 }
